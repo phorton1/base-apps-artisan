@@ -1,0 +1,93 @@
+<!-- desktop_page1.html -->
+
+<!--
+
+This file contains page1 of the desktop UI, which
+includes the renderer (Now Playing) and other panes.
+
+Pages include their own easyui-layout div and are
+otherwise loaded in their entirety into the desktop
+'artisan_body' element.
+
+-->
+
+<div
+    id='page1_body'
+    class='easyui-layout'
+    height='100%'
+    data-options='fit:true'>
+    
+<p>
+    BLAH
+</p>
+
+
+    <!-- HEADER -->
+    
+    <div
+        not-class='easyi-panel'
+        style="height:50px"
+        data-options="region:'north'">
+        NORTH
+    </div>
+    
+    
+    
+    <!-- WEST (LEFT) PANE = RENDERER LIST -->
+    
+    <div
+        id='west_title'
+        not-class='easyi-panel'
+        title="Renderers"
+        style="width:120px;"
+        data-options="
+            region:'west',
+            split:true, ">
+        WEST
+    </div>
+    
+    
+    
+    <!-- CENTER PANE = RENDERER (NOW PLAYING) -->
+    
+    <div
+        id='center_title'
+        title="Now Playing"
+        not-class='easyi-panel'
+        data-options="
+            region:'center', ">
+        CENTER
+    </div>
+    
+    
+    
+    <!-- EAST (RIGHT) PANE = SONGLIST -->
+    
+    <div
+        id='east_title'
+        not-class='easyi-panel'
+        title="Songlist"
+        style="width:100px;"
+        data-options="
+            region:'east',
+            split:true  ">
+        EAST
+    </div>
+    
+    
+    <!-- FOOTER -->
+    
+    <div
+        id='footer'
+        not-class='easyi-panel'
+        style="height:50px;"
+        data-options="
+            region:'south' ">
+        FOOTER
+    </div>
+
+</div>
+
+
+<!-- END OF desktop_page1.html -->
+

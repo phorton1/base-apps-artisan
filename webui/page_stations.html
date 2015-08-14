@@ -1,0 +1,43 @@
+<!-- page_stations.html -->
+
+<div
+    id="stations_page"
+    class="desktop_page"  >
+
+    <!-- include artisan_menu.html -->
+
+    <div
+        id='edit_station_list_div'
+        class="ui-layout-west">
+        <div id='edit_station_list' style='height:100%'
+            data-load="/webui/station/get_edit_stations"
+            data-onload="onload_edit_station_list">
+        </div>
+    </div>
+    
+    <div
+        id="station_tree_div"
+        class="ui-layout-center">
+
+        <!-- include page_header_bar.html id=stations -->
+        
+        <div id='station_tree_wrapper'>
+            <div id='station_tree'>
+                <!-- see station.js for kludge to fix station_tree div size -->
+            </div>
+        </div>
+    </div>
+
+
+    <div
+        id="edit_station_info_div"
+        class="ui-layout-east">
+
+        <!-- include pane_station_info.html id=stations -->
+
+    </div>
+   
+</div>
+
+
+<!-- END OF page_station.html -->

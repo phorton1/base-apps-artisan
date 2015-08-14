@@ -1,0 +1,13 @@
+{
+  "name":"Artisan App",
+  "display":"fullscreen",
+  //  "orientation":"landscape",
+  "icons":[{
+    "src":"/webui/icons/artisan.png",
+    "type":"image/png",
+    "sizes":"36x36"
+  }],
+  "permissions": [
+    "fullscreen"
+  ]
+}

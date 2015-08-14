@@ -1,0 +1,69 @@
+<!-- desktop.html -->
+<!--
+
+Contains the top level layout of the desktop version of the webUI.
+
+There is an alternative version of the webUI in car_stereo.html,
+that provides the same, or a subset, of the functionality found
+in this file.
+
+The desktop UI makes use of any files that start with artisan_
+and car_stereo UI makes use of any files that start with car_stereo_
+and they are never intermixed.
+
+The default easyUI styles have specific font pixel sizes built
+into them. For example their panel_body has a style font-size:12px.
+Therefore, from the get-go we have a fixed size representation.
+-->
+
+<html>
+<head>
+	<title>Artisan Desktop UI</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script type="text/javascript" src="/webui/easyui/jquery.js"></script>
+	<script type="text/javascript" src="/webui/easyui/jquery.easyui.min.js"></script>
+
+    <script type="text/javascript" src="/webui/artisan.js"></script>
+    <script type="text/javascript" src="/webui/artisan_menu.js"></script>
+
+    <script type="text/javascript" src="/webui/desktop.js"></script>
+    <script type="text/javascript" src="/webui/renderer.js"></script>
+    <!--script type="text/javascript" src="/webui/explorer.js"></script-->
+    <!--script type="text/javascript" src="/webui/stations.js"></script-->
+
+	<link rel="stylesheet" type="text/css" href="/webui/easyui/themes/default/easyui.css">
+	<link rel="stylesheet" type="text/css" href="/webui/easyui/themes/icon.css">
+	<link rel="stylesheet" type="text/css" href="/webui/artisan.css">
+	<link rel="stylesheet" type="text/css" href="/webui/artisan_default.css">
+	<link rel="stylesheet" type="text/css" href="/webui/desktop.css">
+	<link rel="stylesheet" type="text/css" href="/webui/renderer.css">
+</head>
+
+<!--
+    the reason for having a separate artisan_body div
+    is so that when we load the page, we don't wipe
+    out the top level layout object. Otherwise,
+    all of our loaded pages would have to specify
+    a <body> element.
+-->
+
+<body
+    id='document_body'
+    class="easyui-layout"
+    data-options="fit:true,">
+   
+    <!-- artisan_body = the element pages are loaded into -->
+    <!-- you must call resize() on document_body after loading artisan_body -->
+    <!-- see desktop.js for more information -->
+    
+    <div
+        id="artisan_body"
+        data-options="
+            fit:true,
+            cache:false,
+            region:'center',
+            border:false ">
+    </div>
+
+</body>
+</html>

@@ -1,0 +1,37 @@
+/* default (white) theme */
+
+body, h1, h2, h3, li, p, td
+{
+	color:#000000;
+	background:#ffffff;
+}
+
+
+.header_bar,
+.header_bar td
+{
+	color:#dddddd;
+	background:#999999;
+}
+
+
+.renderer_control_on
+{
+	color: #0000ff;
+}
+
+
+
+#station_tree span.fancytree-node.fancytree-active,
+#station_tree span.fancytree-node.fancytree-selected
+{
+    background-color: #ffffff !important;
+    border-color: #ffffff !important;
+}
+
+#station_tree span.fancytree-node.fancytree-active:hover,
+#station_tree span.fancytree-node.fancytree-selected:hover
+{
+    background-color: #E5f3FB !important;
+    border-color: #70C0E7 !important;
+}

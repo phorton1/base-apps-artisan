@@ -1,0 +1,144 @@
+<!-- renderer_menu.html -->
+
+<div id="renderer_menu">
+
+    <h3>Stations</h3>
+    <div
+        id="renderer_station_list"
+        data-load="/webui/station/get_renderer_stations"
+        data-onload="onload_renderer_station_list">
+        stations not loaded!
+    </div>
+    
+
+    <h3>Renderers</h3>
+    <div
+        id="renderer_list"
+        data-load="/webui/renderer/get_renderers"
+        data-onload="onload_renderer_list">
+        renderers not loaded!!
+    </div>
+    
+    
+    <h3>Preferences</h3>
+    <div id="renderer_prefs_div">
+        
+        
+        <div id='renderer_pref_default_renderer_div'
+             class='renderer_pref_div'
+             style='width:100%'>
+            
+            <h3 class='renderer_pref_title'>Default Renderer</h3>
+            
+            <p id='pref_default_renderer'
+               class='renderer_pref_value'>none</p>
+            
+            <div class='renderer_pref_control_div'>
+                <button
+                    onclick='javascript:clear_default_renderer()'
+                    class='renderer_pref_button'>
+                    clear
+                </button>
+                &nbsp;&nbsp;
+                <button
+                    onclick='javascript:set_default_renderer()'
+                    class='renderer_pref_button'>
+                    set
+                </button>
+            </div>
+            
+            <p class='renderer_pref_descrip'>
+                Set or clear the default renderer.
+                This renderer will be selected on
+                startup if the server does not
+                already have a selected renderer
+            </p>
+        
+        </div>
+
+
+
+        <div id='renderer_pref_prefname_div'
+             class='renderer_pref_div'
+             style='width:100%'>
+            <h3 class='renderer_pref_title'>Explorer Mode</h3>
+            <div class='renderer_pref_control_div renderer_pref_value'>
+                value:
+                <input
+                    type='text'
+                    id='pref_explorer_mode'
+                    class='popup_numeric_pref'
+                    title='Explorer Display Mode'
+                    style='width:40px;'
+                    value='0' />
+            </div>
+            <p class='renderer_pref_descrip'>
+                Determines what error error icon
+                shows in the explorer tree. Set
+                to 0 to show only the highest
+                track error, 1 to show only the
+                highest folder error, or 2 to
+                show the highest of either.
+            </p>
+        </div>
+
+
+
+        <div id='renderer_pref_prefname_div'
+             class='renderer_pref_div'
+             style='width:100%'>
+            <h3 class='renderer_pref_title'>AutoClose Sidebars</h3>
+            <div class='renderer_pref_control_div renderer_pref_value'>
+                value:
+                <input
+                    type='text'
+                    id='pref_autoclose_timeout'
+                    class='popup_numeric_pref'
+                    title='AutoClose Sidebars'
+                    style='width:40px;'
+                    value='0' />
+            </div>
+            <p class='renderer_pref_descrip'>
+                For car_stereo mode, set the
+                timeout for untouched sidebars
+                to disappear.
+            </p>
+        </div>
+
+        
+        <div id='renderer_pref_prefname_div'
+             class='renderer_pref_div'
+             style='width:100%'>
+            <h3 class='renderer_pref_title'>Auto Fullscreen</h3>
+            <div class='renderer_pref_control_div renderer_pref_value'>
+                value:
+                <input
+                    type='text'
+                    id='pref_autofull_timeout'
+                    class='popup_numeric_pref'
+                    title='Auto Fullscreen'
+                    style='width:40px;'
+                    value='0' />    
+            </div>
+            <p class='renderer_pref_descrip'>
+                For car_stereo mode, set the
+                time after which the display
+                will switch to 'full display'
+                mode (showing only the album
+                and info).  Not to be confused
+                with 'fullscreen' which is a
+                browser function.
+            </p>
+        </div>
+
+        <div style='width:100%' >
+            <h3 class='renderer_pref_title'>Device info</h3>
+            <p id='device_info' class='renderer_pref_descrip'>
+            </p>
+        </div>
+    </div>
+
+</div>
+
+
+`

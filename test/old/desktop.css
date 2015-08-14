@@ -1,0 +1,24 @@
+/*******************************************
+ desktop.css
+*******************************************
+
+The specific styles used in the desktop version of the webUI
+
+This file contains the sizing and styling information specific
+to the desktop layout, and is currently experimental, and in flux.
+
+The goal is to remove sizing and styling information and rely
+on the easyUI defaults, while still providing the proper UI
+on both the desktop and the car_stereo.
+
+But for the time being, the car_stereo has a 'fixed' version
+of this, as does the desktop.
+
+The file car_test.html is an attempt to use the generic artisan
+css files (with desktop_black.css theme) to provide a car_stereo
+UI that does not rely on scaling every element up in size, and
+an attempt to solve the problem that the native easyUI elements
+are too small on the car_stereo
+
+*/
+

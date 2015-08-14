@@ -1,0 +1,96 @@
+/* artisan_touch.css */
+/* this file gets "turned on" on touch devices where we want bigger buttons, etc *.
+
+
+/* ARTSIAN_MENU */
+
+.artisan_menu_table td
+{
+	padding-left:20px;
+}
+
+.artisan_menu_item
+{
+	font-size:12pt;
+}
+
+
+
+/* EXPLORER STYLE OVERRIDES */
+
+#explorer_tracklist td,
+#explorer_tree td
+{
+	font-size:14pt;
+	vertical-align:middle !important;
+}
+
+
+#explorer_tree span.fancytree-title,
+#station_tree span.fancytree-title
+{
+	padding-top:5px;
+}
+
+
+#explorer_details .fancytree-icon
+{
+	width:16px !important;
+	height:16px !important;
+}
+
+
+.explorer_details_section_label
+{
+	font-size:14pt;
+}
+
+
+.explorer_tracklist_variable_col,
+.explorer_tracklist_variable_td,
+.explorer_tree_num, 
+.explorer_tree_num_column 
+	/* hide extra columns in tree and tracklist */
+{
+	display:none;
+}
+
+
+
+/* STATION STYLE OVERRIDES */
+
+#edit_station_list
+{
+	width:200px;
+	font-size:16px;
+	padding-left:10px;
+}
+
+#edit_station_list label
+{
+	width:180px;
+	font-size:16px;
+	margin-bottom:10px;
+}
+
+
+/* SONG STATIONS */
+/* smaller buttons */
+
+#renderer_song_stations_table .ui-button
+{
+	width:60px;
+	height:30px;
+	font-size:6pt;
+}
+
+.song_station_list_button_on span
+{
+	font-size:8pt;
+}
+
+
+
+
+
+

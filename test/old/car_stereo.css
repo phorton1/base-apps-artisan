@@ -1,0 +1,53 @@
+/*******************************************
+ car_test.css
+*******************************************
+
+Test styles used in an alternate test version of the car_stereo UI
+
+The goal is to remove sizing and styling information and rely
+on the easyUI defaults, while still providing the proper UI
+on both the desktop and the car_stereo.
+
+The file car_test.html is an attempt to use the generic artisan
+css files (with desktop_black.css theme) to provide a car_stereo
+UI that does not rely on scaling every element up in size, and
+an attempt to solve the problem that the native easyUI elements
+are too small on the car_stereo
+
+Thus, to begin with, this file is empty
+
+*/
+
+
+/* override the easyUI panel-title class
+ * to make the accordian divisions in teh
+ * artisan menu bigger for car-stereo touches
+ */
+
+.panel-title
+{
+	font-size:14pt;
+}
+
+/* make the renderer_list bigger for
+ * touch on the car-stereo. 
+ */
+ 
+.datagrid-cell
+{
+	font-size:13pt;
+}
+
+/* a temporary style to make static text
+ * in the car-stereo menu larger
+ */
+
+
+
+/* Which brings up the whole notion:
+ *
+ * I think it might make sense to tweak the easyUI defaults
+ * (like above) so that they look good (are big enough)
+ * on the car stereo, and then just use those styles in the
+ * desktop UI unless otherwise neccesary
+ */

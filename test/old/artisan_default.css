@@ -1,0 +1,27 @@
+/*******************************************
+* artisan_default.css
+********************************************
+
+The 'default' theme for use by the desktop webUI
+is a white theme.
+
+Works with the easyUI 'default' theme.
+
+The only difference in 'artisan styles at this time,
+between themes, is the color for the html, body,
+and td elements.
+
+********************************************/
+
+td, html, body
+{
+	color:#000000;
+}
+
+#renderer_header_right,
+#renderer_header_left,
+#renderer_header_bar
+{
+	color:#dddddd;
+	background:#999999;
+}

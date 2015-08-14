@@ -1,0 +1,308 @@
+/*******************************************
+ renderer.css
+*******************************************/
+/* Contains styles in in pane_renderer.html */
+
+
+/* ALBUM INFO SECTION */
+
+#renderer_full_album_image_td,
+#renderer_album_image_td
+{
+	vertical-align:top;
+	text-align:center;
+}
+
+#renderer_album_image_td
+{
+	width:170px;
+}
+
+#renderer_full_album_image_td
+{
+	width:270px;
+}
+
+
+#renderer_full_album_image,
+#renderer_album_image
+{
+	margin-top:10px;
+	margin-left:5px;
+	margin-right:5px;
+	margin-bottom:0px;
+	padding:0px;
+}
+
+#renderer_album_image
+{
+	height:160px;
+	width:160px;
+}
+
+#renderer_full_album_image
+{
+	height:240px;
+	width:240px;
+	padding-left:8px;
+}
+
+
+/* the album_info_td contains the album_info_div and the slider_div */
+
+#renderer_full_album_info_td
+#renderer_album_info_td
+{
+	vertical-align:top;
+	overflow:hidden;
+	padding-left:5px;
+}
+
+#renderer_album_info_div
+{
+	height:125px;
+	/* width:340px; the width is fixed in car_stereo.css */
+	overflow:hidden;
+}
+
+#renderer_full_album_info_div
+{
+	/* height:125px; */
+	/* width:340px; the width is fixed in car_stereo.css */
+	overflow:hidden;
+}
+
+
+
+/* the song info elements live within the renderer_album_info_div */
+
+#renderer_song_title     { font-size:15pt; font-weight:bold; margin-top:10px; margin-bottom:0px;}
+#renderer_album_artist   { font-size:11pt;                   margin-top:0px;  margin-bottom:0px;}
+#renderer_album_title    { font-size:13pt; font-weight:bold; margin-top:6px; margin-bottom:0px;}
+#renderer_album_track    { font-size:10pt;                   margin-top:0px;  margin-bottom:0px;}
+#renderer_song_genre     { font-size:11pt;                   margin-top:6px; margin-bottom:0px;}
+
+#renderer_full_song_title     { font-size:20pt; font-weight:bold; margin-top:12px; margin-left:12px;  margin-bottom:0px;}
+#renderer_full_album_artist   { font-size:17pt;                   margin-top:25px; margin-bottom:0px;}
+#renderer_full_album_title    { font-size:18pt; font-weight:bold; margin-top:16; margin-bottom:0px;}
+#renderer_full_album_track    { font-size:14pt;                   margin-top:0px;  margin-bottom:0px;}
+#renderer_full_song_genre     { font-size:12pt;                   margin-top:16px; margin-bottom:0px;}
+
+
+
+/* slider styling */
+
+#renderer_slider_div
+{
+	height:45px;
+}
+
+#renderer_slider
+{
+	height:8px;
+	background:#222266 !important;
+	margin-top:10px;
+	margin-left:8px;
+	margin-right:20px;
+}
+
+#renderer_play_info
+{
+	margin-top:8px;
+	margin-left:2px;
+	margin-right:20px;
+}
+
+
+#renderer_play_type 	 { font-size:10pt; text-align:center; }
+#renderer_duration		 { text-align: right; }
+.renderer_play_time      { font-size:10pt; }
+
+
+/* TRANSPORT CONTROLS */
+
+
+.renderer_table
+	/* styling for the two tables that contain the transport buttons */
+{
+	width:98%;
+	margin-bottom:10px;
+}
+
+
+#renderer_button_unused1,
+#renderer_button_prev,
+#renderer_button_next,
+#renderer_button_stop,
+#renderer_button_play_pause,
+#renderer_button_shuffle,
+#renderer_button_unused2,
+#renderer_button_station_1,
+#renderer_button_station_2,
+#renderer_button_station_3,
+#renderer_button_station_4,
+#renderer_button_station_5,
+#renderer_button_station_6,
+#renderer_button_station_assign
+{
+	font-weight:bold;
+	font-size:13pt;
+	height:40px;
+}
+
+.renderer_big_button
+{
+	width:90px;
+}
+
+
+/* not including default theme coloring */
+/* .renderer_control_on	 { color: #6666ff !important; } */
+
+
+
+/* RENDERER MENU STYLES */
+
+#renderer_menu
+{
+	width:243px;
+}
+
+#renderer_menu_div 
+{
+	/* overflow:hidden !important; */
+}
+
+
+.renderer_top_button
+	/* the off, refresh, clear renderer buttons in the renderer_list */
+{
+	font-size:9px;
+}
+
+
+/* RENDERER MENU STATION LIST STYLES */
+
+#renderer_station_list label,
+#renderer_list label
+{
+	width:200px;
+	overflow:hidden;
+	white-space:nowrap;
+	margin-bottom:10px;
+}
+
+#renderer_station_list,
+#renderer_list
+{
+	width:197px;
+	font-size:16px;
+	padding-left:10px;
+	white-space:nowrap;
+}
+
+
+/* raise the renderer_menu over the slider button which is at z-index:2 */
+
+#renderer_menu,
+#renderer_menu_div
+{
+	z-index:3;
+}
+
+
+/* RENDERER SONG STATIONS SYTLES */
+
+#renderer_song_stations_table
+{
+	width:98%;
+	table-layout:fixed;	
+}
+
+
+.renderer_song_stations_td
+{
+	text-align:center;
+	padding-top:6px;
+}
+
+.renderer_song_stations_td br
+{
+	margin-top:12px;
+}
+
+
+#renderer_song_stations_table .ui-button
+{
+	width:90px;
+	font-size:9pt;
+	
+	height:24px;
+	padding:0px;
+	margin:0px;
+	overflow:hidden;
+}
+
+
+
+.song_station_list_button_on span
+{
+	font-size:10pt;
+
+	font-weight:bold;
+	color:#ff4444;
+}
+
+
+
+
+/* RENDERE MENU PREF STYELS */
+
+#renderer_prefs_div
+	/* the whole prefs div */
+{
+	font-size:20px;
+	width:100%;
+	padding:0px;
+	margin:0px;
+}
+
+.renderer_pref_div
+	/* a div per pref */
+{
+	margin-top:12px;
+	width:100%;
+}
+
+.renderer_pref_title
+	/* title of the pref */
+{
+	margin-bottom:8px;
+}
+
+.renderer_pref_value
+	/* current value of the pref */
+{
+	color:#6666ff;
+	margin-left:30px;
+	font-weight:bold;
+}
+
+.renderer_pref_control_div
+	/* an area under the value for controls to change the value */
+{
+	margin-top:6px;
+	margin-left:45px;
+}
+
+
+.renderer_pref_descrip
+	/* one or more paragraphs describing the preference */
+{
+	margin-top:10px;
+	margin-left:15px;
+}
+
+
+
+

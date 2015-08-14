@@ -1,0 +1,156 @@
+<!-- page_explorer.html -->
+
+<div
+    id="explorer_page"
+    class="desktop_page">
+
+    <!-- include artisan_menu.html -->
+    
+    <!-- EXPLORER TREE -->
+    
+    <div
+        id="explorer_tree_div"
+        class="ui-layout-west">
+
+        <table id="explorer_tree" width='100%'>
+            <colgroup>
+                <col>
+                <col class='explorer_tree_num_column'>
+            </colgroup>
+            <thead>
+                <tr> <th></th> <th class='explorer_tree_num'></th> </tr>
+            </thead>
+            <tbody>
+                <tr> <td></td> <td class='explorer_tree_num'></td> </tr>
+            </tbody>
+        </table>
+
+    </div>
+
+    
+    <!-- ALBUM INFO TOP-->
+
+    <div
+        id="explorer_center_div"
+        class="ui-layout-center">
+        
+        <div
+            id="explorer_album_div"
+            class="ui-layout-north">
+            
+            <!-- include page_header_bar.html id=explorer -->
+                    
+            <!-- album info -->
+            
+            <div
+                id="explorer_album_info_div">
+                
+                <table width='100%' height="100%">
+                    <tr>
+                        <td width='5%'>
+                            <img
+                                id="explorer_album_image"
+                                style="
+                                    vertical-align:top;
+                                    padding-top:5px;
+                                    padding-left:5px;
+                                    padding-right:10px;
+                                    height:85px;
+                                    width:85px;"
+                                src="/webui/icons/artisan.png" >
+                        </td>
+                        
+                        <td id="explorer_album_info_td"
+                            style="
+                                padding-top:5px;
+                                margin-left:20px;
+                                ">
+                            <p id="explorer_album_info1">Info 1</p>
+                            <p id="explorer_album_info2">Info 2</p>
+                            <p id="explorer_album_info3">Info 3</p>
+                            <p id="explorer_album_info4">Info 4</p>
+                            <p id="explorer_album_info5">Info 5</p>
+                            <audio id='audio_player' autoplay controls height='30px'></audio>
+                            <span id='audio_player_title'></span>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+        
+        
+        <!-- EXPLORER TRACKLIST -->
+        
+        <div
+            id="explorer_tracklist_div"
+            class="ui-layout-center">
+            
+            <table id="explorer_tracklist" width='100%'>
+                <colgroup>
+                    <col>
+                    <col>
+                    <col>
+                    <col>
+                    <col class='explorer_tracklist_variable_col'>
+                    <col class='explorer_tracklist_variable_col'>
+                </colgroup>
+                <thead>
+                    <tr>
+                        <th class='explorer_tracklist_td0'></th>
+                        <th class='explorer_tracklist_td1'></th>
+                        <th class='explorer_tracklist_td2'></th>
+                        <th class='explorer_tracklist_td3'></th>
+                        <th class='explorer_tracklist_td4 explorer_tracklist_variable_td'></th>
+                        <th class='explorer_tracklist_td5 explorer_tracklist_variable_td'></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                </tbody>
+            </table>
+       </div>
+    
+    </div>
+    
+    
+    <!-- EXPLORER_DETAILS_LIST -->
+    
+    <div
+        id="explorer_details_div"
+        class="ui-layout-east">
+            
+            <table id="explorer_details" width='100%'>
+                <colgroup>
+                    <col></col>
+                    <col></col>
+                    <col></col>
+                </colgroup>
+                <thead>
+                    <tr>
+                        <th class='explorer_details_td0'></th>
+                        <th class='explorer_details_td1'></th>
+                        <th class='explorer_details_td2'></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                </tbody>
+            </table>
+    </div>
+
+   
+</div>
+
+
+<!-- END OF page_explorer.html -->

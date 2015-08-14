@@ -1,0 +1,96 @@
+/* artisan_jquery.css */
+
+/**************************************************************
+ 
+OK, I think I have it figured out for jqueryUI 1.11.2
+
+After downloading the full build with "no theme" you end
+up with a pair of files that are the same, with the exception
+of comments:
+
+    jquery-ui.css
+    jquery-ui.structure.css
+
+Normally, if you selected a build with a theme, there would
+be another file called jquery-ui.theme.css. And normally,
+jquery-ui.css would contain jquery-ui.structure.css AND
+jquery-ui.theme.css, and all you would need to include is
+jquery-ui.css.  Got it?
+
+Then I managed to download all the themes to a /themes
+subdirectory.  Each of these downloaded themes contains a
+ANOTHER (differently ordered) version of jquery-ui.structure.css
+as well as another "combined" jquery-ui.css file, but it also
+contains a theme.css file that would seem to be loadable on top
+of just the jquery-ui.structure.css.
+
+    /themes/dark-hive/theme.css
+
+It is not clear to what degree "building" a jqueryUI download
+might modify the javascript itself, or the structure.css,
+according to the theme, but to begin with, I HAVE to assume
+that it doesn't
+
+THEME ROLLER
+
+So then you can do ANOTHER build with "Theme Roller". Probably
+at some point in the past, ThemeRoller just downloaded the
+'stylistic' portions (not the structure) in a "theme" css file,
+but now, apparently, you have to do a "build" and extract the
+relevant file(s) from the download.
+
+So after I did a build with a custom theme and downloaded it,
+I get the same structure.css file, but a jquery-ui.theme.css
+file that *probably* contains just the stylistic elements, ala
+the /themes directories' "theme.css". It also creates, I presume
+another stupid combined jquery-ui.css file.
+
+    /custom_zip_file/jquery-ui.theme.css
+    
+    
+WORK TO DO
+
+- major pain in the ass - somehow figure out if all my assumptions
+	 are correct.  Compare various sturucure.css files, etc
+	 
+- use jquery-ui.1.11.2.structure AS IS
+
+- from the TOP, this file, artisan_jquery.css contains styles
+  overriden from jquery-ui.structure.css, as needed
+
+- create the themes I want, artisan_jquery_black.css and
+  artisan_jquery_white, based on the dark-hive (for black)
+  and the theme I downloaded from themeroller (for white)
+
+  copy themes/dark-hive/images to a new /webui/images directory
+
+- remove the jquery-ui.1.11.2 directory.  It is not needed except as
+  a container for themes. The JS files go to
+  
+		jquery/jquery-ui-1.11.2.js    and
+		jquery-ui-1.11.2.min.js,
+  
+  and structure.css goes to
+  
+		jquery/jquery-ui.structure.1.11.2.css and min.css.
+
+  the whole jquery-ui-1.11.2 directory is then marked as unused
+
+
+
+FINAL RESULTS
+
+  So, the final order of css loads is as follows:
+
+  jquery/jquery-ui.structure-1.11.2.css
+  artisan_jquery.css (this file)
+  artisan_jquery_black.css (or white)
+  artisan.css
+  renderer.css, etc
+  artisan_black.css (or white)
+  
+*************************************************************************************/
+
+/* this css file is currently empty */
+
+

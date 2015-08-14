@@ -1,0 +1,165 @@
+<!-- desktop_page1.html -->
+
+<!--
+
+This file contains page1 of the desktop UI, which
+includes the renderer (Now Playing) and other panes.
+
+Pages include their own easyui-layout div and are
+otherwise loaded in their entirety into the desktop
+'artisan_body' element.
+
+-->
+
+
+<div
+    id='page1_body'
+    class='easyui-layout'
+    data-options='fit:true'>
+    
+
+    <!-- HEADER -->
+    
+    <div style="height:50px"
+         data-options="region:'north'">
+    
+        <table
+            width='100%'
+            align='center'
+            style='margin-top:-4px;' >
+            
+            <tr>
+                <td width='2%'>
+                    <a href="javascript:artisan_main_menu()">
+                        <img src='/webui/icons/artisan.png'
+                            style='margin-top:4px'
+                            width='40px'
+                            height='40px'
+                            align='left'>
+                    </a>
+                </td>
+        
+                <td width='5%'>
+                    <a id='header_pane_name'
+                       href="javascript:artisan_main_menu()">
+                        Artisan
+                    </a>
+                </td>
+    
+                <td id='header_title'
+                    style='padding-left:20px'>
+                    Database and Server
+                </td>
+    
+                <td width='5%'
+                    id='header_toolbar'
+                    align='right'
+                    style='white-space:nowrap;padding-left:20px;padding-right:20px'>
+    
+                    <input type='button'
+                        style='width:120px;'
+                        class='button_off'
+                        id='fullscreen_button'
+                        value='fullscreen'
+                        onclick='javascript:toggleFullScreen()'>
+    
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                    <input type='button'
+                        disabled
+                        style='width:120px;'
+                        class='button_off'
+                        id='monitor_button'
+                        value='start monitor'
+                        onclick='javascript:toggle_monitor()'>
+    
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                    <input type='button'
+                        disabled
+                        style='width:120px;'
+                        class='button_off'
+                        id='auto_update_button'
+                        value='auto_update'
+                        onclick='javascript:toggle_auto_update()'
+                        disabled>
+                    
+                </td>
+                
+            </tr>
+        </table>
+     </div>
+    
+    
+    
+    <!-- WEST (LEFT) PANE = RENDERER LIST -->
+    
+    <div
+        id='west_title'
+        title="Renderers"
+        style="width:120px;"
+        data-options="
+            region:'west',
+            split:true, ">
+    
+        <table
+            id='renderer_list'
+            class="easyui-datagrid" 
+            data-options="
+                fit: true,
+                fitColumns: true,
+                url: '/webui/renderer/get_renderers',
+                method: 'get', 
+                idField: 'id',
+                singleSelect: true">
+            <thead>
+                <tr>
+                    <th id='name' data-options="field:'friendlyName'" width="170px"></th>
+                    <!-- th id='online' data-options="field:'ONLINE'" align='center' width="20px">online</th-->
+                </tr>
+            </thead>
+        </table>       
+    
+    </div>
+    
+    
+    
+    <!-- CENTER PANE = RENDERER (NOW PLAYING) -->
+    
+    <div
+        id='center_title'
+        title="Now Playing"
+        class="easyui-layout'"
+        data-options="
+            region:'center',
+            href:'/webui/renderer.html' ">
+    </div>
+    
+    
+    
+    <!-- EAST (RIGHT) PANE = SONGLIST -->
+    
+    <div
+        id='east_title'
+        title="Songlist"
+        style="width:100px;"
+        data-options="
+            region:'east',
+            split:true  ">
+        East
+    </div>
+    
+    
+    <!-- FOOTER -->
+    
+    <div
+        id='footer'
+        style="height:50px;"
+        data-options="
+            region:'south' ">
+        Footer
+    </div>
+
+</div>
+
+
+<!-- END OF desktop_page1.html -->
+

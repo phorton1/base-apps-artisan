@@ -1,0 +1,109 @@
+/*******************************************
+ explorer.css
+********************************************/
+
+/* Currently contains some classes that have common definitions
+ * between the explorer and station pages, specifically the
+ * fancyTree of elements.  There are some specific modifications
+ * to the station_tree in station.css */
+
+/* no borders in explorer */
+
+table.fancytree-ext-table tbody tr td
+{
+	border:0px;
+}
+
+
+#explorer_tracklist,
+#explorer_tree
+{
+	width:100%;
+	table-layout:fixed;
+}
+
+
+#explorer_tracklist td,
+#explorer_tree td
+{
+    overflow:hidden;
+	font-size:12pt;
+}
+
+
+.explorer_tree_num
+{
+    text-align:right;
+    padding-right:3px;
+	width:45px;
+	display:table-cell;
+}
+
+.explorer_tree_num_column
+{
+	display:block;
+}
+
+
+#explorer_tracklist_div,
+#explorer_tree_div
+{
+	overflow-y:auto !important;
+}
+
+
+
+#explorer_album_info1   { font-size:11pt; font-weight:bold; margin-top:0px; margin-bottom:0px;}
+#explorer_album_info2   { font-size:10pt;                   margin-top:0px; margin-bottom:0px;}
+#explorer_album_info3   { font-size:10pt; font-weight:bold; margin-top:0px; margin-bottom:0px;}
+#explorer_album_info4   { font-size:9pt;                   margin-top:0px; margin-bottom:0px;}
+#explorer_album_info5   { font-size:8pt;                   margin-top:4px; margin-bottom:0px;}
+
+
+
+/* tracklist specific */
+
+#explorer_details td,
+#explorer_tracklist td
+{
+	vertical-align:middle !important;
+}
+
+.explorer_tracklist_variable_td
+{
+	display:table-cell;
+}
+
+.explorer_tracklist_variable_col
+{
+	display:block;
+}
+
+
+.explorer_tracklist_td0  { width:16px;  }
+.explorer_tracklist_td1  { width:24px;  padding-left:2px; }
+.explorer_tracklist_td2  { width:220px; padding-left:10px; }
+.explorer_tracklist_td3  { width:60px;  text-align:center;}
+.explorer_tracklist_td4  { width:120px; }
+.explorer_tracklist_td5  { width:60px;  text-align:center;}
+.explorer_tracklist_td6  { width:60px;  }
+
+#explorer_tracklist .fancytree-expander
+{
+	display:none !important;
+}
+
+
+/* details pane */
+
+#explorer_details_div
+{
+	overflow-y:auto !important;
+	overflow-x:auto !important;
+}
+
+.explorer_details_td0  { width:16px; }
+.explorer_details_td1  { width:45px; }
+.explorer_details_td2  { width:220px; padding-left:10px; }
+
+

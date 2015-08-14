@@ -1,0 +1,225 @@
+<!-- artisan_menu.html -->
+<!--
+
+contains the artisan main menu, which contains
+the renderer list, which is needed by renderer.js
+
+-->
+
+    
+<div
+     id='artisan_menu_container'
+     class="easyui-layout"
+     data-options="
+        fit:true, ">
+
+    <div
+        id="artisan_menu_accordian"
+        class="easyui-accordion"
+        style="height:120px"
+        data-options="
+            fit:true,
+            multiple:true, ">
+
+       <!--div
+            id="artisan_menu_stations_div"
+            title="Stations"
+            height='80px'
+            style="overflow:auto;padding:10px;height:80px;"
+            data-options="fit:true">
+            <table
+                id="station_list"
+                class="easyui-datagrid" 
+                height="90px",
+                style="height:90px",
+                data-options="
+                    fit: false,
+                    fitColumns: true,
+                    url: '/webui/station/get_stations',
+                    method: 'get', 
+                    idField: 'station_num',
+                    showHeader:false,
+                    singleSelect: true">
+                <thead>
+                    <tr>
+                        <th id="name" data-options="field:'name'" width="170px"></th>
+                    </tr>
+                </thead>
+            </table>       
+        </div>
+   
+
+        <div
+            id="artisan_menu_renderer_div"
+            title="Renderer"
+            style="overflow:auto;padding:10px;"
+            data-options="fit:true">
+            <table
+                id="renderer_list"
+                class="easyui-datagrid" 
+                not-height="60px",
+                not-style="height:60px",
+                data-options="
+                    fit: true,
+                    bodyCls:'renderer_list_element',
+                    fitColumns: true,
+                    url: '/webui/renderer/get_renderers',
+                    method: 'get', 
+                    idField: 'id',
+                    showHeader:false,
+                    singleSelect: true">
+                <thead>
+                    <tr>
+                        <th id="name" data-options="field:'friendlyName'" width="170px"></th>
+                    </tr>
+                </thead>
+            </table>       
+        </div-->
+
+      
+        <div
+            id="artisan_menu_preferences_div"
+            title="Preferences"
+            class="artisan_menu_item">
+            Preference1<br>
+            Preference2<br>
+            Preference3<br>
+            Preference4<br>
+            Preference5<br>
+            Preference6<br>
+            Preference7<br>
+            Preference8<br>
+            Preference9<br>
+            Preference10<br>
+            Preference1<br>
+            Preference2<br>
+            Preference3<br>
+            Preference4<br>
+            Preference5<br>
+            Preference6<br>
+            Preference7<br>
+            Preference8<br>
+            Preference9<br>
+            Preference10<br>
+            Preference1<br>
+            Preference2<br>
+            Preference3<br>
+            Preference4<br>
+            Preference5<br>
+            Preference6<br>
+            Preference7<br>
+            Preference8<br>
+            Preference9<br>
+            Preference10<br>
+        </div>
+
+        <div
+            id="artisan_menu_preferences_div"
+            title="Preferences"
+            class="artisan_menu_item">
+            Preference1<br>
+            Preference2<br>
+            Preference3<br>
+            Preference4<br>
+            Preference5<br>
+            Preference6<br>
+            Preference7<br>
+            Preference8<br>
+            Preference9<br>
+            Preference10<br>
+            Preference1<br>
+            Preference2<br>
+            Preference3<br>
+            Preference4<br>
+            Preference5<br>
+            Preference6<br>
+            Preference7<br>
+            Preference8<br>
+            Preference9<br>
+            Preference10<br>
+            Preference1<br>
+            Preference2<br>
+            Preference3<br>
+            Preference4<br>
+            Preference5<br>
+            Preference6<br>
+            Preference7<br>
+            Preference8<br>
+            Preference9<br>
+            Preference10<br>
+        </div>
+
+        <div
+            id="artisan_menu_preferences_div"
+            title="Preferences"
+            class="artisan_menu_item">
+            Preference1<br>
+            Preference2<br>
+            Preference3<br>
+            Preference4<br>
+            Preference5<br>
+            Preference6<br>
+            Preference7<br>
+            Preference8<br>
+            Preference9<br>
+            Preference10<br>
+            Preference1<br>
+            Preference2<br>
+            Preference3<br>
+            Preference4<br>
+            Preference5<br>
+            Preference6<br>
+            Preference7<br>
+            Preference8<br>
+            Preference9<br>
+            Preference10<br>
+            Preference1<br>
+            Preference2<br>
+            Preference3<br>
+            Preference4<br>
+            Preference5<br>
+            Preference6<br>
+            Preference7<br>
+            Preference8<br>
+            Preference9<br>
+            Preference10<br>
+        </div>
+
+    </div>
+
+</div>
+
+
+
+<script type='text/javascript'>
+    
+    // when the menu is loaded, we set the renderer_list
+    // into a global variable in renderer.js for use by the ui,
+    // and connect it's onClickRow event 
+    
+    $('#renderer_list').ready(function(){
+        
+        renderer_list = document.getElementById('renderer_list');
+        
+        $('#renderer_list').datagrid({
+            onClickRow : on_select_renderer,
+        });
+
+        $('#artisan_menu_accordian').accordian('resize');
+    });
+
+
+    $('#renderer_list').ready(function(){
+        $('#station_list').datagrid({
+            onClickRow : on_select_station,
+        });
+    
+        $('#artisan_menu_accordian').accordian('resize');
+        
+    });
+
+</script>
+
+
+
+

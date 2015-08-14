@@ -1,0 +1,223 @@
+<!-- pane_renderer.html -->
+
+<!-- HEADER -->
+
+<div id='renderer_pane'>
+    
+    <!-- include page_header_bar.html id=renderer -->
+    
+    <div
+        id="renderer_body"
+        class="renderer_body">
+            
+        <!-- ALBUM INFO -->
+        
+        <table width='100%' style="table-layout:fixed;">
+            <tr>
+                <td id="renderer_album_image_td">
+                    <img
+                        id="renderer_album_image"
+                        align="left"
+                        src="/webui/icons/artisan.png"
+                        onclick='javascript:show_context_menu(event)'>
+                </td>
+                
+                <td id="renderer_album_info_td">
+                    
+                    <div id="renderer_album_info_div">
+                        <p id="renderer_song_title">Song Title</p>
+                        <p id="renderer_album_artist">Album Artist</p>
+                        <p id="renderer_album_title">Album Title</p>
+                        <p id="renderer_album_track">Track 0</p>
+                        <p id="renderer_song_genre">DATE</p>
+                    </div>
+                    
+                    <div id="renderer_slider_div">
+                        <div id="renderer_slider">
+                        </div>
+                        <div id="renderer_play_info">
+                            <table width="100%">
+                                <tr>
+                                    <td id="renderer_reltime" class="renderer_play_time">00:00:00</td>
+                                    <td id="renderer_play_type" colspan="4">MP3</td>
+                                    <td id="renderer_duration" class="renderer_play_time">00:00:00</td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+                                
+                                    
+                </td>
+                
+            </tr>
+        </table>
+    
+        <!-- TRANSPORT CONTROLS -->
+        
+    
+        <table class="renderer_table" align='center'>
+            <tr>
+                <td class="play_button" align="left">
+                    <input type="button"
+                        id="renderer_button_unused1"
+                        class='renderer_big_button'
+                        value="unused1"
+                        disabled>
+                </td>
+                <td class="play_button" align="center">
+                    <input type="button"
+                        id="renderer_button_prev"
+                        value=" << "
+                        disabled
+                        onclick = "javascript:transport_command('prev')">
+                </td>
+                <td class="play_button" align="center">
+                    <input type="button"
+                        id="renderer_button_play_pause"
+                        value=" > "
+                        disabled
+                        onclick = "javascript:transport_command('play_pause')">
+                </td>
+                <td class="play_button" align="center">
+                    <input type="button"
+                        id="renderer_button_stop"
+                        value=" X "
+                        disabled
+                        onclick = "javascript:transport_command('stop')">
+                </td>
+                <td class="play_button" align="center">
+                    <input type="button"
+                        id="renderer_button_next"
+                        value=" >> "
+                        disabled
+                        onclick = "javascript:transport_command('next')">
+                </td>
+                <td class="play_button" align="right">
+                    <input type="button"
+                        id="renderer_button_shuffle"
+                        class='renderer_big_button'
+                        value="shuffle"
+                        disabled>
+                </td>
+            </tr>
+        </table>
+        
+        
+        <!-- RADIO STATION CONTROLS -->
+        
+        <table class="renderer_table" align='center'>
+            <tr>
+                <td class="play_button" align="left">
+                    <input type="button"
+                        id="renderer_button_unused2"
+                        class='renderer_big_button'
+                        value="unused2"
+                        disabled>
+                </td>
+                <td class="play_button" align="center">
+                    <input type="button"
+                        id="renderer_button_station_1"
+                        value="1"
+                        disabled
+                        onclick = "javascript:select_renderer_station(1)">
+                </td>
+                <td class="play_button" align="center">
+                    <input type="button"
+                        id="renderer_button_station_2"
+                        value="2"
+                        disabled
+                        onclick = "javascript:select_renderer_station(2)">
+                </td>
+                <td class="play_button" align="center">
+                    <input type="button"
+                        id="renderer_button_station_3"
+                        value="3"
+                        disabled
+                        onclick = "javascript:select_renderer_station(3)">
+                </td>
+                <td class="play_button" align="center">
+                    <input type="button"
+                        id="renderer_button_station_4"
+                        value="4"
+                        disabled
+                        onclick = "javascript:select_renderer_station(4)">
+                </td>
+                <td class="play_button" align="center">
+                    <input type="button"
+                        id="renderer_button_station_5"
+                        value="5"
+                        disabled
+                        onclick = "javascript:select_renderer_station(5)">
+                </td>
+                <td class="play_button" align="center">
+                    <input type="button"
+                        id="renderer_button_station_6"
+                        value="6"
+                        disabled
+                        onclick = "javascript:select_renderer_station(6)">
+                </td>
+                <td class="play_button" align="right">
+                    <input type="button"
+                        id="renderer_button_station_assign"
+                        class='renderer_big_button'
+                        value="assign"
+                        disabled>
+                </td>
+            </tr>
+        </table>
+    
+    </div>
+
+</div>  <!-- renderer_pane -->
+
+<div
+    id='renderer_autofull_div'
+    style='
+        display:none;
+        position:absolute;
+        width:100%;
+        height:100%'
+        onclick='javascript:reset_timeouts()'>
+
+    <!-- ALBUM INFO -->
+    
+    <table width='100%'>
+        <tr>
+            <td width='3%' style='padding:0px;margin:0px;padding-left:10px; padding-top:3px;'>
+                <img src="/webui/icons/artisan.png"
+                     height='45px'
+                     width='45px'
+                     style="padding:0px; margin:0px;">
+            </td>
+            <td style='vertical-align:top;padding:0px;margin:0px;'>
+               <p id="renderer_full_song_title">Song Title</p>
+            </td>
+        </tr>
+    </table>
+    <table width='100%'>
+        <tr>
+            <td id="renderer_full_album_image_td">
+                <img
+                    id="renderer_full_album_image"
+                    align="left"
+                    src="/webui/icons/artisan.png" >
+            </td>
+            
+            <td id="renderer_album_info_td">
+                <div id="renderer_full_album_info_div">
+                    <p id="renderer_full_album_artist">Album Artist</p>
+                    <p id="renderer_full_album_title">Album Title</p>
+                    <p id="renderer_full_album_track">Track 0</p>
+                    <p id="renderer_full_song_genre">DATE</p>
+                </div>
+            </td>
+            
+        </tr>
+    </table>    
+</div>
+    
+   
+    
+    
+<!-- END OF pane_renderer.html -->
+
