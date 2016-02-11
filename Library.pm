@@ -296,7 +296,9 @@ sub scanner_thread
 		db_disconnect($dbh);
 		undef $params;
 		
-		if ($is_new_database && $first_time && $HAS_STATION_MODULE)
+		if ($HAS_STATION_MODULE &&
+			(!(-f $Station::station_datafile) ||
+			 $is_new_database && $first_time))
 		{
 			Station::setDefaultStations();
 		}

@@ -377,18 +377,23 @@ our ($server_ip)=inet_ntoa((gethostbyname(hostname))[4]);
 #display(0,0,"hostname=".hostname);
 #display(0,0,"server_ip=$server_ip");
 
+# IP Addresses assigned by prh-travel router!!
+
 if ($HOST_ID eq "win")
 {
-	$server_ip = '192.168.100.100';
+	# lenovo mac address = AC-7B-A1-54-13-7A
+	# old tplink prhtravel: $server_ip = '192.168.100.100';
+	$server_ip = '192.168.0.101';
 }
 elsif ($HOST_ID eq "arm")
 {
+	# car stereo MAC address = 
 	$program_name = 'Artisan Android 1.1v';
 	$uuid = '56657273-696f-6e34-4d41-afacadefeed3';
 	$script_dir = "/external_sd2/artisan";
 	$mp3_dir = "/usb_storage2/mp3s";
 	$mp3_dir_RE = '\/usb_storage2\/mp3s';
-	$server_ip = '192.168.100.103';
+	$server_ip = '192.168.0.103';
 }
 else	# x86
 {

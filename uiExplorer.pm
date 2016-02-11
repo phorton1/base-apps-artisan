@@ -42,16 +42,32 @@ use Station;
 use uiUtils;
 
 
-# settings for explorer mode
+#---------------------------------
+# EXPLORER MODE
+#---------------------------------
+#
+# These variables control the default errors that will show
+# in the colored icon in the explorer tree.  One can choose
+# to accumulate the highest TRACK errors into the parents,
+# or the highest FOLDER errors, or BOTH.
+#
+# Folder errors include things like missing folder.jpg files, etc.
+# Track errors include things like missing metadata, etc.
+#
+# This default UI setting is a UI preference, and is overriden
+# by the webUI on a per-call basis. It works.
+
 
 my $SHOW_TRACK_HIGH = 0;
+	# Accumulate the highest TRACK error into the icon
 my $SHOW_FOLDER_HIGH = 1;
+	# Accumluate the highest FOLDER error into the icon
 my $SHOW_BOTH_HIGH = 2;
+	# Accumulate both TRACK and FOLDER errors into the icon.
 
-# default for explorer mode if no mode passed in request
-
-my $SHOW_HIGH = $SHOW_BOTH_HIGH;
-
+my $SHOW_HIGH = $SHOW_FOLDER_HIGH;
+	# THE EXPLORER MODE SETTING
+	
 
 
 sub explorer_request

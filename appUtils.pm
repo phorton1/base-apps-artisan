@@ -1546,11 +1546,13 @@ sub getTextFile
 
 
 sub getTextLines
+	# returns an empty array if the file not found
 {
     my ($filename) = @_;
     if (!open(FILE,"<$filename"))
     {
-        error("Could not open $filename for reading");
+        return [];
+		# error("Could not open $filename for reading");
     }
     my @lines = <FILE>;
     close FILE;

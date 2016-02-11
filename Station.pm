@@ -71,6 +71,8 @@ BEGIN
  	use Exporter qw( import );
 	our @EXPORT = qw (
         $NUM_STATIONS
+		$station_datafile
+
         getStation
         getStations
     );
@@ -95,7 +97,7 @@ our $NUM_STATIONS = 32;
     # Empty ones will be created and therafter
     # maintained in the station_datafile
     
-my $station_datafile = "$cache_dir/stations.txt";
+our $station_datafile = "$cache_dir/stations.txt";
     # A file containing the records for the stations.
 my $stations_dir = "$cache_dir/stations";
 mkdir $stations_dir if (!(-d $stations_dir));
@@ -439,7 +441,7 @@ sub setStationList
     #
     # These integer trackIDs are written as dwords to
     # a binary file "station_list_N.data", where the
-    # first dword is the number of station.
+    # first dword is the number of trackIDs??.
 {
     my ($this,$params) = @_;
     $this->{shuffle} = $params->{shuffle} if defined($params->{shuffle});
@@ -506,6 +508,9 @@ sub setStationList
         return;
     }
     binmode $fh;
+	
+	# 0th dword is num_tracks
+	
     if (!print $fh pack('L*',$num_tracks, @result))
     {
         error("Could not print to $filename");

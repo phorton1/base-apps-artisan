@@ -705,10 +705,10 @@ sub get_fpcalc_info
         # See artisan.pm where we scan library once in the main thread as a workaround
         # my $exe_path = "$script_dir/bin/fpcalc_orig.exe";
 
-        my $exe_path = "$script_dir/bin/prhcalc_win.exe";
+        my $exe_path = "$script_dir/bin/fpcalc_linux_win.0.09.exe";
         $exe_path =~ s/\//\\/g;
-        display(0,-1,"calling '$exe_path' '$path'") if (!$force);
-        $text = `$exe_path "$path" 2>&1`;
+        display(0,-1,"calling '$exe_path' -md5 -stream_md5 '$path'") if (!$force);
+        $text = `$exe_path  -md5 -stream_md5 "$path" 2>&1`;
         
         if (!$text)
         {
