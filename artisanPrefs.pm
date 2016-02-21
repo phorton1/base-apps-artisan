@@ -1,35 +1,37 @@
 #!/usr/bin/perl
 #---------------------------------------
-# uiPrefs.pm
+# artisanPrefs.pm
 #
-# The server preferences for the webUI.
-#
-# This module provides configuation settings for the rest of
-# the UI. as well as providing the UI to the preferences.
-#
-# These preferences are common to all instances
-# of the webUI for a given Artisan server. 
+# The preferences for the Pure-Perl Artisan Server,
+# loaded at the top of artisan.pm, with safe defaults
+# for the artisanWin application.
+
 # In other words, these are global preferences
 # for the current instance of the server.
 
-package uiPrefs;
+package artisanPrefs;
 use strict;
 use warnings;
 use threads;
 use threads::shared;
 use Utils;
-use uiUtils;
 
 
 BEGIN
 {
  	use Exporter qw( import );
 	our @EXPORT = qw (
-		getPreference
-		setPreference
 
-		$PREF_MULTIPLE_RENDERERS
-
+		$PREF_SCAN_LIBRARY_AT_STARTUP
+	
+		$PREF_USE_PREVIOUS_RENDERER
+		$PREF_PREVIOUS_RENDERER
+		
+		$PREF_USE_PREVIOUS_PLAYSTATE
+		$PREF_PREVIOUS_PLAYSTATE
+		
+		$PREF_START_DLNA_SERVER
+		
     );
 }
 
@@ -38,27 +40,39 @@ BEGIN
 # variables
 #-----------------------------
 
-our $PREF_MULTIPLE_RENDERERS = 'MULTIPLE_RENDERERS';
+our	$PREF_SCAN_LIBRARY_AT_STARTUP = "SCAN_LIBRARY_AT_STARTUP";
+our $PREF_USE_PREVIOUS_RENDERER = "USE_PREVIOUS_RENDERER";
+our $PREF_PREVIOUS_RENDERER = "PREVIOUS_RENDERER";
+our $PREF_USE_PREVIOUS_PLAYSTATE = "USE_PREVIOUS_PLAYSTATE";
+our $PREF_PREVIOUS_PLAYSTATE = "PREVIOUS_PLAYSTATE";
+our $PREF_START_DLNA_SERVER = "START_DLNA_SERVER";
 
 
 # default preferences
 
 my @default_prefs =  (
-#	$PREF_THEME => 'default',
-#	$PREF_THEME_MOBILE => 'black',
-#	$PREF_START_PANE => 'renderer',
-	$PREF_MULTIPLE_RENDERERS => 0,
-#	$PREF_SHOW_NUM_TRACKS_IN_LIBRARY_TREE => 1,
+	$PREF_SCAN_LIBRARY_AT_STARTUP => 0,
+	$PREF_USE_PREVIOUS_RENDERER => 0,
+	$PREF_PREVIOUS_RENDERER => '',
+	$PREF_USE_PREVIOUS_PLAYSTATE => 0,
+	$PREF_PREVIOUS_PLAYSTATE => '',
+	$PREF_START_DLNA_SERVER => 0,
+	
 );
 
 my %g_prefs:shared = @default_prefs;
 
-my $pref_filename = "$cache_dir/artisan_prefs.txt";
 
 
 #---------------------------------------
 # accessors
 #---------------------------------------
+
+sub prefFilename()
+{
+	return "$artisan_perl_dir/artisan.ini";
+}
+
 
 sub getPreference
 {
@@ -80,9 +94,11 @@ sub setPreference
 
 sub static_init_prefs
 {
-	if (-f $pref_filename)
+	my $filename = prefFilename();
+	display(0,0,"Reading prefs from $filename");
+	if (-f $filename)
 	{
-	    my $lines = getTextLines($pref_filename);
+	    my $lines = getTextLines($filename);
         for my $line (@$lines)
         {
             chomp($line);
@@ -96,7 +112,7 @@ sub static_init_prefs
 		    }
 		}
     }
-	else
+	elsif (1)	# create an empty prefs file
 	{
 		write_prefs();
 	}
@@ -114,9 +130,10 @@ sub write_prefs
 	# text files to export to android must be written
 	# in binary mode with just \n's
 	
-    if (!printVarToFile(1,$pref_filename,$text,1))
+	my $filename = prefFilename();
+    if (!printVarToFile(1,$filename,$text,1))
     {
-        error("Could not write prefs to $pref_filename");
+        error("Could not write prefs to $filename");
         return;
     }
     return 1;
@@ -167,7 +184,7 @@ sub prefs_request
 
 
 
-static_init_prefs();
+# static_init_prefs();
 
 
 1;

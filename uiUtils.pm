@@ -161,7 +161,8 @@ sub standard_pane
 	
 	$response .= getTextFile("webui$mobile/artisan.html");
 
-	my $theme = uiPrefs::getPreference($is_mobile?'THEME_MOBILE':'THEME');
+	my $theme = $is_mobile?"black":"default";
+		# constants!!
 	my $header_stuff =
 		"<link rel='stylesheet' type='text/css' href='/webui/easyui/themes/$theme/easyui.css'>\n".
 		"<link rel='stylesheet' type='text/css' href='/webui/easyui/themes/icon.css'>\n".

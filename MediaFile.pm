@@ -46,8 +46,9 @@ sub new
 
     my $path = $utf_path;
     
-    if ($ANDROID)  
+    if (0)
     {
+		# if running on the car stereo, I found I needed this
         $path = Encode::encode("utf-8",$path);
     }
     else
@@ -691,8 +692,10 @@ sub get_fpcalc_info
         $text = getTextFile($cache_file);
         bump_stat("get_fpinfo got from cache");
     }
-    elsif ($ANDROID)
+    elsif (0)
     {
+		# Calling fpCalc was not last supported on Android
+		# Though it works, too slow ...
         error("FATAL ERROR - Android could not find cache_file: $cache_file");
     }
     else
@@ -703,9 +706,9 @@ sub get_fpcalc_info
 
         # call to fpcalc.exe does not work reliably when library run as a thread.
         # See artisan.pm where we scan library once in the main thread as a workaround
-        # my $exe_path = "$script_dir/bin/fpcalc_orig.exe";
+        # my $exe_path = "$artisan_perl_dir/bin/fpcalc_orig.exe";
 
-        my $exe_path = "$script_dir/bin/fpcalc_linux_win.0.09.exe";
+        my $exe_path = "$artisan_perl_dir/bin/fpcalc_linux_win.0.09.exe";
         $exe_path =~ s/\//\\/g;
         display(0,-1,"calling '$exe_path' -md5 -stream_md5 '$path'") if (!$force);
         $text = `$exe_path  -md5 -stream_md5 "$path" 2>&1`;

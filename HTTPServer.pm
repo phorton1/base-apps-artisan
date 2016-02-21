@@ -20,9 +20,20 @@ use Library;
 use WebUI;
 use HTTPXML;
 
+# PRH !!! THE THREADED APPROACH  NOT WORKING ON ARTISAN_WIN !!!
+# Crashes when I try to "set the renderer" from the webUI
+#
+# The last thing appears to be the close($FH) at the end of handle_connection(),
+# which is a thread created, and detached in start_webserver, below.
+# Does not appear to make any difference if I etach, $FH, or init
+# artisan from the main thread, or not.
+#
+# Then I get "Free to wrong pool during global destruction" error message
+# Single thread set directly in artisan.pm
 
-my $SINGLE_THREAD = 0;
-    # set this to one or two to see full requests
+our $SINGLE_THREAD = 0;
+	# SET TO 1 in ARTISAN_WIN.PM !!!
+    # set this to one to see full requests
     # while debugging, otherwise you will get
     # messages from different threads interspersed
     # in debug output
@@ -169,7 +180,7 @@ sub handle_connection
 	# don't want to see the stupid static requests
 	
 	my $dbg_request = $dbg_http;
-	$dbg_request += 2  if $request_path =~ /^(\/ContentDirectory1\.xml|\/ServerDesc\.xml)$/;
+	$dbg_request += 2  if $request_path =~ /^(\/webui\/renderer\/update_renderer|\/ContentDirectory1\.xml|\/ServerDesc\.xml)/;
 	display($dbg_request,0,"$request_method $request_path from $peer_ip_addr:$peer_src_port");
 	for my $key (keys %request_headers)
 	{
@@ -235,7 +246,7 @@ sub handle_connection
 		my $desc = $1;
 		my $xml = $1 eq 'ServerDesc.xml' ?
 			xml_serverdescription() :
-			getTextFile("xml/$desc");
+			getTextFile("$artisan_perl_dir/xml/$desc");
 		my @additional_header = (
 			'Content-Type: text/xml; charset=utf8',
 			'Content-Length: '.length($xml) );
@@ -328,9 +339,12 @@ sub handle_connection
 		{
 			error("Could not complete HTTP Server Response len=".length($response));
 		}
+		display($dbg_http+1,1,"Sent response");
 	}
 
+	display($dbg_http+1,1,"Closing File Handle");
 	close($FH);
+	display($dbg_http+1,1,"File Handle Closed");
 	return 1;
 
 }   # handle_connection()
@@ -889,54 +903,25 @@ sub get_art
 	my ($id) = @_;
     display($dbg_http+1,0,"get_art($id)");
 
-    my $filename = '';
+	my $dbh = db_connect();
+	my $folder = get_folder($dbh,$id);
+	db_disconnect($dbh);
+	if (!$folder)
+	{
+		error("get_art($id): could not get folder($id)");
+		return http_header({
+			'statuscode' => 400,
+			'content_type' => 'text/plain' });
+	}
 
-    if ($id !~ /^\d+$/)     # virtual item id
-    {
-        if (0)
-        {
-            my $dir = get_virtual_dir($id);
-            if (!$dir)
-            {
-                error("get_art($id): virtual_dir not found");
-                return http_header({
-                    'statuscode' => 400,
-                    'content_type' => 'text/plain' });
-            }
-            my $icon = $dir->{ICON};
-            if (!$icon)
-            {
-                error("get_art($id): $dir->{TITLE} has no icon");
-                return http_header({
-                    'statuscode' => 400,
-                    'content_type' => 'text/plain' });
-            }
-            $filename = "$script_dir/images/$icon.jpg";
-        }
-        $filename = "$script_dir/images/$id.jpg";
-    }
-    else                    # regular, numeric id
-    {
-        my $dbh = db_connect();
-		my $folder = get_folder($dbh,$id);
-        db_disconnect($dbh);
-        if (!$folder)
-        {
-            error("get_art($id): could not get folder($id)");
-            return http_header({
-                'statuscode' => 400,
-                'content_type' => 'text/plain' });
-        }
-
-        $filename = "$mp3_dir/$folder->{FULLPATH}/folder.jpg";
-    }
 
     # open the file and send it to the client
 
+	my $filename = "$mp3_dir/$folder->{FULLPATH}/folder.jpg";
     if (!(-f $filename))
     {
         error("get_art($id): file not found: $filename");
-		$filename = "$script_dir/images/no_image.jpg";
+		$filename = "$artisan_perl_dir/images/no_image.jpg";
     }
 
     display($dbg_http+1,1,"get_art($id) opening file: $filename");

@@ -40,7 +40,7 @@ sub station_request
 	{
 		my $what = $1;
 		my $stations = getStations();
-		my $cur_renderer = getSelectedRenderer();
+		my $cur_renderer = Renderer::getSelectedRenderer();
 		
 		my $text = '';
 		$text .= start_station_song_table() if ($what eq 'song');
@@ -133,7 +133,7 @@ sub station_request
 		
 		# resart the renderer if it's the current station
 		
-		my $selected = getSelectedRenderer();
+		my $selected = Renderer::getSelectedRenderer();
 
 		display($dbg_webui-1,0,"set_station_info() selected="._def($selected));
 		

@@ -8,7 +8,7 @@ use warnings;
 use DBI;
 use Utils;
 use SQLite;
-use x_ArtistDefs;
+
 
 # Re-exports SQLite db_do, get_records_db, and get_record_db
 BEGIN
@@ -16,8 +16,6 @@ BEGIN
  	use Exporter qw( import );
 	our @EXPORT = qw (
 	
-		$is_new_database
-		
         db_initialize
         db_connect
         db_disconnect
@@ -36,7 +34,6 @@ BEGIN
 
 
 my $db_name = "$cache_dir/artisan.db";
-our $is_new_database = 0;
 
 
 
@@ -48,7 +45,7 @@ our $is_new_database = 0;
 my %field_defs = (
 
     TRACKS => [
-        'ID         INTEGER PRIMARY KEY AUTOINCREMENT',
+        'ID         VARCHAR(40)',	# 2016-02-11 Start using STREAM_MD5 as ID
 		'PARENT_ID  INTEGER',
 			# id of parent folder
 		
@@ -70,8 +67,10 @@ my %field_defs = (
 
         'TYPE		VARCHAR(12)',
 			# synonymous with FILEEXT
-        'FILE_MD5 VARCHAR(40)',
-        'STREAM_MD5 VARCHAR(40)',
+			
+		'FILE_MD5 VARCHAR(40)',
+			# Used to detect unused fpCalc_info files
+			
 		
         'DURATION   INTEGER DEFAULT 0',
 			# currently in seconds
@@ -181,32 +180,9 @@ my %field_defs = (
 
         ],
 
-
-
-	#--------------------------
-	# virtual items
-	#--------------------------
-		
-	VITEMS => [
-		'prefix        CHAR(3)',
-		'type          CHAR(16)',
-		'ID 		   CHAR(12)',
-		'PARENT_ID     CHAR(12)',
-		'FULLPATH      VARCHAR(2048)',
-		'NUM_ELEMENTS  INTEGER',
-		
-		# optional fields
-		
-		'TITLE         VARCHAR(128)',
-		'ref_id        INTEGER',
-		'icon          VARCHAR(128)',
-	],
-	
-	
-	artists => \@artist_field_defs,
 		
 		
-    );
+    );	# %field_defs
 
 
 
@@ -229,7 +205,6 @@ sub db_initialize
     if (!(-f $db_name))
     {
         LOG(1,"creating new database");
-		$is_new_database = 1;
 
 	   	my $dbh = db_connect();
 
@@ -238,12 +213,6 @@ sub db_initialize
 
 		$dbh->do('CREATE TABLE FOLDERS ('.
             join(',',@{$field_defs{FOLDERS}}).')');
-
-		$dbh->do('CREATE TABLE VITEMS ('.
-            join(',',@{$field_defs{VITEMS}}).')');
-		
-		$dbh->do('CREATE TABLE artists ('.
-			join(',',@{$field_defs{artists}}).')');
 
     	db_disconnect($dbh);
 		
@@ -290,10 +259,10 @@ sub insert_record_db
 	# and ignores other fields that may be in rec.
 	# best to call init_rec before this.
 	#
-	# kludge for FOLDERS and TRACKS to skip the
-	# id field, followed by kludge to include it
-	# if they 'key_field' (was just for display)
-	# happens to be ID.  update should be ok.
+	# kludge for FOLDERS which has an auto-increment
+	# primary ID field. Dont add the value for a field
+	# named ID, unless it is explicitly passed as key_field,
+	# so DO pass $key_field == "ID" for the TRACKS file.
 {
 	my ($dbh,$table,$rec,$key_field) = @_;
 	$key_field ||= 'NAME';
@@ -318,9 +287,7 @@ sub insert_record_db
 
 
 sub update_record_db
-	# inserts ALL table fields for a record
-	# and ignores other fields that may be in rec.
-	# best to call init_rec before this.
+
 {
 	my ($dbh,$table,$rec,$id_field) = @_;
 	$id_field ||= 'ID';

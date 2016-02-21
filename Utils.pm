@@ -40,8 +40,10 @@ use appUtils qw(
 );
 
 
+# set critical appUtils constants
+
 appUtils::set_alt_output(1);
-	# prh - as of now, don't need other calls
+	# should not need other calls
 	# on a per-thread basis.
 
 
@@ -54,8 +56,8 @@ our $warning_level 	= 0;
 
 our $dbg_db 		= 2;
 our $dbg_ssdp 		= 2;
-our $dbg_http 		= 1;
-our $dbg_stream 	= 1;
+our $dbg_http 		= 2;
+our $dbg_stream 	= 2;
 our $dbg_xml    	= 2;
 our $dbg_library    = 2;
 our $dbg_vlibrary   = 2;
@@ -65,10 +67,127 @@ our $dbg_mp3_info   = 2;
 our $dbg_mp3_read   = 2;
 our $dbg_mp3_write  = 2;
 our $dbg_mp3_tags   = 2;
-our $dbg_ren        = 2;
+our $dbg_ren        = 1;
 
 our $dbg_mem		= 0;
 
+
+
+BEGIN
+{
+ 	use Exporter qw( import );
+
+	# our constants
+
+	our @EXPORT = qw (
+        $ERROR_NONE
+        $ERROR_INFO
+		$ERROR_LOW
+        $ERROR_MEDIUM
+        $ERROR_HIGH
+        $ERROR_HARD
+	);
+
+	# our exports
+
+	push @EXPORT, qw(
+
+		$dbg_db
+		$dbg_ssdp
+		$dbg_http
+		$dbg_stream
+		$dbg_xml
+		$dbg_library
+		$dbg_vlibrary
+		$dbg_webui
+		$dbg_mediafile
+		$dbg_mp3_info
+		$dbg_mp3_read
+		$dbg_mp3_write
+		$dbg_mp3_tags
+		$dbg_ren
+
+        $program_name
+        $uuid
+
+        $artisan_perl_dir
+		
+		$mp3_dir
+		$mp3_dir_RE
+        $cache_dir
+
+        $server_ip
+        $server_port
+        $system_update_id
+		$quitting
+
+		clone_hash
+		
+		severity_to_str
+		code_to_severity
+		highest_severity
+		error_code_str
+
+		%stats
+        bump_stat
+        init_stats
+        dump_stats
+
+        escape_tag
+        unescape_tag
+		
+        http_date
+        add_leading_char
+        secs_to_duration
+		duration_to_secs
+
+		dateToGMTText
+		dateToLocalText
+		dateFromGMTText
+		dateFromLocalText		
+
+		mp3_relative
+		mp3_absolute
+		create_dirs
+		split_dir
+		compare_path_diff
+
+		dbg_hash
+		dbg_mem
+
+	);
+
+
+	# re-exports from appUtils
+
+	push @EXPORT, qw(
+        $debug_level
+        $warning_level
+
+        $temp_dir
+        $logfile
+
+        LOG
+        error
+        display
+		display_bytes
+        warning
+        _clip
+		_def
+		hx
+
+        today
+        now
+        pad
+		pad2
+		roundTwo
+		CapFirst
+		pretty_bytes
+        getTextFile
+		getTextLines
+		printVarToFile
+    );
+};
 
 
 #---------------------------------------
@@ -212,6 +331,102 @@ our %error_mappings = (
 );
 
 
+#-----------------------------------------------
+# Settings for Pure Perl Artisan Server
+#-----------------------------------------------
+# May be overriden by UI
+# Keeping interesting defaults for other stuff
+
+our $program_name = 'Artisan Server (Pure Perl Windows)';
+our $uuid = '56657273-696f-6e34-4d41-afacadefeed0';
+our $artisan_perl_dir = "/base/apps/artisan";
+	# the directory of the pure-perl artisan, which includes
+	# the bin, images, webui, and xml subdirectories
+our $mp3_dir = "/mp3s";
+our $mp3_dir_RE = '\/mp3s';
+our $server_port = '8091';
+our $server_ip = '192.168.0.101';
+	# lenovo mac address = AC-7B-A1-54-13-7A
+
+# Note hardwired IP address.
+# Too hard to determine interface, connectivity, etc.
+#    i.e. ($server_ip)=inet_ntoa((gethostbyname(hostname))[4]);
+#    or parsing ipConfig /all, etc.
+# Could be overridden in Preferences file
+
+# display(0,0,"hostname=".hostname);
+# display(0,0,"server_ip=$server_ip");
+
+
+# Other IP Addresses / Configurations
+
+if (0)
+{
+	my $ANDROID = !$HOME_MACHINE;
+	my $temp_storage = $ENV{EXTERNAL_STORAGE} || '';
+	my $HOST_ID = $HOME_MACHINE ? "win" :
+     $temp_storage =~ /^\/mnt\/sdcard$/ ? "arm" :
+    "x86";
+	
+	if ($HOST_ID eq "arm")   # Ubuntu on Car Stero
+	{
+		# car stereo MAC address = 
+		$program_name = 'Artisan Android 1.1v';
+		$uuid = '56657273-696f-6e34-4d41-afacadefeed3';
+		$artisan_perl_dir = "/external_sd2/artisan";
+		$mp3_dir = "/usb_storage2/mp3s";
+		$mp3_dir_RE = '\/usb_storage2\/mp3s';
+		$server_ip = '192.168.0.103';
+	}
+	else	# Ubuntu Virtual Box (x86)
+	{
+		$program_name = 'Artisan x86 1.1v';
+		$uuid = '56657273-696f-6e34-4d41-afacadefeed4';
+		$artisan_perl_dir = "/media/sf_base/apps/artisan";
+		$mp3_dir = "/media/sf_ccc/mp3s";
+		$mp3_dir_RE = '\/media\/sf_ccc\/mp3s';
+		# $server_ip = '192.168.100.103';
+	}
+}
+
+
+our $cache_dir = "$mp3_dir/_data";
+$temp_dir = "$artisan_perl_dir/temp";
+
+$logfile = "";
+# #logfile = $temp_dir/artisan.log";
+	# no logging by default
+	# could be a preference (getem before program "starts")
+
+our $system_update_id = time;
+share($system_update_id);
+
+our $quitting = 0;
+share($quitting);
+
+our %stats;
+#share(%stats);
+
+
+
+#---------------------------------
+# primitive utilities
+#---------------------------------
+
+sub clone_hash
+{
+    my ($hash) = @_;
+    my $new = {};
+    %$new = %$hash;
+    return $new;
+}
+
+
+#----------------------------------
+# severity constants
+#----------------------------------
+
+
 sub code_to_severity
 {
 	my ($code) = @_;
@@ -241,195 +456,6 @@ sub error_code_str
 	return defined($exists) ? $exists->[1] : '';
 }
 
-
-
-BEGIN
-{
- 	use Exporter qw( import );
-
-	# our constants
-
-	our @EXPORT = qw (
-        $ERROR_NONE
-        $ERROR_INFO
-		$ERROR_LOW
-        $ERROR_MEDIUM
-        $ERROR_HIGH
-        $ERROR_HARD
-	);
-
-	# our exports
-
-	push @EXPORT, qw(
-
-		$dbg_db
-		$dbg_ssdp
-		$dbg_http
-		$dbg_stream
-		$dbg_xml
-		$dbg_library
-		$dbg_vlibrary
-		$dbg_webui
-		$dbg_mediafile
-		$dbg_mp3_info
-		$dbg_mp3_read
-		$dbg_mp3_write
-		$dbg_mp3_tags
-		$dbg_ren
-
-		$ANDROID
-		$HOST_ID
-        $program_name
-        $uuid
-
-		$modules_as_libraries
-
-        $script_dir
-		$mp3_dir
-		$mp3_dir_RE
-        $cache_dir
-        $log_dir
-
-		$quitting
-
-        $server_port
-        $server_ip
-        $system_update_id
-
-		severity_to_str
-		code_to_severity
-		highest_severity
-		error_code_str
-
-		%stats
-        bump_stat
-        init_stats
-        dump_stats
-
-		dbg_hash
-		clone_hash
-
-        http_date
-        add_leading_char
-        secs_to_duration
-
-        escape_tag
-        unescape_tag
-
-		mp3_relative
-		mp3_absolute
-		create_dirs
-		split_dir
-
-		dbg_mem
-
-	);
-
-
-	# re-exports from appUtils
-
-	push @EXPORT, qw(
-        $debug_level
-        $warning_level
-
-		$HOME_MACHINE
-        $data_dir
-        $temp_dir
-        $logfile
-
-        LOG
-        error
-        display
-		display_bytes
-        warning
-        _clip
-		_def
-		hx
-
-        today
-        now
-        pad
-		pad2
-		roundTwo
-		CapFirst
-		pretty_bytes
-        getTextFile
-		getTextLines
-		printVarToFile
-    );
-};
-
-
-our $ANDROID = !$HOME_MACHINE;
-our $temp_storage = $ENV{EXTERNAL_STORAGE} || '';
-our $HOST_ID = $HOME_MACHINE ? "win" :
-     $temp_storage =~ /^\/mnt\/sdcard$/ ? "arm" :
-    "x86";
-
-our $program_name = 'Artisan/V1.1';
-our $uuid = '56657273-696f-6e34-4d41-afacadefeed0';
-our $script_dir = "/base/apps/artisan";
-our $mp3_dir = "/mp3s";
-our $mp3_dir_RE = '\/mp3s';
-our $server_port = '8091';
-our ($server_ip)=inet_ntoa((gethostbyname(hostname))[4]);
-
-#display(0,0,"hostname=".hostname);
-#display(0,0,"server_ip=$server_ip");
-
-# IP Addresses assigned by prh-travel router!!
-
-if ($HOST_ID eq "win")
-{
-	# lenovo mac address = AC-7B-A1-54-13-7A
-	# old tplink prhtravel: $server_ip = '192.168.100.100';
-	$server_ip = '192.168.0.101';
-}
-elsif ($HOST_ID eq "arm")
-{
-	# car stereo MAC address = 
-	$program_name = 'Artisan Android 1.1v';
-	$uuid = '56657273-696f-6e34-4d41-afacadefeed3';
-	$script_dir = "/external_sd2/artisan";
-	$mp3_dir = "/usb_storage2/mp3s";
-	$mp3_dir_RE = '\/usb_storage2\/mp3s';
-	$server_ip = '192.168.0.103';
-}
-else	# x86
-{
-	$program_name = 'Artisan x86 1.1v';
-	$uuid = '56657273-696f-6e34-4d41-afacadefeed4';
-	$script_dir = "/media/sf_base/apps/artisan";
-	$mp3_dir = "/media/sf_ccc/mp3s";
-	$mp3_dir_RE = '\/media\/sf_ccc\/mp3s';
-	# $server_ip = '192.168.100.103';
-}
-
-
-our $cache_dir = "$mp3_dir/_data";
-$data_dir = "$script_dir/data";
-$temp_dir = "$data_dir/temp";
-our $log_dir = "$data_dir/logs";
-$logfile = "$log_dir/artisan.log";
-our $error_logfile = "$log_dir/error.log";
-
-our $system_update_id = time;
-share($system_update_id);
-
-our $quitting = 0;
-share($quitting);
-
-our %stats;
-#share(%stats);
-
-# NO LOGGING ON ANDROID
-
-$logfile = '' if ($ANDROID);
-
-
-#----------------------------------
-# severity constants
-#----------------------------------
 
 sub severity_to_str
 {
@@ -509,60 +535,8 @@ sub dump_stats
 
 
 #---------------------------------------------------------------------
-# Utility Routines
+# String Utility Routines (and encoding/decoding)
 #---------------------------------------------------------------------
-
-sub dbg_hash
-{
-	my ($level,$indent,$title,$hash) = @_;
-	display($level,$indent,"dbg_hash($title)",1);
-	for my $k (sort(keys(%$hash)))
-	{
-		display($level,$indent+1,"$k = $hash->{$k}",1);
-	}
-}
-
-
-
-sub clone_hash
-{
-    my ($hash) = @_;
-    my $new = {};
-    %$new = %$hash;
-    return $new;
-}
-
-
-sub http_date
-	# return the current gmt_time in the wonky unix date format
-{
-	my ($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst) = gmtime();
-	my @months = ('Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',);
-	my @days = ('Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat',);
-
-	$year += 1900;
-	$hour = add_leading_char($hour, 2, '0');
-	$min = add_leading_char($min, 2, '0');
-	$sec = add_leading_char($sec, 2, '0');
-
-	return "$days[$wday], $mday $months[$mon] $year $hour:$min:$sec GMT";
-}
-
-
-
-
-sub add_leading_char
-{
-	my ($string,$length,$char) = @_;
-	while (length($string) < $length)
-	{
-		$string = $char . $string;
-	}
-
-	return $string;
-}
-
-
 # notes on xml and encoding.
 #
 # for example, the 'é' in 'Les Lables de Légende'
@@ -580,7 +554,19 @@ sub add_leading_char
 #
 # use Encode qw/encode decode/;
 # $text = encode('UTF-8',$text);
-#     # change single ascii byte E9 for é into two bytes C3 A9
+# change single ascii byte E9 for é into two bytes C3 A9
+
+
+sub add_leading_char
+{
+	my ($string,$length,$char) = @_;
+	while (length($string) < $length)
+	{
+		$string = $char . $string;
+	}
+
+	return $string;
+}
 
 
 sub escape_tag
@@ -627,6 +613,10 @@ sub unescape_tag
 
 
 
+#---------------------------------------------
+# Time / Date Routines
+#---------------------------------------------
+
 sub secs_to_duration
 	# duplicated as prettyDuration or something like that
 {
@@ -647,6 +637,79 @@ sub secs_to_duration
 
 	return $string;
 }
+
+
+sub duration_to_secs
+	# duplicated as prettyDuration or something like that
+{
+	my ($duration) = @_;
+	
+	my $secs = 0;
+	my @parts = split(/:/,$duration);
+	for my $part (@parts)
+	{
+		$secs *= 60;
+		$secs += int($part);
+	}
+	return $secs;
+}
+
+
+
+
+
+sub http_date
+	# return the current gmt_time in the wonky unix date format
+{
+	my ($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst) = gmtime();
+	my @months = ('Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',);
+	my @days = ('Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat',);
+
+	$year += 1900;
+	$hour = add_leading_char($hour, 2, '0');
+	$min = add_leading_char($min, 2, '0');
+	$sec = add_leading_char($sec, 2, '0');
+
+	return "$days[$wday], $mday $months[$mon] $year $hour:$min:$sec GMT";
+}
+
+
+
+
+sub dateToGMTText
+{
+	my ($t) = @_;
+	my $s = appUtils::timeToGMTDateTime($t);
+	$s =~ s/^(\d\d\d\d):(\d\d):(\d\d)/$1-$2-$3/;
+	return $s;
+}
+
+
+sub dateToLocalText
+{
+	my ($t) = @_;
+	my $unix = localtime($t);
+	my $s = appUtils::unixToTimestamp($unix);
+	$s =~ s/^(\d\d\d\d):(\d\d):(\d\d)/$1-$2-$3/;
+	return  $s;	
+}
+
+
+sub dateFromGMTText
+{
+	my ($ts) = @_;
+	$ts =~ /(\d\d\d\d).(\d\d).(\d\d).(\d\d):(\d\d):(\d\d)/;
+    return timegm($6,$5,$4,$3,($2-1),$1);
+}
+
+
+sub dateFromLocalText
+{
+	my ($ts) = @_;
+	$ts =~ /(\d\d\d\d).(\d\d).(\d\d).(\d\d):(\d\d):(\d\d)/;
+    return timelocal($6,$5,$4,$3,($2-1),$1);
+}
+
 
 
 #----------------------------------------------------------
@@ -827,29 +890,59 @@ sub split_dir
 
 
 
+sub compare_path_diff
+    # compare two paths and show the shortest
+	# string that shows the difference.
+{
+    my ($s1,$s2) = @_;
+	
+	my @parts1 = split(/\//,$s1);
+	my @parts2 = split(/\//,$s2);
+	
+	while (@parts1 && @parts2)
+	{
+		last if ($parts1[0] ne $parts2[0]);
+		shift @parts1;
+		shift @parts2;
+	}
+	
+	return (join('/',@parts1),join('/',@parts2));
+}
+
+
+
+#----------------------------------------------------
+# debugging
+#----------------------------------------------------
+
+
+sub dbg_hash
+{
+	my ($level,$indent,$title,$hash) = @_;
+	display($level,$indent,"dbg_hash($title)",1);
+	for my $k (sort(keys(%$hash)))
+	{
+		display($level,$indent+1,"$k = $hash->{$k}",1);
+	}
+}
 
 
 sub dbg_mem
+	# platform specific
 {
     my ($indent,$msg) = @_;
     if ($dbg_mem <= $debug_level)
     {
-		if ($ANDROID)
-		{
-			display(0,0,"Memory $msg\n\n". (`free`)."\n");
-		}
-		else
-		{
-			require Sys::MemInfo;
+		require Sys::MemInfo;
 
-			my $total = Sys::MemInfo::totalmem();
-			my $free = Sys::MemInfo::freemem();
-			my $used = $total - $free;
+		my $total = Sys::MemInfo::totalmem();
+		my $free = Sys::MemInfo::freemem();
+		my $used = $total - $free;
 
-			display($dbg_mem,-1,"MEMORY  ".pretty_bytes($used)." / ".pretty_bytes($total)." $msg",1);
-		}
+		display($dbg_mem,-1,"MEMORY  ".pretty_bytes($used)." / ".pretty_bytes($total)." $msg",1);
     }
 }
+
 
 
 

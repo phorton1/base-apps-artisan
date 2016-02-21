@@ -3,6 +3,7 @@
 #---------------------------------------
 # Filtering is a waste of time.
 # As long as it's valid XML, let the client filter it.
+
 package HTTPXML;
 use strict;
 use warnings;
@@ -246,7 +247,7 @@ sub xml_item
 		"http://$server_ip:$server_port/get_art/$parent->{ID}/folder.jpg";
 	
 	
-    return filter_lines(3,$item,<<EOXML);
+    my $text = filter_lines(3,$item,<<EOXML);
 <item id="##ID##" parentID="##PARENT_ID##" restricted="1">
     <dc:title>$src_title##TITLE##</dc:title>
 	<upnp:class>object.item.audioItem</upnp:class>
@@ -271,6 +272,9 @@ sub xml_item
     >$url_base/media/##ID##.##FILEEXT##</res>
 </item>
 EOXML
+
+	display(9,0,"xml_item($item->{ID})=$text");
+	return $text;
 }
 
 

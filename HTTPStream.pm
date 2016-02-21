@@ -46,8 +46,13 @@ sub stream_media
 	}
 
 	# get information from database
+	# The content ID comes in as 56789ABC678D.XXX
+	# where the first chars are the STREAM_MD5 TRACK_ID and
+	# XXX is mp3,m4a,wav, etc based on the tracks file extension.
+	# The TRACK_ID is uesd ... the XXX is ignored.
 
-	if ($content_id =~ /^([a-z]*\d+)\.(\w+)$/)
+	
+	if ($content_id =~ /^(.*?)\.(\w+)$/)
 	{
 		my $id = $1;
 		my $dbh = db_connect();

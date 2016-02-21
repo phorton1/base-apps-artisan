@@ -928,9 +928,9 @@ function do_context_menu(page_id)
 	var context = '';
 	if (current_page == 'renderer')
 	{
-		if (current_renderer && current_renderer.song_num > 0)
+		if (current_renderer && current_renderer.song_id != '')
 		{
-			context =  current_renderer.song_num;
+			context =  current_renderer.song_id;
 		}
 	}
 

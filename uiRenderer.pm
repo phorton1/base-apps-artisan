@@ -7,7 +7,6 @@ use strict;
 use warnings;
 use Utils;
 use uiUtils;
-use uiPrefs;
 use Renderer;
 use Station;
 
@@ -32,18 +31,8 @@ sub renderer_request
 	
 	
 	# get renderer for following requests
-	# use the one passed in if PREF_MULTIPLE_RENDERES
-	# otherwise, return the currently selected renderer
 	
-	my $renderer;
-	if (getPreference($PREF_MULTIPLE_RENDERERS))
-	{
-		$renderer = getRenderer($params->{id});
-	}
-	else
-	{
-		$renderer = getSelectedRenderer();
-	}
+	my $renderer = Renderer::getSelectedRenderer();
 	if (!$renderer)
 	{
 		return json_error("no renderer in command $path");
@@ -120,8 +109,9 @@ sub renderer_get_renderers
 	
 	# output the list of renderers
 	
-	my $renderers = getRenderers($refresh);
-	my $cur_renderer = getSelectedRenderer();
+	my $renderers = Renderer::getRenderers($refresh);
+		# Note that these are DLNA renderers
+		
 	for my $id (sort(keys(%$renderers)))
 	{
 		my $renderer = $renderers->{$id};
@@ -130,7 +120,7 @@ sub renderer_get_renderers
 		$text .= "class=\"renderer_list_button\" ";
 		$text .= "onclick=\"javascript:select_renderer('$id');\" ";
 		$text .= "name=\"renderer_list\">";
-		$text .= "<label for=\"$id\">$renderer->{friendlyName}</label><br>\n";
+		$text .= "<label for=\"$id\">$renderer->{name}</label><br>\n";
 	}
 	my $response = http_header();
 	$response .= $text."\r\n";
@@ -143,7 +133,7 @@ sub renderer_select_renderer
 {
 	my ($id) = @_;
 	display($dbg_webui,0,"renderer_select_renderer($id) called");
-	my $renderer = selectRenderer($id);
+	my $renderer = Renderer::selectRenderer($id);
 	if (!$renderer)
 	{
 		return json_error("no renderer returned in renderer_select_renderer()");
@@ -159,7 +149,7 @@ sub renderer_get_selected_renderer
 {
 	my ($id) = @_;
 	display($dbg_webui,0,"renderer_get_selected_renderer() called");
-	my $renderer = getSelectedRenderer();
+	my $renderer = Renderer::getSelectedRenderer();
 	if (!$renderer)
 	{
 		return json_error("no renderer in renderer_get_selected_renderer()");
@@ -199,7 +189,7 @@ sub renderer_update
 sub renderer_set_station
 {
 	my ($renderer,$station_num) = @_;
-	display($dbg_webui,0,"renderer_set_station($renderer->{friendlyName},$station_num) called");
+	display($dbg_webui,0,"renderer_set_station($renderer->{name},$station_num) called");
 	my $station = getStation($station_num);
 	if (!$renderer->setStation($station))
 	{
@@ -220,7 +210,7 @@ sub renderer_transport
 {
 	my ($renderer,$params) = @_;
 	my $command = $params->{command} || '';
-	display($dbg_webui,0,"renderer_transport($renderer->{friendlyName},$command) called");
+	display($dbg_webui,0,"renderer_transport($renderer->{name},$command) called");
 	
 	# transport commands that work on raw renderers
 	
@@ -239,9 +229,9 @@ sub renderer_transport
 	{
 		if ($renderer->{state}  =~ /^PLAYING/)
 		{
-			if (!$renderer->doAction(0,'Pause'))
+			if (!$renderer->command('pause'))
 			{
-				return json_error("Could not call doAction('Pause')");
+				return json_error("Could not call renderer->command(pause)");
 			}
 		}
 		elsif (!$renderer->play())

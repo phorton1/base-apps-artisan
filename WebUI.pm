@@ -18,10 +18,6 @@
 # Sometimes these modules have an associated lower
 # level 'real' object (i.e. Renderer.pm) that provides
 # more complicated functionality.
-#
-# The uiPrefs.pm module is somewhat special in that it
-# is known by these lower level objects, and possibly
-# by 'real' artisan modules (HTTPServer, Library), etc.
 
 package WebUI;
 use strict;
@@ -38,7 +34,6 @@ use Station;
 use Renderer;
 
 use uiUtils;
-use uiPrefs;
 use uiExplorer;
 use uiRenderer;
 use uiStation;
@@ -99,7 +94,7 @@ sub web_ui
 		
 		# scale fancytree CSS file if it has scale param
 		
-		if (!(-f "webui/$filename"))
+		if (!(-f "$artisan_perl_dir/webui/$filename"))
 		{
 			$response = http_error("web_ui(): Could not open file: $filename");
 		}
@@ -126,14 +121,14 @@ sub web_ui
 				my $filename2 = $filename;
 				$filename2 =~ s/$type$/min.$type/;
 				display(5,0,"checking MIN: $filename2");
-				if (-f "webui/$filename2")
+				if (-f "$artisan_perl_dir/webui/$filename2")
 				{
 					display($dbg_webui-1,0,"serving MIN: $filename2");
 					$filename = $filename2;
 				}
 			}
 				
-			my $text = getTextFile("webui/$filename",1);
+			my $text = getTextFile("$artisan_perl_dir/webui/$filename",1);
 			$text = process_html($text) if ($type eq 'html');
 			$response .= $text."\r\n";
 		}
@@ -141,10 +136,6 @@ sub web_ui
 	
 	# module dispatcher
 	
-	elsif ($path =~ s/^prefs\///)
-	{
-		$response = uiPrefs::prefs_request($path,$params); #,$post_xml);
-	}
 	elsif ($path =~ s/^explorer\///)
 	{
 		$response = uiExplorer::explorer_request($path,$params);
@@ -184,7 +175,7 @@ sub process_html
 		my $spec = $1;
 		$id = $1 if ($spec =~ s/\s+id=(.*)$//);
 		
-		my $filename = "webui/$spec";
+		my $filename = "$artisan_perl_dir/webui/$spec";
 		display($dbg_webui-1,0,"including $filename  id='$id'");
 		my $text = getTextFile($filename,1);
 		
@@ -239,7 +230,7 @@ sub scale_fancytree_css
 	my $factor = $pixels/16;
 	display($dbg_webui-1,0,"scale($pixels = $factor) $filename");
 	
-	my $text .= getTextFile("webui/$filename",1);
+	my $text .= getTextFile("$artisan_perl_dir/webui/$filename",1);
 	$text =~ s/url\("icons\.gif"\);/url("icons$pixels.gif");/sg;
 	$text =~ s/font-size: 10pt;/'font-size: '.int($factor*10).'pt;'/sge;
 	$text =~ s/(\s*)((-)*(16|32|48|64|80|96|112|128|144))px/' '.int($factor*$2).'px'/sge;

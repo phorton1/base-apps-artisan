@@ -1,37 +1,65 @@
 #---------------------------------------
 # Library.pm
 #---------------------------------------
+# Does the library scan, building the folder and tracks database.
+#
+# Depends on the lower level MediaFile object, which itself maintains
+# the cache of fpcalc_info text files and calling my_fpCalc as necessary
+# to get the STREAM_MD5 for the track, which acts as a PERSISTENT UNIQUE
+# TRACK_ID (ID) in the database.  This ID will be the same even if the
+# database is rebuilt.
+#
+#    The scan of tracks is done incrementally for speed,
+#    based on certain assumptions.
+#
+#        If the FULLNAME and timestamp have not changed
+#           we assume the file has not changed
+#        If the file does not exist, or the timestamp has
+#           changed, we call MediaFile.  MediaFile does
+#           a (quick) FILE_MD5 checksum on the file, and uses
+#           that to try to find the STREAM_MD5 (fpcalc_info)
+#        If Mediafile cannot find the STREAM_MD5 it then does
+#           the (slow) call to get and cache the fpCalc info
+#           and return the STREAM_MD5.
+#        Interestingly, the metadata itself is relatively quick.
 
-# Prh - taxonomy, esp Pop and what it means for initing new stations
-# Prh - check_text_files.pm to check fpcalc_info and change_history text files
 
-# All paths in the system are relative to the
-# root $mp3_dir defined in UTIL.  Paths in the
-# database do not start with slashes.
-
+#
+# Folders get a relatively transient numeric ID during the scan, which
+# will remain persistent until the database is wiped out, and then will
+# start over again at 1. Thus, the FOLDER_ID is not a good candidate for
+# persistent information. The solution we envision for persistent folder
+# information is to just store it in a text file (i.e. folder_data.txt)
+# in the given folder.
+#
+# By default, if there is no database found, this module will create one
+# and in all cases will scan the files for changes, additions, deletions,
+# etc, and the past behavior has been to manually delete the artisan.db
+# database, and run this program to rebuild it.  We may wish to make this
+# an explicit, UI driven behavior by implementing a RebuildDatabase function,
+# and/or limiting the automatic create/scan functionality.
+#
+# Therefore there are "levels" of rescans ...
+#
+#     LIBRARY_REBUILD - re-create FOLDERS and TRACKS from scratch
+#     LIBRARY_FULLSCAN - look at every file and detect 
+#
+#
+#---------------------------------------------------------------------
+# NOTES
+#---------------------------------------------------------------------
+# All paths in the system are relative to the $mp3_dir defined in UTIL.
+# Paths in the database do not start with slashes.
+#
 # Here's how to copy only changed/newer files from the mp3 tree
 # to the thumb drive for the car stereo
+# 	xcopy  c:\mp3s d:\mp3s /d /y /s /f
 #
-# xcopy  c:\mp3s d:\mp3s /d /y /s /f
-
-# PRH - need a general mechanism to rename change_history
-# and other related persistent track datafiles that are based
-# on stream_md5, when the stream_md5 changes in Library.pm.
-
-# PRH - may need to remove unused _data/change_history files
-# via special cleanup step.  It' obnoxious if they remain around
-# after a file is delete.
-
-# PRH - with REVERT_TIMESTAMPS it can be obnoxious to copy an
-# old(est) oopy of a track into the tree ... the library scan
-# does not see it as changed.  May need a touch() method, or
-# to remove the fpcalc_info and change_history for the file
-# to trigger a re-scan of the MediaFile metadata.
-
-# PRH - it is obnoxious in the webUI browser when the detail
+# prh - it is obnoxious in the webUI browser when the detail
 # tags include long TXXX MusicBrainz Album Artist type tags,
 # etc, as the short ones at the top don't show initially.
 # Splitter-pane?  maxColumnWidth?  
+
 
 package Library;
 use strict;
@@ -42,23 +70,15 @@ use File::Basename;
 use Utils;
 use Database;
 use MediaFile;
-use History;
-# use Library2;
 
 
 appUtils::set_alt_output(1);
 
-# BEGIN {$modules_as_libraries=1}
-# use x_Artist;
- 	
 
 BEGIN
 {
     use Exporter qw( import );
 	our @EXPORT = qw (
-	
-		$HAS_STATION_MODULE
-		
 		get_folder
 		get_track
         get_subitems
@@ -67,29 +87,18 @@ BEGIN
 
 
 	
-my $REVERT_TIMESTAMPS = 1;
-	# if set, artisan will maintain the earliest
-	# timestamp for track files in the history.
+
 my $CLEANUP_DATABASE = 1;
-	# remove unused database records at end of each scan	
-my $CLEANUP_FPCALC_FILES = 1;
-my $CLEANUP_UNUSED_CHANGE_HISTORY_FILES = 1;
-	# remove unused fpcalc text files at end of each scan
+	# remove unused database records at end of scan	
+my $CLEANUP_FPCALC_FILES = 0;
+	# remove unused fpcalc_info files at end of scan
+
+
 
 my $FIND_MISSING_ART = 0;
     # to look for missing folder.jpg
-my $VIRTUAL_TREES = 0;
-	# to build virtual trees
-my $WITH_ARTISTS = 0;
 
 
-our $HAS_STATION_MODULE = 0;
-	# The only explicit dependency in this code
-	# on Stations.pm is to build the initia default
-	# station text files if we re-create the database.
-	# Artisan.pm can choose to include the station file
-	# or not, and this pm file can be used independent
-	# of it.
 
 
 my $exclude_re = '^_';
@@ -207,21 +216,18 @@ sub init_params
     my ($dbh) = @_;
     return {
         dbh => $dbh,
-        folders => {},
-		folders_by_id => {},
-        tracks => {},
-		artists => {},
 		
-		file_md5_tracks => {},
-		stream_md5_tracks => {},
+		# We start by getting the existing folders and tracks
+		# into hashes, for speed.
+		
+        folders => {},			# folders by FULLPATH
+		folders_by_id => {},	# folders by (integer) FOLDER_ID
+        tracks => {},			# tracks by FULLNAME
+		tracks_by_id => {},		# tracks by (stream_md5) TRACK_ID
+		file_md5_tracks => {},	# tracks by FILE_MD5 (detect unused fpCalc files)
 
-		# change detection to rebuild virtual treees
-		# only keeps track of changes that might matter
-		# and that amounts to a track or folder being
-		# deleted. Virtual folders don't really care
-		# if the attributes of a track or folder change.
-		# unless a folder becomes an album or vice versa
-		
+		# Statistic gathered during the scan
+
 		num_tracks_deleted => 0,
 		num_folders_deleted => 0,
 		num_folders_changed => 0,
@@ -235,7 +241,6 @@ sub scanner_thread
 {
     my ($one_time) = @_;
 
-	my $first_time = 1;
 	appUtils::set_alt_output(1);
 
 	LOG(0,"Starting scanner_thread()");
@@ -253,11 +258,6 @@ sub scanner_thread
 		my @marks;
 		push @marks, [ time(), 'started' ];
 
-		if ($WITH_ARTISTS)
-		{
-			artist::init_artists($params,1);
-				push @marks, [ time(), 'init_artists' ];
-		}
         get_db_recs($params);
 			push @marks, [ time(), 'get_db_recs' ];
         scan_directory($params,0,$mp3_dir);
@@ -265,23 +265,6 @@ sub scanner_thread
 		do_cleanup($params);
 			push @marks, [ time(), 'do_cleanup' ];
 	    
-		if ($WITH_ARTISTS)
-		{
-			artist::finalize_artists($params);
-				push @marks, [ time(), 'finalize_artists' ];
-		}
-		
-		if ($VIRTUAL_TREES)
-		{
-			my $rebuild =
-				$params->{num_tracks_deleted} ||
-				$params->{num_folders_deleted} ||
-				$params->{num_folders_changed} ? 1 : 0;
-				
-			create_virtual_trees($params,$rebuild);		
-			push @marks, [ time(), 'create_virtual_trees' ];
-		}
-		
 		my $total_time = $marks[ @marks-1 ]->[0] - $marks[0]->[0];
 		LOG(0,"directory scan took $total_time seconds");
 
@@ -296,14 +279,6 @@ sub scanner_thread
 		db_disconnect($dbh);
 		undef $params;
 		
-		if ($HAS_STATION_MODULE &&
-			(!(-f $Station::station_datafile) ||
-			 $is_new_database && $first_time))
-		{
-			Station::setDefaultStations();
-		}
-		
-		$first_time = 0;
         return if ($one_time);
 		sleep($rescan_time);
 	}
@@ -340,8 +315,8 @@ sub get_db_recs
     for my $track (@$tracks)
     {
         $params->{tracks}->{$track->{FULLNAME}} = $track;
+		$params->{tracks_by_id}->{$track->{ID}} = $track;
 		$params->{file_md5_tracks}->{$track->{FILE_MD5}} = $track;
-		$params->{stream_md5_tracks}->{$track->{STREAM_MD5}} = $track;
     }
 }
 
@@ -378,11 +353,6 @@ sub do_cleanup
 		$CLEANUP_FPCALC_FILES,
 		'FILE_MD5',
 		'fpcalc_info');
-	return if !del_unused_text_files(
-		$params,
-		$CLEANUP_UNUSED_CHANGE_HISTORY_FILES,
-		'STREAM_MD5',
-		'change_history');
 	return 1;
 }
 	
@@ -819,8 +789,7 @@ sub add_folder
 		{
 			display($dbg_library,0,"folder_change($in_dir)");
 			$params->{num_folders_changed} ++;
-				# special meaning - it has changed types and
-				# virtual trees need to be rebuilt
+				# special meaning - it has changed types
 				
 			bump_stat('folder_changed');
 			$folder->{DIRTYPE} = $split->{type};
@@ -856,21 +825,6 @@ sub add_folder
 		}
 	}
 	
-	# add any new artist found to the in memory data
-	# structure, making no assumptions about their type
-
-	if ($WITH_ARTISTS &&
-		$folder->{ARTIST} &&
-		!artist::get_artist($params,$folder->{ARTIST}))
-	{
-		artist::new_artist(
-			"dir:$use_path",
-			$params,
-			$folder->{ARTIST},
-			'', # $folder->{CLASS},
-			'');
-	}
-	
 	return $folder;
 }
 
@@ -886,45 +840,32 @@ sub	add_track
 	# We get or initialize a new record, then get
 	# metadata as needed, and then, at the end of
 	# the routine, insert or update the record as needed.
-	# NOTE that new in-memory records don thave their ID set!
-	# PRH - NOT SURE THIS IS WORTH THE 10 ms ..
 {
 	my ($params,$folder,$in_dir,$file) = @_;
 	display(0,-1,"Scanning $dbg_count") if ($dbg_count % 100) == 0;
 	$dbg_count++;
 
+	#-----------------------------------
+	# get the file information
+	#-----------------------------------
+	# and try to find the track by name
+	# in the existing database ..
+	
 	my $path = mp3_relative($in_dir);
     my $fullname = "$path/$file";
-	
-    if (0)
-    {
-        use Encode;
-        use utf8;
-        # display_bytes(0,0,(utf8::is_utf8($path)?"UTF8":"PERL")." path0=$path",$path);
-        $path = Encode::decode("utf-8",$fullname);
-        # display_bytes(0,0,(utf8::is_utf8($path)?"UTF8":"PERL")." path1=$path",$path);
-        utf8::downgrade($fullname);
-        # display_bytes(0,0,(utf8::is_utf8($path)?"UTF8":"PERL")." path2=$path",$path);
-    }
-	
-	
 	my $mime_type = myMimeType($file);
 	my $ext = $file =~ /.*\.(.*?)$/ ? $1 : error("no file extension!");
    	my @fileinfo = stat("$in_dir/$file");
 	my $size = $fileinfo[7];
 	my $timestamp = $fileinfo[9];
     my $track = $params->{tracks}->{$fullname};
-	if (00 && $track && $fullname =~ /Marc Broussard - Momentary Setback\/04/)
-	{
-		unlink "$cache_dir/fpcalc_info/$track->{FILE_MD5}.txt";
-		$track->{TIMESTAMP} = 0
-	}
 
     bump_stat('tot_bytes',$fileinfo[7]);
 	bump_stat($mime_type);
 
-	# set bit to get metadata if the file changed
-	# or we need to look for album art
+	# set bit to get metadata if there is no database
+	# record, if the timestamp changed, or if the folder
+	# does not have art, and we are looking for art.
 
 	my $info;
 	my $get_meta_data = 0;
@@ -942,101 +883,58 @@ sub	add_track
 			error("Could not get MediaFile($fullname)");
 			exit 1;
 		}
+		if (!$info->{stream_md5})
+		{
+			error("Could not get STREAM_MD5 from MediaFile($fullname)");
+			exit 1;
+		}
 	}
 		
+	#------------------------------------------
 	# change detection
-
-	my $history_rec;
-	my $write_history = 0;
-	my $delete_stream_md5 = '';
-
-	# if the track does not exist, it is an error
-	# to create a new track with an STREAM_MD5 or
-	# FILE_MD5 that points to an existing file.
+	#------------------------------------------
+	# Now that we have the meta_data we have the STREAM_MD5
+	# and can use it to detect changes, enforce uniqueness, etc.
+	
+	# Start by detecting, and exiting with an error, in the weird
+	# unlikely case of exising track where STREAM_MD5 has changed,
+	# (and timestamp has changed_ but FULLNAME has not.
+	
+	# Note that otherwise, we assume the same filename, with the
+	# same timestamp, is the same damned file!
+	
+	if ($track && $info && $track->{ID} ne $info->{stream_md5})
+	{
+		error("Yikes: File '$fullname' has different stream_md5 in database, than that returned by MediaFile!!");
+		exit 1;
+	}
+	
+	# It is a duplicate entry if the track was not found by name,
+	# the ID already exists in the database, and THAT TRACK points
+	# to an existing file.
 	
 	if (!$track)
 	{
-		bump_stat("file_added");
-		display($dbg_library,0,"add_track($file)");
-		my $old_file_md5 = $info->{file_md5};
-		my $old_stream_md5 = $info->{stream_md5};
-		my $old_file_track = $params->{file_md5_tracks}->{$old_file_md5};
-		my $old_stream_track = $params->{stream_md5_tracks}->{$old_stream_md5};
-		
-		display($dbg_library+1,1,"old_file_md5=$old_file_md5   track="._def($old_file_track));
-		display($dbg_library+1,1,"old_stream_md5=$old_stream_md5   track="._def($old_stream_track));
-			
-		if ($old_file_track && -f "$mp3_dir/$old_file_track->{FULLNAME}")
+		my $old_track = $params->{tracks_by_id}->{$info->{stream_md5}};
+		if ($old_track && -f "$mp3_dir/$old_track->{FULLNAME}")
 		{
-			error("DUPLICATE file_md5($old_file_md5) AT $fullname\nOTHER=$old_file_track->{FULLNAME}");
+			error("DUPLICATE STREAM_MD5 (ID) for $fullname\nFOUND AT OTHER=$old_track->{FULLNAME}");
 			exit 1;
 		}
-		if ($old_stream_track && -f "$mp3_dir/$old_stream_track->{FULLNAME}")
-		{
-			error("DUPLICATE stream_md5($old_stream_md5) AT $fullname\nOTHER=$old_stream_track->{FULLNAME}");
-			exit 1;
-		}
-
-		# get the history in both cases
 		
-		$history_rec = get_track_change_history($old_stream_md5);
-
-		# if there is an $old_stream_track, then the file has
-		# been renamed or moved. Get the history for the $old_stream_track,
-		# and mark a file change event.
-	
-		if ($old_stream_track)
+		# Otherwise, the old database record and in-memory hash items are delted
+		
+		elsif ($old_track)
 		{
-			bump_stat("file moved/renamed");
-			my ($diff1,$diff2) = compare_path_diff($old_stream_track->{FULLNAME},$fullname);
-			warning(0,1,"File($old_stream_md5) moved/renamed from \"$diff1\" to \"$diff2\"");
-
-			if (!$history_rec)
+			display($dbg_library,1,"Remove old track $old_track->{ID}=$old_track->{FULLNAME}");
+			if (!db_do($params->{dbh},"delete from TRACKS where ID='$old_track->{ID}'"))
 			{
-				error("Could not find existing history for old_stream_md5=$old_stream_md5");
-				exit 1;
-			}
-			add_track_change_history_event($history_rec,$timestamp,"moved/renamed from \"$diff1\" to \"$diff2\"");
-			$write_history = 1;
-			
-			# delete the old_file_tracks
-			# and old_stream_id tracks
-			# with an assertion that they are
-			# the same if both exist
-			
-			if ($old_file_track)
-			{
-				display($dbg_library,1,"removing old file_md5($old_file_md5) from hash");
-				if ($old_file_track->{ID} ne $old_stream_track->{ID})
-				{
-					error("HUH?  old_file_track_id($old_file_track->{ID}) ne old_stream_track($old_stream_track->{ID}) in $fullname");
-					exit 1;
-				}
-				delete $params->{file_md5_tracks}->{$old_file_md5};
-			}
-
-			display($dbg_library,1,"Remove old track($old_stream_md5)=$old_stream_track->{ID}=$old_stream_track->{FULLNAME}");
-			if (!db_do($params->{dbh},"delete from TRACKS where ID='$old_stream_track->{ID}'"))
-			{
-				error("Could not remove old track($old_stream_md5)=$old_stream_track->{ID}");
+				error("Could not remove old track $old_track->{ID}=$old_track->{FULLNAME}");
 				exit 1;
 			}
 		
-			delete $params->{stream_md5_tracks}->{$old_stream_md5};
-			delete $params->{tracks}->{$old_stream_track->{FULLNAME}};
-		}
-		else
-		{
-			if (!$history_rec)
-			{
-				display($dbg_library,1,"creating new history file for $old_stream_md5");
-				$history_rec = new_track_change_history($old_stream_md5,$timestamp,"initial setting");
-				$write_history = 1;
-			}
-			else
-			{
-				display($dbg_library,1,"got existing history for $old_stream_md5");
-			}
+			delete $params->{tracks_by_id}->{$old_track->{ID}};
+			delete $params->{tracks}->{$old_track->{FULLNAME}};
 		}
 		
 		# CONTINUING TO CREATE A NEW RECORD
@@ -1044,6 +942,7 @@ sub	add_track
 		$track = db_init_track();
 		$track->{new}       = 1;
 		$track->{exists}    = 1;
+		$track->{ID}        = $info->{stream_md5};
 		$track->{PARENT_ID} = $folder->{ID};
 		$track->{FULLNAME}  = $fullname;
 		$track->{PATH}      = $path;
@@ -1053,7 +952,6 @@ sub	add_track
         $track->{SIZE}      = $size;
         $track->{MIME_TYPE} = $mime_type;
 		$track->{FILE_MD5}  = $info->{file_md5};
-		$track->{STREAM_MD5}= $info->{stream_md5};
 		$track->{ROTATION}  = 0;
 		$track->{ERROR_CODES} = $info->{error_codes};
 		$track->{HIGHEST_ERROR} = 0;
@@ -1065,56 +963,18 @@ sub	add_track
 		if ($track->{TIMESTAMP} != $timestamp)
 		{
 			bump_stat("file_changed");
+			
 			display($dbg_library,1,"timestamp changed from ".
-				History::dateToLocalText($track->{TIMESTAMP}).
-				"  to ".History::dateToLocalText($timestamp).
+				dateToLocalText($track->{TIMESTAMP}).
+				"  to ".dateToLocalText($timestamp).
 				" in file($fullname)");
 			
-			display($dbg_library,1,"track file_md5=$track->{FILE_MD5}  stream_md5=$track->{STREAM_MD5}");
-			display($dbg_library,1,"info file_md5=$info->{file_md5}  stream_md5=$info->{stream_md5}");
-			
       		$track->{SIZE} = $size;
-			$track->{FILE_MD5} = $info->{file_md5};
-			
 			$track->{TIMESTAMP} = $timestamp;
 			$track->{ERROR_CODES} = $info->{error_codes};
 			$track->{HIGHEST_ERROR} = 0;
 			
 			$track->{changed} = 1;
-			
-			# get the history record for the old_id and if the 
-			# stream_md5 changed, mark the old history for deletion,
-			# and remove the stream_md5 from the hash
-			# remove the file_md5 from the hash if it changed.
-			# Add a history event for the timestamp change.
-			
-			my $old_stream_md5 = $track->{STREAM_MD5};
-			$history_rec = get_track_change_history($old_stream_md5);
-			if (!$history_rec)
-			{
-				error("Could not find existing history for existing track $old_stream_md5");
-				exit 1;
-			}
-			
-			if ($old_stream_md5 ne $info->{stream_md5})
-			{
-				$track->{STREAM_MD5} = $info->{stream_md5};
-				bump_stat("timestamp history marked for deletion");
-				display($dbg_library,1,"stream_md5($old_stream_md5) changed to $info->{stream_md5} in $fullname .. deleting old one");
-
-				add_track_change_history_event($history_rec,$timestamp,"stream_md($old_stream_md5) changed to $info->{stream_md5}");
-				delete $params->{stream_md5_tracks}->{$old_stream_md5};
-				$delete_stream_md5 = $old_stream_md5;
-			}
-
-			if ($track->{FILE_MD5} ne $info->{file_md5})
-			{
-				display($dbg_library,1,"removing unused file_md5($$track->{FILE_MD5}) from hash");
-				delete $params->{file_md5_tracks}->{$track->{FILE_MD5}};
-			}
-				
-			add_track_change_history_event($history_rec,$timestamp,"timestamp_changed");
-			$write_history = 1;
 		}
 		else
 		{
@@ -1122,23 +982,6 @@ sub	add_track
 		}
 	}
 
-	# Revert file timestamp if needed
-	
-	if (!$track || $track->{changed})
-	{
-		my $first_history_timestamp = get_oldest_history_timestamp($history_rec);
-		if ($REVERT_TIMESTAMPS && $timestamp != $first_history_timestamp)
-		{
-			bump_stat("timestamp_reverted");
-			bump_stat("timestamp_reverted in existing track");
-			warning(0,1,"Reverting timestamp on existing track($info->{stream_md5})=$fullname");
-			display($dbg_library,2,"new=".History::dateToLocalText($timestamp)."   old=".History::dateToLocalText($first_history_timestamp));
-			exit 1 if !setTimestampGMTInt("$mp3_dir/$fullname",$first_history_timestamp);
-			$track->{TIMESTAMP} = $first_history_timestamp;
-			add_track_change_history_event($history_rec,$first_history_timestamp,"reverting");
-			$write_history = 1;
-		}
-	}
 
 	# process the metadata as needed
 	# may set track->{changed}
@@ -1167,7 +1010,10 @@ sub	add_track
 	my $dbh = $params->{dbh};
 	if ($track->{new})
 	{
-		if (!insert_record_db($dbh,'TRACKS',$track))
+		if (!insert_record_db($dbh,'TRACKS',$track,"ID"))
+			# note that we have to pass "ID" in as key field,
+			# otherwise ID is not set during the insert (for
+			# the folders database file)
 		{
 			error("Could not insert TRACK record for $fullname");
 			exit 1;
@@ -1177,7 +1023,7 @@ sub	add_track
 	}
 	elsif ($track->{changed})
 	{
-		if (!update_record_db($dbh,'TRACKS',$track))
+		if (!update_record_db($dbh,'TRACKS',$track,"ID"))
 		{
 			error("Could not update TRACK record for $fullname");
 			exit 1;
@@ -1188,56 +1034,15 @@ sub	add_track
 	# add it to in-memory hashes in every case
 
 	$params->{tracks}->{$fullname} = $track;
-	$params->{file_md5_tracks}->{$track->{FILE_MD5}} = $track;
-	$params->{stream_md5_tracks}->{$track->{STREAM_MD5}} = $track;
+	$params->{tracks_by_id}->{$track->{ID}} = $track;
 	
 	# propogate the highest error level upwards
+	# and return
 	
 	propogate_highest_error($params,$track);
-	
-	# write the new history, and delete
-	# the old one if need be
-	
-	if ($write_history && !write_track_change_history($track->{STREAM_MD5},$history_rec))
-	{
-		error("Could not write history($track->{STREAM_MD5}) for $fullname");
-		exit 1;
-	}
-	if ($delete_stream_md5 && !delete_track_change_history($delete_stream_md5))
-	{
-		error("Could not delete old history($delete_stream_md5) for $fullname");
-		exit 1;
-	}
-	
-	# add any new artist found to the in memory data
-	# structure, making no assumptions about their type
-	
-	if ($WITH_ARTISTS &&
-		$track->{ARTIST} &&
-		!artist::get_artist($params,$track->{ARTIST}))
-	{
-		artist::new_artist(
-			"file:$fullname",
-			$params,
-			$track->{ARTIST},
-			'', # $folder->{CLASS},
-			'');
-	}
-	if ($WITH_ARTISTS &&
-		$track->{ALBUM_ARTIST} &&
-		!artist::get_artist($params,$track->{ALBUM_ARTIST}))
-	{
-		artist::new_artist(
-			"file:$fullname",
-			$params,
-			$track->{ALBUM_ARTIST},
-			'', # $folder->{CLASS},
-			'');
-	}
-		
-	
 	return 1;
-}
+	
+}	# addTrack
 	
 	
 #-------------------------------------------------
@@ -1367,9 +1172,6 @@ sub get_folder
 		};
 	}
 	
-	return get_virtual_item($dbh,'FOLDERS',$1)
-		if ($id && $VIRTUAL_TREES && $id =~ /^([a-z]\d+)$/);
-
     my $rec = get_record_db($dbh,"SELECT * FROM FOLDERS WHERE ID='$id'");
     return $rec;
 }
@@ -1378,8 +1180,6 @@ sub get_folder
 sub get_track
 {
     my ($dbh,$id) = @_;
-	return get_virtual_item($dbh,'TRACKS',$1)
-		if ($id && $VIRTUAL_TREES && $id =~ /^([a-z]\d+)$/);
     my $rec = get_record_db($dbh,"SELECT * FROM TRACKS WHERE ID='$id'");
     return $rec;
 }
@@ -1412,14 +1212,10 @@ sub get_subitems
     $count ||= 999999;
     display($dbg_library,0,"get_subitems($table,$id,$start,$count)");
 
-	# check for virtual item request
-	
-	return get_virtual_subitems($dbh,$table,$1,$start,$count)
-		if ($id && $VIRTUAL_TREES && $id =~ /^([a-z]\d+)$/);
-
     if ($id !~ /^\d+$/)
 	{
 		error("Unknown id in get_subitems: $id");
+			# currently folder id's are integers!
 		return [];
 	}
 	
@@ -1428,12 +1224,8 @@ sub get_subitems
 	my $query = "SELECT * FROM $table ".
 		"WHERE PARENT_ID='$id' ".
 		"ORDER BY $sort_clause NAME";
+
 	my $recs = get_records_db($dbh,$query);
-
-	# add the virtual roots
-
-	add_virtual_roots($dbh,$recs) if ($VIRTUAL_TREES && $id == 0);
-	
 	my $dbg_num = $recs ? scalar(@$recs) : 0;
 	display($dbg_library,1,"get_subitems($table,$id,$start,$count) found $dbg_num items");
 	
@@ -1441,7 +1233,7 @@ sub get_subitems
 	for my $rec (@$recs)
 	{
 		next if ($start-- > 0);
-		display($dbg_library,2,pad($rec->{ID},5)." ".pad($rec->{NAME},30)." ".$rec->{PATH});
+		display($dbg_library,2,pad($rec->{ID},40)." ".pad($rec->{NAME},30)." ".$rec->{PATH});
 		push @recs,$rec;
 		last if (--$count <= 0);
 	}

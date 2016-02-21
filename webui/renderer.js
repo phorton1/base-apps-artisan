@@ -8,7 +8,7 @@ var renderer_list = false;
 
 var default_renderer_id = '';
 var default_renderer_name = '';
-var last_song = -1;
+var last_song = '';
 
 
 page_layouts['renderer'] = {
@@ -63,7 +63,7 @@ function init_page_renderer()
 	init_renderer_menu_pane();
 	init_renderer_pane();
 	
-	last_song = -1;
+	last_song = '';
 	
 }
 
@@ -440,7 +440,7 @@ function update_renderer_ui()
 
 	var state = '';
 	var stationName = 'Now Playing';
-	var friendlyName = 'No Renderer Selected';
+	var rendererName = 'No Renderer Selected';
 	
 	var art_uri = '/webui/icons/artisan.png';
 	var song_title = '&nbsp;';
@@ -453,7 +453,7 @@ function update_renderer_ui()
 	var reltime = '0:00';
 	var duration = '0:00';
 	var play_type_size = '';
-	var song_num = 0;
+	var song_id = '';
 	
 	var pause_button_label = ' > ';
 	var pause_button_on = 'renderer_control_off';
@@ -461,16 +461,16 @@ function update_renderer_ui()
 	//-----------------------------------------------
 	// set the values from current renderer if any
 	//-----------------------------------------------
-	// start with the friendlyName
+	// start with the rendererName
 	// stationName, and overall disable booleans
 	
 	if (current_renderer)
 	{
 		disable = false;
 		state = current_renderer.state;
-		song_num = parseInt(current_renderer.song_num);
+		song_id = current_renderer.song_id;
 		
-		friendlyName = current_renderer.friendlyName;
+		rendererName = current_renderer.name;
 		if (current_renderer.station)
 		{
 			disable_station = false;
@@ -543,6 +543,13 @@ function update_renderer_ui()
 		{		
 			duration = remove_leading_zeros(current_renderer.duration);
 			reltime = current_renderer.reltime;
+			
+			// we don't show milliseconds, though they may
+			// be part of the renderer time.
+			
+			duration = remove_trailing_decimal(duration);
+			reltime = remove_trailing_decimal(reltime);
+			
 			if (duration.length < reltime.length)
 			{
 				reltime = reltime.substr(reltime.length-duration.length);
@@ -593,7 +600,7 @@ function update_renderer_ui()
 		
 		highlight_current_renderer();
 		ele_set_inner_html('renderer_header_left',stationName + ' &nbsp;&nbsp; ' + state);
-		ele_set_inner_html('renderer_header_right',friendlyName);
+		ele_set_inner_html('renderer_header_right',rendererName);
 			
 		// What's Playing info and image
 		
@@ -644,10 +651,10 @@ function update_renderer_ui()
 		disable_button('renderer_button_station_5',disable);
 		disable_button('renderer_button_station_6',disable);
 		disable_button('renderer_button_station_assign',
-			window.innerWidth>700 || song_num == 0);
+			window.innerWidth>700 || song_id == '');
 		
 		update_station_info_ui();
-		update_song_stations_ui(song_num);
+		update_song_stations_ui(song_id);
 		
 		
 	}	// !autofull
@@ -687,7 +694,7 @@ function highlight_current_renderer()
 
 
 
-function update_song_stations_ui(song_num)
+function update_song_stations_ui(song_id)
 {
 	// actually the whole darned updateRendererUI() loop should be turned off
 	
@@ -696,22 +703,22 @@ function update_song_stations_ui(song_num)
 		return;
 	}
 
-	if (song_num == 0)
+	if (song_id == '')
 	{
 		$('.song_station_list_button')
 			.prop('checked',false)
 			.button('disable')
 			.button('refresh');
 	}
-	else if (last_song != song_num)
+	else if (last_song != song_id)
 	{
-		last_song = song_num;
-		$.get('/webui/explorer/get_track?id=' + song_num,
+		last_song = song_id;
+		$.get('/webui/explorer/get_track?id=' + song_id,
 			function(result) {
 
 			if (result.error)
 			{
-				rerror('update_song_stations_ui(' + song_num + '): ' + result.error);
+				rerror('update_song_stations_ui(' + song_id + '): ' + result.error);
 			}
 			else
 			{
@@ -748,9 +755,8 @@ function select_song_station(station_num)
 	// they pressed a song station button for station_num
 	// it will act upon the showing song number ..
 {
-	var song_num = current_renderer ?
-		parseInt(current_renderer.song_num) : false;
-	if (song_num)
+	var song_id = current_renderer ? current_renderer.song_id : '';
+	if (song_id != '')
 	{
 		var id = '#song_station_list_button_' + station_num;
 		var checked = $(id).prop('checked')?1:0;
@@ -758,14 +764,14 @@ function select_song_station(station_num)
 		$.get(
 			'/webui/station/set_station_bit' +
 			'?station='+station_num+
-			'&item_id=track_' + song_num +
+			'&item_id=track_' + song_id +
 			'&checked='+checked,
 			
 			function(result)
 			{
 				if (result.error)
 				{
-					rerror('select_song_station(' + station_num + ',' + song_num + '):' + result.error)
+					rerror('select_song_station(' + station_num + ',' + song_id + '):' + result.error)
 				}
 			}
 		);
@@ -823,6 +829,11 @@ function remove_leading_zeros(st)
 }
 
 
+function remove_trailing_decimal(st)
+{
+	var parts = st.split(".");
+	return parts[0];
+}
 
 function secs_to_time(secs)
 {
@@ -921,7 +932,7 @@ function set_default_renderer()
 	if (current_renderer)
 	{
 		default_renderer_id = current_renderer.id;
-		default_renderer_name = current_renderer.friendlyName;
+		default_renderer_name = current_renderer.name;
 	}
 		
 	set_renderer_pref_default_renderer_cookie();

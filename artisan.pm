@@ -1,9 +1,39 @@
 #!/usr/bin/perl
 #---------------------------------------
-# artisan.pl
+# artisan.pm
 #---------------------------------------
-# A simplified media server focused on audio content.
-# Will deliever non-transcoded audio.
+# A pure perl implementation of an Artisan server.
+# This file is the app.  All other perl files in this
+# folder are also used in the windows App, which is a
+# superset of this application.
+#
+# As a mimimum, this pure-perl app is a faceless Artisan
+# Playback device associated with a static (read-only)
+# Local Library.
+#
+# It has no Local Renderer.
+#
+# As a faceless Playback device, it must be associated
+# with a DLNA Renderer in order to play music, and is
+# only really useful if there is a UI to it.
+#
+# There are preferences that allow automatically
+# connecting to a previous (given) DLNA render, and starting
+# a previous (given) Station or Saved Songlist, so technically
+# speaking, a UI is not really required, but nonetheless,
+# by default it presents a webUI Surface (currently this
+# surface is implemented at a low level separate from the
+# proposed Surface Server. Hopefully the webUI surface can
+# be implemented in terms of the Surface Server).
+#
+# If there is no database found, a scan will be performed.
+# But otherwise, by default, no scan is performed on startup.
+# There is a preference to SCAN_LIBRARY_ON_STARTUP.
+#
+# There is also an preference to start a DLNA Server.
+# The DLNA Server is really an SSDP Server with support
+# in the HTTP Server,.
+
 
 package artisan;
 use strict;
@@ -11,6 +41,7 @@ use warnings;
 use threads;
 use threads::shared;
 use Utils;
+use artisanPrefs;
 use Database;
 use HTTPServer;
 use HTTPStream;
@@ -18,91 +49,26 @@ use SSDP;
 use Library;
 use WebUI;
 use Station;
+use artisanInit;
 
-#use Daemon;
+# use Daemon;
+# some work needed to make this a real service
 
-#--------------------------------------
-# initialization
-#--------------------------------------
-
-LOG(0,"-------------------------------------------------------");
-LOG(0,"Starting $program_name");
-dbg_mem(0,'at program startup');
-
-db_initialize();
-Station::static_init_stations();
+our $ssdp;
 
 
-our $ssdp = SSDP->new();
-# Daemon::daemonize(\%SIG, \$ssdp);
-# Daemon::write_pidfile($CONFIG{'PIDFILE'}, $$);
+#-------------------------------------------------------------------------------
+# Start Servers, etc
+#-------------------------------------------------------------------------------
+
+start_artisan();
+	# encapsulates program startup with ini file
+	# in artisanInit.pm
 
 
-
-# start the database scanner thread
-# prh - don't like the way this is going, see "createDefaultStations"
-# Struggling - cannot reliably call fpcalc.exe from a thread
-# so we don't use the thread approach ..
-
-if (0)
-{
-    display($dbg_library,0,"Starting database scanner thread");
-    my $thread1 = threads->create('Library::scanner_thread');
-    $thread1->detach();
-}
-
-# and on the android we don't even do a scan.
-# the android gets whatever database already exists
-
-elsif (!$ANDROID)
-{
-    display(0,0,"Scanning library ...");
-    Library::scanner_thread(1);
-    display(0,0,"Finished scanning library ...");
-}
-
-
-
-# start the webserver
-
-display($dbg_http,0,"Starting webserver thread");
-my $thread2 = threads->create('HTTPServer::start_webserver');
-$thread2->detach();
-
-# setup SSDP
-# start the listening thread and then start
-# sending alive messages
-
-$ssdp->send_byebye(1);
-$ssdp->start_listening_thread();
-if (1)
-{
-    $ssdp->start_alive_messages_thread();
-}
-
-
-# start the Renderer monitor thread
-
-if (1)
-{
-	display(0,1,"creating Renderer auto_update thread ...");
-	my $monitor_thread = threads->create('Renderer::auto_update_thread');
-	if (!$monitor_thread)
-	{
-		error("Could not create Renderer auto_update thread");
-	}
-	else
-	{
-		$monitor_thread->detach();
-		display(0,1,"done creating auto_update thread ...");
-	}
-}
-
-
-
-#-------------------------------------
-# main
-#-------------------------------------
+#-------------------------------------------------------------------------------
+# FALL THRU TO main()
+#-------------------------------------------------------------------------------
 
 use sigtrap 'handler', \&onSignal, 'normal-signals';
     # $SIG{INT} = \&onSignal; only catches ^c
@@ -111,19 +77,19 @@ sub onSignal
 {
     my ($sig) = @_;
     LOG(0,"artisan.pm terminating on SIG$sig");
-	$quitting = 1;
-    if ($ssdp)
-    {
-        $ssdp->send_byebye(1);
-    }
-    kill 6,$$;
+	end_app();
 }
 
-# the program is aborted if any key is pressed
-# if any key is pressed ...
+display(0,0,"$program_name Started!!");
+dbg_mem(0,"entering endless loop");
+
 
 if (0)
 {
+	# the program is aborted if any key is pressed
+	# if any key is pressed ...
+	
+	display(0,0,"Hit any key to Quit the Server ...");
 	getc();
 	LOG(0,"Aborted via keystroke");
 }
@@ -132,8 +98,6 @@ else
 	# or process an endless loop and allow
 	# webui to terminate the program
 	
-	display(9,0,"waiting for requests ....");
-	dbg_mem(0,"entering endless loop");
 	my $webui_aborted = 0;	# vestigal
 	while (!$webui_aborted)
 	{
@@ -145,11 +109,23 @@ else
 	}
 }
 
-$quitting = 1;
-if ($ssdp)
+
+#-----------------------------------
+# ENDING (Fall thru or onSignal)
+#-----------------------------------
+
+end_app();
+
+sub end_app
 {
-	$ssdp->send_byebye(1);
+	$quitting = 1;
+	if ($ssdp)
+	{
+		$ssdp->send_byebye(1);
+	}
+	kill 6,$$;
 }
-kill 6,$$;
+
+
 
 1;

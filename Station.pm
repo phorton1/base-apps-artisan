@@ -1,15 +1,9 @@
 #!/usr/bin/perl
 #---------------------------------------
-
-# prh - stations.txt is not compatible between android and windows (line endings)
-
 # Station.pm
 #
 # This module maintains a set of 'radio stations' or 'rotations',
 # which are lists of songs that can be played by the renderer.
-#
-# A "STATIONS" integer is kept as a member on the track and folder
-# database records. It is an integer member, interpreted bitwise.
 #
 # Usage:
 #
@@ -152,8 +146,6 @@ sub static_init_stations
 {
     my $lines;
     
-    unlink $station_datafile if $is_new_database;
-    
     my $exists = -f $station_datafile ? 1 : 0;
     
     if ($exists)
@@ -178,7 +170,7 @@ sub static_init_stations
                 $station->{name} = 'notes' if ($i == 32);
             }
         }
-        write_stations();
+        # write_stations();
     }
     return $exists;
 }
@@ -437,11 +429,13 @@ sub setStationList
     # for a particular station, given params hash,
     # shuffle, unplayed_first, etc, develop a list of
     # trackIDs, constituting the "stationList" or "rotation"
-    # for the station.
+    # for the station, and write them to a text file.
     #
-    # These integer trackIDs are written as dwords to
-    # a binary file "station_list_N.data", where the
-    # first dword is the number of trackIDs??.
+    # These station lists are text files that have a line
+	# consisting of the number of items, and then a number of
+	# track IDs (STREAM_MD5s).  Although the track ID's are
+	# a fixed size, we elect to use a line oriented text file
+	# in case it should change in the future.
 {
     my ($this,$params) = @_;
     $this->{shuffle} = $params->{shuffle} if defined($params->{shuffle});
@@ -507,21 +501,23 @@ sub setStationList
         error("Could not open $filename for writing");
         return;
     }
-    binmode $fh;
-	
-	# 0th dword is num_tracks
-	
-    if (!print $fh pack('L*',$num_tracks, @result))
-    {
-        error("Could not print to $filename");
-        return;
-    }
+	print $fh join("\n",@result);
     close $fh;
     
+
     # reset and write the station
     
     $this->{num_tracks} = $num_tracks;
 
+	if (1)		# invalidate the in-memory list
+	{
+		$this->{track_ids} = undef;
+	}
+	else		# write thru cache
+	{
+		$this->{track_ids} = \@result;
+	}
+	
     # prh - this is where the search for the previous song goes
     
     # The only time it makes sense to keep the track_number alive
@@ -568,43 +564,37 @@ sub setTrackIndex
 
 
 sub getTrackID
+	# Get the TrackID that corresponds to the track_index within the station.
+	# Implemented as a write-thru cache in conjunction with setStationList().
 {
     my ($this,$track_index) = @_;
+	return "" if $track_index == 0;
     if ($track_index < 0 || $track_index > $this->{num_tracks})
     {
         error("getTrackID($track_index) out of range($this->{num_tracks})");
-        return 0;
+        return "";
     }
-
-    my $fh;
-    my $data;
-    my $track_num = 0;
-    my $filename = $this->getStationFilename();
-    if (!open($fh,"<$filename"))
-    {
-        error("Could not open $filename for reading");
-    }
-    else
-    {
-        binmode $fh;
-        
-        if (!seek($fh, $track_index * 4, 0))
-        {
-            error("Could not seek to $track_index*4 in $filename");
-        }
-        elsif (!read($fh,$data,4))
-        {
-            error("Could not resd from $filename");
-        }
-        else
-        {
-            $track_num = unpack('L',$data);
-        }
-    }
-    
-    display($dbg_station,0,"getTrackID($track_index) returning $track_num");
-    return $track_num;
+	
+	# read cache
+	
+	if (!$this->{track_ids})
+	{
+		my $filename = $this->getStationFilename();
+		my $text = getTextFile($filename);
+		my @lines : shared = split(/\n/,$text);
+		if ($this->{num_tracks} != @lines)
+		{
+			error("getTrackId() expected $this->{num_tracks} tracks and found ".scalar(@lines));
+			return ""
+		}
+		$this->{track_ids} = \@lines;
+	}
+	
+	my $track_id = ${$this->{track_ids}}[$track_index];
+    display($dbg_station,0,"getTrackID($track_index) returning $track_id");
+    return $track_id;
 }
+
 
     
 sub getIncTrackID
@@ -872,12 +862,6 @@ sub propagate_to_parents
     return 1;
 }
     
-# set Database var telling it that this module is loaded,
-# so it will call setDefaultStations if it's the first time
-# on the database.
-
-$HAS_STATION_MODULE = 1;
-
 
 if (0)
 {
