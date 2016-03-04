@@ -188,7 +188,7 @@ my $g_renderer : shared = undef;
 	# The current selected Renderer
 
 my $ALLOW_STOP_FROM_REMOTE = 1;
-my $STOP_FROM_REMOTE_THRESHOLD = 5;
+my $STOP_FROM_REMOTE_THRESHOLD = 9;
 	# we detect a stop on the remote if we
 	# find a stopped renderer and the last
 	# song position was less than THRESHOLD
@@ -702,7 +702,8 @@ sub update
 			my $secs_last = duration_to_secs($this->{last_time});
 			my $secs_duration = duration_to_secs($this->{duration});
 			display($dbg_ren,0,"Checking STOP_FROM_REMOTE: $secs_last < $secs_duration - 10 ???");
-			if ($secs_last < $secs_duration - 10)
+			if ($secs_last > $STOP_FROM_REMOTE_THRESHOLD &&
+				$secs_last < $secs_duration - $STOP_FROM_REMOTE_THRESHOLD)
 			{
 				$this->init_renderer(1);
 				$this->{state} = $state;

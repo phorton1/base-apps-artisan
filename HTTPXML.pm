@@ -37,20 +37,6 @@ BEGIN
 
 my $url_base = "http://$server_ip:$server_port";
 
-sub encode_xml
-	# specific to this module
-{
-	my $string = shift;
-	my $xs = XML::Simple->new();
-	# $string = $xs->escape_value($string);
-    $string =~ s/([^\x20-\x7f])/"&#".ord($1).";"/eg;
-
-	$string =~ s/&/&amp;/g; # double encoding of ampersand: http://sourceforge.net/p/minidlna/bugs/198/
-	#$string =~ s/'/&apos;/g; # single quotes are not encoded by XML::Simple, do we need it ?
-	return $string;
-}
-
-
 sub filter_lines
     # filter lines for generating DIDL XML
     # a line may be commented out by starting it with #

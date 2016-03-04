@@ -51,7 +51,7 @@ appUtils::set_alt_output(1);
 # debugging constants
 #-------------------------
 
-our $debug_level 	= 1;
+our $debug_level 	= 0;
 our $warning_level 	= 0;
 
 our $dbg_db 		= 2;
@@ -135,6 +135,8 @@ BEGIN
 
         escape_tag
         unescape_tag
+		encode_xml
+		decode_xml
 		
         http_date
         add_leading_char
@@ -345,17 +347,26 @@ our $artisan_perl_dir = "/base/apps/artisan";
 our $mp3_dir = "/mp3s";
 our $mp3_dir_RE = '\/mp3s';
 our $server_port = '8091';
-our $server_ip = '192.168.0.101';
+
+our $server_ip = '';
+	# typical home machine: 192.168.0.101';
 	# lenovo mac address = AC-7B-A1-54-13-7A
 
-# Note hardwired IP address.
-# Too hard to determine interface, connectivity, etc.
-#    i.e. ($server_ip)=inet_ntoa((gethostbyname(hostname))[4]);
-#    or parsing ipConfig /all, etc.
-# Could be overridden in Preferences file
+# determine ip address by parsing ipconfig /all
+# for first IPv4 Address ... : 192.168.0.100
 
-# display(0,0,"hostname=".hostname);
-# display(0,0,"server_ip=$server_ip");
+my $ip_text = `ipconfig /all`;
+if ($ip_text !~ /^.*?IPv4 Address.*?:\s*(.*)$/im)
+{
+	error("Could not determine IP Address!")
+}
+else
+{
+	$server_ip = $1;
+	$server_ip =~ s/\(.*\)//;	# remove (Preferred)
+	$server_ip =~ s/\s//g;
+	LOG(0,"Server IP Address=$server_ip");
+}
 
 
 # Other IP Addresses / Configurations
@@ -578,21 +589,46 @@ sub escape_tag
 	# Also called by the tag details sections of uiExplorer.pm.
 	#
 	# NOT CALLED by HTTPXML.pm!!
+	# note slightly different handling of backslash \\ to \x5c
 {
     my ($s) = @_;
     if ($s)
     {
-        # old:
-		# $s =~ s/(\\|[^\x20-\xff])/'\x'.unpack('H2',$1)/eg;
-
-		# 2015-06-21
-		# use decimal equivilants it's easier
-
 		$s =~ s/(\\)/\\x5c/g;
 		$s =~ s/([^\x20-\x7f])/"&#".ord($1).";"/eg;
     }
     return $s;
 }
+
+
+
+sub encode_xml
+	# called by specific to XML encoding
+	# Note double encoding of ampersand as per
+	# http://sourceforge.net/p/minidlna/bugs/198/
+	# using decimal encoding
+{
+	my $string = shift;
+    $string =~ s/([^\x20-\x7f])/"&#".ord($1).";"/eg;
+	$string =~ s/&/&amp;/g; 
+	#$string =~ s/'/&apos;/g; # single quotes are not encoded by XML::Simple, do we need it ?
+	return $string;
+}
+
+
+
+sub decode_xml
+	# called by specific to XML encoding
+	# Note double encoding of ampersand as per
+	# http://sourceforge.net/p/minidlna/bugs/198/	
+{
+	my $string = shift;
+	$string =~ s/&amp;/&/g; 
+    $string =~ s/\\#(\d+);/chr($1)/eg;
+	return $string;
+}
+
+
 
 
 sub unescape_tag
