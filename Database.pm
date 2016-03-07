@@ -173,8 +173,8 @@ our %artisan_field_defs = (
 		# mostly specific to albums
 		
 		'num_elements   INTEGER',
-        'album_title	VARCHAR(128)',
-		'album_artist   VARCHAR(128)',
+        'title			VARCHAR(128)',
+		'artist   		VARCHAR(128)',
         'genre		    VARCHAR(128)',
         'year_str       VARCHAR(4)',
 

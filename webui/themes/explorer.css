@@ -52,11 +52,11 @@ table.fancytree-ext-table tbody tr td
 
 
 
-#explorer_album_info1   { font-size:11pt; font-weight:bold; margin-top:0px; margin-bottom:0px;}
-#explorer_album_info2   { font-size:10pt;                   margin-top:0px; margin-bottom:0px;}
-#explorer_album_info3   { font-size:10pt; font-weight:bold; margin-top:0px; margin-bottom:0px;}
-#explorer_album_info4   { font-size:9pt;                   margin-top:0px; margin-bottom:0px;}
-#explorer_album_info5   { font-size:8pt;                   margin-top:4px; margin-bottom:0px;}
+#explorer_album_info1   { font-size:10pt; margin-top:0px; margin-bottom:0px; font-weight:bold; }
+#explorer_album_info2   { font-size:8pt;  margin-top:0px; margin-bottom:0px;}
+#explorer_album_info3   { font-size:8pt;  margin-top:0px; margin-bottom:0px;}
+#explorer_album_info4   { font-size:8pt;  margin-top:0px; margin-bottom:0px;}
+#explorer_album_info5   { font-size:8pt;  margin-top:0px; margin-bottom:0px;}
 
 
 

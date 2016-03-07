@@ -54,11 +54,9 @@ sub stream_media
 	if ($content_id =~ /^(.*?)\.(\w+)$/)
 	{
 		my $id = $1;
-		my $dbh = db_connect();
-		my $item = get_track($dbh,$id);
-		db_disconnect($dbh);
+		my $track = get_track(undef,$id);
 		
-        if (!$item)
+        if (!$track)
         {
 			error("Content($id) not found in media library");
 			print $FH http_header({
@@ -67,11 +65,11 @@ sub stream_media
 				'log' => 'httpstream' });
 			return;
         }
-    	LOG(1,"stream_media($id) len=$item->{size} file=$item->{uri}");
+    	LOG(1,"stream_media($id) len=$track->{size} file=$track->{path}");
 
         # sanity checks
 
-		if (!$item->{path})
+		if (!$track->{path})
 		{
 			error("Content($id) has no path");
 			print $FH http_header({
@@ -80,7 +78,7 @@ sub stream_media
 				'log' => 'httpstream' });
 			return;
 		}
-		my $filename = "$mp3_dir/$item->{path}";
+		my $filename = "$mp3_dir/$track->{path}";
 		if (!-f $filename)
 		{
 			error("Content($id) file not found: $filename");
@@ -101,7 +99,7 @@ sub stream_media
 		my $to_byte = 0;
 		my $is_ranged = 0;
 		my $from_byte = 0;
-		my $content_len = $item->{size};
+		my $content_len = $track->{size};
 		my $statuscode = 200;
 
 		if (defined($headers->{RANGE}) &&
@@ -114,8 +112,8 @@ sub stream_media
 			
 			display($dbg_stream,1,"Range Request from $from_byte/$content_len to $to_byte");
 
-			$to_byte = $item->{size}-1 if (!$to_byte);
-			$to_byte = $item->{size}-1 if ($to_byte >= $item->{size});
+			$to_byte = $track->{size}-1 if (!$to_byte);
+			$to_byte = $track->{size}-1 if ($to_byte >= $track->{size});
 			$content_len = $to_byte - $from_byte + 1;
 			display($dbg_stream+1,1,"Doing Range request from $from_byte to $to_byte = $content_len bytes");
 		}
@@ -125,13 +123,13 @@ sub stream_media
 		# defaults in the method http_header()
 		# push @additional_header, "Connection: keep-alive";
 		
-		push @additional_header, "Content-Type: $item->{MIME_TYPE}";
+		push @additional_header, "Content-Type: " . $track->mimeType();
 		push @additional_header, "Content-Length: $content_len";
-		#push @additional_header, "Content-Disposition: attachment; filename=\"$item->{name}\"";
+		#push @additional_header, "Content-Disposition: attachment; filename=\"$track->{name}\"";
 		push @additional_header, "Accept-Ranges: bytes";
-        push @additional_header, "contentFeatures.dlna.org: ".$item->get_dlna_stuff();
+        push @additional_header, "contentFeatures.dlna.org: ".$track->get_dlna_stuff();
 		push @additional_header, 'transferMode.dlna.org: Streaming';
-		push @additional_header, "Content-Range: bytes $from_byte-$to_byte/$item->{size}"
+		push @additional_header, "Content-Range: bytes $from_byte-$to_byte/$track->{size}"
 			if ($is_ranged);
 
 		# SEND HEADERS

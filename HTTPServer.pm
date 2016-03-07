@@ -48,6 +48,10 @@ my $DEBUG_BROWSE = 0;
 my $cache_timeout = 1800;
 
 
+my $system_update_id = time();
+# share($system_update_id);
+
+
 sub start_webserver
 	# this is a separate thread, even if $SINGLE_THREA
 {
@@ -1020,6 +1024,66 @@ EOXML
 
 	return $xml;
 }
+
+
+
+
+
+
+
+sub xml_header
+{
+    my ($what) = @_;   # 0=Browse, 1=Search
+    my $response_type = ($what ? 'Search' : 'Browse').'Response';
+	my $xml = <<EOXML;
+<s:Envelope
+    xmlns:s="http://schemas.xmlsoap.org/soap/envelope/"
+    s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">
+    <s:Body>
+        <u:$response_type xmlns:u="urn:schemas-upnp-org:service:ContentDirectory:1">
+        <Result>
+EOXML
+    $xml .= encode_didl(<<EOXML);
+<DIDL-Lite
+    xmlns="urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/"
+    xmlns:sec="http://www.sec.co.kr/dlna"
+    xmlns:dlna="urn:schemas-dlna-org:metadata-1-0/"
+    xmlns:dc="http://purl.org/dc/elements/1.1/"
+    xmlns:upnp="urn:schemas-upnp-org:metadata-1-0/upnp/" >
+EOXML
+	return $xml;
+}
+
+
+
+
+
+sub xml_footer
+{
+	my ($num_search,
+        $num_total,
+        $what) = @_;
+
+    # $system_update_id++;
+	# for testing responsiveness
+	
+    my $response_type = ($what ? 'Search' : 'Browse').'Response';
+    my $xml .= encode_didl("</DIDL-Lite>");
+	
+	$xml .= <<EOXML;
+        </Result>
+        <NumberReturned>$num_search</NumberReturned>
+        <TotalMatches>$num_total</TotalMatches>
+        <UpdateID>$system_update_id</UpdateID>
+        </u:$response_type>
+    </s:Body>
+</s:Envelope>
+EOXML
+    return $xml;
+}
+
+
+
 
 
 1;

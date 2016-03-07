@@ -28,7 +28,10 @@ sub renderer_request
 	{
 		return renderer_get_selected_renderer();
 	}
-	
+	if ($path =~ /^(get_playlist|get_playlists|set_playlist_info)/)
+	{
+		return playlist_request($path);
+	}	
 	
 	# get renderer for following requests
 	
@@ -63,6 +66,7 @@ sub renderer_request
 	{
 		return renderer_transport($renderer,$params);
 	}
+
 
 	return json_error("web_ui(unknown renderer request): $path");
 }
@@ -186,14 +190,26 @@ sub renderer_update
 }
 
 
+sub calc_play_pct
+{
+    my ($position,$duration) = @_;
+    my $pct = $position ? int(100 * ($position/$duration)) : 0;
+    return $pct;
+}
+
+
 sub renderer_set_playlist
 {
-	my ($renderer,$playlist_num) = @_;
-	display($dbg_webui,0,"renderer_set_playlist($renderer->{name},$playlist_num) called");
-	my $playlist = getPlaylist($playlist_num);
+	my ($renderer,$name) = @_;
+	display($dbg_webui,0,"renderer_set_playlist($renderer->{name},$name) called");
+	my $playlist = getPlaylist($name);
+	if (!$playlist)
+	{
+		return json_error("playlist '$name' not found");
+	}
 	if (!$renderer->setPlaylist($playlist))
 	{
-		return json_error("could not issue setPlaylist($playlist_num) command");
+		return json_error("could not issue setPlaylist($name) command");
 	}
 	my $response = json_header();
 	$response .= json($renderer);
@@ -243,8 +259,7 @@ sub renderer_transport
 	{
 		my $position = $params->{position};
 		if (!defined($position) ||
-			$position !~ /^\d+$/ ||
-			$position > 100)
+			$position !~ /^\d+$/)
 		{
 			return json_error("illegal value in set_position("._def($position).")");
 		}
@@ -303,6 +318,113 @@ sub renderer_transport
 	
 }
 
+
+
+
+sub playlist_request
+{
+	my ($path,$params) = @_;
+	display($dbg_webui,0,"playlist_request($path)");
+	
+	if ($path eq 'get_playlist')
+	{
+		my $name = $params->{name};
+		my $playlist = getPlaylist($name);
+		if (!$playlist)
+		{
+			return json_error("Unknown playlist name($name) in get_playlist");
+		}
+		return json($playlist);
+	}
+	elsif ($path eq 'get_playlists')
+	{
+		my $playlists = getPlaylists();
+		my $xml = json_header();
+		for my $playlist (@$playlists)
+		{
+			$xml .= getPlaylistButtonHTML($playlist);
+		}
+		return $xml
+	}
+	
+	# STATION INFO COMMANDS
+	
+	elsif ($path eq 'set_playlist_info')
+	{
+		my $name = $params->{name};
+		my $field = $params->{field};
+		my $value = $params->{value};
+		my $playlist = getPlaylist($name);
+		if (!$playlist)
+		{
+			return json_error("Unknown playlist name($name) in set_playlist_info");
+		}
+		
+		display($dbg_webui-1,0,"set_playlist_info($playlist->{name},$field,$value)");
+		$playlist->{$field} = $value;
+		
+		# regenerate the songlist
+		# except on track changes
+		
+		if ($field eq 'track_index')
+		{
+			$playlist->save();
+		}
+		else
+		{
+			display($dbg_webui-1,1,"REBUILDING STATION LIST");
+			$playlist->sortPlaylist();
+		}
+		
+		# resart the renderer if it's the current station
+		
+		my $renderer = Renderer::getSelectedRenderer();
+
+		if ($renderer &&
+			$renderer->{playlist} &&
+			$renderer->{playlist}->{name} == $name)
+		{
+			if ($field eq 'track_index')
+			{
+				$renderer->async_play_song(0);
+			}
+			else
+			{
+				$renderer->stop();
+			}
+		}
+	}
+	
+	# UNKNOWN COMMAND
+	
+	else
+	{
+		return json_error("unknown renderer playlist command: $path");
+	}
+
+	# SUCCESS RETURN
+	
+	return json_header() . '[' . json({result=>'OK'}) . ']';
+		
+}
+
+
+sub getPlaylistButtonHTML
+{
+	my ($playlist) = @_;
+	my $text = '';
+	$text .= "<input type=\"radio\" ";
+	$text .= "id=\"playlist_button_$playlist->{name}\" ";
+	$text .= "class=\"playlist_button\" ";
+	$text .= "onclick=\"javascript:select_playlist('$playlist->{name}');\" ";
+	$text .= "name=\"playlist_button_set\">";
+	$text .= "<label for=\"playlist_button_$playlist->{name}\">";
+	$text .= "$playlist->{name}</label>";
+	$text .= "<br>";
+	$text .= "\n";
+	return $text;
+
+}	
 
 
 

@@ -38,6 +38,7 @@ use appUtils qw(
 	getTextLines
 	printVarToFile
 	mergeHash
+	hires_sleep
 );
 
 
@@ -56,19 +57,19 @@ our $debug_level 	= 0;
 our $warning_level 	= 0;
 
 our $dbg_db 		= 2;
-our $dbg_ssdp 		= -1;
+our $dbg_ssdp 		= 2;
 our $dbg_http 		= 0;
 our $dbg_stream 	= 2;
 our $dbg_xml    	= 2;
-our $dbg_library    = 1;
+our $dbg_library    = 0;
 our $dbg_vlibrary   = 2;
-our $dbg_webui      = 3;
+our $dbg_webui      = 0;
 our $dbg_mediafile  = 2;
 our $dbg_mp3_info   = 2;
 our $dbg_mp3_read   = 2;
 our $dbg_mp3_write  = 2;
 our $dbg_mp3_tags   = 2;
-our $dbg_ren        = 1;
+our $dbg_ren        = 0;
 
 our $dbg_mem		= 0;
 
@@ -119,7 +120,6 @@ BEGIN
 
         $server_ip
         $server_port
-        $system_update_id
 		$quitting
 
 		clone_hash
@@ -193,6 +193,7 @@ BEGIN
 		getTextLines
 		printVarToFile
 		mergeHash
+		hires_sleep
     );
 };
 
@@ -414,9 +415,6 @@ $logfile = "";
 # #logfile = $temp_dir/artisan.log";
 	# no logging by default
 	# could be a preference (getem before program "starts")
-
-our $system_update_id = time;
-share($system_update_id);
 
 our $quitting = 0;
 share($quitting);
@@ -684,7 +682,7 @@ sub millis_to_duration
 	my $string = '';
 	if ($precise)
 	{
-		$string .= add_leading_char($hours,2,'0').':';
+		$string .= add_leading_char($hours,2,'0').':'; 	# if $hours;
 		$string .= add_leading_char($minutes,2,'0').':';
 		$string .= add_leading_char($seconds,2,'0').'.';
 		$string .= add_leading_char($millis,3,'0');
@@ -700,7 +698,7 @@ sub millis_to_duration
 		{
 			$string .= "$minutes:";
 		}
-		$string .= add_leading_char($seconds,2,'0').'.';
+		$string .= add_leading_char($seconds,2,'0');
 	}
 	return $string;
 }

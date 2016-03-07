@@ -11,18 +11,21 @@
 //
 // navigator.userAgent containing 'Mobile' or 'Android' is a good clue
 
-jQuery.ajaxSetup({async:false});	
+jQuery.ajaxSetup({async:false});
 
 
-var debug_level = 1;
+var debug_level = 4;
 
-var dbg_load 	 = 1;
-var dbg_layout 	 = 1;
+var dbg_load 	 = 0;
+var dbg_layout 	 = 0;
 var dbg_popup 	 = 1;
-
-var dbg_renderer = 1;
+var dbg_renderer = 0;
 var dbg_explorer = 1;
+var dbg_loop     = 1;
 
+
+var idle_count = 0;
+var REFRESH_TIME = 600;
 
 
 var default_page = 'renderer';
@@ -44,6 +47,7 @@ var autofull_timeout = 0;
 var autoclose_count = 0;
 var autofull_count = 0;
 var autofull = false;
+var idle_timer = null;
 
 display(dbg_load,0,"artisan.js loaded");
 
@@ -54,6 +58,9 @@ function get_explorer_mode()
 }
 
 
+var that;
+
+
 //-----------------------------------------------
 // INITIALIZATION
 //-----------------------------------------------
@@ -61,30 +68,32 @@ function get_explorer_mode()
 
 $(function()
 {
+	that = this;
+	
 	display(dbg_load,0,"$() ready function called");
-
+	
 	// get cookie preferences
 	
 	explorer_mode = getCookie('explorer_mode') || 0;	
 	autoclose_timeout = parseInt(getCookie('autoclose_timeout') || 0);
 	autofull_timeout = parseInt(getCookie('autofull_timeout') || 0);
 	default_renderer_name = getCookie('default_renderer_name')
-	display(dbg_load,0,"default_renderer=" + default_renderer_id + ":'" + default_renderer_name + "'");
-	
-	// one time static initialization
+	// Zdisplay(dbg_load,0,"default_renderer=" + default_renderer_id + ":'" + default_renderer_name + "'");
 	
 	$('.artisan_menu_table').buttonset();
 	$('#context_menu_div').buttonset();
 	init_popup_editors();
-	
-	// loadRecursive($(this));
-	// deferred to load_page()
 
 	// load the default page and
 	// start the application idle loop
-
-	load_page(default_page);
-	idle_loop();	
+	
+	load_page("explorer");
+	load_page("renderer");
+	//load_page(default_page);
+	
+	//	idle_loop
+	
+	setTimeout(idle_loop, REFRESH_TIME);
 
 });
 
@@ -96,15 +105,25 @@ $(function()
 
 function idle_loop()
 {
+	display(dbg_loop,0,"idle_loop(" + current_page + ")");
+	idle_count++;
+	
 	if (current_page == 'renderer')
 	{
+		display(dbg_loop,1,"idle_loop() calling renderer_pane_onidle()");
 		renderer_pane_onidle();
+		display(dbg_loop,1,"idle_loop() back from renderer_pane_onidle()");
 	}
 	
-	check_timeouts()
+	if (false)	// crashes
+	{
+		check_timeouts();
+	}
+		
 	
-	idle_timer = window.setTimeout("idle_loop()", 1000);
-	
+	display(dbg_loop,1,"idle_loop() settingTimeout");
+	setTimeout("idle_loop();", REFRESH_TIME);
+
 }	// monitor_loop
 
 
@@ -171,16 +190,17 @@ function load_page(page_id,context)
 	
 	current_page = page_id;
 	$('#' + current_page + '_page').css('display','block');
+	
 
 	if (!page_layouts[current_page].loaded)
 	{
 		loadRecursive($('#' + current_page + '_page'));
-
-		// set_popup_editors();
-
+        
+		set_popup_editors();
+        
 		var init_fxn = 'init_page_' + page_id;
 		display(dbg_load,0,"init_fxn=" + init_fxn);
-
+        
 		if (window[init_fxn])
 		{
 			window[init_fxn]();
@@ -191,6 +211,7 @@ function load_page(page_id,context)
 			display(dbg_load,0,"INIT FXN NOT FOUND: " + init_fxn);
 		}
 		
+
 		create_layout();
 		page_layouts[current_page].loaded = true;
 
@@ -206,6 +227,7 @@ function load_page(page_id,context)
 	
 	reset_timeouts();
 	resize_layout();
+	display(dbg_load,0,"load_page(" + page_id + ") returning");
 
 }
 
@@ -236,12 +258,12 @@ function create_layout()
 	
 	var layout = $(page_layout.layout_id).layout(params);
 	
-	$(page_layout.swipe_element).swipe({
-		allowPageScroll:"vertical",
-		swipe:onswipe_page,
-		maxTimeThreshold:1500});
-	$(page_layout.swipe_element).on('click',hide_layout_panes);
-
+	//$(page_layout.swipe_element).swipe({
+	//	allowPageScroll:"vertical",
+	//	swipe:onswipe_page,
+	//	maxTimeThreshold:1500});
+	//$(page_layout.swipe_element).on('click',hide_layout_panes);
+    
 }
 
 
@@ -312,11 +334,16 @@ function resize_layout()
 		resize_layout_pane(layout,page_layout,width,'west');
 		resize_layout_pane(layout,page_layout,width,'east');
 		resize_layout_pane(layout,page_layout,height,'south');
+
+		display(dbg_layout+1,0,"calling layout.resizeAll()");
 		
 		layout.resizeAll();
 
+		display(dbg_layout+1,0,"calling set_popup_editors()");
+
 		set_popup_editors();
 	}
+	display(dbg_load,0,"resizing layout(" + width + ',' + height + ') returning');
 }
 
 
@@ -333,10 +360,12 @@ function resize_layout_pane(layout,page_layout,value,pane)
 		}
 		display(dbg_layout,1,'resize_layout_pane(' + pane + ') size=' + size);
 		layout.sizePane(pane,size);
+		display(dbg_layout,2,'back from initial sizePane()');
 
 		element_id = pane_layout.element_id;
 		if (value <= pane_layout.limit)
 		{
+			display(dbg_layout,2,'sizing pane as closed');
 			layout.options[pane].slide = true;
 			layout.options[pane].spacing_closed = 0;
 			layout.close(pane);
@@ -355,6 +384,7 @@ function resize_layout_pane(layout,page_layout,value,pane)
 		}
 		else
 		{
+			display(dbg_layout,2,'sizing pane as open');
 			layout.options[pane].slide = false;
 			layout.options[pane].spacing_closed = 6;
 			layout.open(pane);
@@ -369,6 +399,8 @@ function resize_layout_pane(layout,page_layout,value,pane)
 				}
 			}
 		}
+		display(dbg_layout,2,'resize_layout_pane(' + pane + ') returning');
+		
 	}	// if pane_layout
 }
 
@@ -378,6 +410,9 @@ function resize_layout_pane(layout,page_layout,value,pane)
 function hide_layout_panes()
 	// close it if it is showing and has slide option set
 {
+	return;
+		// crashing
+		
 	onchange_popup_numeric();
 
 	var layout = $('#' + current_page + '_page').layout();
@@ -400,30 +435,30 @@ function hide_layout_pane(layout,pane)
 }
 
 
-function onswipe_page(event,direction)
-{
-	var layout = $('#' + current_page + '_page').layout();
-	onswipe_open_pane(direction,'right',layout,'west');
-	onswipe_open_pane(direction,'left',layout,'east');
-	onswipe_open_pane(direction,'down',layout,'north');
-	onswipe_open_pane(direction,'up',layout,'south');
-}
+//	function onswipe_page(event,direction)
+//	{
+//		var layout = $('#' + current_page + '_page').layout();
+//		onswipe_open_pane(direction,'right',layout,'west');
+//		onswipe_open_pane(direction,'left',layout,'east');
+//		onswipe_open_pane(direction,'down',layout,'north');
+//		onswipe_open_pane(direction,'up',layout,'south');
+//	}
+	
 
 
-
-function onswipe_open_pane(direction,cmp_direction,layout,pane)
-{
-	reset_timeouts();
-	if (direction == cmp_direction)
-	{
-		open_pane(pane);
-	}
-	else if (layout.options[pane].slide)
-	{
-		layout.options[pane].closable = true;
-		layout.slideClose(pane);
-	}
-}
+//	function onswipe_open_pane(direction,cmp_direction,layout,pane)
+//	{
+//		reset_timeouts();
+//		if (direction == cmp_direction)
+//		{
+//			open_pane(pane);
+//		}
+//		else if (layout.options[pane].slide)
+//		{
+//			layout.options[pane].closable = true;
+//			layout.slideClose(pane);
+//		}
+//	}
 
 
 
@@ -505,11 +540,16 @@ function loadRecursive(context,level)
     context.find('[data-load]').each(function() {
 		var url = $(this).attr('data-load');
 		var onload_fxn = $(this).attr('data-onload');
+
+		display(dbg_load,level,'--> onload url='+url);
+		display(dbg_load,level,'    onload fxn='+onload_fxn);
 		
-		$(this).load( url, function(){
+		$(this).load( url, function()
+		{
 			loadRecursive($(this),level+1);
 			if (onload_fxn && onload_fxn != '' && window[onload_fxn])
 			{
+			    display(dbg_load,level,'    calling onload fxn='+onload_fxn);
 				window[onload_fxn]();
 			}
 		});
@@ -742,7 +782,7 @@ function create_numeric_pref(min,med,max,var_name,spinner_id)
 			var value = parseInt($(this).spinner('value'));
 			window[var_name] = value;
 			setCookie(var_name,value,180);
-			if (var_name == 'explorer_mode')
+			if (false && var_name == 'explorer_mode')
 			{
 				var tree = $('#explorer_tree').fancytree('getTree');
 				tree.reload({

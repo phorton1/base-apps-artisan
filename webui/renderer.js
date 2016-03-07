@@ -2,6 +2,7 @@
 // renderer.js
 //--------------------------------------------------
 
+
 var in_slider = false;
 var current_renderer = false;
 var renderer_list = false;
@@ -9,6 +10,15 @@ var renderer_list = false;
 var default_renderer_id = '';
 var default_renderer_name = '';
 var last_song = '';
+
+// for some reason I have to cache these objects
+// as the program just hangs, no message or anything
+// when it apparently cannot find them by id during
+// methods called from nowhere ...
+
+var renderer_slider;
+
+var NEW_WAY = false;
 
 
 page_layouts['renderer'] = {
@@ -32,13 +42,13 @@ page_layouts['renderer'] = {
 		element_id:'#renderer_button_shuffle',
 		element_is_button:true,
 		},
-	south: {
-		limit:600,
-		size:135,
-		size_touch:160,
-		element_id:'#renderer_button_playlist_assign', 
-		element_is_button:true,
-		},
+	// south: {
+	// 	limit:600,
+	// 	size:135,
+	// 	size_touch:160,
+	// 	element_id:'#renderer_button_playlist_assign', 
+	// 	element_is_button:true,
+	// 	},
 		
 	defaults: {
 		west__onresize:  $.layout.callbacks.resizePaneAccordions,
@@ -59,7 +69,7 @@ function init_page_renderer()
 	// so if these are in the opposite order, the menu
 	// and playlist_info panes are not inited ...
 
-	init_pane_playlist_info();
+	init_playlists();
 	init_renderer_menu_pane();
 	init_renderer_pane();
 	
@@ -81,6 +91,11 @@ function init_renderer_pane()
 			in_slider = true;
 		},
 	});
+	
+	renderer_slider = $('#renderer_slider');
+	
+	
+	
 	
 	$( "input[type=button]" ).button();
 	
@@ -160,12 +175,6 @@ function onload_renderer_list()
 }
 
 
-function onload_renderer_playlist_list()
-{
-	display(dbg_renderer,0,"onload_renderer_playlist_list()");
-    $('#renderer_playlist_list').buttonset();        
-}
-
 
 
 function on_renderer_autofull_changed()
@@ -199,6 +208,7 @@ function stop_monitor()
 
 function renderer_pane_onidle()
 {
+	display(dbg_loop,0,"renderer_pane_on_idle");
 	if (current_renderer && !in_slider)
 	{
 		update_renderer();
@@ -235,6 +245,7 @@ function select_renderer(id)
 	// We have to be careful about re-entrancy, so that we don't
 	// confuse the server.
 {
+	display(dbg_renderer,0,"select_renderer(" + id + ")");
 	hide_layout_panes();
 
 	$.get('/webui/renderer/select_renderer?id='+id, function(result)
@@ -261,30 +272,29 @@ function select_renderer(id)
 
 
 
-function select_renderer_playlist(id)
+function select_playlist(name)
 	// called by easy-ui event registration on the renderer_list
 	// when the user changes the current selection.
 	// Set the current renderer name and enable the buttons.
 	// We have to be careful about re-entrancy, so that we don't
 	// confuse the server.
 {
+	display(dbg_renderer,0,"select_playlist("+name+")");
 	hide_layout_panes();
 	
 	if (!current_renderer)
 	{
-		rerror("No current_renderer in select_renderer_playlist(" + id + ")");
+		rerror("No current_renderer in select_renderer_playlist(" + name + ")");
 		return;
 	}
 
-	$.get('/webui/renderer/set_playlist' +
-		  '?id='+current_renderer.id +
-		  '&playlist=' + id,
+	$.get('/webui/renderer/set_playlist?playlist=' + name,
 
 		function(result)
 		{
 			if (result.error)
 			{
-				rerror('Error in select_renderer_playlist(' + id + '): ' + result.error);
+				rerror('Error in select_playlist(' + id + '): ' + result.error);
 				current_renderer = false;
 			}
 			else
@@ -344,10 +354,15 @@ function on_slider_complete(event,ui)
 		return false;
 	}
 	
+	// sliders are in pct
+	// command is in millieseconds
+	
+	var millis = parseInt(ui.value * current_renderer.duration/100); 
+	
 	$.get('/webui/renderer/transport' +
 		  '?id='+current_renderer.id +
 		  '&command=set_position' +
-		  '&position=' + ui.value,
+		  '&position=' + millis,
 		  
 		function(result)
 		{
@@ -377,11 +392,14 @@ function on_slider_complete(event,ui)
 
 function update_renderer()
 {
+	display(dbg_loop,0,"renderer.update_renderer()");
+	
 	$.get('/webui/renderer/update_renderer' +
 		  '?id='+current_renderer.id,
 
 		function(result)
 		{
+			display(dbg_loop,0,"renderer.update_renderer().result");
 			if (result.error)
 			{
 				rerror('Error in update_renderer(): ' + result.error);
@@ -391,9 +409,12 @@ function update_renderer()
 			{
 				current_renderer = result;
 			}
+			display(dbg_loop,0,"renderer.update_renderer().result calling udpate_rendere_ui");
 			update_renderer_ui();
+			display(dbg_loop,0,"renderer.update_renderer().result finished");
 		}
 	);
+	display(dbg_loop,0,"renderer.update_renderer() finished");
 }
 
 
@@ -406,13 +427,12 @@ function update_renderer()
 
 function update_renderer_ui()
 {
+	display(dbg_loop,0,"renderer.update_renderer_ui()");
 	var disable = true;
-	var disable_playlist = true;
+	var disable_prevnext = true;
 	var stop_disabled = true;
 	var disable_slider = true;
-
 	var shuffle_on = false;
-	var playlist = [ false,false,false,false,false,false ];
 
 	var state = '';
 	var playlistName = 'Now Playing';
@@ -426,13 +446,15 @@ function update_renderer_ui()
 	var song_genre = '&nbsp;';
 	
 	var play_pct = 0;
-	var reltime = '0:00';
-	var duration = '0:00';
+	var position_str = '0:00';
+	var duration_str = '0:00';
+	var pretty_size = '';
 	var play_type_size = '';
 	var song_id = '';
 	
 	var pause_button_label = ' > ';
 	var pause_button_on = 'renderer_control_off';
+
 	
 	//-----------------------------------------------
 	// set the values from current renderer if any
@@ -449,10 +471,9 @@ function update_renderer_ui()
 		rendererName = current_renderer.name;
 		if (current_renderer.playlist)
 		{
-			disable_playlist = false;
-			playlist[current_renderer.playlist.playlist_num] = true;
+			disable_prevnext = false;
 			playlistName =
-				// current_renderer.playlist.playlist_num + '. ' +
+				// current_renderer.playlist.num + '. ' +
 				current_renderer.playlist.name;
 			playlistName += '(' +
 				current_renderer.playlist.track_index + ',' +
@@ -460,16 +481,20 @@ function update_renderer_ui()
 			shuffle_on = (current_renderer.playlist.shuffle>0) ? true : false;
 		}
 
-		// Song Image and Metadata
-		
+		// Display information about the Song in fields
+		// that just happen to be the same as fields in a Track,
+		// but gotten from the input didle.
+
 		var metadata = current_renderer.metadata;
-		
 		if (metadata)
 		{
 			disable_slider = false;
-			if (metadata.albumArtURI)
+			
+			if (metadata.pretty_size)
+				pretty_size = metadata.pretty_size;
+			if (metadata.art_uri)
 			{
-				art_uri = metadata.albumArtURI;
+				art_uri = metadata.art_uri;
 			}
 			else
 			{
@@ -477,9 +502,9 @@ function update_renderer_ui()
 			}
 			song_title = metadata.title ? decode_ampersands(metadata.title) : '&nbsp;';
 			album_artist = metadata.artist ? decode_ampersands(metadata.artist) : '&nbsp;'
-			album_title = metadata.album ? decode_ampersands(metadata.album) : '&nbsp;'
+			album_title = metadata.album_title ? decode_ampersands(metadata.album_title) : '&nbsp;'
 			
-			if (metadata.track_num && metadata.track_num > 0)
+			if (metadata.track_num && metadata.track_num != "")
 			{
 				album_track = 'track: ' + metadata.track_num;
 			}
@@ -489,13 +514,13 @@ function update_renderer_ui()
 			{
 				song_genre = decode_ampersands(metadata.genre);
 			}
-			if (metadata.date)
+			if (metadata.year_str && metadata.year_str != "")
 			{
 				if (song_genre)
 				{
 					song_genre += ' | ';
 				}
-				song_genre += metadata.date;
+				song_genre += metadata.yearstr;
 			}
 			
 			if (!song_genre)
@@ -503,7 +528,7 @@ function update_renderer_ui()
 				song_genre = '&nbsp;';
 			}
 		}
-		
+
 		// Transport times and slider
 
 		if (state == 'PLAYING' ||
@@ -517,23 +542,12 @@ function update_renderer_ui()
 			state == 'PLAYING_PLAYLIST' ||
 			state == 'PAUSED_PLAYBACK')
 		{		
-			duration = remove_leading_zeros(current_renderer.duration);
-			reltime = current_renderer.reltime;
+			duration_str = millis_to_duration(current_renderer.duration,false);
+			position_str = millis_to_duration(current_renderer.position,false);
+			if (current_renderer.duration>0)
+				play_pct = parseInt(current_renderer.position / current_renderer.duration  * 100);
 			
-			// we don't show milliseconds, though they may
-			// be part of the renderer time.
-			
-			duration = remove_trailing_decimal(duration);
-			reltime = remove_trailing_decimal(reltime);
-			
-			if (duration.length < reltime.length)
-			{
-				reltime = reltime.substr(reltime.length-duration.length);
-			}
-			play_pct = current_renderer.play_pct;
-			play_type_size = current_renderer.type +
-				' &nbsp;&nbsp; ' +
-				metadata.pretty_size;		
+			play_type_size = current_renderer.type + ' &nbsp;&nbsp; ' +	pretty_size;		
 		}
 		
 		// Shuffle and Repeat buttons
@@ -555,7 +569,6 @@ function update_renderer_ui()
 	}
 	else
 	{
-		
 		//----------------------------------------
 		// Move the variables into the UI
 		//----------------------------------------
@@ -576,7 +589,7 @@ function update_renderer_ui()
 		
 		highlight_current_renderer();
 		ele_set_inner_html('renderer_header_left',playlistName + ' &nbsp;&nbsp; ' + state);
-		ele_set_inner_html('renderer_header_right',rendererName);
+		ele_set_inner_html('renderer_header_right',"" +  + idle_count + " " + rendererName);
 			
 		// What's Playing info and image
 		
@@ -589,51 +602,58 @@ function update_renderer_ui()
 		{
 			ele_set_src('renderer_album_image',art_uri);
 		}
+
 		
 		// Playback Controls
 		
 		if (!in_slider)
 		{
-			$('#renderer_slider').slider( disable_slider?'disable':'enable');
-			$('#renderer_slider').slider('value',play_pct);
+			if (NEW_WAY)	// new way
+			{
+				disable_button('renderer_slider',disable_slider);
+			}
+			else
+			{
+				display(dbg_loop,0,"renderer.update_renderer_ui(a)");
+				renderer_slider.slider( disable_slider?'disable':'enable');
+				display(dbg_loop,0,"renderer.update_renderer_ui(b) play_pct=" + play_pct);
+				$('#renderer_slider').slider('value',play_pct);
+				display(dbg_loop,0,"renderer.update_renderer_ui(c)");
+			}
 		}
-		
-		ele_set_inner_html('renderer_reltime',reltime);
-		ele_set_inner_html('renderer_duration',duration);
+
+		ele_set_inner_html('renderer_position',position_str);
+		ele_set_inner_html('renderer_duration',duration_str);
 		ele_set_inner_html('renderer_play_type',play_type_size);
 	
 		ele_set_value('renderer_button_play_pause',pause_button_label );
 		set_button_on('renderer_button_play_pause',pause_button_on);
-	
-		for (var i=1; i<6; i++)
-		{
-			set_button_on('renderer_button_playlist_'+i,playlist[i]);
-		}
-	
 		set_button_on('renderer_button_shuffle',shuffle_on);
 		
-		// Enable/disable the buttons
+
 		
-		disable_button('renderer_button_prev',disable_playlist);
+		// Enable/disable the buttons
+
+		display(dbg_loop,0,"renderer.update_renderer_ui(1)");
+		
+		disable_button('renderer_button_prev',disable_prevnext);
 		disable_button('renderer_button_play_pause',disable);
 		disable_button('renderer_button_stop',stop_disabled);
-		disable_button('renderer_button_next',disable_playlist);
-		// disable_button('renderer_button_shuffle',disable_playlist);
+		disable_button('renderer_button_next',disable_prevnext);
 	
-		disable_button('renderer_button_playlist_1',disable);
-		disable_button('renderer_button_playlist_2',disable);
-		disable_button('renderer_button_playlist_3',disable);
-		disable_button('renderer_button_playlist_4',disable);
-		disable_button('renderer_button_playlist_5',disable);
-		disable_button('renderer_button_playlist_6',disable);
-		disable_button('renderer_button_playlist_assign',
-			window.innerWidth>700 || song_id == '');
-		
-		update_playlist_info_ui();
-		update_song_playlists_ui(song_id);
-		
+		display(dbg_loop,0,"renderer.update_renderer_ui(2)");
+	
+		if (false)	
+		{
+			// this don't work inside firebugx
+			update_playlist_info_ui();
+		}
+
 		
 	}	// !autofull
+	
+	display(dbg_loop,0,"renderer.update_renderer_ui() returning");
+	
 }	// update_renderer_ui()
 
 
@@ -645,20 +665,6 @@ function highlight_current_renderer()
 	{
 		var id = '#' + current_renderer.id;
 		$(id).prop('checked', true ).button('refresh');
-		if (current_renderer.playlist)
-		{
-			var playlist_id = '#' + 'renderer_playlist_list_button_' + current_renderer.playlist.playlist_num;
-			$(playlist_id).prop('checked', true).button('refresh');
-		}
-		else 
-		{
-			$('.renderer_playlist_list_button').prop('checked',false).button('refresh');
-		}
-	}
-	else
-	{
-		$('.renderer_list_button').prop('checked',false).button('refresh');
-		$('.renderer_playlist_list_button').prop('checked',false).button('refresh');
 	}
 }	
 
@@ -681,12 +687,38 @@ function set_button_on(id,on)
 
 
 function disable_button(id,disabled)
+	// in the ongoing litany of issues with jquery ui
+	// for some reason most important objects cannot
+	// be accessed by id when within firebug, but they
+	// seem to work ok outside of it ...
 {
 	var use_id = '#' + id;
-	if ($(use_id))
+	display(dbg_loop,0,"disable_button(" + id + ")");
+	
+	// a bunch of attempts
+	// most recently, set the class directly at least doesn't hang firebug
+	
+	if ($(use_id))	 // .length)
 	{
-		$(use_id).button(disabled?'disable':'enable');
+		//	display(0,0,"disable_button(" + id + ")");
+		//	display(0,1,"class=" + $(use_id).attr('class'));
+		//	display(0,1,"disabled=" + $(use_id).prop('disabled'));
+		//	var desired = disabled?'disable':'enable';
+		//  if ($(use_id).prop('disabled') != desired)
+		
+		if (NEW_WAY)	// new way
+		{
+			if (disabled)
+				$(use_id).attr('disabled', true).addClass( 'ui-state-disabled' );
+			else
+				$(use_id).attr('disabled', false).removeClass( 'ui-state-disabled' );
+		}
+		else	// old way 
+		{
+			$(use_id).button(disabled?'disable':'enable');
+		}
 	}
+	display(dbg_loop,0,"disable_button(" + id + ") finished");
 }
 
 
@@ -718,46 +750,68 @@ function remove_trailing_decimal(st)
 	return parts[0];
 }
 
-function secs_to_time(secs)
+
+
+function padZero(len,st0)
 {
+	var st = "" + st0;
+	if (st.length < len)
+		st = "0" + st;
+	return st;
+}
+
+function millis_to_duration(millis,precise)
+{
+	millis = parseInt(millis);
+	var secs = parseInt(parseInt(millis)/1000);
+	millis = millis - secs * 1000;
+	
+	var mins = parseInt(secs/60);
+	secs = secs - mins * 60;
+	
+	var hours = parseInt(mins/60);
+	mins = mins - hours * 60;
+	
     var retval = '';
-    while (secs)
-    {
-        var part = secs % 60;
-		if (part < 10)
-		{
-			part = '0' + part;
-		}
-		if (retval)
-		{
-			retval = ':' + retval;
-		}
-        retval = part + retval;
-        secs = parseInt(secs / 60);
-    }
-	if (!retval)
+	if (hours > 0 || precise)
 	{
-		retval = '0:00';
+		if (precise)
+			hours = padZero(2,hours);
+		retval += hours + ":";
 	}
 	
-	if (retval.length < 3)
-	{
-		retval = '0:' + retval;
-	}
-    return retval;
+	if (precise)
+		mins = padZero(2,mins);
+	retval += mins + ":";
+	retval += padZero(2,secs);
+	
+	if (precise)
+		retval += "." + padZero(3,millis);
+	
+	return retval;
 }
 	
 
-function time_to_secs(st)
+function duration_to_millis(st)
 {
 	var secs = 0;
 	var parts = st.split(":");
+	var dec_parts = parts[parts.length-1].split(".");
+	if (dec_parts.length > 1)
+	{
+		parts[parts.length-1] = dec_parts[0];
+		var millistr = dec_parts[1];
+		while (millistr.length < 3) { millistr = millistr + "0"; }
+		millis = parseInt(millistr);
+	}
 	for (var i=0; i<parts.length; i++)
 	{
 		secs *= 60;
 		secs += parseInt(parts[i]);
 	}
-	return secs;
+	
+	millis = millis + secs * 1000;
+	return millis;
 }
 
 

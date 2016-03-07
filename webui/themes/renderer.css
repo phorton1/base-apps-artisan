@@ -210,15 +210,6 @@
 	z-index:3;
 }
 
-.song_station_list_button_on span
-{
-	font-size:10pt;
-
-	font-weight:bold;
-	color:#ff4444;
-}
-
-
 
 
 /* RENDERE MENU PREF STYELS */
@@ -269,5 +260,116 @@
 }
 
 
+/* RENDERER MENU STATION LIST STYLES */
 
+#renderer_playlists label,
+#renderer_playlist label
+{
+	width:200px;
+	overflow:hidden;
+	white-space:nowrap;
+	margin-bottom:10px;
+}
+
+#renderer_playlists,
+#renderer_playlist
+{
+	width:197px;
+	font-size:16px;
+	padding-left:10px;
+	white-space:nowrap;
+}
+
+
+
+/* PLAYLIST INFO PANE */
+/* header and whole page */
+
+
+.playlist_info_header_left
+{
+	padding-left:6px;
+	cursor:pointer;
+}
+
+
+.playlist_info_div
+	/* wraps the whole pane except the header bar */
+{
+	white-space:nowrap;
+	margin-top:6px;
+	margin-left:6px;
+	margin-right:6px;
+	text-align:center;
+}
+
+
+/* controls */
+
+
+.playlist_info_shuffle_div
+	/* div around the shuffle buttons */
+{
+	margin-top:8px;
+}
+
+
+.playlist_info_shuffle_button
+	/* style is also applied to the unplayed_first button */
+{
+	margin-top:6px;
+	white-space:nowrap;
+	width:140px;
+}
+
+
+
+
+/* slider */
+
+.playlist_info_slider_div
+	/* div around just the playlist_info_slider */
+{
+	width:100%;
+	margin-top:30px;
+	margin-left:10%;
+	margin-bottom:24px;
+}
+
+.playlist_info_slider
+{
+	width:80%;
+	height:6px;
+	background:#0000ff;
+}
+
+
+.playlist_info_slider_table
+	/* table under the slider that contains the track number */
+{
+	/* width:90%; */
+}
+
+
+.playlist_info_track_num_td,
+.playlist_info_track_of_td,
+.playlist_info_num_tracks_td
+{
+	font-size:18px;
+	text-align:center;
+	vertical-align:middle;
+	width:30px;
+	/* border:1px solid white; */
+}
+
+.playlist_info_num_tracks_td
+{
+	text-align:left;
+}
+
+.playlist_info_track_num
+{
+	font-size:18px;
+	width:52px;
+}
 

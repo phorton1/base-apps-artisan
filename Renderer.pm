@@ -138,7 +138,7 @@
 # (1) Due to the fact that some songs have a longer "duration" than
 # they actually play, the renderer will hang on them and never stop.
 # We deteect this special case of the renderer being in PLAYING mode
-# on the most recent song we enqueued with the reltime not changing on
+# on the most recent song we enqueued with the position not changing on
 # two subsequent calls, in which case we issue a stop().
 #
 # (2) If we ever detect a different song than we are expecting, then
@@ -186,18 +186,20 @@ my $g_renderer : shared = undef;
 	# The current selected Renderer
 
 my $ALLOW_STOP_FROM_REMOTE = 1;
-my $STOP_FROM_REMOTE_THRESHOLD = 9;
+my $STOP_FROM_REMOTE_THRESHOLD = 9000;
 	# we detect a stop on the remote if we
 	# find a stopped renderer and the last
 	# song position was less than THRESHOLD
-	# seconds from the end of the song.
-	#
+	# milliseconds from the end of the song.
 	# We pass the bit as a variable, and
 	# clear it during asynch_play_next(),
 	# which is only called from >> and <<,
 	# so that >> and << don't stop the playlist.
 	
-	
+my $REFRESH_TIME = 500;	# milliseconds
+my $STALL_COUNT = 10;
+	# how many updates at same position
+	# constitute a stalled renderer
 
 sub new
 {
@@ -236,14 +238,14 @@ sub init_renderer
         $this->{song_id}  = "";
 		$this->{uri}      = "";
 		$this->{type}     = "";
-        $this->{metadata} = undef;
-        $this->{reltime}  = '';
-        $this->{duration} = '';
+        $this->{metadata} = shared_clone({});
+        $this->{position}  = 0;
+        $this->{duration} = 0;
         $this->{play_pct} = 0;
         $this->{stall_count} = 0;
 		$this->{pending_seek} = '';
 		$this->{allow_stop_from_remote} = $ALLOW_STOP_FROM_REMOTE;
-		$this->{last_time} = '';
+		$this->{last_position} = 0;
     }
     
     if ($level <= 1)
@@ -283,78 +285,7 @@ sub invalidate_renderer
 }
 
 
-sub calc_play_pct
-{
-    my ($reltime,$duration) = @_;
-    my $relsecs = time_to_secs($reltime);
-    my $dursecs = time_to_secs($duration);
-    my $pct = $dursecs ? int(100 * ($relsecs/$dursecs)) : 0;
-    return $pct;
-}
 
-
-sub time_to_secs
-{
-    my ($time) = @_;
-    my @parts = split(/:/,$time);
-    my $secs = 0;
-    while (@parts)
-    {
-        my $part = shift(@parts);
-        $secs = ($secs * 60) + $part;
-    }
-    return $secs;
-}
-
-
-sub secs_to_time
-{
-    my ($secs) = @_;
-    my $time = '';
-    for (0..2)
-    {
-        my $part = $secs % 60;
-        $time = ':'.$time if ($time);
-        $time = pad2($part).$time;
-        $secs = int($secs / 60);
-    }
-    return $time;
-}
-
-
-
-
-sub metadata_from_item
-    # Usually the renderer gets the metadata from the device.
-    # This routine stuffs the metadata member directly, ahead
-    # of the next poll of the device, to make prev/next more
-    # responsive (by setting the metadata right away)
-{
-    my ($item_num) = @_;
-
-    display($dbg_ren+1,0,"metadata_from_item($item_num)");
-
-    my $dbh = db_connect();
-    my $item = get_track($dbh,$item_num);
-    my $parent = get_folder($dbh,$item->{PARENT_ID});
-    db_disconnect($dbh);
- 
-    my $metadata = shared_clone({});
-    $metadata->{title} = $item->{TITLE};
-    $metadata->{artist} = $item->{ARTIST};
-    $metadata->{genre} = $item->{genre};
-    $metadata->{date} = $item->{year_str};
-    $metadata->{track_num} = $item->{tracknum};
-    $metadata->{album_title} = $item->{album_title};
-    $metadata->{albumArtURI} = $parent->{has_art} ? 
-		"http://$server_ip:$server_port/get_art/$parent->{id}/folder.jpg" :
-        '';
-
-    $metadata->{size} = $item->{size};
-    $metadata->{pretty_size} = pretty_bytes($metadata->{size});
-
-    return $metadata;
-}
 
 
 #---------------------------------------------------------
@@ -405,7 +336,7 @@ sub auto_update_thread
             $g_renderer->update();
         }        
 
-        sleep(1);
+        Utils::hires_sleep($REFRESH_TIME/1000);
     }
 }
 
@@ -489,7 +420,7 @@ sub selectRenderer
 	
 	if ($g_renderer->{playlist})
 	{
-		display($dbg_ren,0,"starting playlist($g_renderer->{playlist}->{name}) on new renderer. reltime="._def($g_renderer->{reltime}));
+		display($dbg_ren,0,"starting playlist($g_renderer->{playlist}->{name}) on new renderer. position="._def($g_renderer->{position}));
 		if (!$g_renderer->play($g_renderer->{song_id}))
 		{
 			display($dbg_ren,1,"renderer->play($g_renderer->{song_id}) returned false");
@@ -503,10 +434,10 @@ sub selectRenderer
 		# we used to loop here until getState() got PLAYING but that didn't
 		# seem to work reliably
 		
-		elsif ($g_renderer->{reltime} && $g_renderer->{reltime} gt '00:00:05')
+		elsif ($g_renderer->{position} && $g_renderer->{position} > 5000)
 		{
-			display($dbg_ren,1,"setting pending_seek=$g_renderer->{reltime}");
-			$g_renderer->{pending_seek} = $g_renderer->{reltime};
+			display($dbg_ren,1,"setting pending_seek=$g_renderer->{position}");
+			$g_renderer->{pending_seek} = $g_renderer->{position};
 		}
 		
 	}   # new renderer has a playlist
@@ -524,7 +455,7 @@ sub selectRenderer
 # The update method does the bulk of the work.
 # It gets the status/state of the renderer,
 # and if playing, the current duration, time,
-# and metadata from the device.
+# and and the metadata from the device.
 #
 # It then uses these for it's heuristics for
 # controlling the behavior of the renderer.
@@ -570,7 +501,7 @@ sub update
     
     # and spin around one more time to let the
     # renderer catch up, so that we return the
-    # new song's metadata on the next call
+    # new track
     
     elsif ($this->{pending_timer} && $this->{pending_timer} == 1)
     {
@@ -612,7 +543,7 @@ sub update
 		{
 	        display($dbg_ren,1,"PLAYING processing pending_seek to $this->{pending_seek}");
 			$this->command('seek',$this->{pending_seek});
-			$this->{reltime} = $this->{pending_seek};
+			$this->{position} = $this->{pending_seek};
 			$this->{pending_seek} = 0;
 			return 1;
 		}
@@ -625,13 +556,16 @@ sub update
 			return 0;
         }    
         
-		if (!defined($data->{reltime}))
+		$this->{metadata} = $data->{metadata};
+			# pass the metadata (fields just like a track) onto the client
+			
+		if (!defined($data->{position}))
         {
-            warning(0,0,"update() ignoring PLAYING renderer with undefined reltime");
+            warning(0,0,"update() ignoring PLAYING renderer with undefined position");
         }
         else
         {
-			$this->{last_time} = $data->{reltime};
+			$this->{last_position} = $data->{position};
 				# save off the last time for detecting $ALLOW_STOP_FROM_REMOTE
 			
             # if the song_id is "" it's not from us
@@ -654,11 +588,11 @@ sub update
             
             if ($this->{playlist})
             {
-                if ($data->{reltime} eq $this->{reltime})
+                if ($data->{position} == $this->{position})
                 {
                     $this->{stall_count}++;
-                    display($dbg_ren,0,"stalled renderer count=$this->{stall_count}");
-                    if ($this->{stall_count} > 4)
+                    display($dbg_ren+1,0,"stalled renderer count=$this->{stall_count}");
+                    if ($this->{stall_count} > $STALL_COUNT)
                     {
                         LOG(0,"detected stalled renderer .. stopping");
                         if (!$this->stop())
@@ -681,9 +615,8 @@ sub update
 
             $this->{state} = $state;
             @$this{keys %$data} = values %$data;
-            $this->{play_pct} = calc_play_pct($data->{reltime},$data->{duration});
         
-        }   # got a valid reltime
+        }   # got a valid position
     }   # state == PLAYING
     
 	
@@ -697,11 +630,9 @@ sub update
 		display($dbg_ren,0,"Advancing .. allow_stop_from_remote=$this->{allow_stop_from_remote}");
 		if ($this->{allow_stop_from_remote})
 		{
-			my $secs_last = duration_to_secs($this->{last_time});
-			my $secs_duration = duration_to_secs($this->{duration});
-			display($dbg_ren,0,"Checking STOP_FROM_REMOTE: $secs_last < $secs_duration - 10 ???");
-			if ($secs_last > $STOP_FROM_REMOTE_THRESHOLD &&
-				$secs_last < $secs_duration - $STOP_FROM_REMOTE_THRESHOLD)
+			display($dbg_ren,0,"Checking STOP_FROM_REMOTE: $this->{last_position} < $this->{duration} - $STOP_FROM_REMOTE_THRESHOLD");
+			if ($this->{last_position} > $STOP_FROM_REMOTE_THRESHOLD &&
+				$this->{last_position} < $this->{duration} - $STOP_FROM_REMOTE_THRESHOLD)
 			{
 				$this->init_renderer(1);
 				$this->{state} = $state;
@@ -808,10 +739,11 @@ sub play
         else
         {
             $retval = $this->command('set_song',$song_id);
-            if ($retval)
-            {
-                $this->{metadata} = metadata_from_item($song_id);
-            }
+			
+            # if ($retval)
+            # {
+            #     $this->{metadata} = get_track(undef,$song_id);
+            # }
         }
     }
     
@@ -832,12 +764,12 @@ sub setPlaylist
 
     display($dbg_ren,0,"setPlaylist(".($playlist?$playlist->{name}:'undef').")");
     lock(%locker);
-    display($dbg_ren,1,"setPlaylist(".($playlist?$playlist->{name}:'undef').") got lock");
+    display($dbg_ren,1,"setPlaylist() got lock");
     
-    my $this_name = $this->{playlist} ? $this->{playlist}->{playlist_name} : 0;
-    my $that_name = $playlist ? $playlist->{playlist_name} : 0;
+    my $this_name = $this->{playlist} ? $this->{playlist}->{name} : "";
+    my $that_name = $playlist ? $playlist->{name} : "";
     
-    if ($this_name != $that_name)
+    if ($this_name ne $that_name)
     {
         if ($this->{playlist})
         {
@@ -901,7 +833,7 @@ sub async_play_song
     # an alternative to play_next/prev_song
     # for better responsiveness 
     # bump the track number, set the pending song number,
-    # and return the metadata to the client right away.
+    # and return the track to the client right away.
     # The song will start playing on the next monitor loop.
 {
     my ($this,$inc) = @_;
@@ -913,7 +845,7 @@ sub async_play_song
     $this->{song_id} = $this->{playlist}->getIncTrackID($inc);
     $this->{pending_song} = $this->{song_id};
     $this->{pending_timer} = 0;
-    $this->{metadata} = metadata_from_item($this->{pending_song});
+    # $this->{metadata} = get_track(undef,$this->{pending_song});
     display($dbg_ren,1,"async_play_song() returning 1");
     return 1;
 }
@@ -933,47 +865,44 @@ sub play_single_song
     $this->{song_id} = $song_id;
     $this->{pending_song} = $song_id;
     $this->{pending_timer} = 0;
-    $this->{metadata} = metadata_from_item($song_id);
+    # $this->{metadata} = get_track(undef,$song_id);
     display($dbg_ren,1,"play_single_song() returning 1");
     return 1;
 }
 
 
 sub set_position
+	# pct = 0..100
 {
-    my ($this,$pct) = @_;
+    my ($this,$new_position) = @_;
     my $retval = 1;
     
-    display($dbg_ren,0,"set_position($pct)");
+    display($dbg_ren,0,"set_position($new_position)");
     lock(%locker);
-    display($dbg_ren,1,"set_position($pct) got lock");
+    display($dbg_ren,1,"set_position() got lock");
     
     if (!$this->{duration})
     {
-        error("No duration in set_position($pct)");
+        error("No duration in set_position($new_position)");
         $retval = 0;
     }
     else
     {
-        my $dursecs = time_to_secs($this->{duration});
-        my $relsecs = int(($pct + 0.5) * $dursecs / 100);
-        display($dbg_ren,1,"set_position($pct) dursecs=$dursecs relsecs=$relsecs");
-        
-        my $reltime = secs_to_time($relsecs);
-        display($dbg_ren,1,"set_position($pct) seeking to '$reltime'");
-        if (!$this->command('seek',$reltime))
+        my $time_str = millis_to_duration($new_position,1);
+
+        display($dbg_ren,1,"set_position($new_position) time_str=$time_str");
+        if (!$this->command('seek',$time_str))
         {
-            error("set_position($pct) could not seek to '$reltime'");
+            error("set_position($new_position) could not seek to '$time_str'");
             $retval = 0;
         }
         else
         {
-            $this->{reltime} = $reltime;
-            $this->{play_pct} = $pct;
+            $this->{position} = $new_position;
         }
     }
 
-    display($dbg_ren,1,"set_position($pct) returning $retval");
+    display($dbg_ren,1,"set_position($new_position) returning $retval");
     return $retval;
 }
 

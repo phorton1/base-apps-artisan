@@ -2,6 +2,11 @@
 // explorer.js
 //----------------------------------------------------
 
+var explorer_tracklist;
+var explorer_details;
+
+
+
 
 page_layouts['explorer'] = {
 	layout_id: '#explorer_page',
@@ -41,8 +46,11 @@ function init_page_explorer()
 		north__size:160,
 	});
 
-	
+	display(dbg_explorer,1,"back from center_layout assignment");
+
 	// EXPLORER TREE
+
+	display(dbg_explorer,1,"initializizing explorer tree");
 	
 	$("#explorer_tree").fancytree({
 		
@@ -93,30 +101,25 @@ function init_page_explorer()
 			// The node object has a data member
 			// which is any fields we returned by
 			// json that fancytree didn't know (i.e.
-			// key and title). We use uppercase to
+			// key and title). Should use uppercase to
 			// distinguish and hopefully prevent
 			// namespace collisions.
 			
 			var node = data.node;
 			var rec = node.data;
 			
-			// note that we use .html() for the title,
-			// which is required to work with Utils::escape_tag()
-			// which changes non-printable characters into their
-			// &#NNN; html equivilants.
-		
-			$("#explorer_header_left").html(node.title);
-			$('#explorer_album_image').attr('src',rec.ART_URI);
-			update_explorer_album_info(rec);
+			display(dbg_explorer,0,"calling update_explore_album_info() " + node.title);
+			update_explorer_album_info(node.title,rec);
+			display(dbg_explorer,0,"back from update_explore_album_info()");
 			hide_layout_panes();
-		},
-		
+
+		}
 	});
 	
-	
-	
 	// EXPLORER TRACKLIST
-	
+
+	display(dbg_explorer,1,"initializizing explorer tracklist");
+
 	$("#explorer_tracklist").fancytree({
 		
 		scrollParent: $('#explorer_tracklist_div'),
@@ -132,26 +135,30 @@ function init_page_explorer()
 			var rec = node.data;
 			var $tdList = $(node.tr).find(">td");
 
+			// TITLE in lowercase conflicts with jquery-ui,
+			// so we raise it to TITLE in uiExplorer.pm
+			
 			// note that we use .html() for the title,
 			// which is required to work with Utils::escape_tag()
 			// which changes non-printable characters into their
 			// &#NNN; html equivilants.
+			
 
 			$tdList.eq(0).addClass('explorer_tracklist_td0');
 			$tdList.eq(1).text(rec.tracknum).addClass('explorer_tracklist_td1');
 			$tdList.eq(2).html(rec.TITLE)	.addClass('explorer_tracklist_td2');
-			$tdList.eq(3).text(rec.FILEEXT)	.addClass('explorer_tracklist_td3');
+			$tdList.eq(3).text(rec.type)	.addClass('explorer_tracklist_td3');
 			
 			// Should note differences in GENRE and only display non-standard GENRES
 			// that don't agree with the Album Info
 			
-			$tdList.eq(4).text(rec.GENRE)	.addClass('explorer_tracklist_td4 explorer_tracklist_variable_td');
+			$tdList.eq(4).text(rec.genre).addClass('explorer_tracklist_td4 explorer_tracklist_variable_td');
 			
 			// Should note difference in ARTIST / ALBUM / ALBUM_ARTIST and
 			// only show those that don't agree with the Album Info
 			// Other candidate fields include ID, STREAM_MD5, file_md5, etc
 			
-			$tdList.eq(5).text(rec.YEAR)	.addClass('explorer_tracklist_td5 explorer_tracklist_variable_td');
+			$tdList.eq(5).text(rec.year_str).addClass('explorer_tracklist_td5 explorer_tracklist_variable_td');
 		},
 		
 		activate: function(event, data)
@@ -169,18 +176,25 @@ function init_page_explorer()
 			
 			var node = data.node;
 			var rec = node.data;
-			var details = $("#explorer_details").fancytree("getTree");
-			details.reload({
-				url:'/webui/explorer/item_tags?id=' + rec.ID,
+			// var details = $("#explorer_details").fancytree("getTree");
+			explorer_details.reload({
+				url:'/webui/explorer/item_tags?id=' + rec.id,
 				cache: true});
 		},
 
 	});
 
+	// CACHE THE TRACKLIST TREE
+	
+	explorer_tracklist = $("#explorer_tracklist").fancytree("getTree");
+	display(dbg_explorer,1,"got explorer_tracklist=" + explorer_tracklist);
 
+	
 	// CONTEXT MENU
 	// Requires modified prh-jquery.ui-contextmenu.js
 
+	display(dbg_explorer,1,"initializizing explorer context menu");
+	
 	$("#explorer_tracklist").contextmenu({
 		
 		// delegate: "span.fancytree-title",
@@ -238,14 +252,14 @@ function init_page_explorer()
 
 			else if (ui.cmd == 'play_local')
 			{
-				var play_url = "/media/" + node.data.ID + '.' + node.data.FILEEXT;
+				var play_url = "/media/" + node.data.id + '.' + node.data.type;
 				$('#audio_player').attr('src',play_url);
-				$('#audio_player_title').html(node.data.NAME);
+				$('#audio_player_title').html(node.data.title);
 			}
 
 			else if (ui.cmd == 'play_download')
 			{
-				var play_url = "/media/" + node.data.ID + '.' + node.data.FILEEXT;
+				var play_url = "/media/" + node.data.id + '.' + node.data.type;
 				var myWindow = window.open(
 					play_url,
 					"playerWindow",
@@ -258,6 +272,8 @@ function init_page_explorer()
 	
 	// EXPLORER DETAILS
 	// should inherit already expanded state of tree
+
+	display(dbg_explorer,1,"initializizing explorer details");
 	
 	$("#explorer_details").fancytree({
 		
@@ -279,7 +295,7 @@ function init_page_explorer()
 			// to consider that chr(13), and chr(0) are special
 			// cases in Utils::escape_tag()
 			
-			$tdList.eq(0)					.addClass('explorer_details_td0');
+			$tdList.eq(0)				.addClass('explorer_details_td0');
 			$tdList.eq(1).text(rec.TITLE)	.addClass('explorer_details_td1');
 			$tdList.eq(2).html(rec.VALUE)	.addClass('explorer_details_td2');
 			
@@ -295,7 +311,15 @@ function init_page_explorer()
  		},
 
 	});
+	
+	// CACHE THE EXPLORER_DETAILS
+	
+	explorer_details = $("#explorer_details").fancytree("getTree");
+	display(dbg_explorer,1,"got explorer_details=" + explorer_details);
+	
 
+	display(dbg_explorer,1,"init_page_explorer() returning");
+	
 }	// init_page_explorer()
 
 
@@ -305,9 +329,25 @@ function init_page_explorer()
 // html version of a FOLDERS database record
 //---------------------------------------------------------------
 
-function update_explorer_album_info(rec)
+function update_explorer_album_info(title,rec)
+	// Update the album pane of the explorer which in turn clears
+	// the old details and loads the tracks if any
+	//
+	// For some reason I couldn't get the explorer_details and
+	// tracklist_tree fancytrees by id at this point, so they
+	// are cached and passed in init_page_renderer();
 {
-	var error_string = '';
+	display(dbg_explorer,1,"update_explorer_album_info() " + title);
+			
+	// note that we use .html() for the title,
+	// which is required to work with Utils::escape_tag()
+	// which changes non-printable characters into their
+	// &#NNN; html equivilants.
+
+	$("#explorer_header_left").html(title);
+	$('#explorer_album_image').attr('src',rec.art_uri);
+
+	var error_string = 'no errors';
 	if (rec.errors)
 	{
 		for (var i=0; i<rec.errors.length; i++)
@@ -320,37 +360,54 @@ function update_explorer_album_info(rec)
 	
 	$('#explorer_album_info1').html(
 		'type: ' + rec.dirtype + ' &nbsp;&nbsp ' +
-		'class: ' + rec.CLASS + ' &nbsp;&nbsp ' +
-		(rec.YEAR ? 'year: ' + rec.YEAR + ' &nbsp;&nbsp ' : '') + 
-		(rec.GENRE ? 'genre: ' + rec.GENRE + ' &nbsp;&nbsp ' : ''));
+		(rec.year_str ? 'year: ' + rec.year_str + ' &nbsp;&nbsp ' : '') + 
+		(rec.genre ? 'genre: ' + rec.genre + ' &nbsp;&nbsp ' : '') +
+		'id:' + rec.id + ' &nbsp;&nbsp; ');
 
 	$('#explorer_album_info2').html(
-		'id:' + rec.ID + ' &nbsp;&nbsp; ' +
-		'parent:' + rec.PARENT_ID + ' &nbsp;&nbsp ' +
-		'error:' + rec.FOLDER_ERROR + ' &nbsp;&nbsp ' +
-		'high_folder:' + rec.HIGHEST_FOLDER_ERROR +  ' &nbsp;&nbsp ' +
-		'high_track:' + rec.HIGHEST_ERROR +  ' &nbsp;&nbsp ' +
-		(rec.has_art ? 'hasart='+rec.has_art : ''));
+		(rec.has_art ? 'has_art:'+rec.has_art : '') + ' &nbsp;&nbsp ' +
+		'error:' + rec.folder_error + ' &nbsp;&nbsp ' +
+		'high_folder_error:' + rec.highest_folder_error +  ' &nbsp;&nbsp ' +
+		'high_track_error:' + rec.highest_error +  ' &nbsp;&nbsp ' );
 
 	$('#explorer_album_info3').html(
-		error_string
+		'parent:' + rec.parent_id + ' &nbsp;&nbsp '
 	 );
 
+	$('#explorer_album_info4').html(rec.path);
+		
+				
+	$('#explorer_album_info5').html(
+		error_string ? error_string : ""
+	 );
 
-	$('#explorer_album_info5').html(rec.path);
+	 
+	// load the track list
 	
-	
-	//-------------- LOAD THE TRACKLIST -------------------- 
-	
-	var tree = $("#explorer_tracklist").fancytree("getTree");
-	tree.reload({
-		url:'/webui/explorer/items?id=' + rec.ID,
-		cache: true});
-	
-	var details = $("#explorer_details").fancytree("getTree");
-	details.getRootNode().removeChildren();
-	
-}
+	// display(dbg_explorer,1,"getting explorer_tracklist");
+	// var tree = $("#explorer_tracklist").fancytree("getTree");
+	// display(dbg_explorer,1,"got explorer_tracklist");
+		
+	if (tracklist_tree)
+	{
+		display(dbg_explorer,1,"loading tracks for  " + rec.TITLE);
+		tracklist_tree.reload({
+			url:'/webui/explorer/items?id=' + rec.id,
+			cache: true});
+	}
+	else
+	{
+		display(dbg_explorer,1,"could not find #explorer_tracklist");
+	}
+
+	// clear out old track details, if any
+
+	// display(dbg_explorer,1,"clearing old explorer_details");
+	// var details = $("#explorer_details").fancytree("getTree");
+	explorer_details.getRootNode().removeChildren();			
+
+
+}	// update_explorer_album_info()
 
 
 

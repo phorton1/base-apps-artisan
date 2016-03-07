@@ -138,13 +138,13 @@ sub explorer_dir
 
 	# sublimate id(0) to id(1)
 	
-	my $use_id = $id ? $id : 1;
-	my $dbh = db_connect();
+	my $use_id = $id; # ? $id : 1;
 
 	# collect the child folders
 	
-	my $parent = get_record_db($dbh,"SELECT dirtype FROM folders WHERE ID='$use_id'");
+	my $dbh = db_connect();
 	my $results = get_subitems($dbh, 'folders', $use_id, 0, 99999);
+	db_disconnect($dbh);
 	
 	my $started = 0;
 	my $response = json_header();
@@ -154,12 +154,11 @@ sub explorer_dir
 		next if (!$rec->{id});
 		$response .= ',' if ($started);
 		$started = 1;
-		$response .= explorer_dir_element($dbh,$params,$rec);
+		$response .= explorer_dir_element($params,$rec);
 	}
 	$response .= ']';
 	
 	display($dbg_webui+1,0,"dir response=$response");
-	db_disconnect($dbh);
 	return $response;
 }
 
@@ -170,10 +169,10 @@ sub explorer_dir_element
 	# return the json for one subfolder element.
 	# Return lazy=1 and folder=1 for parents to be load-on-expand
 {
-	my ($dbh,$params,$rec) = @_;
+	my ($params,$rec) = @_;
 	
 	$rec->{key} = $rec->{id};	# required
-	my $title = $rec->{TITLE};
+	my $title = $rec->{title};
 
 	if ($rec->{dirtype} ne 'album')
 	{
@@ -182,15 +181,15 @@ sub explorer_dir_element
 	}
 		
 	if ($rec->{dirtype} eq 'album' &&
-		$rec->{CLASS} !~ /dead/i)
+		$rec->{path} !~ /\/dead/i)
 	{
-		$title = "$rec->{ARTIST} - $title"
-			if $rec->{ARTIST};
+		$title = "$rec->{artist} - $title"
+			if $rec->{artist};
 		$title =~ s/_/-/g;	# fix my use of underscores for dashes
 	}
 	
 	$rec->{title} = $title;	# required
-	$rec->{ART_URI} = "http://$server_ip:$server_port/get_art/$rec->{id}/folder.jpg";			
+	$rec->{art_uri} = "http://$server_ip:$server_port/get_art/$rec->{id}/folder.jpg";			
 	
 	my $mode = defined($params->{mode}) ? $params->{mode} : $SHOW_HIGH;
 
@@ -245,9 +244,13 @@ sub explorer_items
 		next if (!$rec->{id});
 		
 		# note that the 'title' of the fancytree 0th td is the tracknum
+		# prh - should the title just be the tile ? 
 		
 		$rec->{key} = $rec->{id};
-		$rec->{title} = ''; # $rec->{tracknum};
+		display(0,1,"rec->{title}=$rec->{title}");
+		$rec->{TITLE} = $rec->{title};
+			# lc title appears to conflict with jquery-ui
+			# so we send upercase 
 		$rec->{icon} = "/webui/icons/error_$rec->{highest_error}.png";
 
 		$response .= ',' if ($started);
@@ -297,20 +300,24 @@ sub explorer_item_tags
 	# a section that shows the resolved "mediaFile"
 	# section(s) that shows the low level tags
 
-	my $info = MediaFile->new($rec->{uri});
+	my $info = MediaFile->new($rec->{path});
 	if (!$info)
 	{
-		error("no mediaFile($rec->{uri}) in item_tags request!");
+		error("no mediaFile($rec->{path}) in item_tags request!");
 		# but don't return error (show the database anyways)
 	}
 	else
 	{
+		# the errors get their own section
+		
+		my $merrors = $info->get_errors();
+		delete $info->{errors};
+		
 		$sections .= add_tag_section(1,\$use_id,'mediaFile',0,$info,'^raw_tags$');
 		
 		# show any mediaFile warnings or errors
 		# we need err_num to keep the keys separate to call json()
 		
-		my $merrors = $info->get_errors();
 		if ($merrors)
 		{
 			my @errors;
@@ -382,6 +389,8 @@ sub add_tag_item
 	# Note use of escape_tag()!!
 {
 	my ($started,$use_id,$lval,$rval,$icon) = @_;
+	$rval = "" if !defined($rval);
+	
 	$rval = escape_tag($rval);
 	
 	$rval =~ s/\\/\\\\/g;
@@ -443,7 +452,7 @@ sub add_error_section
 	{
 		my ($i,$lval,$rval) = (@$rec);
 		my $icon = "/webui/icons/error_$i.png";
-		display($dbg_webui,0,"icon($lval)=$icon");
+		display($dbg_webui+2,0,"icon($lval)=$icon");
 		$response .= add_tag_item(\$started,$use_id,$lval,$rval,$icon);
 	}		
 	$response .= "]}\n";

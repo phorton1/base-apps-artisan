@@ -51,7 +51,7 @@
 #            PLAYING is also used in set_playlist() when
 #            switching to a new renderer, it must be
 #            acheived before advancing the new renderer
-#            to reltime.
+#            to position
 #
 #    getDeviceData()
 #
@@ -59,8 +59,8 @@
 #        Returns undef if renderer is not online.
 #        Otherwise, returns a $data hash with interesting fields:
 #
-#			duration
-#           reltime
+#			duration	- milliseconds
+#           position	- milliseconds
 #           vol			- 0 (not supported)
 #           mute		- 0 (not supported)
 #           uri			- that the renderer used to get the song
@@ -69,9 +69,10 @@
 #			metadata    - hash containing
 #				artist
 #				title
-#				album
+#				album_title
+#				album_artist
 #			    track_num
-#  				albumArtURI
+#  				art_uri
 #				genre
 #				date
 #				size
@@ -81,7 +82,7 @@
 #		 'stop'
 #        'set_song', song_id
 #        'play'
-#        'seek', reltime
+#        'seek', position
 #        'pause'
 #
 #------------------------------------------------------------------
@@ -115,7 +116,7 @@
 #				CurrentURI => "http://$server_ip:$server_port/media/$song_id.mp3",
 #               CurrentURIMetaData => get_item_meta_didl($song_id) }) ? 1 : 0;
 #			0,'Play',{ Speed => 1}
-#			0,'Seek',{Unit => 'REL_TIME',target => $g_renderer->{reltime}}
+#			0,'Seek',{Unit => 'REL_TIME',target => millis_to_duration($g_renderer->{position})}
 #			0,'Pause'
 #           	was called directly by uiRenderer
 #
@@ -148,6 +149,8 @@ use IO::Socket::INET;
 use XML::Simple;
 use LWP::UserAgent;
 use Utils;
+use Database;
+use Library;
 
 
 my $dbg_dlna = 0;
@@ -271,21 +274,30 @@ sub doCommand
 	# Supports the following commands and arguments
 	#
 	#	'stop'
-	#   'set_song', song_id
+	#   'set_song', track_id
 	#   'play'
-	#   'seek', reltime
+	#   'seek', position
 	#   'pause'
 {
 	my ($this,$command,$arg) = @_;
+	display($dbg_ren,0,"doCommand($command,$arg)");
+	
 	if ($command eq 'stop')
 	{
 		return $this->private_doAction(0,'Stop') ? 1 : 0;
 	}
 	elsif ($command eq 'set_song')
 	{
+		my $track = get_track(undef,$arg);
+		
+		if (!$track)
+		{
+			error("Could not get track($arg)in doCoommand()");
+			return 0;
+		}
 		return $this->private_doAction(0,'SetAVTransportURI',{
 			CurrentURI => "http://$server_ip:$server_port/media/$arg.mp3",
-            CurrentURIMetaData => get_item_meta_didl($arg) }) ? 1 : 0;
+            CurrentURIMetaData => $track->getDidl() });
 	}
 	elsif ($command eq 'play')
 	{
@@ -345,8 +357,11 @@ sub getDeviceData
     display($dbg_ren+2,0,"Position Info\n$data");
     
     my %retval;
-    $retval{duration} = $data =~ /<TrackDuration>(.*?)<\/TrackDuration>/s ? $1 : '';
-    $retval{reltime} = $data =~ /<RelTime>(.*?)<\/RelTime>/s ? $1 : '';
+	my $dur_str = $data =~ /<TrackDuration>(.*?)<\/TrackDuration>/s ? $1 : '';
+    my $pos_str = $data =~ /<RelTime>(.*?)<\/RelTime>/s ? $1 : '';
+	
+    $retval{duration} = duration_to_millis($dur_str);
+    $retval{position} = duration_to_millis($pos_str);
 
     # Get the file type from the file extensionin the TrackURI
     # This will be incorrect except for MP3 due to kludge in
@@ -370,15 +385,14 @@ sub getDeviceData
     get_metafield($data,$retval{metadata},'title','dc:title');
     get_metafield($data,$retval{metadata},'artist','upnp:artist');
     get_metafield($data,$retval{metadata},'artist','dc:creator') if !$retval{metadata}->{artist};
-    get_metafield($data,$retval{metadata},'albumArtURI','upnp:albumArtURI');
+    get_metafield($data,$retval{metadata},'art_uri','upnp:albumArtURI');
     get_metafield($data,$retval{metadata},'genre','upnp:genre');
-    get_metafield($data,$retval{metadata},'date','dc:date');
-    get_metafield($data,$retval{metadata},'album','upnp:album');
+    get_metafield($data,$retval{metadata},'year_str','dc:date');
+    get_metafield($data,$retval{metadata},'album_title','upnp:album');
+    get_metafield($data,$retval{metadata},'album_artist','upnp:albumArtist');
     get_metafield($data,$retval{metadata},'track_num','upnp:originalTrackNumber');
-
     $retval{metadata}->{size} = ($data =~ /size="(\d+)"/) ? $1 : 0;
-    $retval{metadata}->{pretty_size} = $retval{metadata}->{size} ?
-        pretty_bytes($retval{metadata}->{size}) : '';
+	$retval{metadata}->{pretty_size} = pretty_bytes($retval{metadata}->{size});
 
     # Get a better version of the 'type' from the DLNA info
     # esp. since we ourselves sent the wrong file extension
@@ -388,7 +402,7 @@ sub getDeviceData
     $retval{type} = 'WAV' if ($data =~ /audio\/x-wav/);
     $retval{type} = 'M4A' if ($data =~ /audio\/x-m4a/);
 
-    display($dbg_ren+1,0,"getPosition()=$retval{reltime},$retval{duration},$retval{song_id}");
+    display($dbg_ren+1,0,"GOT_POSITION: position=$retval{position} duration=$retval{duration} id=$retval{song_id}");
     display($dbg_ren+2,1,"uri='$retval{uri}' type='$retval{type}'");
     
     # VOLUME DOES NOT WORK ON BUBBLEUP CAR STEREO
@@ -1078,86 +1092,6 @@ if (0)
 	}
 }
 
-
-
-#----------------------------------------------------
-# Fake little library for meta data xml
-#----------------------------------------------------
-
-use Database;
-use Library;
-
-
-sub didl_header
-{
-    my $xml = filter_lines(1,undef,<<EOXML);
-<DIDL-Lite
-    xmlns="urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/"
-    xmlns:sec="http://www.sec.co.kr/dlna"
-    xmlns:dlna="urn:schemas-dlna-org:metadata-1-0/"
-    xmlns:dc="http://purl.org/dc/elements/1.1/"
-    xmlns:upnp="urn:schemas-upnp-org:metadata-1-0/upnp/" >
-EOXML
-	return $xml;
-}
-
-
-sub didl_footer
-{
-    my $xml = filter_lines(1,undef,<<EOXML);
-</DIDL-Lite>
-EOXML
-    return $xml;
-}
-
-
-sub get_item_meta_didl
-{
-    my ($item_num) = @_;
-
-    my $dbh = db_connect();
-
-    display($dbg_ren+1,0,"get_item_meta_didl($item_num)");
-    my $item = get_track($dbh,$item_num);
-    display($dbg_ren+1,1,"item="._def($item)." parent_id=".($item?$item->{PARENT_ID}:'undef'));
-    my $parent = get_folder($dbh,$item->{PARENT_ID});
-    display($dbg_ren+1,1,"parent="._def($parent)." parent_id=".($item?$item->{PARENT_ID}:'undef'));
-    display($dbg_ren,1,"($item_num) == $item->{uri}");
- 
-    db_disconnect($dbh);
-   
-    # The Kludge.
-    # for some fucking reason, Bup does not display the metainfo
-    # if the FILEEXT is WMA, wma, M4a, m4a, etc, so, the only thing
-    # I found that work was to send mp3 as the type. Thus later,
-    # when bup returns the metadata to us, we extract the
-    # actual type from the metadata protocolinfo.
-
-    display($dbg_ren+1,0,"sending bogus 'mp3' type for '$item->{fileext}'")
-        if ($item->{fileext} !~ /mp3/i);
-    $item->{fileext} = 'mp3';
-
-    # debugging when renderer doees't show correct stuff
-    # selectively add lines to see what happens
-    
-    if (0)
-    {
-         $item->{TITLE} = 'THIS IS THE TITLE blah';
-         $item->{ARTIST} = 'THIS IS THE ARTIST';
-         $item->{album_title}  = 'THIS IS THE ALBUM';
-         $item->{genre}  = 'THIS IS THE GENRE';
-         $item->{fileext} = 'mp3';
-    }
-    
-    my $meta_didl =
-        didl_header() .
-        xml_item($item,$parent) .
-        didl_footer();
-        
-    display(9,0,"meta_didle=$meta_didl");
-        
-    return $meta_didl;
-}
 
 
 

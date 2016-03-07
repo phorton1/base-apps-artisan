@@ -23,8 +23,8 @@ use strict;
 use warnings;
 use threads;
 use threads::shared;
-use Database;
 use Utils;
+use Database;
 
 
 our $dbg_track = 0;
@@ -49,6 +49,12 @@ sub getContainingPath
 {
 	my ($this) = @_;
 	return containigPath($this->{path});
+}
+
+sub mimeType
+{
+	my ($this) = @_;
+	return Library::mimeType($this->{type});
 }
 
 
@@ -188,33 +194,34 @@ sub save
 sub getDidl
 {
 	my ($this) = @_;
-    display($dbg_xml,0,"getDidl($this->{id})");
+    display($dbg_xml,0,"getDidl($this->{id}) type=$this->{type}  title=$this->{title}");
 
 	my $dlna_stuff = $this->get_dlna_stuff();
 	my $pretty_duration = millis_to_duration($this->{duration},1);
 	my $art_uri = $this->{has_art} & 1 ?
 		"http://$server_ip:$server_port/get_art/$this->{parent_id}/folder.jpg" : "";
-	my $mime_type = Library::myMimeType($this->{type});
+	my $mime_type = Library::mimeType($this->{type});
 	my $url = "http://$server_ip:$server_port/media/$this->{id}.$this->{type}";
 	
 	
     my $didl = "";
 	$didl .= "<item id=\"$this->{id}\" parentID=\"$this->{parent_id}\" restricted=\"1\">";
-    $didl .= "<dc:title>".xml_encode($this->{title})."</dc:title>";
+    $didl .= "<dc:title>".encode_xml($this->{title})."</dc:title>";
 	$didl .= "<upnp:class>object.item.audioItem</upnp:class>";
-	$didl .= "<upnp:genre>".xml_encode($this->{genre})."</upnp:genre>";
-	$didl .= "<upnp:artist>".xml_encode($this->{artist})."</upnp:artist>";
-    $didl .= "<upnp:album>".xml_encode($this->{album_title})."</upnp:album>";
-    $didl .= "<upnp:originalTrackNumber>".xml_encode($this->{tracknum})."</upnp:originalTrackNumber>";
-    $didl .= "<dc:date>".xml_encode($this->{year_str})."</dc:date>";
-	$didl .= "<upnp:albumArtURI>".xml_encode($art_uri)."</upnp:albumArtURI>";
-    $didl .= "<upnp:albumArtist>".xml_encode($this->{album_artist})."</upnp:albumArtist>";
+	$didl .= "<upnp:genre>".encode_xml($this->{genre})."</upnp:genre>";
+	$didl .= "<upnp:artist>".encode_xml($this->{artist})."</upnp:artist>";
+    $didl .= "<upnp:album>".encode_xml($this->{album_title})."</upnp:album>";
+    $didl .= "<upnp:originalTrackNumber>".encode_xml($this->{tracknum})."</upnp:originalTrackNumber>";
+    $didl .= "<dc:date>".encode_xml($this->{year_str})."</dc:date>";
+	$didl .= "<upnp:albumArtURI>".encode_xml($art_uri)."</upnp:albumArtURI>";
+    $didl .= "<upnp:albumArtist>".encode_xml($this->{album_artist})."</upnp:albumArtist>";
 
     # prh - had to be careful with the <res> element, as
     # WDTVLive did not work when there was whitespace (i.e. cr's)
     # in my template ... so note the >< are on the same line.
 	
-	my $bitrate;
+	my $bitrate = "";
+		# don't have this, so I deliver a blank
 	
     $didl .= "<res ";
     $didl .= "bitrate=\"$bitrate\" ";
@@ -224,9 +231,9 @@ sub getDidl
     $didl .= ">$url</res>";
 	$didl .= "</item>";
 	
-	display($dbg_xml,0,"pre_didl=$didl");
+	display($dbg_xml+1,0,"pre_didl=$didl");
 	$didl = encode_didl($didl);
-	display($dbg_xml+1,0,"didl=$didl");
+	display($dbg_xml+2,0,"didl=$didl");
 	return $didl;
 }
 
@@ -244,7 +251,7 @@ sub get_dlna_stuff
 {
 	my ($this) = @_;
 	my $type = $this->{type};
-	my $mime_type = Library::myMimeType($type);
+	my $mime_type = Library::mimeType($type);
 	my $contentfeatures = '';
 
     # $contentfeatures .= 'DLNA.ORG_PN=LPCM;' if $mime_type eq 'audio/L16';

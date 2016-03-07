@@ -161,7 +161,7 @@ sub getTrackID
 	{
 		$this->start();
 		my @ids;
-		my $tracks = get_records_sql($track_dbh,"SELECT id FROM tracks");
+		my $tracks = get_records_db($track_dbh,"SELECT id FROM tracks");
 		display(0,0,"getTrackID() found ".scalar(@$tracks)." items in Playlist($this->{name})");
 		
 		for my $track (@$tracks)
@@ -249,7 +249,7 @@ sub save
 		error("Could not connect to playlist.db database");
 		return;
 	}
-	if (!update_record_db($dbh,'playlists',$this))
+	if (!update_record_db($dbh,'playlists',$this,'name'))
 	{
 		error("Could not update playlist.db database");
 		return;

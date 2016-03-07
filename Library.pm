@@ -61,6 +61,7 @@ BEGIN
 		get_folder
 		get_track
         get_subitems
+		myMimeType
     );
 };
 
@@ -84,15 +85,24 @@ my $dbg_count = 0;
 # utils
 #---------------------------------------------
 
-sub myMimeType
+
+sub mimeType
 {
-    my ($filename) = @_;
-    return 'audio/mpeg'         if ($filename =~ /\.mp3$/i);	# 7231
-    return 'audio/x-m4a'        if ($filename =~ /\.m4a$/i);    # 392
-	return 'audio/x-ms-wma'     if ($filename =~ /\.wma$/i);    # 965
-	return 'audio/x-wav'        if ($filename =~ /\.wav$/i);    # 0
+	my ($type) = @_;
+    return 'audio/mpeg'         if ($type =~ /^mp3$/i);	   # 7231
+    return 'audio/x-m4a'        if ($type =~ /^m4a$/i);    # 392
+	return 'audio/x-ms-wma'     if ($type =~ /^wma$/i);    # 965
+	return 'audio/x-wav'        if ($type =~ /^wav$/i);    # 0
 	# mp4 files are not currently playable
 	# return 'audio/mp4a-latm'    if ($filename =~ /\.m4p$/i);
+	return '';
+}
+
+
+sub pathMimeType
+{
+    my ($filename) = @_;
+	return mimeType($1) if ($filename =~ /.*\.(.*)$/);
     return '';
 }
 
@@ -494,7 +504,7 @@ sub scan_directory
         }
         else
         {
-            my $mime_type = myMimeType($entry);
+            my $mime_type = pathMimeType($entry);
             if (!$mime_type)
 			{
 				if ($entry !~ /^(folder\.jpg)$/)
@@ -634,7 +644,7 @@ sub validate_folder
 		# check that the folder name equals the artist - title
 		# make sure it has exactly two parts
 		
-		my $check_artist = $folder->{album_artist};
+		my $check_artist = $folder->{artist};
 		$check_artist =~ s/&/and/g;
 		
 		my $folder_name = nameFromPath($folder->{path});
@@ -658,7 +668,7 @@ sub validate_folder
 				   $check_artist !~ /^original soundtrack$/i &&
 				   !(-f "$cache_dir/artists/$check_artist.txt"))
 			{
-				set_folder_error($params,$folder,$ERROR_HIGH,"Unknown artist '$folder->{album_artist}'");
+				set_folder_error($params,$folder,$ERROR_HIGH,"Unknown artist '$folder->{artist}'");
 			}
 		}			
 			
@@ -712,8 +722,8 @@ sub add_folder
 			path  	      => $path,
 			has_art   	  => $has_art,
 			genre         => $is_album ? $split->{class} : '',
-			album_title   => $is_album ? clean_str($split->{album_title}) : pathName($path),
-			album_artist  => $is_album ? clean_str($split->{album_artist}) : '',
+			title   	  => $is_album ? clean_str($split->{album_title}) : pathName($path),
+			artist        => $is_album ? clean_str($split->{album_artist}) : '',
 			num_elements  => $num_elements });
 
 		# the folder id is now valid
@@ -1021,12 +1031,14 @@ sub get_folder
 {
     my ($dbh,$id) = @_;
 	display($dbg_library,0,"get_folder($id)");
-	
+		
+		
 	# if 0, return a fake record
 	
+	my $folder;
 	if ($id eq '0')
 	{
-		return Folder->newFromHash({
+		$folder = Folder->newFromHash({
 			id => 0,
 			parent_id => -1,
 			title => 'All Artisan Folders',
@@ -1037,15 +1049,40 @@ sub get_folder
 			path => '',
 			year => substr(today(),0,4)  });
 	}
+	else
+	{
+		my $connected = 0;
+		if (!$dbh)
+		{
+			$connected = 1;
+			$dbh = db_connect();
+		}
+
+		$folder = Folder->newFromDbId($dbh,$id);
+		
+		db_disconnect($dbh) if ($connected);
+	}
 	
-    return Folder->newFromDbId($dbh,$id);
+	return $folder;
+		
 }
+
 
 
 sub get_track
 {
     my ($dbh,$id) = @_;
-	return Track->newFromDbId($dbh,$id);
+	my $connected = 0;
+	if (!$dbh)
+	{
+		$connected = 1;
+		$dbh = db_connect();
+	}
+		
+	my $track = Track->newFromDbId($dbh,$id);
+	
+	db_disconnect($dbh) if ($connected);
+	return $track;
 }
 
 
@@ -1090,16 +1127,16 @@ sub get_subitems
 	for my $rec (@$recs)
 	{
 		next if ($start-- > 0);
-		display($dbg_library,2,pad($rec->{id},40)." ".pad($rec->{name},30)." ".$rec->{path});
+		display($dbg_library,2,pad($rec->{id},40)." ".$rec->{path});
 		
 		my $item;
 		if ($table eq 'tracks')
 		{
-			$item = Tracks->newFromDb($rec);
+			$item = Track->newFromDb($rec);
 		}
 		else
 		{
-			$item = Folders->newFromDb($rec);
+			$item = Folder->newFromDb($rec);
 		}
 		
 		push @retval,$item;

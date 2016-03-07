@@ -12,8 +12,8 @@
     <table width="100%">
         <tr>
             <td class="header_left playlist_info_header_left"
-                onclick="javascript:set_playlist_detailed_info()">
-                <span id='{id}_playlist_info_playlist_num'>No Playlist</span>
+                onclick="javascript:set_playlist_info()">
+                <span id='playlist_info_playlist_num'>No Playlist</span>
             </td>
         </tr>
     </table>
@@ -25,52 +25,44 @@
     <div class="playlist_info_shuffle_div">
         
         <input
-            id="{id}_playlist_info_shuffle_off"
+            id="playlist_info_shuffle_off"
             type="radio"
             class='playlist_info_shuffle_button'
-            name="{id}_playlist_info_shuffle"
+            name="playlist_info_shuffle"
             disabled
-            onclick="javascript:playlist_set_info('shuffle',0,$(this))"/>
+            onclick="javascript:playlist_set_info('shuffle',0)"/>
         <label
             class='info_shuffle_button'
-            for="{id}_playlist_info_shuffle_off">Shuffle Off</label><br>
+            for="playlist_info_shuffle_off">Shuffle Off</label><br>
         
         <input
-            id="{id}_playlist_info_shuffle_tracks"
+            id="playlist_info_shuffle_tracks"
             type="radio"
             class='playlist_info_shuffle_button'
-            name="{id}_playlist_info_shuffle"
+            name="playlist_info_shuffle"
             disabled
-            onclick="javascript:playlist_set_info('shuffle',1,$(this))"/>
+            onclick="javascript:playlist_set_info('shuffle',1)"/>
         <label
             class='playlist_info_shuffle_button'
-            for="{id}_playlist_info_shuffle_tracks">Shuffle Tracks</label><br>
+            for="playlist_info_shuffle_tracks">Shuffle Tracks</label><br>
         
         <input
-            id="{id}_playlist_info_shuffle_albums"
+            id="playlist_info_shuffle_albums"
             type="radio"
             class='playlist_info_shuffle_button'
-            name="{id}_playlist_info_shuffle"
+            name="playlist_info_shuffle"
             disabled
-            onclick="javascript:playlist_set_info('shuffle',2,$(this))"/>
+            onclick="javascript:playlist_set_info('shuffle',2)"/>
         <label
             class='playlist_info_shuffle_button'
-            for="{id}_playlist_info_shuffle_albums">Shuffle Albums</label><br>
+            for="playlist_info_shuffle_albums">Shuffle Albums</label><br>
 
     </div>
     
 
-    <input
-        id="{id}_playlist_info_unplayed_first"
-        type="checkbox"
-        disabled
-        onclick="javascript:playlist_set_info('unplayed_first',0,$(this))"/>
-    <label
-        class='playlist_info_shuffle_button'
-        for="{id}_playlist_info_unplayed_first">Unplayed First</label><br>
 
     <div class='playlist_info_slider_div'>
-        <div id='{id}_playlist_info_slider'
+        <div id='playlist_info_slider'
              class='playlist_info_slider'
              disabled>
         </div>
@@ -81,7 +73,7 @@
             <td class='playlist_info_track_num_td'>
                 <input
                     type='text'
-                    id='{id}_playlist_info_track_num'
+                    id='playlist_info_track_num'
                     class='playlist_info_track_num'
                     value='0'>
             </td>
@@ -89,7 +81,7 @@
                 of
             </td>
             <td class='playlist_info_num_tracks_td'>
-                <span id='{id}_playlist_info_num_tracks'>
+                <span id='playlist_info_num_tracks'>
                     1234
                 </span>
             </td>
