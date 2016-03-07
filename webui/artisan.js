@@ -22,7 +22,6 @@ var dbg_popup 	 = 1;
 
 var dbg_renderer = 1;
 var dbg_explorer = 1;
-var dbg_stations = 1;
 
 
 
@@ -316,11 +315,6 @@ function resize_layout()
 		
 		layout.resizeAll();
 
-		if (current_page == 'stations')
-		{
-			resizeStationTree();
-		}
-		
 		set_popup_editors();
 	}
 }

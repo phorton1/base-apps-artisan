@@ -8,7 +8,7 @@ use warnings;
 use Utils;
 use uiUtils;
 use Renderer;
-use Station;
+use Playlist;
 
 
 sub renderer_request
@@ -55,9 +55,9 @@ sub renderer_request
 	{
 		return renderer_update($renderer);
 	}
-	if ($path eq 'set_station')
+	if ($path eq 'set_playlist')
 	{
-		return renderer_set_station($renderer,$params->{station});
+		return renderer_set_playlist($renderer,$params->{playlist});
 	}
 	if ($path eq 'transport')
 	{
@@ -167,11 +167,11 @@ sub renderer_update
 	my ($renderer) = @_;
 	display($dbg_webui+1,0,"renderer_update($renderer) called");
 
-	# if the renderer is playing a station, we don't call update
+	# if the renderer is playing a playlist, we don't call update
 	# and just return the renderer ... otherwise we call update()
 
 	$renderer->{error} = '';
-	if (!$renderer->{station})
+	if (!$renderer->{playlist})
 	{
 		if (!$renderer->update())
 		{
@@ -186,14 +186,14 @@ sub renderer_update
 }
 
 
-sub renderer_set_station
+sub renderer_set_playlist
 {
-	my ($renderer,$station_num) = @_;
-	display($dbg_webui,0,"renderer_set_station($renderer->{name},$station_num) called");
-	my $station = getStation($station_num);
-	if (!$renderer->setStation($station))
+	my ($renderer,$playlist_num) = @_;
+	display($dbg_webui,0,"renderer_set_playlist($renderer->{name},$playlist_num) called");
+	my $playlist = getPlaylist($playlist_num);
+	if (!$renderer->setPlaylist($playlist))
 	{
-		return json_error("could not issue setStation($station_num) command");
+		return json_error("could not issue setPlaylist($playlist_num) command");
 	}
 	my $response = json_header();
 	$response .= json($renderer);
@@ -216,9 +216,9 @@ sub renderer_transport
 	
 	if ($command eq 'stop')
 	{
-		if ($renderer->{station} && !$renderer->setStation(undef))
+		if ($renderer->{playlist} && !$renderer->setPlaylist(undef))
 		{
-			return json_error("could not issue setStation(undef) command");
+			return json_error("could not issue setPlaylist(undef) command");
 		}
 		if (!$renderer->stop())
 		{
@@ -254,11 +254,11 @@ sub renderer_transport
 		}
 	}
 
-	# transport commands that work on the 'radio station'
+	# transport commands that work on the playlist
 	
 	elsif ($command eq 'next')
 	{
-		if ($renderer->{station})
+		if ($renderer->{playlist})
 		{
 			#if (!$renderer->play_next_song())
 			if (!$renderer->async_play_song(1))
@@ -274,7 +274,7 @@ sub renderer_transport
 	}
 	elsif ($command eq 'prev')
 	{
-		if ($renderer->{station})
+		if ($renderer->{playlist})
 		{
 			# if (!$renderer->play_prev_song())
 			if (!$renderer->async_play_song(-1))

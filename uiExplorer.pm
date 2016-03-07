@@ -38,7 +38,7 @@ use Utils;
 use Database;
 use MediaFile;
 use Library;
-use Station;
+use Playlist;
 use uiUtils;
 
 
@@ -71,7 +71,6 @@ my $SHOW_HIGH = $SHOW_FOLDER_HIGH;
 
 
 sub explorer_request
-	# station being defined is special
 {
 	my ($path,$params) = @_;
 	display($dbg_webui,0,"explorer_request($path)");
@@ -90,14 +89,10 @@ sub explorer_request
 	{
 		return explorer_item_tags($params);
 	}
-	elsif ($path eq 'get_station_items')
-	{
-		return get_station_items($params);
-	}
 	elsif ($path eq 'get_track')
 	{
 		my $dbh = db_connect();
-		my $rec = get_record_db($dbh,'SELECT * FROM TRACKS WHERE ID=?',[$params->{id}]);
+		my $rec = get_record_db($dbh,'SELECT * FROM tracks WHERE ID=?',[$params->{id}]);
 		db_disconnect($dbh);
 		if (!$rec)
 		{
@@ -110,12 +105,12 @@ sub explorer_request
 		my @parts;
 		push @parts,'track_'.$params->{track_id};
 		my $dbh = db_connect();
-		my $rec = get_record_db($dbh,'SELECT * FROM TRACKS WHERE ID=?',[$params->{track_id}]);
+		my $rec = get_record_db($dbh,'SELECT * FROM tracks WHERE ID=?',[$params->{track_id}]);
 		while ($rec && $rec->{PARENT_ID} > 1)
 		{
 			my $parent_id = $rec->{PARENT_ID};	
 			push @parts,$parent_id;
-			$rec = get_record_db($dbh,'SELECT * FROM FOLDERS WHERE ID=?',[$parent_id]);
+			$rec = get_record_db($dbh,'SELECT * FROM folders WHERE ID=?',[$parent_id]);
 		}			
 		db_disconnect($dbh);
 		return json_header().json({id_path=>join('/',reverse @parts)});
@@ -132,110 +127,34 @@ sub explorer_request
 # directory requests
 #-----------------------------------------------
 
-sub set_in_station
-	# Set rec->{selected} = 1 if the folder/track is in the station.
-	# For folders, we also see if it's 'partsel' and pass that
-	# via extraClasses. Note that fancy tree accepts any value as true
-	# including "0" and "false"
-{
-	my ($dbh,$rec,$station_num) = @_;
-
-	if ($station_num)
-	{
-		my $station = getStation($station_num);
-		my $bit = $station->station_bit();
-		
-		if ($rec->{STATIONS} & $bit)
-		{
-			$rec->{selected} = 1 
-		}
-		
-		# defined(FULLPATH) is synonymous with FOLDERS records
-		# we assume that parents with all children set are
-		# themselves set, so, otherwise if any children are
-		# set, it's a partsel.  This is moderately expensive
-		# and it is tempting to cache the partsel state as
-		# another bitwise member on the FOLDER record
-		
-		elsif (defined($rec->{FULLPATH}))
-		{
-			display(9,0,"checking partsel for $rec->{FULLPATH}");
-			my $recs = get_records_db($dbh,
-	           "SELECT ID FROM TRACKS WHERE ".
-				"STATIONS & $bit AND ".
-				"instr(FULLNAME,?) > 0",
-				[$rec->{FULLPATH}."/"]);
-			if ($recs && @$recs)
-			{
-				$rec->{extraClasses} = 'fancytree-partsel';
-			}
-		}
-	}	
-}
-
-
 
 sub explorer_dir
 	# Return the json for the list of children of the directory
-	# given by params->{id}.  If $params->{station} is defined,
-	# it means we are called from the station list (not explorer)
-	# and the tree will include child TRACKS as leaf nodes.
-	# Otherwise, albums are leaf nodes (in explorer) 
-	
+	# given by params->{id}. albums are leaf nodes (in explorer) 
 {
 	my ($params) = @_;
 	my $id = $params->{id} || 0;
-	my $station = $params->{station};
-	display($dbg_webui,0,"explorer_dir($id,"._def($station).")");
+	display($dbg_webui,0,"explorer_dir($id)");
 
 	# sublimate id(0) to id(1)
 	
 	my $use_id = $id ? $id : 1;
 	my $dbh = db_connect();
 
-	# collect the child folders, or for
-	# albums in station mode, the child tracks
+	# collect the child folders
 	
-	my $results;
-	my $do_stations = 0;
-	my $parent = get_record_db($dbh,"SELECT DIRTYPE FROM FOLDERS WHERE ID='$use_id'");
-	if ($parent->{DIRTYPE} eq 'album' && defined($station))
-	{
-		$do_stations = 1;
-		$results = get_subitems($dbh, 'TRACKS', $use_id, 0, 99999);
-	}
-	else
-	{
-		$results = get_subitems($dbh, 'FOLDERS', $use_id, 0, 99999);
-	}
+	my $parent = get_record_db($dbh,"SELECT dirtype FROM folders WHERE ID='$use_id'");
+	my $results = get_subitems($dbh, 'folders', $use_id, 0, 99999);
 	
 	my $started = 0;
 	my $response = json_header();
 	$response .= '[';
 	for my $rec (@$results)
 	{
-		next if (!$rec->{ID});
+		next if (!$rec->{id});
 		$response .= ',' if ($started);
 		$started = 1;
-		
-		# inline code to do a track in the station list
-		
-		if ($do_stations)
-		{
-			$rec->{key} = "track_" . $rec->{ID};	# required
-			$rec->{title} = $rec->{TITLE};
-			$rec->{icon} = "/webui/icons/icon_track.png";
-
-			set_in_station($dbh,$rec,$station);
-			$response .= json($rec);
-		}
-		
-		# 'normal' code to do a sub-folder
-		
-		else
-		{
-			$response .= explorer_dir_element($dbh,$params,$rec,$station);
-		}
+		$response .= explorer_dir_element($dbh,$params,$rec);
 	}
 	$response .= ']';
 	
@@ -250,26 +169,19 @@ sub explorer_dir
 sub explorer_dir_element
 	# return the json for one subfolder element.
 	# Return lazy=1 and folder=1 for parents to be load-on-expand
-	# if defined(station) and the folder is an album, it is also
-	# load-on-expand.
 {
-	my ($dbh,$params,$rec,$station) = @_;
+	my ($dbh,$params,$rec) = @_;
 	
-	$rec->{key} = $rec->{ID};	# required
+	$rec->{key} = $rec->{id};	# required
 	my $title = $rec->{TITLE};
 
-	if ($rec->{DIRTYPE} ne 'album')
-	{
-		$rec->{folder} = '1';
-		$rec->{lazy} = '1';
-	}
-	elsif (defined($station))
+	if ($rec->{dirtype} ne 'album')
 	{
 		$rec->{folder} = '1';
 		$rec->{lazy} = '1';
 	}
 		
-	if ($rec->{DIRTYPE} eq 'album' &&
+	if ($rec->{dirtype} eq 'album' &&
 		$rec->{CLASS} !~ /dead/i)
 	{
 		$title = "$rec->{ARTIST} - $title"
@@ -278,32 +190,17 @@ sub explorer_dir_element
 	}
 	
 	$rec->{title} = $title;	# required
-	$rec->{ART_URI} = "http://$server_ip:$server_port/get_art/$rec->{ID}/folder.jpg";			
+	$rec->{ART_URI} = "http://$server_ip:$server_port/get_art/$rec->{id}/folder.jpg";			
+	
+	my $mode = defined($params->{mode}) ? $params->{mode} : $SHOW_HIGH;
 
-	# for station tree, show a folder or nothiing for albums	
-	# where 0 == false == no icon
-	
-	if (defined($station))
-	{
-		my $icon_type = $rec->{DIRTYPE} eq 'album' ? 'album' : 'folder';
-		$rec->{icon} = "/webui/icons/icon_$icon_type.png";
-	}
-	else
-	{
-		# assign different icon based on highest error state
-		
-		my $mode = defined($params->{mode}) ? $params->{mode} : $SHOW_HIGH;
+	my $use_high =
+		$mode == $SHOW_TRACK_HIGH ? $$rec{highest_error} :
+		$mode == $SHOW_FOLDER_HIGH ? $$rec{highest_folder_error} :
+		$$rec{highest_error} > $$rec{highest_folder_error} ?
+		$$rec{highest_error} : $$rec{highest_folder_error};
 
-		my $use_high =
-			$mode == $SHOW_TRACK_HIGH ? $$rec{HIGHEST_ERROR} :
-			$mode == $SHOW_FOLDER_HIGH ? $$rec{HIGHEST_FOLDER_ERROR} :
-			$$rec{HIGHEST_ERROR} > $$rec{HIGHEST_FOLDER_ERROR} ?
-			$$rec{HIGHEST_ERROR} : $$rec{HIGHEST_FOLDER_ERROR};
-	
-		$rec->{icon} = "/webui/icons/error_$use_high.png";
-	}
-	
-	set_in_station($dbh,$rec,$station) if defined($station);
+	$rec->{icon} = "/webui/icons/error_$use_high.png";
 	
 	Library::validate_folder(undef,$rec);
 	return "\n".json($rec);
@@ -331,30 +228,27 @@ sub explorer_dir_element
 
 sub explorer_items
 	# Return the json for a list of of files (tracks)
-	# associated with a directory.  We add the HIGHEST
-	# error icon, and IN_STATION members.
+	# associated with a directory.
 {
 	my ($params) = @_;
 	my $id = $params->{id} || 0;
-	my $station = $params->{station} || 0;
-	display($dbg_webui,0,"explorer_items($id,$station)");
+	display($dbg_webui,0,"explorer_items($id)");
 
 	my $dbh = db_connect();
 	my $response = json_header();
 
 	$response .= '[';
 	my $started = 0;
-	my $results = get_subitems($dbh, 'TRACKS', $id, 0, 99999);
+	my $results = get_subitems($dbh, 'tracks', $id, 0, 99999);
 	for my $rec (@$results)
 	{
-		next if (!$rec->{ID});
+		next if (!$rec->{id});
 		
 		# note that the 'title' of the fancytree 0th td is the tracknum
 		
-		$rec->{key} = $rec->{ID};
-		$rec->{title} = ''; # $rec->{TRACKNUM};
-		$rec->{icon} = "/webui/icons/error_$rec->{HIGHEST_ERROR}.png";
-		set_in_station($dbh,$rec,$station);
+		$rec->{key} = $rec->{id};
+		$rec->{title} = ''; # $rec->{tracknum};
+		$rec->{icon} = "/webui/icons/error_$rec->{highest_error}.png";
 
 		$response .= ',' if ($started);
 		$started = 1;
@@ -379,14 +273,10 @@ sub explorer_item_tags
 	# - the database record
 	# - the mediaFile record
 	# - low level MP3/WMA/M4A tags
-	#
-	# Note that we massage the IN_STATION variable
-	# in the database record.
 {
 	my ($params) = @_;
 	my $id = $params->{id} || 0;
-	my $station = $params->{station} || 0;
-	display($dbg_webui,0,"explorer_item_tags($id,$station)");
+	display($dbg_webui,0,"explorer_item_tags($id)");
 	return '[]' if (!$id);
 
 	my $use_id = 0;
@@ -400,7 +290,6 @@ sub explorer_item_tags
 	{
 		return json_error("no rec for explorer_item_tags($id)");
 	}
-	set_in_station($dbh,$rec,$station);
 	db_disconnect($dbh);
 
 	$sections .= add_tag_section(0,\$use_id,'Database',0,$rec);
@@ -408,10 +297,10 @@ sub explorer_item_tags
 	# a section that shows the resolved "mediaFile"
 	# section(s) that shows the low level tags
 
-	my $info = MediaFile->new($rec->{FULLNAME});
+	my $info = MediaFile->new($rec->{uri});
 	if (!$info)
 	{
-		error("no mediaFile($rec->{FULLNAME}) in item_tags request!");
+		error("no mediaFile($rec->{uri}) in item_tags request!");
 		# but don't return error (show the database anyways)
 	}
 	else
@@ -563,68 +452,6 @@ sub add_error_section
 }	
 
 
-#---------------------------------------------------
-# station_list
-#---------------------------------------------------
-# This module (uiExplorer) handles the request to
-# get all the id's for folders/tracks in a certain
-# station (for the webUI edit_station_tree), which
-# is more of a 'database' than a 'station" function
-# and is in this file because 'explorer' connotes
-# deeper database operations. This funtionality
-# *could* be moved to uiStation.pm for clarity.
-
-
-sub get_station_items
-	# build a big hash of id=>1 or 'track_'.$id=>1
-	# for items within the station. Returns an empty
-	# list if station not defined or zero. Sets =>2
-	# if the item is 'partsel'
-{
-	my ($params) = @_;
-	my $dbh = db_connect();
-	my $station = getStation($params->{station});
-	return json_error("No station specified in get_station_items()") if !$station;
-	
-	my $bit = $station->station_bit();
-
-	my $rslt = {};
-	my $folders = get_records_db($dbh,"SELECT ID,PARENT_ID FROM FOLDERS WHERE STATIONS & $bit ORDER BY ID");
-	for my $folder (@$folders)
-	{
-		$rslt->{$folder->{ID}} = 1;
-		set_parents_partsel($dbh,$rslt,$folder->{PARENT_ID});
-	}
-	
-	my $tracks = get_records_db($dbh,"SELECT ID,PARENT_ID FROM TRACKS WHERE STATIONS & $bit ORDER BY ID");
-	for my $track (@$tracks)
-	{
-		$rslt->{'track_'.$track->{ID}} = 1;
-		set_parents_partsel($dbh,$rslt,$track->{PARENT_ID});
-	}
-	
-	db_disconnect($dbh);
-	return json_header().json($rslt);
-}
-	
-	
-sub set_parents_partsel
-	# if an item is in the station, then we recurse
-	# thru parents until we find one that already set,
-	# setting their 'rslt' to 2 for 'partsel'.  This is
-	# *reasonably* efficient.
-{
-	my ($dbh,$rslt,$parent_id) = @_;
-	while ($parent_id && !$rslt->{$parent_id})
-	{
-		display($dbg_webui-1,0,"setting partsel on parent_id=$parent_id");
-		$rslt->{$parent_id} = 2;
-		my $rec = get_record_db($dbh,"SELECT PARENT_ID FROM FOLDERS WHERE ID='$parent_id'");
-		$parent_id = $rec ? $rec->{PARENT_ID} : 0;
-	}
-}
-
-	
 
 
 

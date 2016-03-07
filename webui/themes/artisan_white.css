@@ -22,16 +22,3 @@ body, h1, h2, h3, li, p, td
 
 
 
-#station_tree span.fancytree-node.fancytree-active,
-#station_tree span.fancytree-node.fancytree-selected
-{
-    background-color: #ffffff !important;
-    border-color: #ffffff !important;
-}
-
-#station_tree span.fancytree-node.fancytree-active:hover,
-#station_tree span.fancytree-node.fancytree-selected:hover
-{
-    background-color: #E5f3FB !important;
-    border-color: #70C0E7 !important;
-}

@@ -26,8 +26,7 @@
 }
 
 
-#explorer_tree span.fancytree-title,
-#station_tree span.fancytree-title
+#explorer_tree span.fancytree-title
 {
 	padding-top:5px;
 }
@@ -56,38 +55,6 @@
 }
 
 
-
-/* STATION STYLE OVERRIDES */
-
-#edit_station_list
-{
-	width:200px;
-	font-size:16px;
-	padding-left:10px;
-}
-
-#edit_station_list label
-{
-	width:180px;
-	font-size:16px;
-	margin-bottom:10px;
-}
-
-
-/* SONG STATIONS */
-/* smaller buttons */
-
-#renderer_song_stations_table .ui-button
-{
-	width:60px;
-	height:30px;
-	font-size:6pt;
-}
-
-.song_station_list_button_on span
-{
-	font-size:8pt;
-}
 
 
 

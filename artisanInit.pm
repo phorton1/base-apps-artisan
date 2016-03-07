@@ -19,7 +19,7 @@
 #
 # There are preferences that allow automatically
 # connecting to a previous (given) DLNA render, and starting
-# a previous (given) Station or Saved Songlist, so technically
+# a previous (given) Playlist or Saved Songlist, so technically
 # speaking, a UI is not really required, but nonetheless,
 # by default it presents a webUI Surface (currently this
 # surface is implemented at a low level separate from the
@@ -48,7 +48,8 @@ use HTTPStream;
 use SSDP;
 use Library;
 use WebUI;
-use Station;
+use Playlist;
+
 
 # use Daemon;
 # some work needed to make this a real service
@@ -63,14 +64,13 @@ sub start_artisan
 	dbg_mem(0,'at program startup');
 	
 	artisanPrefs::static_init_prefs();
-	Station::static_init_stations();
 	DLNARenderer::static_init_dlna_renderer_cache();
-		# creates empty set of stations
+
 	
 	#---------------------------------------
 	# (1) LIBRARY	
 	#---------------------------------------
-	# and create Real Stations after the scan if the file not found
+	# and create Real Playlists after the scan if the file not found
 	
 	db_initialize();
 	
@@ -95,11 +95,7 @@ sub start_artisan
 		display(0,0,"Library Started");
 	}
 	
-	if (!-f $Station::station_datafile)
-	{
-		Station::setDefaultStations();
-	}
-	
+	Playlist::static_init_playlists();
 	
 	#---------------------------------------
 	# (2) RENDERER MONITOR

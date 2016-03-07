@@ -6,59 +6,36 @@
 # Depends on the lower level MediaFile object, which itself maintains
 # the cache of fpcalc_info text files and calling my_fpCalc as necessary
 # to get the STREAM_MD5 for the track, which acts as a PERSISTENT UNIQUE
-# TRACK_ID (ID) in the database.  This ID will be the same even if the
+# TRACK_ID (id) in the database.  This ID will be the same even if the
 # database is rebuilt.
 #
 #    The scan of tracks is done incrementally for speed,
 #    based on certain assumptions.
 #
-#        If the FULLNAME and timestamp have not changed
+#        If the path and timestamp have not changed
 #           we assume the file has not changed
 #        If the file does not exist, or the timestamp has
 #           changed, we call MediaFile.  MediaFile does
-#           a (quick) FILE_MD5 checksum on the file, and uses
+#           a (quick) file_md5 checksum on the file, and uses
 #           that to try to find the STREAM_MD5 (fpcalc_info)
 #        If Mediafile cannot find the STREAM_MD5 it then does
 #           the (slow) call to get and cache the fpCalc info
 #           and return the STREAM_MD5.
 #        Interestingly, the metadata itself is relatively quick.
-
-
 #
-# Folders get a relatively transient numeric ID during the scan, which
-# will remain persistent until the database is wiped out, and then will
-# start over again at 1. Thus, the FOLDER_ID is not a good candidate for
-# persistent information. The solution we envision for persistent folder
-# information is to just store it in a text file (i.e. folder_data.txt)
-# in the given folder.
+# Folders get an id that is the md5 checksum of their $path
 #
-# By default, if there is no database found, this module will create one
-# and in all cases will scan the files for changes, additions, deletions,
-# etc, and the past behavior has been to manually delete the artisan.db
-# database, and run this program to rebuild it.  We may wish to make this
-# an explicit, UI driven behavior by implementing a RebuildDatabase function,
-# and/or limiting the automatic create/scan functionality.
-#
-# Therefore there are "levels" of rescans ...
-#
-#     LIBRARY_REBUILD - re-create FOLDERS and TRACKS from scratch
-#     LIBRARY_FULLSCAN - look at every file and detect 
-#
+# By default, if there is no database found, this module will create one.
 #
 #---------------------------------------------------------------------
 # NOTES
 #---------------------------------------------------------------------
-# All paths in the system are relative to the $mp3_dir defined in UTIL.
+# All paths in the system are relative to the $mp3_dir defined in Utils.
 # Paths in the database do not start with slashes.
 #
 # Here's how to copy only changed/newer files from the mp3 tree
 # to the thumb drive for the car stereo
 # 	xcopy  c:\mp3s d:\mp3s /d /y /s /f
-#
-# prh - it is obnoxious in the webUI browser when the detail
-# tags include long TXXX MusicBrainz Album Artist type tags,
-# etc, as the short ones at the top don't show initially.
-# Splitter-pane?  maxColumnWidth?  
 
 
 package Library;
@@ -70,6 +47,8 @@ use File::Basename;
 use Utils;
 use Database;
 use MediaFile;
+use Folder;
+use Track;
 
 
 appUtils::set_alt_output(1);
@@ -94,16 +73,10 @@ my $CLEANUP_FPCALC_FILES = 0;
 	# remove unused fpcalc_info files at end of scan
 
 
-
-my $FIND_MISSING_ART = 0;
-    # to look for missing folder.jpg
-
-
-
-
 my $exclude_re = '^_';
 my $rescan_time = 1800;
     # every half hour
+
 my $dbg_count = 0;
 
 
@@ -150,21 +123,25 @@ sub propogate_highest_error
 	# and the albums parents.
 {
 	my ($params,$track) = @_;
-	my $level = $track->{HIGHEST_ERROR};
+	my $level = $track->{highest_error};
 	my $folders_by_id = $params->{folders_by_id};
-	my $folder = $folders_by_id->{$track->{PARENT_ID}};
+	my $folder = $folders_by_id->{$track->{parent_id}};
+
+	# display(0,0,"propogate_highest_error($track->{id}) parent=$track->{parent_id}");
+	
 	while ($folder)
 	{
 		if ($level > $folder->{new_high})
 		{
 			$folder->{new_high} = $level;
 		}
-		$folder = $folders_by_id->{$folder->{PARENT_ID}};
+		# display(0,1,"propogate($folder->{id}) parent_id=$folder->{parent_id} getting "._def($folders_by_id->{$folder->{parent_id}}));
+		$folder = $folders_by_id->{$folder->{parent_id}};
 	}
 	
 	# stats (can be commented out for performance)
 	
-	for my $code (split(/,/,$track->{ERROR_CODES}))
+	for my $code (split(/,/,$track->{error_codes}))
 	{
 		my $severity_str = severity_to_str(code_to_severity($code));
 		bump_stat("TRACK_ERROR($severity_str,$code)=".error_code_str($code));
@@ -180,14 +157,18 @@ sub propogate_highest_folder_error
 	my ($params,$in_folder) = @_;
 	my $level = $in_folder->{new_folder_high};
 	my $folders_by_id = $params->{folders_by_id};
-	my $folder = $folders_by_id->{$in_folder->{PARENT_ID}};
+	my $folder = $folders_by_id->{$in_folder->{parent_id}};
+
+	# display(0,0,"propogate_highest_folder_error($in_folder->{id}) parent_id=$folder->{parent_id}");
+	
 	while ($folder)
 	{
 		if ($level > $folder->{new_folder_high})
 		{
 			$folder->{new_folder_high} = $level;
 		}
-		$folder = $folders_by_id->{$folder->{PARENT_ID}};
+		# display(0,1,"propogate($folder->{id}) parent_id=$folder->{parent_id} getting "._def($folders_by_id->{$folder->{parent_id}}));
+		$folder = $folders_by_id->{$folder->{parent_id}};
 	}
 }
 
@@ -220,11 +201,11 @@ sub init_params
 		# We start by getting the existing folders and tracks
 		# into hashes, for speed.
 		
-        folders => {},			# folders by FULLPATH
+        folders => {},			# folders by path
 		folders_by_id => {},	# folders by (integer) FOLDER_ID
-        tracks => {},			# tracks by FULLNAME
+        tracks => {},			# tracks by path
 		tracks_by_id => {},		# tracks by (stream_md5) TRACK_ID
-		file_md5_tracks => {},	# tracks by FILE_MD5 (detect unused fpCalc files)
+		file_md5_tracks => {},	# tracks by file_md5 (detect unused fpCalc files)
 
 		# Statistic gathered during the scan
 
@@ -260,7 +241,7 @@ sub scanner_thread
 
         get_db_recs($params);
 			push @marks, [ time(), 'get_db_recs' ];
-        scan_directory($params,0,$mp3_dir);
+        scan_directory($params,"",$mp3_dir);
 			push @marks, [ time(), 'scan_directories' ];
 		do_cleanup($params);
 			push @marks, [ time(), 'do_cleanup' ];
@@ -300,23 +281,25 @@ sub get_db_recs
     LOG(0,"get_db_recs()");
 	my $dbh = $params->{dbh};
 	
-    my $folders = get_records_db($dbh,"SELECT * FROM FOLDERS");
+    my $folders = get_records_db($dbh,"SELECT * FROM folders");
     LOG(1,"found ".scalar(@$folders)." folders");
 	bump_stat('init_db_folders',scalar(@$folders));
-    for my $folder (@$folders)
+    for my $rec (@$folders)
     {
-        $params->{folders}->{$folder->{FULLPATH}} = $folder;
-        $params->{folders_by_id}->{$folder->{ID}} = $folder;
+		my $folder = Folder->newFromDb($rec);
+        $params->{folders}->{$folder->{path}} = $folder;
+        $params->{folders_by_id}->{$folder->{id}} = $folder;
     }
 	
-    my $tracks = get_records_db($dbh,"SELECT * FROM TRACKS");
+    my $tracks = get_records_db($dbh,"SELECT * FROM tracks");
     LOG(1,"found ".scalar(@$tracks)." tracks");
 	bump_stat('init_db_tracks',scalar(@$folders));
-    for my $track (@$tracks)
+    for my $rec (@$tracks)
     {
-        $params->{tracks}->{$track->{FULLNAME}} = $track;
-		$params->{tracks_by_id}->{$track->{ID}} = $track;
-		$params->{file_md5_tracks}->{$track->{FILE_MD5}} = $track;
+		my $track = Track->newFromDb($rec);
+        $params->{tracks}->{$track->{path}} = $track;
+		$params->{tracks_by_id}->{$track->{id}} = $track;
+		$params->{file_md5_tracks}->{$track->{file_md5}} = $track;
     }
 }
 
@@ -336,22 +319,22 @@ sub do_cleanup
 	return if !del_unused_items(
 		$params,
 		$tracks,
-		'TRACKS',
-		'FULLNAME',
+		'tracks',
+		'path',
 		'num_tracks_deleted',
 		'file_deleted');
 	return if !del_unused_items(
 		$params,
 		$folders,
-		'FOLDERS',
-		'FULLPATH',
+		'folders',
+		'path',
 		'num_folders_deleted',
 		'folder_deleted',
 		$folders_by_id);
 	return if !del_unused_text_files(
 		$params,
 		$CLEANUP_FPCALC_FILES,
-		'FILE_MD5',
+		'file_md5',
 		'fpcalc_info');
 	return 1;
 }
@@ -371,7 +354,7 @@ sub del_unused_items
 		$bump_stat_field,
 		$other_hash) = @_;
 
-	# commite before, and after, for safety
+	# commit before, and after, for safety
 	
 	$params->{dbh}->commit();
 	display($dbg_library-1,0,($CLEANUP_DATABASE?"DELETE":"SHOW")." UNUSED $table");
@@ -379,7 +362,7 @@ sub del_unused_items
 	for my $path (sort(keys(%$hash)))
 	{
 		my $item = $hash->{$path};
-		if (!$item->{exists})
+		if (!$item->{file_exists})
 		{
 			display($dbg_library-1,0,($CLEANUP_DATABASE?"delete":"extra")." unused $table($path)");
 			# sanity check
@@ -397,7 +380,7 @@ sub del_unused_items
 					return;
 				}
 				delete $hash->{$path};
-				delete $other_hash->{$item->{ID}} if ($other_hash);
+				delete $other_hash->{$item->{id}} if ($other_hash);
 			}
 			$params->{$param_inc_field}++;
 			bump_stat($bump_stat_field);
@@ -439,14 +422,14 @@ sub del_unused_text_files
 
 
     my $num_missing = 0;
-    my $recs =   get_records_db($params->{dbh},"select $field_id from TRACKS");
+    my $recs =   get_records_db($params->{dbh},"SELECT $field_id FROM tracks");
     display($dbg_library-1,1,"mark ".scalar(@$recs)." of ".scalar(keys(%id_used)." $subdir filenames as used"));
     for my $rec (@$recs)
     {
         my $id = $rec->{$field_id};
         if (!$id_used{$id})
         {
-            warning(0,0,"NO $subdir file for $field_id=$id  path=$rec->{FULLNAME}");
+            warning(0,0,"NO $subdir file for $field_id=$id  path=$rec->{path}");
             $num_missing++;
         }
         else
@@ -462,7 +445,7 @@ sub del_unused_text_files
     for my $id (sort(keys(%id_used)))
     {
         next if $id_used{$id} == 2;
-		if ($deleting && $field_id eq 'STREAM_MD5')
+		if ($deleting && $field_id eq 'stream_md5')
 		{
 			warning(0,0,($deleting?"delete ":"")."unused $subdir file($id.txt)");
 		}
@@ -549,7 +532,7 @@ sub scan_directory
 	
     for my $subdir (@subdirs)
     {
-        return if !scan_directory($params,$folder->{ID},"$dir/$subdir");
+        return if !scan_directory($params,$folder->{id},"$dir/$subdir");
     }
 
 	# validate this folder
@@ -563,31 +546,35 @@ sub scan_directory
 	# We also check if the highest level for the folder
 	# has changed as result of the scan
 	
-	my $dbh = $params->{dbh};
-	if ($folder->{changed} ||
-		$folder->{new_high} != $folder->{HIGHEST_ERROR} ||
-		$folder->{new_folder_high} != $folder->{HIGHEST_FOLDER_ERROR})
+	if ($folder->{dirty} ||
+		$folder->{new_high} != $folder->{highest_error} ||
+		$folder->{new_folder_high} != $folder->{highest_folder_error})
 	{
-		display(9,0,"folder_update_changed $folder->{FULLPATH}") if $folder->{changed};
-		display(9,0,"folder_update_new_high old=$folder->{HIGHEST_ERROR} new=$folder->{new_high}") if $folder->{new_high} != $folder->{HIGHEST_ERROR};
-		display(9,0,"folder_update_new_folder_high old=$folder->{HIGHEST_FOLDER_ERROR} new=$folder->{new_folder_high}") if $folder->{new_folder_high} != $folder->{HIGHEST_FOLDER_ERROR};
-
-		bump_stat("folder_update_changed") if $folder->{changed};
-		bump_stat("folder_update_new_high") if $folder->{new_high} != $folder->{HIGHEST_ERROR};
-		bump_stat("folder_update_new_folder_high") if $folder->{new_folder_high} != $folder->{HIGHEST_FOLDER_ERROR};
-		
-		$folder->{HIGHEST_ERROR} = $folder->{new_high};
-		$folder->{HIGHEST_FOLDER_ERROR} = $folder->{new_folder_high};
-		if (!update_record_db($dbh,'FOLDERS',$folder))
+		if (!$folder->{existrs})
 		{
-			error("Could not update final FOLDER record for $dir");
+			display(9,0,"folder_update_changed $folder->{path}");
+			display(9,0,"folder_update_new_high old=$folder->{highest_error} new=$folder->{new_high}") if $folder->{new_high} != $folder->{highest_error};
+			display(9,0,"folder_update_new_folder_high old=$folder->{highest_folder_error} new=$folder->{new_folder_high}") if $folder->{new_folder_high} != $folder->{highest_folder_error};
+	
+			bump_stat("folder_update_changed");
+			bump_stat("folder_update_new_high") if $folder->{new_high} != $folder->{highest_error};
+			bump_stat("folder_update_new_folder_high") if $folder->{new_folder_high} != $folder->{highest_folder_error};
+		}
+		
+		$folder->{highest_error} = $folder->{new_high};
+		$folder->{highest_folder_error} = $folder->{new_folder_high};
+		$folder->{dirty} = 1;
+		
+		if (!$folder->save($params->{dbh}))
+		{
+			error("Could not Save() FOLDER record for $dir");
 			return;
 		}
 	}
 	
 	# commit changes on each completed directory
 	
-	$dbh->commit();
+	$params->{dbh}->commit();
 	return 1;
 }
 
@@ -596,13 +583,13 @@ sub scan_directory
 sub set_folder_error
 {
 	my ($params,$folder,$error_level,$message) = @_;
-	display($dbg_library+2,0,"set_folder_error($error_level,$message) on $folder->{FULLPATH}");
+	display($dbg_library+2,0,"set_folder_error($error_level,$message) on $folder->{path}");
 
-	$folder->{errors} ||= [];
-	push @{$folder->{errors}},{level=>$error_level,msg=>$message};
+	$folder->{errors} ||= shared_clone([]);
+	push @{$folder->{errors}},shared_clone({level=>$error_level,msg=>$message});
 
-	$folder->{FOLDER_ERROR} ||= 0;
-	$folder->{FOLDER_ERROR} = $error_level if ($error_level>$folder->{FOLDER_ERROR});
+	$folder->{folder_error} ||= 0;
+	$folder->{folder_error} = $error_level if ($error_level>$folder->{folder_error});
 	# finished - handle the results
 	
 	if ($params && $error_level  > $folder->{new_folder_high})
@@ -612,6 +599,16 @@ sub set_folder_error
 	}
 }
 
+
+
+
+sub nameFromPath
+{
+	my ($path) = @_;
+	my $name = $path;
+	$name = $1 if ($path =~ /^.*\/(.*?)$/);
+	return $name;
+}
 
 	
 sub validate_folder
@@ -632,38 +629,27 @@ sub validate_folder
 	# no folder validity check on 'unresolved'
 	# checks in incerasing order of importance
 	
-	if ($folder->{DIRTYPE} eq 'album')
+	if ($folder->{dirtype} eq 'album')
 	{
 		# check that the folder name equals the artist - title
 		# make sure it has exactly two parts
 		
-		my $check_artist = $folder->{ARTIST};
+		my $check_artist = $folder->{album_artist};
 		$check_artist =~ s/&/and/g;
 		
-		my @parts = split(/ - /,$folder->{NAME});
-		if ($folder->{CLASS} =~ /^Dead/)
+		my $folder_name = nameFromPath($folder->{path});
+		
+		my @parts = split(/ - /,$folder_name);
+		if ($folder->{path} =~ /^\/Dead/)
 		{
-			#if ($folder->{NAME} ne $folder->{TITLE})
-			#{
-			#	set_folder_error($params,$folder,$ERROR_MEDIUM,"Misnamed dead folder");
-			#}
-			
 			if (@parts != 1)
 			{
 				set_folder_error($params,$folder,$ERROR_MEDIUM,"Dash in dead folder name");
 			}				
 		}			
-		elsif ($folder->{CLASS} ne "")
+		else
 		{
-			# 2015-06-20 as of today the folder TITLE comes back with ' _ ' converted to ' - '
-			# and since the folder artist/title ALWAYS comes from the name, this check is not
-			# particularly useful
-			#
-			#if ($folder->{NAME} ne "$folder->{ARTIST} - $folder->{TITLE}")
-			#{
-			#	set_folder_error($params,$folder,$ERROR_MEDIUM,"Misnamed folder");
-			#}
-			
+		
 			if (@parts != 2)
 			{
 				set_folder_error($params,$folder,$ERROR_HIGH,"Expected 'artist - title' folder name");
@@ -672,14 +658,14 @@ sub validate_folder
 				   $check_artist !~ /^original soundtrack$/i &&
 				   !(-f "$cache_dir/artists/$check_artist.txt"))
 			{
-				set_folder_error($params,$folder,$ERROR_HIGH,"Unknown artist '$folder->{ARTIST}'");
+				set_folder_error($params,$folder,$ERROR_HIGH,"Unknown artist '$folder->{album_artist}'");
 			}
 		}			
 			
 		
-		# check for HAS_ART on all albums/singles (class ne '')
+		# check for has_art on all albums/singles (class ne '')
 		
-		if (!$folder->{HAS_ART})
+		if (!$folder->{has_art})
 		{
 			set_folder_error($params,$folder,$ERROR_LOW,"No folder art");
 		}
@@ -693,131 +679,74 @@ sub validate_folder
 #-------------------------------------------------
 
 sub add_folder
-	# add the folder to the tree
+	# return the folder, which may only exist in
+	# memory as dirty, or which may already be in
+	# the database as exists and dirty, and in
+	# all cases in-memory variable file_exists
+	# is set, since we found it in a scan
 {
 	my ($params,$parent_id,$in_dir,$subdirs,$files) = @_;
-	my $dbh = $params->{dbh};
 		
 	# parse the mp3_relative relative folder name
 	
-	my $use_path = mp3_relative($in_dir);
-	my $split = split_dir(0,$use_path,$files);
+	my $path = mp3_relative($in_dir);
+	my $split = split_dir(0,$path,$files);
 	my $is_album = $split->{type} eq 'album';
 	my $num_elements = $is_album ? @$files : @$subdirs;
-
+	my $has_art = (-f "$in_dir/folder.jpg") ? $HAS_FOLDER_ART : 0;
+	
 	bump_stat("type_folder_$split->{type}");
 	
 	# see if the folder already exists in
 	# the database, and add it if it doesn't.
 	# setting the 'new' bit.
 	
-	my $folder = $params->{folders}->{$use_path};
+	my $folder = $params->{folders}->{$path};
 	if (!$folder)
 	{
-		display($dbg_library,0,"add_folder($use_path)");
-		bump_stat('folder_added');
+		display($dbg_library,0,"add_folder($path) parent_id=$parent_id");
 
-		$folder = db_init_folder();
-		$folder->{PARENT_ID} = $parent_id;
-		$folder->{DIRTYPE}   = $split->{type};
-		$folder->{FULLPATH}  = $use_path;
-		$folder->{PATH}      = $split->{path};
-		$folder->{NAME}      = $split->{name};
-		$folder->{CLASS}     = $split->{class};
-		$folder->{HAS_ART}   = (-f "$in_dir/folder.jpg") ? 1 : 0;
-		bump_stat("has_".($folder->{HAS_ART}?'':'no_')."art");
-		
-		# set album metadata fields
-		
-        $folder->{GENRE}     = $is_album ? $split->{class} : '';
-		$folder->{TITLE}     = $is_album ? clean_str($split->{album_title}) : $folder->{NAME};
-		$folder->{ARTIST}    = $is_album ? clean_str($split->{album_artist}) : '';		
-		$folder->{NUM_ELEMENTS} = $num_elements;
-		$folder->{ROTATION} = 0;
-		
-		# insert record into database
-		# and re-get it so that we have the folder id,
-		# which we need for ART_URI 
-		# which means we set exists AFTER the insert
+		$folder = Folder->newFromHash({
+			parent_id 	  => $parent_id,
+			dirtype   	  => $split->{type},
+			path  	      => $path,
+			has_art   	  => $has_art,
+			genre         => $is_album ? $split->{class} : '',
+			album_title   => $is_album ? clean_str($split->{album_title}) : pathName($path),
+			album_artist  => $is_album ? clean_str($split->{album_artist}) : '',
+			num_elements  => $num_elements });
 
-		if (!insert_record_db($dbh,'FOLDERS',$folder))
-		{
-			error("Could not insert FOLDER record for $use_path");
-			return;
-		}
-		$folder = get_record_db($dbh,"SELECT * FROM FOLDERS WHERE FULLPATH=?",[$use_path]);
-
-		if (!$folder)
-		{
-			error("Could not re-get FOLDER record for $use_path");
-			return;
-		}
-		if (!$folder->{ID})
-		{
-			error("no folder ID returned by insert_record");
-			return;
-		}
-		
 		# the folder id is now valid
 		
-		$folder->{exists} = 1;
-        $params->{folders}->{$folder->{FULLPATH}} = $folder;
-        $params->{folders_by_id}->{$folder->{ID}} = $folder;
+		$folder->{file_exists} = 1;
+        $params->{folders}->{$folder->{path}} = $folder;
+        $params->{folders_by_id}->{$folder->{id}} = $folder;
+		
+		bump_stat('folder_added');
+		bump_stat("has_".($folder->{has_art}?'':'no_')."art");
 	}
 
 	# Here we notice if the number of elements changed,
 	# the presence of folder.jpg changed, or the folder type
-	# changed.
-	#
-	# Note that folder type change implies class type change,
-	# which in-turn, implies a genre change
-	#
-	# We don't mark the folder as changed 'yet'.
-	#
-	# $num_elements will be incorrect for rare cases where
-	# a track does not get added correctly due to an error.
+	# changed, if so, we update the files and set it dirty
 	
 	else
 	{
-		$folder->{exists} = 1;
-		my $has_art = (-f "$in_dir/folder.jpg") ? 1 : 0;
+		$folder->{file_exists} = 1;
 		bump_stat("has_".($has_art?'':'no_')."art");
 		
-		if ($folder->{NUM_ELEMENTS} != $num_elements ||
-			$folder->{DIRTYPE} ne $split->{type} ||
-			$folder->{HAS_ART} ne $has_art)
+		if ($folder->{num_elements} != $num_elements ||
+			$folder->{dirtype} ne $split->{type} ||
+			$folder->{has_art} ne $has_art)
 		{
 			display($dbg_library,0,"folder_change($in_dir)");
 			$params->{num_folders_changed} ++;
 				# special meaning - it has changed types
 				
 			bump_stat('folder_changed');
-			$folder->{DIRTYPE} = $split->{type};
-			$folder->{HAS_ART} = $has_art;
-			
-			my $rslt = db_do($dbh,"UPDATE FOLDERS SET ".
-					"DIRTYPE=?,".
-					"HAS_ART=?,".
-					"CLASS=?,".
-					# "ART_URI=?,".
-					"GENRE=?,".
-					"NUM_ELEMENTS=? ".
-					"WHERE ID='$folder->{ID}'",
-				[ $split->{type},
-				  $has_art,
-				  $split->{class},
-				  # $folder->{ART_URI},
-				  $is_album ? $split->{class} : '',
-				  $num_elements 
-				]);
-			
-			if (!$rslt)
-			{
-				error("Could not update2 FOLDERS for $use_path");
-				return;
-			}
-			
-			$folder->{changed} = 0;
+			$folder->{dirtype} = $split->{type};
+			$folder->{has_art} = $has_art;
+			$folder->{dirty} = 1;
 		}
 		else
 		{
@@ -836,10 +765,11 @@ sub add_folder
 
 
 sub	add_track
-	# add or update a track in the database
+	# create or re-use the existin track
+	# unlike folders, tracks are saved() immediately
 	# We get or initialize a new record, then get
 	# metadata as needed, and then, at the end of
-	# the routine, insert or update the record as needed.
+	# the routine, save() teh track
 {
 	my ($params,$folder,$in_dir,$file) = @_;
 	display(0,-1,"Scanning $dbg_count") if ($dbg_count % 100) == 0;
@@ -851,141 +781,146 @@ sub	add_track
 	# and try to find the track by name
 	# in the existing database ..
 	
-	my $path = mp3_relative($in_dir);
-    my $fullname = "$path/$file";
-	my $mime_type = myMimeType($file);
-	my $ext = $file =~ /.*\.(.*?)$/ ? $1 : error("no file extension!");
+	my $dir = mp3_relative($in_dir);
+    my $path = "$dir/$file";
+	my $type = $file =~ /.*\.(.*?)$/ ? $1 : error("no file extension!");
    	my @fileinfo = stat("$in_dir/$file");
 	my $size = $fileinfo[7];
 	my $timestamp = $fileinfo[9];
-    my $track = $params->{tracks}->{$fullname};
+    my $track = $params->{tracks}->{$path};
 
     bump_stat('tot_bytes',$fileinfo[7]);
-	bump_stat($mime_type);
+	bump_stat("type_".$type);
 
 	# set bit to get metadata if there is no database
 	# record, if the timestamp changed, or if the folder
 	# does not have art, and we are looking for art.
 
 	my $info;
-	my $get_meta_data = 0;
-	$get_meta_data = 1 if
-		!$track ||
-		$track->{TIMESTAMP} != $timestamp ||
-		($track->{HAS_ART} && !$folder->{HAS_ART} && $FIND_MISSING_ART);
+	my $get_meta_data = !$track || $track->{timestamp} != $timestamp  ? 1 : 0;
 		
 	if ($get_meta_data)
 	{
-		$info = MediaFile->new($fullname);
+		$info = MediaFile->new($path);
 		bump_stat('meta_data_get');
 		if (!$info)
 		{
-			error("Could not get MediaFile($fullname)");
+			error("Could not get MediaFile($path)");
 			exit 1;
 		}
-		if (!$info->{stream_md5})
+		if (!$info->{id})
 		{
-			error("Could not get STREAM_MD5 from MediaFile($fullname)");
+			error("Could not get id (STREAM_MD5) from MediaFile($path)");
 			exit 1;
 		}
 	}
-		
+
 	#------------------------------------------
 	# change detection
 	#------------------------------------------
-	# Now that we have the meta_data we have the STREAM_MD5
-	# and can use it to detect changes, enforce uniqueness, etc.
-	
-	# Start by detecting, and exiting with an error, in the weird
-	# unlikely case of exising track where STREAM_MD5 has changed,
-	# (and timestamp has changed_ but FULLNAME has not.
-	
+	# Now that we have the meta_data we have the id and the FILE_MD5
+	# and can use ithem to detect changes, enforce uniqueness, etc.
+	#	
+	# Give an error in the unlikely case that a file with same path
+	# now has a different id (stream_md5)
+	#
 	# Note that otherwise, we assume the same filename, with the
 	# same timestamp, is the same damned file!
 	
-	if ($track && $info && $track->{ID} ne $info->{stream_md5})
+	if ($track && $info && $track->{id} ne $info->{id})
 	{
-		error("Yikes: File '$fullname' has different stream_md5 in database, than that returned by MediaFile!!");
+		error("Yikes: File '$path' has different stream_md5 in database, than that returned by MediaFile!!");
 		exit 1;
 	}
 	
-	# It is a duplicate entry if the track was not found by name,
-	# the ID already exists in the database, and THAT TRACK points
-	# to an existing file.
+	# If there was there was no track in the database at this path
+	# but there is another existing track (file) with the same id
+	# it is a fatal error ...
 	
 	if (!$track)
 	{
-		my $old_track = $params->{tracks_by_id}->{$info->{stream_md5}};
-		if ($old_track && -f "$mp3_dir/$old_track->{FULLNAME}")
+		my $old_track = $params->{tracks_by_id}->{$info->{id}};
+
+		display($dbg_library,0,"add_track($path) old_track="._def($old_track));
+
+		if ($old_track && -f "$mp3_dir/$old_track->{path}")
 		{
-			error("DUPLICATE STREAM_MD5 (ID) for $fullname\nFOUND AT OTHER=$old_track->{FULLNAME}");
+			error("DUPLICATE STREAM_MD5 (ID) for $path\nFOUND AT OTHER=$old_track->{path}");
 			exit 1;
 		}
 		
-		# Otherwise, the old database record and in-memory hash items are delted
+		# Otherwise, the old database record has a bad path  
+		# (the file has moved or been renamed) and, since
+		# so we are going to create a new database record,
+		# we delete the old one from the database
 		
 		elsif ($old_track)
 		{
-			display($dbg_library,1,"Remove old track $old_track->{ID}=$old_track->{FULLNAME}");
-			if (!db_do($params->{dbh},"delete from TRACKS where ID='$old_track->{ID}'"))
+			warning(0,0,"Track($old_track->{id}) moved from '$old_track->{path}' to '$path'");
+			if (!db_do($params->{dbh},"DELETE FROM tracks WHERE id='$old_track->{id}'"))
 			{
-				error("Could not remove old track $old_track->{ID}=$old_track->{FULLNAME}");
+				error("Could not remove old track $old_track->{id}=$old_track->{path}");
 				exit 1;
 			}
-		
-			delete $params->{tracks_by_id}->{$old_track->{ID}};
-			delete $params->{tracks}->{$old_track->{FULLNAME}};
+			delete $params->{tracks_by_id}->{$old_track->{id}};
+			delete $params->{tracks}->{$old_track->{path}};
 		}
 		
 		# CONTINUING TO CREATE A NEW RECORD
+		
+		$track = Track->newFromHash({
+			is_local   => 1,
+			id         => $info->{id},
+			parent_id  => $folder->{id},
+			path  	   => $path,
+			type       => $type,
+			timestamp  => $timestamp,
+			size       => $size,
+			has_art    => $info->{has_art} | $folder->{has_art},
+			file_md5   => $info->{file_md5},
+			error_codes => $info->{error_codes} });
 
-		$track = db_init_track();
-		$track->{new}       = 1;
-		$track->{exists}    = 1;
-		$track->{ID}        = $info->{stream_md5};
-		$track->{PARENT_ID} = $folder->{ID};
-		$track->{FULLNAME}  = $fullname;
-		$track->{PATH}      = $path;
-		$track->{NAME}      = $file;
-		$track->{FILEEXT}   = $ext;
-        $track->{TIMESTAMP} = $timestamp;
-        $track->{SIZE}      = $size;
-        $track->{MIME_TYPE} = $mime_type;
-		$track->{FILE_MD5}  = $info->{file_md5};
-		$track->{ROTATION}  = 0;
-		$track->{ERROR_CODES} = $info->{error_codes};
-		$track->{HIGHEST_ERROR} = 0;
+		$track->{file_exists}   = 1;
+		bump_stat("file_new");
+
 	}
 	else
 	{
-		$track->{exists} = 1;
+		$track->{file_exists} = 1;
 		
-		if ($track->{TIMESTAMP} != $timestamp)
+		if ($track->{timestamp} != $timestamp)
 		{
-			bump_stat("file_changed");
+			bump_stat("file timestamp changed");
 			
 			display($dbg_library,1,"timestamp changed from ".
-				dateToLocalText($track->{TIMESTAMP}).
+				dateToLocalText($track->{timestamp}).
 				"  to ".dateToLocalText($timestamp).
-				" in file($fullname)");
+				" in file($path)");
 			
-      		$track->{SIZE} = $size;
-			$track->{TIMESTAMP} = $timestamp;
-			$track->{ERROR_CODES} = $info->{error_codes};
-			$track->{HIGHEST_ERROR} = 0;
-			
-			$track->{changed} = 1;
+      		$track->{size} = $size;
+			$track->{timestamp} = $timestamp;
+			$track->{error_codes} = $info->{error_codes};
+			$track->{highest_error} = 0;
+			$track->{dirty} = 1;
 		}
 		else
 		{
 			bump_stat("file_unchanged");
 		}
+		
+		if (($track->{has_art} & $HAS_FOLDER_ART) != $folder->{has_art})
+		{
+			my $msg = $folder->{has_art} ? "added" : "removed";
+			bump_stat("folder_art_$msg");
+			bump_stat("folder_art_changed");
+			display($dbg_library,1,"folder art $msg in $track->{title}");
+			$track->{dirty} = 1;
+		}
+		
 	}
 
-
 	# process the metadata as needed
-	# may set track->{changed}
-	# We also re-initialize the error level for the track
+	# may set track->{dirty}
 	
 	if ($get_meta_data)
 	{
@@ -998,43 +933,25 @@ sub	add_track
 	
 	# check for a change to highest error
 	
-	my $highest = highest_severity($track->{ERROR_CODES});
-	if ($highest != $track->{HIGHEST_ERROR})
+	my $highest = highest_severity($track->{error_codes});
+	if ($highest != $track->{highest_error})
 	{
-		$track->{HIGHEST_ERROR} = $highest;
-		$track->{changed} = 1;
+		$track->{highest_error} = $highest;
+		$track->{dirty} = 1;
 	}
 	
 	# write the record if it's new or needs to be updated
 	
-	my $dbh = $params->{dbh};
-	if ($track->{new})
+	if (!$track->save($params->{dbh}))
 	{
-		if (!insert_record_db($dbh,'TRACKS',$track,"ID"))
-			# note that we have to pass "ID" in as key field,
-			# otherwise ID is not set during the insert (for
-			# the folders database file)
-		{
-			error("Could not insert TRACK record for $fullname");
-			exit 1;
-		}
-        $params->{tracks}->{$track->{FULLNAME}} = $track;
-		$track->{changed} = 0;
+		error("Could not save TRACK record for $path");
+		exit 1;
 	}
-	elsif ($track->{changed})
-	{
-		if (!update_record_db($dbh,'TRACKS',$track,"ID"))
-		{
-			error("Could not update TRACK record for $fullname");
-			exit 1;
-		}
-		$track->{changed} = 0;
-	}
-
+    
 	# add it to in-memory hashes in every case
 
-	$params->{tracks}->{$fullname} = $track;
-	$params->{tracks_by_id}->{$track->{ID}} = $track;
+	$params->{tracks}->{$path} = $track;
+	$params->{tracks_by_id}->{$track->{id}} = $track;
 	
 	# propogate the highest error level upwards
 	# and return
@@ -1044,30 +961,31 @@ sub	add_track
 	
 }	# addTrack
 	
+
 	
 #-------------------------------------------------
 # add_track subfunctions
 #-------------------------------------------------
 
-my $test_pic_num = '000000';
 
 sub get_meta_data
 {
 	my ($params,$track,$folder,$info) = @_;
-	
+
 	# set and note any changes in the meta_data
 	# and set the 'changed' bit so it gets written
 
 	my $meta_changed = '';
-	my @meta_fields = qw(artist album title genre year tracknum duration album_artist has_art);
+	my @meta_fields = qw(artist album_title title genre year_str tracknum duration album_artist);
 	for my $field (@meta_fields)
 	{
 		my $new = $info->{$field} || '';
-		my $old = $track->{uc($field)} || '';
+		my $old = $track->{$field} || '';
+		
 		if ($new ne $old)
 		{
 			$meta_changed .= $field."='$new' (old='$old'),";
-			$track->{uc($field)} = $new;
+			$track->{$field} = $new;
 		}
 	}
 
@@ -1075,74 +993,22 @@ sub get_meta_data
 
 	if ($meta_changed)
 	{
-		$track->{changed} = 1;
-		if (!$track->{new})
+		$track->{dirty} = 1;
+		if ($track->{exists})
 		{
-			display($dbg_library+1,1,"metadata($meta_changed) changed for $track->{NAME}");
+			display($dbg_library+1,1,"metadata($meta_changed) changed for $track->{name}");
 			bump_stat("meta_data_changed");
 		}
 	}
 	else
 	{
-		display($dbg_library+1,1,"metadata unchanged for $track->{NAME}");
+		display($dbg_library+1,1,"metadata unchanged for $track->{name}");
 		bump_stat("meta_data_unchanged");
 	}
 
-	# fix the folders missing art problem if possible
-	
-	if ($track->{HAS_ART} &&
-		!$folder->{HAS_ART} &&
-		$FIND_MISSING_ART )
-	{
-		bump_stat("missing_art_checked");
-		display($dbg_library+1,0,"checking missing art from $track->{FULLNAME}");
-		my @pics = $info->get_pictures();
-		if (!@pics)
-		{
-			error("huh - track HASART but no pics returned from MediaFile!");
-		}
-		else
-		{
-			if (0)	# debugging
-			{
-				for (my $i=0; $i<@pics; $i++)
-				{
-					my $jpeg = $pics[$i];
-					dump_jpg("/junk/test_pics/test_pic.".($test_pic_num++).".jpg",$jpeg);
-				}
-			}
-			
-			my $selected = pop(@pics);
-			if ($selected)
-			{
-				bump_stat("missing_art_found");
-				$folder->{changed} = 1;
-				$folder->{HAS_ART} = dump_jpg(
-					"$mp3_dir/$folder->{FULLPATH}/folder.jpg",
-					$selected);
-			}
-		}
-	}	# look for missing art
-	
 	return 1;
 }
 
-
-
-sub	dump_jpg
-{
-	my ($ofile,$jpeg) = @_;
-	LOG(0,"WRITING JPEG  to $ofile");
-	if (!open(OFILE,">$ofile"))
-	{
-		error("Could not open $ofile for writing");
-		return 0;
-	}
-	binmode OFILE;
-	print OFILE $jpeg;
-	close OFILE;
-	return 1;
-}
 
 
 
@@ -1160,28 +1026,26 @@ sub get_folder
 	
 	if ($id eq '0')
 	{
-		return {
-			ID => 0,
-			PARENT_ID => -1,
-			TITLE => 'All Artisan Folders',
-			DIRTYPE => 'root',
-			NUM_ELEMENTS => 1,
-			ARTIST => '',
-			GENRE => '',
-			YEAR => substr(today(),0,4),
-		};
+		return Folder->newFromHash({
+			id => 0,
+			parent_id => -1,
+			title => 'All Artisan Folders',
+			dirtype => 'root',
+			num_elements => 1,
+			artist => '',
+			genre => '',
+			path => '',
+			year => substr(today(),0,4)  });
 	}
 	
-    my $rec = get_record_db($dbh,"SELECT * FROM FOLDERS WHERE ID='$id'");
-    return $rec;
+    return Folder->newFromDbId($dbh,$id);
 }
 
 
 sub get_track
 {
     my ($dbh,$id) = @_;
-    my $rec = get_record_db($dbh,"SELECT * FROM TRACKS WHERE ID='$id'");
-    return $rec;
+	return Track->newFromDbId($dbh,$id);
 }
 
 
@@ -1189,8 +1053,8 @@ sub get_folder_parent_id
 {
 	my ($dbh,$id) = @_;
     display($dbg_library+1,0,"get_folder_parent($id)");
-	my $folder = get_folder($dbh,$id);
-	return $folder ? $folder->{PARENT_ID} : - 1;
+	my $folder = Folder->newFromDbId($dbh,$id);
+	return $folder ? $folder->{parent_id} : - 1;
 }
 
 
@@ -1212,34 +1076,39 @@ sub get_subitems
     $count ||= 999999;
     display($dbg_library,0,"get_subitems($table,$id,$start,$count)");
 
-    if ($id !~ /^\d+$/)
-	{
-		error("Unknown id in get_subitems: $id");
-			# currently folder id's are integers!
-		return [];
-	}
-	
-	my $sort_clause = ($table eq 'FOLDERS') ? 'DIRTYPE DESC,' : '';
+	my $sort_clause = ($table eq 'folders') ? 'dirtype DESC,path' : 'path';
 
 	my $query = "SELECT * FROM $table ".
-		"WHERE PARENT_ID='$id' ".
-		"ORDER BY $sort_clause NAME";
+		"WHERE parent_id='$id' ".
+		"ORDER BY $sort_clause";
 
 	my $recs = get_records_db($dbh,$query);
 	my $dbg_num = $recs ? scalar(@$recs) : 0;
 	display($dbg_library,1,"get_subitems($table,$id,$start,$count) found $dbg_num items");
 	
-	my @recs;
+	my @retval;
 	for my $rec (@$recs)
 	{
 		next if ($start-- > 0);
-		display($dbg_library,2,pad($rec->{ID},40)." ".pad($rec->{NAME},30)." ".$rec->{PATH});
-		push @recs,$rec;
+		display($dbg_library,2,pad($rec->{id},40)." ".pad($rec->{name},30)." ".$rec->{path});
+		
+		my $item;
+		if ($table eq 'tracks')
+		{
+			$item = Tracks->newFromDb($rec);
+		}
+		else
+		{
+			$item = Folders->newFromDb($rec);
+		}
+		
+		push @retval,$item;
 		last if (--$count <= 0);
 	}
 
-	return \@recs;
+	return \@retval;
 
+	
 }   # get_subitems
 
 

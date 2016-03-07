@@ -6,8 +6,7 @@
 # that has the concept of a stack of currently playing things including
 #
 #     A single Song
-#     The Current Songlist
-#     A Station or a Saved Songlist
+#     The Current Playlist
 #
 # The general UI model is to call methods that do things as needed,
 # and separately to call update() from a loop from the UI, and to use the
@@ -64,24 +63,24 @@
 #       get's its state, checks it, detecting stops and stalls,
 #       and advances the song/track as necessary.
 #
-#    setStation($station_num)  0==off
-#       This renderer can, at the bottom, either be playing a Station,
-#       or a Saved Songlist.  Stations loop automatically, whereas
-#       Songlists stop when they finish. The station must have some
-#       songs.  Stations, by default, start off where they left off.
+#    setPlaylist($playlist_name)  ""
+#       This renderer can, at the bottom, either be playing a Playlist,
+#       or a Saved Songlist.  Playlists loop automatically, whereas
+#       Songlists stop when they finish. The playlist must have some
+#       songs.  Playlists, by default, start off where they left off.
 #
 # The following methods correspond directly to UI Transport Controls
 #
 #    stop() 
 #       This will stop the renderer, and any song, songlist,
-#       or station it might be playing. Correspon
+#       or playlist it might be playing. Correspon
 #       be playing.
 #    
 #    play_next_song()
 #    play_prev_song()
-#       These will play the next or previous song in the station,
+#       These will play the next or previous song in the playlist,
 #       if any.  They will return false if there is an error, of
-#       if the renderer is not playing a station.
+#       if the renderer is not playing a playlist.
 #
 #    set_position($pct)
 #       Takes an integer from 0..100 and moves the renderer there.
@@ -101,12 +100,12 @@
 #       play the Current Songlist, if there is one,
 #       track_num is optional, and specifies where to start playing the songList
 #       When the current songlist is finished, or upon << or >> out of it,
-#       the stack will be popped and the underlying Station or Saved SongList
+#       the stack will be popped and the underlying Playlist or Saved SongList
 #       will start playing.  If $track_num is not provided, the last
 #       value (as maintained by the Current Songlist) will be played.
 #
 #    setSavedSonglist($list_name)  ""=off
-#       The alternative to setStation, play a named saved songlist.
+#       The alternative to setPlaylist, play a named saved songlist.
 #       Songlists start at the first track.
 #       Songlists may be explicitly "shuffled" and retain that state,
 #       and can be played in "Shuffle" or "Native" order.
@@ -169,12 +168,11 @@ use IO::Select;
 use IO::Socket::INET;
 use XML::Simple;
 use LWP::UserAgent;
-use HTTPXML;
 use SSDPSearch;
 use Library;
 use Database;
 use Utils;
-use Station;
+use Playlist;
 use DLNARenderer;
 
 
@@ -224,8 +222,8 @@ sub new
 
 sub init_renderer
 	# private
-    # level 0 = init state, station, and song
-    # level 1 = init station,
+    # level 0 = init state, playlist, and song
+    # level 1 = init playlist,
     # level 2 = init for new song
 {
     my ($this,$level) = @_;
@@ -252,7 +250,7 @@ sub init_renderer
     {
 		$this->{pending_song} = '';
 		$this->{pending_timer} = 0;
-        $this->{station} = undef;
+        $this->{playlist} = undef;
     }
     
     if (!$level)
@@ -344,15 +342,15 @@ sub metadata_from_item
     my $metadata = shared_clone({});
     $metadata->{title} = $item->{TITLE};
     $metadata->{artist} = $item->{ARTIST};
-    $metadata->{genre} = $item->{GENRE};
-    $metadata->{date} = $item->{YEAR};
-    $metadata->{track_num} = $item->{TRACKNUM};
-    $metadata->{album} = $item->{ALBUM};
-    $metadata->{albumArtURI} = $parent->{HAS_ART} ? 
-		"http://$server_ip:$server_port/get_art/$parent->{ID}/folder.jpg" :
+    $metadata->{genre} = $item->{genre};
+    $metadata->{date} = $item->{year_str};
+    $metadata->{track_num} = $item->{tracknum};
+    $metadata->{album_title} = $item->{album_title};
+    $metadata->{albumArtURI} = $parent->{has_art} ? 
+		"http://$server_ip:$server_port/get_art/$parent->{id}/folder.jpg" :
         '';
 
-    $metadata->{size} = $item->{SIZE};
+    $metadata->{size} = $item->{size};
     $metadata->{pretty_size} = pretty_bytes($metadata->{size});
 
     return $metadata;
@@ -396,7 +394,7 @@ sub auto_update_thread
     
     while (!$quitting)
     {
-        if ($g_renderer)  # && $g_renderer->{station})
+        if ($g_renderer)  # && $g_renderer->{playlist})
         {
             
             # issue the call to update()
@@ -464,10 +462,10 @@ sub selectRenderer
 	}
 
 	# PROCEED TO CHANGE RENDERERS
-	# Stop the station on the old renderer if it's playing
+	# Stop the playlist on the old renderer if it's playing
 	
     LOG(0,"selectRenderer($id)");
-	if ($g_renderer && $g_renderer->{station})
+	if ($g_renderer && $g_renderer->{playlist})
 	{
 		display($dbg_ren,1,"selectRenderer($id) stopping old renderer");
 		$g_renderer->command('stop');
@@ -487,11 +485,11 @@ sub selectRenderer
 	$g_renderer->{id} = $new_dlna->{id};
 	$g_renderer->{name} = $new_dlna->{name};
 	
-	# Start the station on the new renderer if needed
+	# Start the playlist on the new renderer if needed
 	
-	if ($g_renderer->{station})
+	if ($g_renderer->{playlist})
 	{
-		display($dbg_ren,0,"starting station($g_renderer->{station}->{name}) on new renderer. reltime="._def($g_renderer->{reltime}));
+		display($dbg_ren,0,"starting playlist($g_renderer->{playlist}->{name}) on new renderer. reltime="._def($g_renderer->{reltime}));
 		if (!$g_renderer->play($g_renderer->{song_id}))
 		{
 			display($dbg_ren,1,"renderer->play($g_renderer->{song_id}) returned false");
@@ -511,7 +509,7 @@ sub selectRenderer
 			$g_renderer->{pending_seek} = $g_renderer->{reltime};
 		}
 		
-	}   # new renderer has a station
+	}   # new renderer has a playlist
     
     display($dbg_ren,0,"selectRenderer returning $g_renderer->{name}");
     return $g_renderer;
@@ -638,15 +636,15 @@ sub update
 			
             # if the song_id is "" it's not from us
             # if the song_id doesn't agree with the current songlist
-            # it's not from us.  In either case, we turn off {station}
+            # it's not from us.  In either case, we turn off {playlist}
             # optimized to not check if pending song
             
-            if ($this->{station} && !$this->{pending_song})
+            if ($this->{playlist} && !$this->{pending_song})
             {
                 if (!$data->{song_id} || $data->{song_id} ne $this->{song_id})
                 {
-                    LOG(0,"detected song change on renderer ... stopping station");
-                    # $this->setStation(0);
+                    LOG(0,"detected song change on renderer ... stopping playlist");
+                    # $this->setPlaylist(0);
 			        $this->init_renderer(1);
 
                 }
@@ -654,7 +652,7 @@ sub update
             
             # if we are still in control, then check for stalled renderer
             
-            if ($this->{station})
+            if ($this->{playlist})
             {
                 if ($data->{reltime} eq $this->{reltime})
                 {
@@ -677,7 +675,7 @@ sub update
                 }
             }
     
-            $state = 'PLAYING_STATION' if $this->{station};
+            $state = 'PLAYING_PLAYLIST' if $this->{playlist};
     
             # update the members for the UI
 
@@ -693,7 +691,7 @@ sub update
     # is stopped, enqueue the next song.
     # optimized to not stop if pending song
     
-    elsif ($this->{station} && $state =~ 'STOPPED' && !$this->{pending_song})
+    elsif ($this->{playlist} && $state =~ 'STOPPED' && !$this->{pending_song})
     {
 		my $advance = 1;
 		display($dbg_ren,0,"Advancing .. allow_stop_from_remote=$this->{allow_stop_from_remote}");
@@ -827,35 +825,35 @@ sub play
 }
 
 
-sub setStation
+sub setPlaylist
 {
-    my ($this,$station) = @_;
+    my ($this,$playlist) = @_;
     my $retval = 1;
 
-    display($dbg_ren,0,"setStation(".($station?$station->{name}:'undef').")");
+    display($dbg_ren,0,"setPlaylist(".($playlist?$playlist->{name}:'undef').")");
     lock(%locker);
-    display($dbg_ren,1,"setStation(".($station?$station->{name}:'undef').") got lock");
+    display($dbg_ren,1,"setPlaylist(".($playlist?$playlist->{name}:'undef').") got lock");
     
-    my $this_num = $this->{station} ? $this->{station}->{station_num} : 0;
-    my $that_num = $station ? $station->{station_num} : 0;
+    my $this_name = $this->{playlist} ? $this->{playlist}->{playlist_name} : 0;
+    my $that_name = $playlist ? $playlist->{playlist_name} : 0;
     
-    if ($this_num != $that_num)
+    if ($this_name != $that_name)
     {
-        if ($this->{station})
+        if ($this->{playlist})
         {
             $retval = 0 if !$this->stop();
         }
 
         $this->init_renderer(1);
-        $this->{station} = $station;
+        $this->{playlist} = $playlist;
         
-        if ($retval && $station)
+        if ($retval && $playlist)
         {
             $retval = 0 if !$this->play_next_song();
         }
     }
     
-    display($dbg_ren,1,"setStation(".($station?$station->{name}:'undef').") returning $retval");
+    display($dbg_ren,1,"setPlaylist(".($playlist?$playlist->{name}:'undef').") returning $retval");
     return $retval;
 }
 
@@ -869,8 +867,8 @@ sub play_next_song
     lock(%locker);
     display($dbg_ren,1,"play_next_song() got lock");
             
-    $this->{song_id} = $this->{station}->getNextTrackID();
-    LOG(0,"playing next($this->{station}->{name}) song($this->{station}->{track_index}) = $this->{song_id}");
+    $this->{song_id} = $this->{playlist}->getNextTrackID();
+    LOG(0,"playing next($this->{playlist}->{name}) song($this->{playlist}->{track_index}) = $this->{song_id}");
 
     my $retval = $this->play($this->{song_id});
     display($dbg_ren,1,"play_next_song() returning $retval");
@@ -886,8 +884,8 @@ sub play_prev_song
     lock(%locker);
     display($dbg_ren,1,"play_prev_song() got lock");
             
-    $this->{song_id} = $this->{station}->getPrevTrackID();
-    LOG(0,"playing next($this->{station}->{name}) song($this->{station}->{track_index}) = $this->{song_id}");
+    $this->{song_id} = $this->{playlist}->getPrevTrackID();
+    LOG(0,"playing next($this->{playlist}->{name}) song($this->{playlist}->{track_index}) = $this->{song_id}");
 
     my $retval = $this->play($this->{song_id});
     display($dbg_ren,1,"play_prev_song() returning $retval");
@@ -907,12 +905,12 @@ sub async_play_song
     # The song will start playing on the next monitor loop.
 {
     my ($this,$inc) = @_;
-    display($dbg_ren,0,"async_play_song($this->{name}) station=$this->{station}->{name} inc=$inc");
+    display($dbg_ren,0,"async_play_song($this->{name}) playlist=$this->{playlist}->{name} inc=$inc");
     lock(%locker);
     display($dbg_ren,1,"async_play_song($inc) got lock");
 
 	$this->{allow_stop_from_remote} = 0;
-    $this->{song_id} = $this->{station}->getIncTrackID($inc);
+    $this->{song_id} = $this->{playlist}->getIncTrackID($inc);
     $this->{pending_song} = $this->{song_id};
     $this->{pending_timer} = 0;
     $this->{metadata} = metadata_from_item($this->{pending_song});
@@ -924,7 +922,7 @@ sub async_play_song
 sub play_single_song
     # play a single song id.
 	# uses pending mechanism.
-	# should *not* stop the radio station,
+	# should *not* stop the playlist,
 	# which *should* continue when the song is done.
 {
     my ($this,$song_id) = @_;

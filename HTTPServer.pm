@@ -18,7 +18,6 @@ use Utils;
 use Database;
 use Library;
 use WebUI;
-use HTTPXML;
 
 # PRH !!! THE THREADED APPROACH  NOT WORKING ON ARTISAN_WIN !!!
 # Crashes when I try to "set the renderer" from the webUI
@@ -246,7 +245,7 @@ sub handle_connection
 		my $desc = $1;
 		my $xml = $1 eq 'ServerDesc.xml' ?
 			xml_serverdescription() :
-			getTextFile("$artisan_perl_dir/xml/$desc");
+			getTextFile("$artisan_perl_dir/xml/$desc",1);
 		my @additional_header = (
 			'Content-Type: text/xml; charset=utf8',
 			'Content-Length: '.length($xml) );
@@ -659,8 +658,8 @@ sub search_directory
     }
     else    # a debugging expression that should work for testing
     {
-        $table = ($criteria =~ /musicAlbum/) ? "FOLDERS" : "TRACKS";
-        $sql_expr = ($table eq '') ? "TITLE='Hard Lesson'" : "NAME='Blue To The Bone'";
+        $table = ($criteria =~ /musicAlbum/) ? "folders" : "tracks";
+        $sql_expr = ($table eq '') ? "title='Hard Lesson'" : "name='Blue To The Bone'";
     }
 
     # do the query
@@ -683,15 +682,15 @@ sub search_directory
         $response_xml .= xml_header(1);
         my $num = 0;
         my $index = 0;
-        if ($table eq 'TRACKS')
+        if ($table eq 'tracks')
         {
 			my $folder;
 			my $parent_id = 0;
             for my $file (@$recs)
             {
-				if ($file->{PARENT_ID} ne $parent_id)
+				if ($file->{parent_id} ne $parent_id)
 				{
-					$parent_id = $file->{PARENT_ID};
+					$parent_id = $file->{parent_id};
 					$folder = get_folder($parent_id);
 				}
                 if ($index >= $start)
@@ -751,7 +750,7 @@ sub create_sql_expr
     my $class_is = 'upnp:class\s+derivedfrom|upnp:class\s*=';
     if ($expr =~ s/($class_is)\s*"(object\.(item\.audioItem|container\.album\.musicAlbum))"(\s+and)*//i)
     {
-        $table = $3 eq 'item.audioItem' ? 'TRACKS' : 'FOLDERS';
+        $table = $3 eq 'item.audioItem' ? 'tracks' : 'folders';
     }
     if (!$table)
     {
@@ -759,9 +758,9 @@ sub create_sql_expr
         return;  # returns no results, not an error
     }
 
-    my $title_field = ($table eq '') ? 'TITLE' : 'NAME';
-    my $artist_field = ($table eq '') ? 'ARTIST' : 'NAME';
-    my $creator_field = ($table eq '') ? 'ARTIST' : 'NAME';
+    my $title_field = ($table eq '') ? 'title' : 'name';
+    my $artist_field = ($table eq '') ? 'artist' : 'name';
+    my $creator_field = ($table eq '') ? 'artist' : 'name';
     $expr =~ s/dc:title/$title_field/g;
     $expr =~ s/upnp:artist/$artist_field/g;
     $expr =~ s/dc:creator/$creator_field/g;
@@ -831,7 +830,7 @@ sub browse_directory
 		{
 			# set object_id to parentid
 			warning(0,-1,"mis-implemented BROWSE_METADATA($id) called");
-			$id = $folder->{PARENT_ID};
+			$id = $folder->{parent_id};
 			$folder = get_folder($dbh,$id);
 			$error = "Could not get_folder($id)"
 				if (!$folder);
@@ -850,8 +849,8 @@ sub browse_directory
 		display($dbg_http,0,"BROWSE($flag,id=$id,start=$start,count=$count)");
 		$count = 10 if !$count;
 		
-		my $is_album = $folder->{DIRTYPE} eq 'album' ? 1 : 0;
-		my $table = $is_album ? "TRACKS" : "FOLDERS";
+		my $is_album = $folder->{dirtype} eq 'album' ? 1 : 0;
+		my $table = $is_album ? "tracks" : "folders";
         my $subitems = get_subitems($dbh, $table, $id, $start, $count);
 		my $num_items = @$subitems;
 		
@@ -860,12 +859,10 @@ sub browse_directory
 		my $response_xml = xml_header();
         for my $item (@$subitems)
         {
-            $response_xml .= $is_album ?
-				xml_item($item,$folder) :
-				xml_directory($item);
+            $response_xml .= $item->getDidl();
         }
 
-        $response_xml .= xml_footer($num_items,$folder->{NUM_ELEMENTS});
+        $response_xml .= xml_footer($num_items,$folder->{num_elements});
         display($dbg_http+1,1,"Done with numeric($id) dirlist response");
 	    db_disconnect($dbh);
 		return $response_xml;
@@ -917,7 +914,7 @@ sub get_art
 
     # open the file and send it to the client
 
-	my $filename = "$mp3_dir/$folder->{FULLPATH}/folder.jpg";
+	my $filename = "$mp3_dir/$folder->{path}/folder.jpg";
     if (!(-f $filename))
     {
         error("get_art($id): file not found: $filename");
@@ -947,6 +944,82 @@ sub get_art
 
 }   # get_art()
 
+
+
+
+
+
+sub xml_serverdescription
+	# server description for the DLNA Server
+{
+    display(_clip $dbg_xml+1,3,"xml_serverdescription()");
+
+	my $xml = <<EOXML;
+<?xml version="1.0"?>
+<root xmlns="urn:schemas-upnp-org:device-1-0">
+    <specVersion>
+        <major>1</major>
+        <minor>5</minor>
+    </specVersion>
+    <device>
+        <deviceType>urn:schemas-upnp-org:device:MediaServer:1</deviceType>
+        <presentationURL>http://$server_ip:$server_port/webui/</presentationURL>
+        <friendlyName>$program_name</friendlyName>
+        <manufacturer>Patrick Horton</manufacturer>
+        <manufacturerURL>http://www.phorton.com</manufacturerURL>
+        <modelDescription>a simple media server</modelDescription>
+        <modelName>$program_name</modelName>
+        <modelNumber>1234</modelNumber>
+        <modelURL>http://www.phorton.com</modelURL>
+        <serialNumber>5679</serialNumber>');
+        <UDN>$uuid</UDN>
+        <iconList>
+EOXML
+
+    my $indent = "            ";
+    for my $size (256)  # 120, 48, 32)
+    {
+        for my $type (qw(png)) # jpeg))
+        {
+            $xml .= $indent."<icon>\n";
+            $xml .= $indent."    <mimetype>image/$type</mimetype>\n";
+            $xml .= $indent."    <width>$size</width>\n";
+            $xml .= $indent."    <height>$size</height>\n";
+            $xml .= $indent."    <depth>24</depth>\n";
+            $xml .= $indent."    <url>/icons/$size/icon.$type</url>\n";
+            $xml .= $indent."</icon>\n";
+        }
+    }
+
+    # we dont advertise that we're a connection manager,
+    # since we're not ...
+    #
+    # <service>
+    #    <serviceType>urn:schemas-upnp-org:service:ConnectionManager:1</serviceType>
+    #    <serviceId>urn:upnp-org:serviceId:ConnectionManager</serviceId>
+    #    <SCPDURL>ConnectionManager1.xml</SCPDURL>
+    #    <controlURL>/upnp/control/ConnectionManager1</controlURL>
+    #    <eventSubURL>/upnp/event/ConnectionManager1</eventSubURL>
+    # </service>
+
+    $xml .= <<EOXML;
+        </iconList>
+        <serviceList>
+            <service>
+                <serviceType>urn:schemas-upnp-org:service:ContentDirectory:1</serviceType>
+                <serviceId>urn:upnp-org:serviceId:ContentDirectory</serviceId>
+                <SCPDURL>ContentDirectory1.xml</SCPDURL>
+                <controlURL>/upnp/control/ContentDirectory1</controlURL>
+                <eventSubURL>/upnp/event/ContentDirectory1</eventSubURL>
+            </service>
+        </serviceList>
+    </device>
+    <URLBase>http://$server_ip:$server_port/</URLBase>
+</root>
+EOXML
+
+	return $xml;
+}
 
 
 1;

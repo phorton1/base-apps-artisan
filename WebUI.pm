@@ -30,13 +30,12 @@ use Utils;
 use Database;
 use MediaFile;
 use Library;
-use Station;
+use Playlist;
 use Renderer;
 
 use uiUtils;
 use uiExplorer;
 use uiRenderer;
-use uiStation;
 
 my $MIN_JS_CSS = 1;
 	# serve up .min file if they exist
@@ -143,10 +142,6 @@ sub web_ui
 	elsif ($path =~ s/^renderer\///)
 	{
 		$response = uiRenderer::renderer_request($path,$params);
-	}
-	elsif ($path =~ s/^station\///)
-	{
-		$response = uiStation::station_request($path,$params);
 	}
 
 	# unknown request

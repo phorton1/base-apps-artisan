@@ -886,7 +886,7 @@ my $method_sym = [  1, 'method_sym' ];
 # unused
 
 
-# TLEN is DURATION in milliseconds!
+# TLEN is duration in milliseconds!
 # TCON (genre) has a multi string with text_numbers or actual genres.
 # in order of 2.4 spec
 

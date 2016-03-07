@@ -5,9 +5,17 @@
 package Database;
 use strict;
 use warnings;
+use threads;
+use threads::shared;
 use DBI;
 use Utils;
 use SQLite;
+
+
+our $HAS_FOLDER_ART = 1;
+our $HAS_TRACK_ART  = 2;
+	# bitwise constants for track has_art
+
 
 
 # Re-exports SQLite db_do, get_records_db, and get_record_db
@@ -15,20 +23,31 @@ BEGIN
 {
  	use Exporter qw( import );
 	our @EXPORT = qw (
-	
+
+		$HAS_TRACK_ART
+		$HAS_FOLDER_ART
+		
+		
         db_initialize
         db_connect
         db_disconnect
-        get_table_fields
-		insert_record_db
-		update_record_db
-		db_init_track
-		db_init_folder
-		db_init_rec
 
         get_records_db
         get_record_db
         db_do
+		
+		insert_record_db
+		update_record_db
+
+        get_table_fields
+		db_init_track
+		db_init_folder
+		db_init_rec
+
+		%artisan_field_defs
+
+
+		
     );
 };
 
@@ -40,149 +59,141 @@ my $db_name = "$cache_dir/artisan.db";
 #------------------------------------
 # DATABASE DEFINITION
 #------------------------------------
-
+# Playlists
 		
-my %field_defs = (
+our %artisan_field_defs = (
+	
+	playlists => [
+		'num		 INTEGER',
+		'name		 VARCHAR(16)',
+		'num_tracks  INTEGER',
+		'track_index INTEGER',
+		'shuffle	 INTEGER',
+		'query		 VARCHAR(2048)'
+	],
 
-    TRACKS => [
-        'ID         VARCHAR(40)',	# 2016-02-11 Start using STREAM_MD5 as ID
-		'PARENT_ID  INTEGER',
+	
+    #------------------------------------
+    # TRACKS
+    #------------------------------------
+	
+    tracks => [
+		
+		'position 		INTEGER',
+			# the position within the playlist
+			# or in a fresh library scan. Need
+			# a query that returns MAX at the
+			# beginning of the scan ...
+		
+		'is_local       INTEGER',
+			# indicates whether this is a file
+			# on the local machine, in which case
+			# the id will be used to develop the
+			# public uri, and the path itself
+			# contains the mp3s_dir relative path
+			# to the file.
+			#
+			# The local database ONLY consists of
+			# these items, and it can be ASSUMED in
+			# some code (i.e. the perl Library scan)
+		
+		'id             VARCHAR(40)',
+			# stream_md5 from fpcalc
+			
+		'parent_id    	VARCHAR(40)',		# 
 			# id of parent folder
-		
-		# raw file information
-		
-        'FULLNAME	VARCHAR(2048)',
-        'TIMESTAMP	BIGINT',
-        'SIZE		BIGINT',
-        
-		# parsed and/or determined from fullname
-		
-        'MIME_TYPE	VARCHAR(128)',
-			# audio/mpeg, etc
-        'PATH		VARCHAR(2048)',
-        'NAME	    VARCHAR(2048)',
-        'FILEEXT	VARCHAR(4)',
-
-		# from MediaFile
-
-        'TYPE		VARCHAR(12)',
-			# synonymous with FILEEXT
 			
-		'FILE_MD5 VARCHAR(40)',
-			# Used to detect unused fpCalc_info files
+		'has_art        INTEGER',
+			# for local items (art_uri="")
+			# 1=folder.jpg exists
+			# 2=there's an image in the mp3 file
+		
+		'path			VARCHAR(1024)',
+			# the public_uri for non-local files
 			
-		
-        'DURATION   INTEGER DEFAULT 0',
-			# currently in seconds
-        'YEAR		VARCHAR(4)',
-			# the only pure 'tag' meta data at this time
-			# is the year.  This could be a DATE or a DATETIME
-			
-		'HAS_ART  INTEGER',
-			# for the TRACK the count of APICs tags
-			# Note that there is no ART_URI for tracks
-			
-		# MediaFile things that can return defaults from filename
-		
-        'TRACKNUM  	  VARCHAR(6)',
-        'TITLE		  VARCHAR(128)',
-        'ARTIST		  VARCHAR(128)',
+		'art_uri		VARCHAR(1024)',
+			# the http://uri and art_uri for external files
+			# uri will be the relative path to the file
+			# and art_uri will blank for local items
 
-		# MediaFile things that can return defaults from path
+		# metadata from our database for local items
+		# or from the didl of an external http:// track
+		
+		'duration     	BIGINT',			# milliseconds
+		'size         	BIGINT',
+		'type         	VARCHAR(8)',		# MP3, WMA, M4A, etc
+        'title		  	VARCHAR(128)',
+        'artist		  	VARCHAR(128)',
+        'album_title  	VARCHAR(128)',
+        'album_artist 	VARCHAR(128)',
+        'tracknum  	  	VARCHAR(6)',
+        'genre		  	VARCHAR(128)',
+		'year_str     	VARCHAR(4)',
+		
+		# concessions to Perl Library scanner
 
-        'ALBUM_ARTIST VARCHAR(128)',
-        'ALBUM		  VARCHAR(128)',
-        'GENRE		  VARCHAR(128)',
+		'timestamp      BIGINT',
+		'file_md5       VARCHAR(40)',
+			# for change detection
+		
+		'error_codes VARCHAR(128)',
+			# A list of the error codes found during the
+			# last media scan of this item (upto 40 or so)
 
-		# A list of the error codes found during the
-		# last media scan of this item (upto 40 or so)
+		'highest_error   INTEGER',
+			# The error level of the highest error found during
+			# the llibrary scan of this item
 		
-		'ERROR_CODES VARCHAR(128)',
-		
-		
-		# The error level of the highest error found during
-		# the llibrary scan of this item
-
-		'HIGHEST_ERROR   INTEGER',
-
-		# The bitwise 'stations' that this track is a member of.
-		# Changes to this bit must propogate to parent folders.
-		
-		'STATIONS      INTEGER',
-		
-	],	# TRACK DEFINITION
+	],	# tracks
 
 
     #------------------------------------
     # FOLDERS
     #------------------------------------
     # current directory types:
-    #     album
 	#     root
 	#     section
 	#     class
 	# future directory types
 	#     virtual?
 	
-    FOLDERS => [
-        'ID			 	INTEGER PRIMARY KEY AUTOINCREMENT',
-		'PARENT_ID      INTEGER',
-        'DIRTYPE	 	VARCHAR(16)',
-
-		# the class is null except on albums
-		
-		'CLASS          VARCHAR(128)',
-		
-		# may not be used for virtual folders
-		
-        'FULLPATH	 	VARCHAR(2048)',
-        'NAME		 	VARCHAR(2048)',
-        'PATH		 	VARCHAR(2048)',
-        'HAS_ART     	INTEGER',   # set to 1 if folder.jpg exists
+    folders => [
+        'id			 	VARCHAR(40)',
+			# md5 checksum of the path
+			
+		'parent_id      VARCHAR(40)',
+        'dirtype	 	VARCHAR(16)',
+		    # album, root, section, class, virtual, etc
+        'has_art     	INTEGER',
+			# set to 1 if folder.jpg exists
+	
+        'path	 		VARCHAR(1024)',
 
 		# presented via DNLA ... 
 		# mostly specific to albums
-		# Note that the database stores the ART_URI for folders
 		
-		'NUM_ELEMENTS   INTEGER',
-        'TITLE		    VARCHAR(128)',
-		#'ART_URI	    VARCHAR(128)',
-		'ARTIST		    VARCHAR(128)',
-        'GENRE		    VARCHAR(128)',
-        'YEAR		    VARCHAR(4)',
+		'num_elements   INTEGER',
+        'album_title	VARCHAR(128)',
+		'album_artist   VARCHAR(128)',
+        'genre		    VARCHAR(128)',
+        'year_str       VARCHAR(4)',
 
 		# The error level of this folder, separate children tracks
 		# is passed up the tree to HIGHEST_FOLDER_ERROR, and there
 		# is a "mode" which displays HIGHEST_ERROR, HIGHEST_FOLDER_ERROR
 		# or the highest of the two.
 		
-		'FOLDER_ERROR   INTEGER',
-		'HIGHEST_FOLDER_ERROR  INTEGER',
+		'folder_error          INTEGER',
+		'highest_folder_error  INTEGER',
 
 		# The highest error of this and any child track is
 		# passed up the folder tree.
 		
-		'HIGHEST_ERROR  INTEGER',
-		
-		# STATIONS - the bitwise stations this folder is a member of.
-		#
-		# A folder is a member of a station if any of it's leaf children
-		# tracks is a member.  The bit on the folder object is used
-		# as a UI artifice, to facilitate turning on and off large
-		# numbers of tracks at a time.
-		#
-		# If set on the folder, toggling it means to turn off the bit
-		# in all children folders and tracks.  If not set on the folder
-		# toggling it means to turn it on in all children and tracks.
-		# Otherwise, it may inherit a mixed 'on' state from it's children.
-		
-		'STATIONS      INTEGER',
+		'highest_error  INTEGER'
 
-        ],
-
-		
-		
-    );	# %field_defs
+	],	# folder
+	
+);	# %field_defs
 
 
 
@@ -208,11 +219,11 @@ sub db_initialize
 
 	   	my $dbh = db_connect();
 
-		$dbh->do('CREATE TABLE TRACKS ('.
-            join(',',@{$field_defs{TRACKS}}).')');
+		$dbh->do('CREATE TABLE tracks ('.
+            join(',',@{$artisan_field_defs{tracks}}).')');
 
-		$dbh->do('CREATE TABLE FOLDERS ('.
-            join(',',@{$field_defs{FOLDERS}}).')');
+		$dbh->do('CREATE TABLE folders ('.
+            join(',',@{$artisan_field_defs{folders}}).')');
 
     	db_disconnect($dbh);
 		
@@ -243,7 +254,7 @@ sub get_table_fields
     my ($dbh,$table) = @_;
     display($dbg_db+1,0,"get_table_fields($table)");
     my @rslt;
-	for my $def (@{$field_defs{$table}})
+	for my $def (@{$artisan_field_defs{$table}})
 	{
 		my $copy_def = $def;
 		$copy_def =~ s/\s.*$//;
@@ -258,16 +269,10 @@ sub insert_record_db
 	# inserts ALL table fields for a record
 	# and ignores other fields that may be in rec.
 	# best to call init_rec before this.
-	#
-	# kludge for FOLDERS which has an auto-increment
-	# primary ID field. Dont add the value for a field
-	# named ID, unless it is explicitly passed as key_field,
-	# so DO pass $key_field == "ID" for the TRACKS file.
 {
-	my ($dbh,$table,$rec,$key_field) = @_;
-	$key_field ||= 'NAME';
+	my ($dbh,$table,$rec) = @_;
 	
-    display($dbg_db,0,"insert_record_db($table,$key_field,$rec->{$key_field})");
+    display($dbg_db,0,"insert_record_db($table)");
 	my $fields = get_table_fields($dbh,$table);
 	
 	my @values;
@@ -275,7 +280,6 @@ sub insert_record_db
 	my $vstring = '';
 	for my $field (@$fields)
 	{
-		next if ($field eq 'ID' && $key_field ne 'ID');
 		$query .= ',' if $query;
 		$query .= $field;
 		$vstring .= ',' if $vstring;
@@ -290,13 +294,12 @@ sub update_record_db
 
 {
 	my ($dbh,$table,$rec,$id_field) = @_;
-	$id_field ||= 'ID';
+	$id_field ||= 'id';
 
 	my $fields = get_table_fields($dbh,$table);
 	my $id = $$rec{$id_field};
 	
-	my $dbg_extra = ($id_field ne 'NAME' && $rec->{NAME}) ? " $rec->{NAME}" : '';
-    display($dbg_db,0,"update_record_db($table,$id)$dbg_extra");
+    display($dbg_db,0,"update_record_db($table) id_field=$id_field id_value=$id");
 	
 	my @values;
 	my $query = '';
@@ -319,13 +322,13 @@ sub update_record_db
 
 sub db_init_track
 {
-	my $track = db_init_rec('TRACKS');
+	my $track = db_init_rec('tracks');
     return $track;
 }
 
 sub db_init_folder
 {
-	my $folder = db_init_rec('FOLDERS');
+	my $folder = db_init_rec('folders');
 	return $folder;
 }
 
@@ -334,12 +337,12 @@ sub db_init_folder
 sub db_init_rec
 {
 	my ($table) = @_;
-	my $rec = {};
-    for my $def (@{$field_defs{$table}})
+	my $rec = shared_clone({});
+    for my $def (@{$artisan_field_defs{$table}})
 	{
 		my ($field,$type) = split(/\s+/,$def);
 		my $value = '';
-		$value = 0 if $type =~ /^(INTEGER|BIGINT)$/;
+		$value = 0 if $type =~ /^(INTEGER|BIGINT)$/i;
 		$$rec{$field} = $value;
 	}
 	return $rec;

@@ -37,6 +37,7 @@ use appUtils qw(
 	getTextFile
 	getTextLines
 	printVarToFile
+	mergeHash
 );
 
 
@@ -55,11 +56,11 @@ our $debug_level 	= 0;
 our $warning_level 	= 0;
 
 our $dbg_db 		= 2;
-our $dbg_ssdp 		= 2;
-our $dbg_http 		= 2;
+our $dbg_ssdp 		= -1;
+our $dbg_http 		= 0;
 our $dbg_stream 	= 2;
 our $dbg_xml    	= 2;
-our $dbg_library    = 2;
+our $dbg_library    = 1;
 our $dbg_vlibrary   = 2;
 our $dbg_webui      = 3;
 our $dbg_mediafile  = 2;
@@ -133,21 +134,24 @@ BEGIN
         init_stats
         dump_stats
 
-        escape_tag
-        unescape_tag
+		encode_didl
 		encode_xml
 		decode_xml
+        escape_tag
+        unescape_tag
 		
         http_date
         add_leading_char
-        secs_to_duration
-		duration_to_secs
+        millis_to_duration
+		duration_to_millis
 
 		dateToGMTText
 		dateToLocalText
 		dateFromGMTText
 		dateFromLocalText		
 
+		containingPath
+		pathName
 		mp3_relative
 		mp3_absolute
 		create_dirs
@@ -188,6 +192,7 @@ BEGIN
         getTextFile
 		getTextLines
 		printVarToFile
+		mergeHash
     );
 };
 
@@ -255,7 +260,8 @@ our %error_mappings = (
 	'mi' => [ $ERROR_INFO,     	'Ovewriting tag album (name) with non-matching folder value after removing punctuation etc'],
 	'mj' => [ $ERROR_INFO,  	'Ovewriting tag besides album (name) with non-matching folder/filename value after removing punctuation etc'],
 	'mm' => [ $ERROR_MEDIUM,  	'unknown picture MIME type'],
-	'mp' => [ $ERROR_INFO,     	'APIC tag has no data in mp3 file'],
+	'mp' => [ $ERROR_MEDIUM,    'No folder.jpg in track folder'],
+	'mq' => [ $ERROR_INFO,     	'APIC tag has no data in mp3 file'],
     'mr' => [ $ERROR_MEDIUM,  	'fpcalc cant parse line'],
 	'mu' => [ $ERROR_HARD,    	'Unknown stream (DRM)'],
 	'my' => [ $ERROR_MEDIUM,	'Track does not have a Year'],
@@ -580,38 +586,28 @@ sub add_leading_char
 }
 
 
-sub escape_tag
-    # replace characters outside of 0x20-0xff
-	# with html &#NNN; tags where NNN is decimal.
-	# replace \'s with \x5c
-	#
-	# Used in the decoding MP3 tag sub_ids, hence it's name.
-	# Also called by the tag details sections of uiExplorer.pm.
-	#
-	# NOT CALLED by HTTPXML.pm!!
-	# note slightly different handling of backslash \\ to \x5c
+
+sub encode_didl
+	# does lightweight didl encoding
 {
-    my ($s) = @_;
-    if ($s)
-    {
-		$s =~ s/(\\)/\\x5c/g;
-		$s =~ s/([^\x20-\x7f])/"&#".ord($1).";"/eg;
-    }
-    return $s;
+	my ($string) = @_;
+	$string =~ s/"/&quot;/g;
+	$string =~ s/</&lt;/g;
+	$string =~ s/>/&gt;/g;
+	return $string;
 }
 
 
-
 sub encode_xml
-	# called by specific to XML encoding
+	# does encoding of inner values within didl
+	# for returning xml to dlna clients
 	# Note double encoding of ampersand as per
 	# http://sourceforge.net/p/minidlna/bugs/198/
-	# using decimal encoding
+	# USING DECIMAL ENCODING
 {
 	my $string = shift;
     $string =~ s/([^\x20-\x7f])/"&#".ord($1).";"/eg;
 	$string =~ s/&/&amp;/g; 
-	#$string =~ s/'/&apos;/g; # single quotes are not encoded by XML::Simple, do we need it ?
 	return $string;
 }
 
@@ -630,17 +626,33 @@ sub decode_xml
 
 
 
+sub escape_tag
+    # slighly different than encode xml
+	# does same DECIMAL encoding of non-printable characters
+	# but has special case to replace \'s with \x5c
+	#
+	# Used in the decoding of MP3 tag sub_ids
+{
+    my ($s) = @_;
+    if ($s)
+    {
+		$s =~ s/(\\)/\\x5c/g;
+		$s =~ s/([^\x20-\x7f])/"&#".ord($1).";"/eg;
+    }
+    return $s;
+}
+
+
 
 sub unescape_tag
 	# opposite of escape_tag, it was only
-	# called by encoding MP3 tags in y_MP3TagListWrite.pm
+	# called by encoding MP3 tags in my MP3TagListWrite.pm
 	# which is no longer used.
 {
     my ($s) = @_;
     if ($s)
     {
 		$s =~ s/\\x19/'/g;		# added special case
-
         $s =~ s/\\x(..)/pack('H2',$1)/eg;
         $s =~ s/\\#(\d+);/chr($1)/eg;
     }
@@ -653,41 +665,74 @@ sub unescape_tag
 # Time / Date Routines
 #---------------------------------------------
 
-sub secs_to_duration
+sub millis_to_duration
 	# duplicated as prettyDuration or something like that
 {
-	my ($seconds) = @_;
-    $seconds ||= 0;
+	my ($millis,$precise) = @_;
+	$millis ||= 0;
 
+	my $hours = 0;
 	my $minutes = 0;
+	my $seconds = int($millis/1000);
+	$millis = $millis % 1000;
+	
 	$minutes = int($seconds / 60) if $seconds > 59;
 	$seconds -= $minutes * 60 if $seconds;
-	my $hours = 0;
 	$hours = int($minutes / 60) if $minutes > 59;
 	$minutes -= $hours * 60 if $hours;
-
+	
 	my $string = '';
-	$string .= add_leading_char($hours,2,'0').':';
-	$string .= add_leading_char($minutes,2,'0').':';
-	$string .= add_leading_char($seconds,2,'0');
-
+	if ($precise)
+	{
+		$string .= add_leading_char($hours,2,'0').':';
+		$string .= add_leading_char($minutes,2,'0').':';
+		$string .= add_leading_char($seconds,2,'0').'.';
+		$string .= add_leading_char($millis,3,'0');
+	}
+	else
+	{
+		if ($hours)
+		{
+			$string .= "$hours:";
+			$string .= add_leading_char($minutes,2,'0').':';
+		}
+		else
+		{
+			$string .= "$minutes:";
+		}
+		$string .= add_leading_char($seconds,2,'0').'.';
+	}
 	return $string;
 }
 
 
-sub duration_to_secs
+
+sub duration_to_millis
 	# duplicated as prettyDuration or something like that
 {
 	my ($duration) = @_;
 	
+	
 	my $secs = 0;
+	my $millis = 0;
+	
 	my @parts = split(/:/,$duration);
+	my $num_parts = @parts;
+	if ($num_parts && $parts[$num_parts-1] =~ /\./)
+	{
+		my @parts2 = split(/\./,$parts[$num_parts-1]);
+		$parts[$num_parts-1] = $parts2[0];
+		$millis = int($parts2[1]);
+	}
+	
 	for my $part (@parts)
 	{
 		$secs *= 60;
 		$secs += int($part);
 	}
-	return $secs;
+	
+	$millis += $secs * 1000;
+	return $millis;
 }
 
 
@@ -760,6 +805,7 @@ sub mp3_relative
 	my $new_path = $path;
 	$new_path =~ s/^$mp3_dir_RE//;
 	$new_path =~ s/^\///;
+	$new_path ||= "";
 	# display(0,0,"mp3_relative($path)=$new_path");
 	return $new_path;
 }
@@ -793,6 +839,30 @@ sub create_dirs
             mkdir $root;
         }
     }
+}
+
+
+
+sub containingPath
+	# return the path portion of a filename, if any
+{
+	my ($fullpath) = @_;
+	$fullpath ||= '';
+	my $path = "";
+	$path = $1 if ($fullpath =~ /^(.*)\/.*?$/);
+	return $path;
+}
+
+
+sub pathName
+	# return the last portion of a path
+	# i.e. the leaf folder/filename
+{
+	my ($path) = @_;
+	$path ||= '';
+	my $name = $path;
+	$name = $1 if ($path =~ /^.*\/(.*?)$/);
+	return $name;
 }
 
 
@@ -839,7 +909,7 @@ sub split_dir
 	# return an empty record for root
 	# otherwise, it's at least a section
 
-	$rec->{name} = 'Folders';
+	$rec->{name} = 'folders';
 	$rec->{type} = 'root';
 	if ($fullpath)
 	{

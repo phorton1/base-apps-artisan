@@ -16,7 +16,6 @@
     <script type="text/javascript" src="/webui/artisan.js"></script>
     <script type="text/javascript" src="/webui/renderer.js"></script>
     <script type="text/javascript" src="/webui/explorer.js"></script>
-    <script type="text/javascript" src="/webui/station.js"></script>
 
     <!-- the order of the css is important -->
     <!-- touch_enabled == media="(max-width:599px),(max-device-width:1599px)"-->
@@ -32,7 +31,6 @@
 	<link rel="stylesheet" type="text/css" href="/webui/themes/artisan.css">
 	<link rel="stylesheet" type="text/css" href="/webui/themes/renderer.css">
 	<link rel="stylesheet" type="text/css" href="/webui/themes/explorer.css">
-	<link rel="stylesheet" type="text/css" href="/webui/themes/station.css">
     <link rel="stylesheet" type="text/css" href="/webui/themes/artisan_black.css" />        
     <link rel="stylesheet" type="text/css" href="/webui/themes/artisan_touch.css"
         media="(max-width:599px),(max-device-width:1599px)">   
@@ -43,7 +41,6 @@
 
     <div id='artisan_body'>
         <!-- include page_renderer.html -->
-        <!-- include page_stations.html -->
         <!-- include page_explorer.html -->
     </div>
 
@@ -53,27 +50,6 @@
         &nbsp; &nbsp; &nbsp;
         <button id='cancel_input' onclick='javascript:cancel_popup_input()'>cancel</button>
     </div>
-
-    <div id='context_menu_div'>
-        <p>
-            Open in
-        </p>
-        <p>
-            <button
-                id='context_menu_renderer'
-                onclick="javascript:do_context_menu('stations')">
-                stations
-            </button>
-        </p>
-        <p>
-            <button
-                id='context_menu_renderer'
-                onclick="javascript:do_context_menu('explorer')">
-                explorer
-            </button>
-        </p>
-    </div>
-
        
 </body>
 

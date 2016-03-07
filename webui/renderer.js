@@ -36,7 +36,7 @@ page_layouts['renderer'] = {
 		limit:600,
 		size:135,
 		size_touch:160,
-		element_id:'#renderer_button_station_assign', 
+		element_id:'#renderer_button_playlist_assign', 
 		element_is_button:true,
 		},
 		
@@ -57,9 +57,9 @@ function init_page_renderer()
 	
 	// prh - something is kicking me out of init_renderer_pane
 	// so if these are in the opposite order, the menu
-	// and station_info panes are not inited ...
+	// and playlist_info panes are not inited ...
 
-	init_pane_station_info();
+	init_pane_playlist_info();
 	init_renderer_menu_pane();
 	init_renderer_pane();
 	
@@ -109,14 +109,7 @@ function init_renderer_pane()
 		}
 		else
 		{
-			// if the renderer already has a station,
-			// make it the edit station
-			
 			current_renderer = result;
-			if (current_renderer.station)
-			{
-				set_edit_station(current_renderer.station);
-			}
 		}
 
 		update_renderer_ui();
@@ -167,19 +160,11 @@ function onload_renderer_list()
 }
 
 
-function onload_renderer_station_list()
+function onload_renderer_playlist_list()
 {
-	display(dbg_renderer,0,"onload_renderer_station_list()");
-    $('#renderer_station_list').buttonset();        
+	display(dbg_renderer,0,"onload_renderer_playlist_list()");
+    $('#renderer_playlist_list').buttonset();        
 }
-
-
-function onload_pane_song_stations()
-{
-	display(dbg_renderer,0,"onload_pane_song_stations()");
-    $('#renderer_song_stations_div').buttonset();        
-}
-
 
 
 
@@ -276,7 +261,7 @@ function select_renderer(id)
 
 
 
-function select_renderer_station(id)
+function select_renderer_playlist(id)
 	// called by easy-ui event registration on the renderer_list
 	// when the user changes the current selection.
 	// Set the current renderer name and enable the buttons.
@@ -287,19 +272,19 @@ function select_renderer_station(id)
 	
 	if (!current_renderer)
 	{
-		rerror("No current_renderer in select_renderer_station(" + id + ")");
+		rerror("No current_renderer in select_renderer_playlist(" + id + ")");
 		return;
 	}
 
-	$.get('/webui/renderer/set_station' +
+	$.get('/webui/renderer/set_playlist' +
 		  '?id='+current_renderer.id +
-		  '&station=' + id,
+		  '&playlist=' + id,
 
 		function(result)
 		{
 			if (result.error)
 			{
-				rerror('Error in select_renderer_station(' + id + '): ' + result.error);
+				rerror('Error in select_renderer_playlist(' + id + '): ' + result.error);
 				current_renderer = false;
 			}
 			else
@@ -308,15 +293,6 @@ function select_renderer_station(id)
 			}
 			update_renderer_ui();
 
-			// if they explicitly select a station,
-			// change the edit station to that
-			
-			var station = false;
-			if (current_renderer && current_renderer.station)
-			{
-				station = current_renderer.station;
-			}
-			set_edit_station(current_renderer.station);
 		}
 	);
 	
@@ -431,15 +407,15 @@ function update_renderer()
 function update_renderer_ui()
 {
 	var disable = true;
-	var disable_station = true;
+	var disable_playlist = true;
 	var stop_disabled = true;
 	var disable_slider = true;
 
 	var shuffle_on = false;
-	var station = [ false,false,false,false,false,false ];
+	var playlist = [ false,false,false,false,false,false ];
 
 	var state = '';
-	var stationName = 'Now Playing';
+	var playlistName = 'Now Playing';
 	var rendererName = 'No Renderer Selected';
 	
 	var art_uri = '/webui/icons/artisan.png';
@@ -462,7 +438,7 @@ function update_renderer_ui()
 	// set the values from current renderer if any
 	//-----------------------------------------------
 	// start with the rendererName
-	// stationName, and overall disable booleans
+	// playlistName, and overall disable booleans
 	
 	if (current_renderer)
 	{
@@ -471,17 +447,17 @@ function update_renderer_ui()
 		song_id = current_renderer.song_id;
 		
 		rendererName = current_renderer.name;
-		if (current_renderer.station)
+		if (current_renderer.playlist)
 		{
-			disable_station = false;
-			station[current_renderer.station.station_num] = true;
-			stationName =
-				// current_renderer.station.station_num + '. ' +
-				current_renderer.station.name;
-			stationName += '(' +
-				current_renderer.station.track_index + ',' +
-				current_renderer.station.num_tracks + ')';
-			shuffle_on = (current_renderer.station.shuffle>0) ? true : false;
+			disable_playlist = false;
+			playlist[current_renderer.playlist.playlist_num] = true;
+			playlistName =
+				// current_renderer.playlist.playlist_num + '. ' +
+				current_renderer.playlist.name;
+			playlistName += '(' +
+				current_renderer.playlist.track_index + ',' +
+				current_renderer.playlist.num_tracks + ')';
+			shuffle_on = (current_renderer.playlist.shuffle>0) ? true : false;
 		}
 
 		// Song Image and Metadata
@@ -531,14 +507,14 @@ function update_renderer_ui()
 		// Transport times and slider
 
 		if (state == 'PLAYING' ||
-			state == 'PLAYING_STATION')
+			state == 'PLAYING_PLAYLIST')
 		{
 			stop_disabled = false;
 			pause_button_label = ' || ';
 		}
 		
 		if (state == 'PLAYING' ||
-			state == 'PLAYING_STATION' ||
+			state == 'PLAYING_PLAYLIST' ||
 			state == 'PAUSED_PLAYBACK')
 		{		
 			duration = remove_leading_zeros(current_renderer.duration);
@@ -589,9 +565,9 @@ function update_renderer_ui()
 		// var title_panel = header_panel.find('.panel-title');
 		// title_panel.html('Now Playing &nbsp;&nbsp; ' + renderer.state);
 		
-		if (state == 'PLAYING_STATION')
+		if (state == 'PLAYING_PLAYLIST')
 		{
-			state = 'STATION';
+			state = 'PLAYLIST';
 		}
 		else if (state == 'PAUSED_PLAYBACK')
 		{
@@ -599,7 +575,7 @@ function update_renderer_ui()
 		}
 		
 		highlight_current_renderer();
-		ele_set_inner_html('renderer_header_left',stationName + ' &nbsp;&nbsp; ' + state);
+		ele_set_inner_html('renderer_header_left',playlistName + ' &nbsp;&nbsp; ' + state);
 		ele_set_inner_html('renderer_header_right',rendererName);
 			
 		// What's Playing info and image
@@ -631,30 +607,30 @@ function update_renderer_ui()
 	
 		for (var i=1; i<6; i++)
 		{
-			set_button_on('renderer_button_station_'+i,station[i]);
+			set_button_on('renderer_button_playlist_'+i,playlist[i]);
 		}
 	
 		set_button_on('renderer_button_shuffle',shuffle_on);
 		
 		// Enable/disable the buttons
 		
-		disable_button('renderer_button_prev',disable_station);
+		disable_button('renderer_button_prev',disable_playlist);
 		disable_button('renderer_button_play_pause',disable);
 		disable_button('renderer_button_stop',stop_disabled);
-		disable_button('renderer_button_next',disable_station);
-		// disable_button('renderer_button_shuffle',disable_station);
+		disable_button('renderer_button_next',disable_playlist);
+		// disable_button('renderer_button_shuffle',disable_playlist);
 	
-		disable_button('renderer_button_station_1',disable);
-		disable_button('renderer_button_station_2',disable);
-		disable_button('renderer_button_station_3',disable);
-		disable_button('renderer_button_station_4',disable);
-		disable_button('renderer_button_station_5',disable);
-		disable_button('renderer_button_station_6',disable);
-		disable_button('renderer_button_station_assign',
+		disable_button('renderer_button_playlist_1',disable);
+		disable_button('renderer_button_playlist_2',disable);
+		disable_button('renderer_button_playlist_3',disable);
+		disable_button('renderer_button_playlist_4',disable);
+		disable_button('renderer_button_playlist_5',disable);
+		disable_button('renderer_button_playlist_6',disable);
+		disable_button('renderer_button_playlist_assign',
 			window.innerWidth>700 || song_id == '');
 		
-		update_station_info_ui();
-		update_song_stations_ui(song_id);
+		update_playlist_info_ui();
+		update_song_playlists_ui(song_id);
 		
 		
 	}	// !autofull
@@ -669,116 +645,23 @@ function highlight_current_renderer()
 	{
 		var id = '#' + current_renderer.id;
 		$(id).prop('checked', true ).button('refresh');
-		if (current_renderer.station)
+		if (current_renderer.playlist)
 		{
-			var station_id = '#' + 'renderer_station_list_button_' + current_renderer.station.station_num;
-			$(station_id).prop('checked', true).button('refresh');
+			var playlist_id = '#' + 'renderer_playlist_list_button_' + current_renderer.playlist.playlist_num;
+			$(playlist_id).prop('checked', true).button('refresh');
 		}
 		else 
 		{
-			$('.renderer_station_list_button').prop('checked',false).button('refresh');
+			$('.renderer_playlist_list_button').prop('checked',false).button('refresh');
 		}
 	}
 	else
 	{
 		$('.renderer_list_button').prop('checked',false).button('refresh');
-		$('.renderer_station_list_button').prop('checked',false).button('refresh');
+		$('.renderer_playlist_list_button').prop('checked',false).button('refresh');
 	}
 }	
 
-
-
-//--------------------------------------------
-// song stations
-//--------------------------------------------
-
-
-
-function update_song_stations_ui(song_id)
-{
-	// actually the whole darned updateRendererUI() loop should be turned off
-	
-	if (!document.getElementById('song_station_list_button_1'))
-	{
-		return;
-	}
-
-	if (song_id == '')
-	{
-		$('.song_station_list_button')
-			.prop('checked',false)
-			.button('disable')
-			.button('refresh');
-	}
-	else if (last_song != song_id)
-	{
-		last_song = song_id;
-		$.get('/webui/explorer/get_track?id=' + song_id,
-			function(result) {
-
-			if (result.error)
-			{
-				rerror('update_song_stations_ui(' + song_id + '): ' + result.error);
-			}
-			else
-			{
-				var match_station = current_renderer && current_renderer.station ?
-					parseInt(current_renderer.station.station_num) : 0;
-				
-				var stations = result.STATIONS;
-				for (var id=1; id<=32; id++)
-				{
-					var bit = 1 << (id - 1);
-					var checked = stations & bit ? true : false;
-					var use_id = '#song_station_list_button_' + id;
-					var match = match_station == id ? true : false;
-
-					// toggle the style class on the button label
-					
-					$('[for="' + 'song_station_list_button_' + id + '"]')
-						.toggleClass('song_station_list_button_on',match)
-					
-					$(use_id)
-						.prop('checked',checked)
-						.button('enable')
-						.button('refresh');
-						
-				}						
-			}
-		});
-	}		
-}
-
-
-
-function select_song_station(station_num)
-	// they pressed a song station button for station_num
-	// it will act upon the showing song number ..
-{
-	var song_id = current_renderer ? current_renderer.song_id : '';
-	if (song_id != '')
-	{
-		var id = '#song_station_list_button_' + station_num;
-		var checked = $(id).prop('checked')?1:0;
-		
-		$.get(
-			'/webui/station/set_station_bit' +
-			'?station='+station_num+
-			'&item_id=track_' + song_id +
-			'&checked='+checked,
-			
-			function(result)
-			{
-				if (result.error)
-				{
-					rerror('select_song_station(' + station_num + ',' + song_id + '):' + result.error)
-				}
-			}
-		);
-	}
-	
-	return true;
-}
 
 
 

@@ -19,7 +19,7 @@
 #
 # There are preferences that allow automatically
 # connecting to a previous (given) DLNA render, and starting
-# a previous (given) Station or Saved Songlist, so technically
+# a previous (given) Playlist, so technically
 # speaking, a UI is not really required, but nonetheless,
 # by default it presents a webUI Surface (currently this
 # surface is implemented at a low level separate from the
@@ -48,7 +48,7 @@ use HTTPStream;
 use SSDP;
 use Library;
 use WebUI;
-use Station;
+use Playlist;
 use artisanInit;
 
 # use Daemon;

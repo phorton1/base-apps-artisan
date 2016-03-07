@@ -41,14 +41,14 @@
 #        Otherwise, returns the state of the DLNA renderer
 #            PLAYING, STOPPED, TRANSITIONING, ERROR, etc
 #        The PLAYING.* and STOPPED states are checked in
-#            the main Renderer update() and set_station()
+#            the main Renderer update() and set_playlist()
 #            methods.
 #
 #            STOPPED is used in update() to advance to the
-#            next track if there is a station active, and
+#            next track if there is a playlist active, and
 #            PLAYING is the state in which getDeviceData()
 #            will be called from update()
-#            PLAYING is also used in set_station() when
+#            PLAYING is also used in set_playlist() when
 #            switching to a new renderer, it must be
 #            acheived before advancing the new renderer
 #            to reltime.
@@ -1086,7 +1086,6 @@ if (0)
 
 use Database;
 use Library;
-use HTTPXML;
 
 
 sub didl_header
@@ -1123,7 +1122,7 @@ sub get_item_meta_didl
     display($dbg_ren+1,1,"item="._def($item)." parent_id=".($item?$item->{PARENT_ID}:'undef'));
     my $parent = get_folder($dbh,$item->{PARENT_ID});
     display($dbg_ren+1,1,"parent="._def($parent)." parent_id=".($item?$item->{PARENT_ID}:'undef'));
-    display($dbg_ren,1,"($item_num) == $item->{FULLNAME}");
+    display($dbg_ren,1,"($item_num) == $item->{uri}");
  
     db_disconnect($dbh);
    
@@ -1134,9 +1133,9 @@ sub get_item_meta_didl
     # when bup returns the metadata to us, we extract the
     # actual type from the metadata protocolinfo.
 
-    display($dbg_ren+1,0,"sending bogus 'mp3' type for '$item->{FILEEXT}'")
-        if ($item->{FILEEXT} !~ /mp3/i);
-    $item->{FILEEXT} = 'mp3';
+    display($dbg_ren+1,0,"sending bogus 'mp3' type for '$item->{fileext}'")
+        if ($item->{fileext} !~ /mp3/i);
+    $item->{fileext} = 'mp3';
 
     # debugging when renderer doees't show correct stuff
     # selectively add lines to see what happens
@@ -1145,9 +1144,9 @@ sub get_item_meta_didl
     {
          $item->{TITLE} = 'THIS IS THE TITLE blah';
          $item->{ARTIST} = 'THIS IS THE ARTIST';
-         $item->{ALBUM}  = 'THIS IS THE ALBUM';
-         $item->{GENRE}  = 'THIS IS THE GENRE';
-         $item->{FILEEXT} = 'mp3';
+         $item->{album_title}  = 'THIS IS THE ALBUM';
+         $item->{genre}  = 'THIS IS THE GENRE';
+         $item->{fileext} = 'mp3';
     }
     
     my $meta_didl =

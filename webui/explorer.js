@@ -138,7 +138,7 @@ function init_page_explorer()
 			// &#NNN; html equivilants.
 
 			$tdList.eq(0).addClass('explorer_tracklist_td0');
-			$tdList.eq(1).text(rec.TRACKNUM).addClass('explorer_tracklist_td1');
+			$tdList.eq(1).text(rec.tracknum).addClass('explorer_tracklist_td1');
 			$tdList.eq(2).html(rec.TITLE)	.addClass('explorer_tracklist_td2');
 			$tdList.eq(3).text(rec.FILEEXT)	.addClass('explorer_tracklist_td3');
 			
@@ -149,7 +149,7 @@ function init_page_explorer()
 			
 			// Should note difference in ARTIST / ALBUM / ALBUM_ARTIST and
 			// only show those that don't agree with the Album Info
-			// Other candidate fields include ID, STREAM_MD5, FILE_MD5, etc
+			// Other candidate fields include ID, STREAM_MD5, file_md5, etc
 			
 			$tdList.eq(5).text(rec.YEAR)	.addClass('explorer_tracklist_td5 explorer_tracklist_variable_td');
 		},
@@ -319,7 +319,7 @@ function update_explorer_album_info(rec)
 	}	
 	
 	$('#explorer_album_info1').html(
-		'type: ' + rec.DIRTYPE + ' &nbsp;&nbsp ' +
+		'type: ' + rec.dirtype + ' &nbsp;&nbsp ' +
 		'class: ' + rec.CLASS + ' &nbsp;&nbsp ' +
 		(rec.YEAR ? 'year: ' + rec.YEAR + ' &nbsp;&nbsp ' : '') + 
 		(rec.GENRE ? 'genre: ' + rec.GENRE + ' &nbsp;&nbsp ' : ''));
@@ -330,23 +330,14 @@ function update_explorer_album_info(rec)
 		'error:' + rec.FOLDER_ERROR + ' &nbsp;&nbsp ' +
 		'high_folder:' + rec.HIGHEST_FOLDER_ERROR +  ' &nbsp;&nbsp ' +
 		'high_track:' + rec.HIGHEST_ERROR +  ' &nbsp;&nbsp ' +
-		(rec.HAS_ART ? 'hasart='+rec.HAS_ART : ''));
+		(rec.has_art ? 'hasart='+rec.has_art : ''));
 
 	$('#explorer_album_info3').html(
 		error_string
 	 );
 
-	var station_bits = '';
-	for (var i=15; i>=0; i--)
-	{
-		var bit = 1 << i;
-		station_bits += (rec.STATIONS & bit) ? '1' : '0';
-	}
-	
-	$('#explorer_album_info4').html(
-		'stations: ' + station_bits);
 
-	$('#explorer_album_info5').html(rec.FULLPATH);
+	$('#explorer_album_info5').html(rec.path);
 	
 	
 	//-------------- LOAD THE TRACKLIST -------------------- 
@@ -365,7 +356,7 @@ function update_explorer_album_info(rec)
 
 
 //----------------------------------------------------------
-// set_context_stations()
+// set_context_explorer()
 //----------------------------------------------------------
 
 function set_context_explorer(context)
@@ -394,7 +385,6 @@ function set_context_explorer(context)
 					track_id = RegExp.$1;
 				}
 
-				// same code in stations.js
 				
 				var last_node;
 				var tree = $('#explorer_tree').fancytree('getTree');

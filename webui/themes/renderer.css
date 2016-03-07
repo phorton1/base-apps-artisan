@@ -181,9 +181,9 @@
 }
 
 
-/* RENDERER MENU STATION LIST STYLES */
+/* RENDERER MENU PLAYLIST LIST STYLES */
 
-#renderer_station_list label,
+#renderer_playlist_list label,
 #renderer_list label
 {
 	width:200px;
@@ -192,7 +192,7 @@
 	margin-bottom:10px;
 }
 
-#renderer_station_list,
+#renderer_playlist_list,
 #renderer_list
 {
 	width:197px;
@@ -209,41 +209,6 @@
 {
 	z-index:3;
 }
-
-
-/* RENDERER SONG STATIONS SYTLES */
-
-#renderer_song_stations_table
-{
-	width:98%;
-	table-layout:fixed;	
-}
-
-
-.renderer_song_stations_td
-{
-	text-align:center;
-	padding-top:6px;
-}
-
-.renderer_song_stations_td br
-{
-	margin-top:12px;
-}
-
-
-#renderer_song_stations_table .ui-button
-{
-	width:90px;
-	font-size:9pt;
-	
-	height:24px;
-	padding:0px;
-	margin:0px;
-	overflow:hidden;
-}
-
-
 
 .song_station_list_button_on span
 {

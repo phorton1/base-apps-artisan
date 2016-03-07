@@ -12,15 +12,18 @@ use Utils;
 use MP3Info;
 use MP3Vars;
 use MP4::Info;
-    
+use Database qw($HAS_FOLDER_ART $HAS_TRACK_ART);
+
+
+# The stream_md5 is mapped to the id by this module
 
 our @required_fields = qw(
-    artist
-    album
+	id
+	artist
+    album_title
     title
     duration
     file_md5
-    stream_md5
     album_artist );
     
 # $dbg_mediafile = 0;
@@ -53,8 +56,10 @@ sub new
     }
     else
     {
+		# and otherwise, I guess I need this
         utf8::downgrade($path);
     }
+	
    	my @fileinfo = stat($path);
 	my $size = $fileinfo[7];
 	my $timestamp = $fileinfo[9];    
@@ -69,10 +74,10 @@ sub new
     my $this = {};
     bless $this,$class;
     
+    $this->{id} = '';
     $this->{path} = $path;
     $this->{has_art} = 0;
     $this->{file_md5} = '';
-    $this->{stream_md5} = '';
     $this->{errors} = undef;
     $this->{error_codes} = '';
     
@@ -167,16 +172,20 @@ sub new
         }
         else
         {
-            $this->set('mediaFile',$path,'stream_md5',$info->{stream_md5});
+            $this->set('mediaFile',$path,'id',$info->{stream_md5});
+			
+			# think fpcalc returns decimal seconds
+			# which we convert to milliseconds here
+			
             if (!$this->{duration} &&
                 $info->{duration} &&
-                $info->{duration} =~ /^\d+$/)
+                $info->{duration} =~ /^[\.\d]+$/)
             {    
-                $this->set("mediaFile",$path,'duration',$info->{duration});
+                $this->set("mediaFile",$path,'duration',$info->{duration} * 1000);
             }
         }
     }
-
+	
     # debugging and warnings
     
     if (1)
@@ -201,11 +210,10 @@ sub new
         "Missing required metadata '".join(',',@missing_required).'"')
         if (@missing_required);
         
-        	# all tracks should have a year
+    # separate cosmetic error for tracks missing a year
 	
-	$this->set_error('my',"No YEAR")
-		if (!$this->{year});
-
+	$this->set_error('my',"No YEAR_STR")
+		if (!$this->{year_str});
 
     return $this;
 }
@@ -233,7 +241,7 @@ sub set_error
     
     my $in_msg =  "in ".
         ($this->{file_md5} ? "file_md5($this->{file_md5}) ":'').
-        ($this->{stream_md5} ? "stream_md5($this->{stream_md5}) ":'').
+        ($this->{id} ? "id($this->{id}) ":'').
         "path=$this->{path}";
     if ($severity >= $ERROR_HIGH)
     {
@@ -288,7 +296,6 @@ sub set
             if (!$check_title);
     }
     
-    
     # values that I just don't want in my database
     
     $old =~ s/http:\/\/music\.download\.com//;
@@ -312,7 +319,7 @@ sub set
 
             # disk 1 of 2
             
-            $check_old =~ s/(\(|\[)(\d)\/(\d)(\)|\])/($2 of $3)/ if ($field =~ /^(album)$/);
+            $check_old =~ s/(\(|\[)(\d)\/(\d)(\)|\])/($2 of $3)/ if ($field =~ /^(album_title)$/);
 
             # various extra junk specific to a few albums
             
@@ -331,7 +338,7 @@ sub set
             
             if ($check_val ne $check_old)
             {
-                $error_code = ($field eq 'album') ? 'mi' : 'mj';
+                $error_code = ($field eq 'album_title') ? 'mi' : 'mj';
             }
         }
         
@@ -370,48 +377,12 @@ sub set_default_info
     $this->set("default_info",$path,'album_artist',$split->{album_artist})
         if $split->{album_artist} ne 'Various' &&
            $split->{album_artist} ne 'Original Soundtrack';
-    $this->set("default_info",$path,'album',$split->{album_title})
+    $this->set("default_info",$path,'album_title',$split->{album_title})
         if $split->{album_title} ne 'Unknown';
     $this->set("default_info",$path,'tracknum',$split->{track});
     $this->set("default_info",$path,'title',$split->{title});
 }
 
-
-
-#------------------------------------------------
-# generic fromFileType(M4P, M4A) etc
-#------------------------------------------------
-# unused - does not work on android because
-# I could not get Music::Tag installed
-
-sub unused_fromFileType
-{
-    my ($this,$path,$type) = @_;
-    display($dbg_mediafile,0,"fromFileType($type)");
-
-    my $data = Music::Tag->new($path, { quiet => 1 }, $type);
-    if (!$data)
-    {
-        error("FATAL ERROR - Could not call Music::Tag->new($path)");
-        return;
-    }
-    $data->get_tag();
-    $this->{raw_tags} = $data;
-
-    # no genre or year!
-
-    $this->set("from_file($type)",$path,'title',$data->title());
-    $this->set("from_file($type)",$path,'artist',$data->artist());
-    $this->set("from_file($type)",$path,'album',$data->album());
-    $this->set("from_file($type)",$path,'album_artist',$data->albumartist());
-    $this->set("from_file($type)",$path,'genre',$data->genre());
-    $this->set("from_file($type)",$path,'year',$data->year());
-    $this->set("from_file($type)",$path,'track',$data->track());
-    $this->set("from_file($type)",$path,'duration',$data->duration());
-    #$this->set("from_file($type)",$path,'num_tracks',$data->totaltracks());
-    #$this->set("from_file($type)",$path,'comment',$data->comment());
-    return 1;
-}
 
 
 #------------------------------------------------
@@ -440,24 +411,23 @@ sub fromM4A
         info => $info,
         tags => $tags };
 
-    $this->set("fromM4A",$path,'has_art',1)
+    $this->set("fromM4A",$path,'has_art',$HAS_TRACK_ART)
         if ($tags->{COVR});
     
     $this->set("fromM4A",$path,'title',$$tags{TITLE});
     $this->set("fromM4A",$path,'artist',$$tags{ARTIST});
-    $this->set("fromM4A",$path,'album',$$tags{ALBUM});
-    # $this->set("fromM4A",$path,'album_artist',$$tags{ALBUMARTIST});
-    $this->set("fromM4A",$path,'genre',$$tags{GENRE});
-    $this->set("fromM4A",$path,'track',$$tags{TRACKNUM});
-    $this->set("fromM4A",$path,'year',$$tags{YEAR});
-    $this->set("fromM4A",$path,'duration',$$info{SECS});
+    $this->set("fromM4A",$path,'album_title',$$tags{album_title});
+    $this->set("fromM4A",$path,'genre',$$tags{genre});
+    $this->set("fromM4A",$path,'track',$$tags{tracknum});
+    $this->set("fromM4A",$path,'year_str',$$tags{year_str});
+    $this->set("fromM4A",$path,'duration',$$info{SECS} * 1000);
     
     return 1;
     
     my $known_tags = join('|',qw(
         ALB APID ART CMT COVR CPIL CPRT DAY DISK   
         GNRE GRP NAM RTNG TMPO TOO TRKN WRT    
-        TITLE ARTIST ALBUM YEAR COMMENT GENRE TRACKNUM ));
+        TITLE ARTIST ALBUM YEAR COMMENT GENRE tracknum ));
     my $known_info = join('|',qw(
         VERSION LAYER BITRATE FREQUENCY SIZE SECS    
         MM SS MS TIME COPYRIGHT ENCODING ENCRYPTED ));
@@ -506,17 +476,17 @@ sub fromWMA
     $artist = $$tags{ALBUMARTIST} if (!$artist);
     $this->set("fromWMA",$path,'title',$$tags{TITLE});
     $this->set("fromWMA",$path,'artist',$artist);
-    $this->set("fromWMA",$path,'album',$$tags{ALBUMTITLE});
+    $this->set("fromWMA",$path,'album_title',$$tags{ALBUMTITLE});
     $this->set("fromWMA",$path,'album_artist',$$tags{ALBUMARTIST});
-    $this->set("fromWMA",$path,'genre',$$tags{GENRE});
-    $this->set("fromWMA",$path,'track',$$tags{TRACKNUMBER});
-    $this->set("fromWMA",$path,'year',$$tags{YEAR});
-    $this->set("fromWMA",$path,'duration',$$info{playtime_seconds});
+    $this->set("fromWMA",$path,'genre',$$tags{genre});
+    $this->set("fromWMA",$path,'track',$$tags{tracknumBER});
+    $this->set("fromWMA",$path,'year_str',$$tags{year_str});
+    $this->set("fromWMA",$path,'duration',$$info{playtime_seconds} * 1000);
     
     return 1;
     
     my $known_tags = join('|',qw(
-        ALBUMARTIST ALBUMTITLE GENRE TRACKNUMBER YEAR TITLE
+        ALBUMARTIST ALBUMTITLE GENRE tracknumBER YEAR TITLE
         AUTHOR COMPOSER
         COPYRIGHT PROVIDER PROVIDERSTYLE PUBLISHER TRACK
         UNIQUEFILEIDENTIFIER VBR PROVIDERRATING SHAREDUSERRATING
@@ -554,10 +524,10 @@ sub fromWMA
 #
 #     title
 #     artist
-#     album
-#     albumartist
+#     album_title
+#     album_artist
 #     genre
-#     year
+#     year_str
 #     track
 #     duration (integer seconds)
 #
@@ -576,8 +546,8 @@ sub fromWMA
 our %artisan_to_mp3= (
     title       => 'TIT2',
     artist      => 'TPE1',
-    album       => 'TALB',
-    year        => "TORY,TXXX\toriginalyear,TYER,TDRC",  # TORY=original year, release TYER=v3, TDRC=v4
+    album_title => 'TALB',
+    year_str    => "TORY,TXXX\toriginalyear,TYER,TDRC",  # TORY=original year, release TYER=v3, TDRC=v4
     track       => 'TRCK',
     genre       => 'TCON',
     album_artist => "TPE2,TXXX\tAlbum Artist",
@@ -623,7 +593,7 @@ sub fromMP3
             }
             elsif (!$tag->{data})
             {
-                $this->set_error('mp',"APIC has no data");
+                $this->set_error('mq',"APIC has no data");
             }
             elsif ($tag->{mime_type} !~ /^(JPG|image\/(jpg|jpeg))$/i)
             {
@@ -631,8 +601,7 @@ sub fromMP3
             }
             else
             {
-                my $num = $this->{has_art} + 1;
-                $this->set("fromMP3",$path,'has_art',$num);
+                $this->set("fromMP3",$path,'has_art',$HAS_TRACK_ART);
             }
         }
     }
@@ -646,10 +615,6 @@ sub fromMP3
             my $value = $mp3->get_tag_value($tag_id);
             if ($value)
             {
-                if ($field eq 'duration')
-                {
-                    $value = int($value/1000);  # ms to seconds
-                }
                 $this->set("fromMP3",$path,$field,$value);
                 last;
             }
@@ -783,7 +748,7 @@ sub get_fpcalc_info
 # get_pictures
 #------------------------------------------------
 
-sub get_pictures
+sub unused_get_pictures
     # return any jpegs found in the file as an array
 {
     my ($this) = @_;

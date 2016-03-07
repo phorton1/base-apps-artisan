@@ -306,7 +306,6 @@ sub _constant
 #----------------------------------------------------
 # Fake little library for meta data xml
 #----------------------------------------------------
-use HTTPXML;
 use Library;
 use Database;
 

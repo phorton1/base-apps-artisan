@@ -17,7 +17,6 @@ use XML::Simple;
 use Utils;
 use Database;
 use Library;
-use HTTPXML;
 
 
 sub stream_media
@@ -68,20 +67,20 @@ sub stream_media
 				'log' => 'httpstream' });
 			return;
         }
-    	LOG(1,"stream_media($id) len=$item->{SIZE} file=$item->{FULLNAME}");
+    	LOG(1,"stream_media($id) len=$item->{size} file=$item->{uri}");
 
         # sanity checks
 
-		if (!$item->{FULLNAME})
+		if (!$item->{path})
 		{
-			error("Content($id) has no FULLNAME");
+			error("Content($id) has no path");
 			print $FH http_header({
 				'statuscode' => 404,
 				'content_type' => 'text/plain',
 				'log' => 'httpstream' });
 			return;
 		}
-		my $filename = "$mp3_dir/$item->{FULLNAME}";
+		my $filename = "$mp3_dir/$item->{path}";
 		if (!-f $filename)
 		{
 			error("Content($id) file not found: $filename");
@@ -102,7 +101,7 @@ sub stream_media
 		my $to_byte = 0;
 		my $is_ranged = 0;
 		my $from_byte = 0;
-		my $content_len = $item->{SIZE};
+		my $content_len = $item->{size};
 		my $statuscode = 200;
 
 		if (defined($headers->{RANGE}) &&
@@ -115,8 +114,8 @@ sub stream_media
 			
 			display($dbg_stream,1,"Range Request from $from_byte/$content_len to $to_byte");
 
-			$to_byte = $item->{SIZE}-1 if (!$to_byte);
-			$to_byte = $item->{SIZE}-1 if ($to_byte >= $item->{SIZE});
+			$to_byte = $item->{size}-1 if (!$to_byte);
+			$to_byte = $item->{size}-1 if ($to_byte >= $item->{size});
 			$content_len = $to_byte - $from_byte + 1;
 			display($dbg_stream+1,1,"Doing Range request from $from_byte to $to_byte = $content_len bytes");
 		}
@@ -128,11 +127,11 @@ sub stream_media
 		
 		push @additional_header, "Content-Type: $item->{MIME_TYPE}";
 		push @additional_header, "Content-Length: $content_len";
-		#push @additional_header, "Content-Disposition: attachment; filename=\"$item->{NAME}\"";
+		#push @additional_header, "Content-Disposition: attachment; filename=\"$item->{name}\"";
 		push @additional_header, "Accept-Ranges: bytes";
-        push @additional_header, "contentFeatures.dlna.org: ".HTTPXML::get_dlna_stuff($item);
+        push @additional_header, "contentFeatures.dlna.org: ".$item->get_dlna_stuff();
 		push @additional_header, 'transferMode.dlna.org: Streaming';
-		push @additional_header, "Content-Range: bytes $from_byte-$to_byte/$item->{SIZE}"
+		push @additional_header, "Content-Range: bytes $from_byte-$to_byte/$item->{size}"
 			if ($is_ranged);
 
 		# SEND HEADERS
@@ -240,7 +239,7 @@ sub stream_media
 		# }
 		# else # TRANSFERMODE.DLNA.ORG is not set
 		# {
-		#    error("No Transfermode for: $item->{FULLNAME}");
+		#    error("No Transfermode for: $item->{path}");
 		#	 print $FH http_header({
 		#		'statuscode' => 200,
 		#		'additional_header' => \@additional_header,
