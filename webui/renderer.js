@@ -2,7 +2,6 @@
 // renderer.js
 //--------------------------------------------------
 
-
 var in_slider = false;
 var current_renderer = false;
 var renderer_list = false;
@@ -10,6 +9,7 @@ var renderer_list = false;
 var default_renderer_id = '';
 var default_renderer_name = '';
 var last_song = '';
+
 
 // for some reason I have to cache these objects
 // as the program just hangs, no message or anything
@@ -172,6 +172,7 @@ function onload_renderer_list()
     $( "#renderer_list" ).buttonset();
 	$( "#renderer_refresh_button" ).button();
 	$( "#renderer_clear_button" ).button();
+	highlight_current_renderer();
 }
 
 
@@ -643,7 +644,7 @@ function update_renderer_ui()
 	
 		display(dbg_loop,0,"renderer.update_renderer_ui(2)");
 	
-		if (false)	
+		if (true)	
 		{
 			// this don't work inside firebugx
 			update_playlist_info_ui();

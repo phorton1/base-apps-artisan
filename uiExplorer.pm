@@ -105,13 +105,14 @@ sub explorer_request
 		my @parts;
 		push @parts,'track_'.$params->{track_id};
 		my $dbh = db_connect();
-		my $rec = get_record_db($dbh,'SELECT * FROM tracks WHERE ID=?',[$params->{track_id}]);
-		while ($rec && $rec->{PARENT_ID} > 1)
+		my $track = get_track($dbh,$params->{track_id});
+		my $parent_id = $track->{parent_id};
+		while (my $folder = get_folder($dbh,$parent_id))
 		{
-			my $parent_id = $rec->{PARENT_ID};	
-			push @parts,$parent_id;
-			$rec = get_record_db($dbh,'SELECT * FROM folders WHERE ID=?',[$parent_id]);
-		}			
+			# jquery doesn't want the 0th element
+			push @parts,$folder->{id} if $folder->{id};
+			$parent_id = $folder->{parent_id};
+		}
 		db_disconnect($dbh);
 		return json_header().json({id_path=>join('/',reverse @parts)});
 	}

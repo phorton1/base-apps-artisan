@@ -149,7 +149,7 @@ sub getTrackID
 {
     my ($this,$track_index) = @_;
 	return "" if $track_index == 0;
-    if ($track_index < 0 || $track_index > $this->{num_tracks})
+    if ($track_index <= 0 || $track_index > $this->{num_tracks})
     {
         error("getTrackID($track_index) out of range($this->{num_tracks})");
         return "";
@@ -175,7 +175,7 @@ sub getTrackID
 		$this->save();
 	}
 	
-	my $track_id = ${$this->{track_ids}}[$track_index];
+	my $track_id = ${$this->{track_ids}}[$track_index-1];
     display($dbg_pl,0,"getTrackID($track_index) returning $track_id");
     return $track_id;
 }
@@ -220,13 +220,17 @@ sub sortPlaylist
 	
 	$this->start();
 	my $tracks = get_records_db($track_dbh,"SELECT * FROM tracks");
-	db_do("DELETE FROM tracks");
+	db_do($track_dbh,"DELETE FROM tracks");
 	$tracks = $this->sort_shuffle_tracks($tracks);
 	my $position = 1;
+	$this->{track_ids} = shared_clone([]);
 	for my $track (@$tracks)
 	{
+		# display(0,0,"after sorting position($position)=$track->{title}");
+		
 		$track->{position} = $position++;
 		return if !$this->insert_track($track);
+		push @{$this->{track_ids}},$track->{id};
 	}
 	$this->stop();
 	$this->{track_index} = 1;
@@ -601,9 +605,13 @@ sub sort_shuffle_tracks
             push @result,$rec;
         }
     }
-    else
+    else	# the default sort order is by path
     {
-        @result = map($_,@$recs);
+        # @result = map($_,@$recs);
+        for my $rec (sort {$a->{path} cmp $b->{path}} @$recs)
+        {
+            push @result,$rec;
+        }
     }
 
    	display($dbg_pl,0,"sort_shuffle_tracks($this->{name}) finished");
@@ -682,7 +690,7 @@ sub static_init_playlists
 				$playlist->update_db_counts($dbh);
 			}
 		}
-		elsif (0)	
+		elsif (1)	
 		{
 			display(0,1,"recreating playlist($name) tracks from query");
 			bless $playlist,"Playlist";

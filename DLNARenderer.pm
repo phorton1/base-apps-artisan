@@ -305,9 +305,10 @@ sub doCommand
 	}
 	elsif ($command eq 'seek')
 	{
+		my $time_str = millis_to_duration($arg,1);
 		return $this->private_doAction(0,'Seek',{
 			Unit => 'REL_TIME',
-			Target => $arg})  ? 1 : 0;
+			Target => $time_str})  ? 1 : 0;
 	}
 	elsif ($command eq 'pause')
 	{
@@ -451,7 +452,10 @@ sub private_doAction
 	# returns undef in error cases
 {
     my ($this,$rv,$action,$args) = @_;
-    display($dbg_ren+1,0,"private_doAction($rv,$action)");
+    
+	display(0,0,"$action($args->{Target})") if $action =~ /Seek/;
+	
+	display($dbg_ren+1,0,"private_doAction($rv,$action)");
 
     my $sock = IO::Socket::INET->new(
         PeerAddr => $this->{ip},

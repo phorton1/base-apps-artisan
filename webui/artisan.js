@@ -14,7 +14,7 @@
 jQuery.ajaxSetup({async:false});
 
 
-var debug_level = 4;
+var debug_level = 0;
 
 var dbg_load 	 = 0;
 var dbg_layout 	 = 0;
@@ -22,6 +22,10 @@ var dbg_popup 	 = 1;
 var dbg_renderer = 0;
 var dbg_explorer = 1;
 var dbg_loop     = 1;
+
+
+var WITH_SWIPE = true;
+	// support for swiping open side panes
 
 
 var idle_count = 0;
@@ -258,11 +262,14 @@ function create_layout()
 	
 	var layout = $(page_layout.layout_id).layout(params);
 	
-	//$(page_layout.swipe_element).swipe({
-	//	allowPageScroll:"vertical",
-	//	swipe:onswipe_page,
-	//	maxTimeThreshold:1500});
-	//$(page_layout.swipe_element).on('click',hide_layout_panes);
+	if (WITH_SWIPE)
+	{
+		$(page_layout.swipe_element).swipe({
+			allowPageScroll:"vertical",
+			swipe:onswipe_page,
+			maxTimeThreshold:1500});
+		$(page_layout.swipe_element).on('click',hide_layout_panes);
+	}
     
 }
 
@@ -287,7 +294,7 @@ function create_layout_pane(page_layout,params,value,pane)
 			var pane_hidden = value < pane_layout.limit ? true : false;
 			params[pane + '__slide'] = pane_hidden;
 			params[pane + '__slidable'] = pane_hidden;
-			params[pane + '__spacing_closed'] = pane_hidden?0:6;
+			params[pane + '__spacing_closed'] = pane_hidden?(WITH_SWIPE?0:6):6;
 			params[pane + '__initClosed'] = pane_hidden;
 			params[pane + '__onclick'] = pane_hidden ? reset_timeouts : false;
 		}
@@ -366,8 +373,11 @@ function resize_layout_pane(layout,page_layout,value,pane)
 		if (value <= pane_layout.limit)
 		{
 			display(dbg_layout,2,'sizing pane as closed');
+			
+			// don't see the button to re-open it if Swiping
+			
 			layout.options[pane].slide = true;
-			layout.options[pane].spacing_closed = 0;
+			layout.options[pane].spacing_closed = (WITH_SWIPE ? 0 : 6);
 			layout.close(pane);
 			if (element_id)
 			{
@@ -435,30 +445,30 @@ function hide_layout_pane(layout,pane)
 }
 
 
-//	function onswipe_page(event,direction)
-//	{
-//		var layout = $('#' + current_page + '_page').layout();
-//		onswipe_open_pane(direction,'right',layout,'west');
-//		onswipe_open_pane(direction,'left',layout,'east');
-//		onswipe_open_pane(direction,'down',layout,'north');
-//		onswipe_open_pane(direction,'up',layout,'south');
-//	}
-	
+function onswipe_page(event,direction)
+{
+	var layout = $('#' + current_page + '_page').layout();
+	onswipe_open_pane(direction,'right',layout,'west');
+	onswipe_open_pane(direction,'left',layout,'east');
+	onswipe_open_pane(direction,'down',layout,'north');
+	onswipe_open_pane(direction,'up',layout,'south');
+}
 
 
-//	function onswipe_open_pane(direction,cmp_direction,layout,pane)
-//	{
-//		reset_timeouts();
-//		if (direction == cmp_direction)
-//		{
-//			open_pane(pane);
-//		}
-//		else if (layout.options[pane].slide)
-//		{
-//			layout.options[pane].closable = true;
-//			layout.slideClose(pane);
-//		}
-//	}
+
+function onswipe_open_pane(direction,cmp_direction,layout,pane)
+{
+	reset_timeouts();
+	if (direction == cmp_direction)
+	{
+		open_pane(pane);
+	}
+	else if (layout.options[pane].slide)
+	{
+		layout.options[pane].closable = true;
+		layout.slideClose(pane);
+	}
+}
 
 
 
@@ -914,7 +924,23 @@ function cancel_popup_input()
 // context menu
 //-------------------------------------
 
-function show_context_menu(event)
+
+function show_in_explorer(event)
+{
+	if (current_page == "renderer" &&
+		current_renderer &&
+		current_renderer.song_id &&
+		current_renderer.song_id != "")
+	{
+		ele_set_inner_html('renderer_header_left',"Showing current track in explorer...");
+		
+		load_page("explorer");
+		set_context_explorer(current_renderer.song_id);
+	}
+}
+
+
+function unused_show_context_menu(event)
 {
 	display(0,0,"show_context_menu()");
 

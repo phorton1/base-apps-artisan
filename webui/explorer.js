@@ -239,7 +239,7 @@ function init_page_explorer()
 							
 				$.get('/webui/renderer/play_song' +
 					  '?id='+current_renderer.id +
-					  '&song_id=' + node.data.ID,
+					  '&song_id=' + node.data.id,
 					function(result)
 					{
 						if (result.error)
@@ -388,10 +388,10 @@ function update_explorer_album_info(title,rec)
 	// var tree = $("#explorer_tracklist").fancytree("getTree");
 	// display(dbg_explorer,1,"got explorer_tracklist");
 		
-	if (tracklist_tree)
+	if (explorer_tracklist)
 	{
 		display(dbg_explorer,1,"loading tracks for  " + rec.TITLE);
-		tracklist_tree.reload({
+		explorer_tracklist.reload({
 			url:'/webui/explorer/items?id=' + rec.id,
 			cache: true});
 	}

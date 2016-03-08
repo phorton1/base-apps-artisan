@@ -91,12 +91,16 @@ function playlist_set_info(field,value,obj)
 		obj.blur();
 	}
 	
-	var playlist = current_renderer ? current_rederer.playlist : null;
+	var playlist = current_renderer ? current_renderer.playlist : null;
 	if (!playlist)
 	{
 		rerror("attempt to set shuffle('+shuffle+') without a playlist");
 		return false;
 	}
+	
+	if (field == 'shuffle')
+		ele_set_inner_html('renderer_header_left',"SHUFFLE Playlist " + playlist.name);
+
 	
 	
 	$.get('/webui/renderer/set_playlist_info' +
@@ -110,7 +114,7 @@ function playlist_set_info(field,value,obj)
 
 			if (result.error)
 			{
-				rerror('playlist_set_info('+what+','+value+'):' + result.error);
+				error('playlist_set_info('+what+','+value+'):' + result.error);
 				return false;
 			}
 			
@@ -131,7 +135,7 @@ function playlist_set_info(field,value,obj)
 
 function update_playlist_info_ui()
 {
-	display(dbg_pl,0,"update_playlist_info_ui(" + current_page + ")");
+	display(dbg_loop,0,"update_playlist_info_ui(" + current_page + ")");
 	var use_id = '#playlist_info_';
  
 	var show_num = 'No playlist selected';
@@ -182,7 +186,7 @@ function update_playlist_info_ui()
 		$(use_id + 'slider').slider('value',track_num);
 		$(use_id + 'track_num').spinner('value',track_num);
 	}
-	display(dbg_pl,0,"update_playlist_info_ui(" + current_page + ") returning");
+	display(dbg_loop,0,"update_playlist_info_ui(" + current_page + ") returning");
 }
 
 

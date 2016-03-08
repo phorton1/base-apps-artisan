@@ -274,7 +274,7 @@ sub handle_connection
 			stream_media($1, $request_method, \%request_headers, $FH, '', $peer_ip_addr);
 			$dbg_displayable = 0;
 		}
-		elsif ($request_path =~ /^\/get_art2*\/(.*)\/folder.jpg$/)
+		elsif ($request_path =~ /^\/get_art*\/(.*)\/folder.jpg$/)
 		{
 			$response = get_art($1);
 			$dbg_displayable = 0;

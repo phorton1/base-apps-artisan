@@ -243,7 +243,7 @@ sub init_renderer
         $this->{duration} = 0;
         $this->{play_pct} = 0;
         $this->{stall_count} = 0;
-		$this->{pending_seek} = '';
+		$this->{pending_seek} = 0;
 		$this->{allow_stop_from_remote} = $ALLOW_STOP_FROM_REMOTE;
 		$this->{last_position} = 0;
     }
@@ -888,12 +888,10 @@ sub set_position
     }
     else
     {
-        my $time_str = millis_to_duration($new_position,1);
-
-        display($dbg_ren,1,"set_position($new_position) time_str=$time_str");
-        if (!$this->command('seek',$time_str))
+        display($dbg_ren,1,"set_position($new_position)");
+        if (!$this->command('seek',$new_position))
         {
-            error("set_position($new_position) could not seek to '$time_str'");
+            error("could not seek set_position($new_position)");
             $retval = 0;
         }
         else

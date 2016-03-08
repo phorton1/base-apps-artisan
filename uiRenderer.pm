@@ -30,7 +30,7 @@ sub renderer_request
 	}
 	if ($path =~ /^(get_playlist|get_playlists|set_playlist_info)/)
 	{
-		return playlist_request($path);
+		return playlist_request($path,$params);
 	}	
 	
 	# get renderer for following requests
@@ -115,7 +115,7 @@ sub renderer_get_renderers
 	
 	my $renderers = Renderer::getRenderers($refresh);
 		# Note that these are DLNA renderers
-		
+				
 	for my $id (sort(keys(%$renderers)))
 	{
 		my $renderer = $renderers->{$id};
@@ -351,6 +351,8 @@ sub playlist_request
 	
 	elsif ($path eq 'set_playlist_info')
 	{
+		# 'shuffle' or 'track_index'
+		
 		my $name = $params->{name};
 		my $field = $params->{field};
 		my $value = $params->{value};
@@ -370,7 +372,7 @@ sub playlist_request
 		{
 			$playlist->save();
 		}
-		else
+		elsif ($field eq 'shuffle')
 		{
 			display($dbg_webui-1,1,"REBUILDING STATION LIST");
 			$playlist->sortPlaylist();
@@ -382,16 +384,16 @@ sub playlist_request
 
 		if ($renderer &&
 			$renderer->{playlist} &&
-			$renderer->{playlist}->{name} == $name)
+			$renderer->{playlist}->{name} eq $name)
 		{
-			if ($field eq 'track_index')
-			{
+			# if ($field eq 'track_index')
+			# {
 				$renderer->async_play_song(0);
-			}
-			else
-			{
-				$renderer->stop();
-			}
+			# }
+			# else
+			# {
+			# 	$renderer->stop();
+			# }
 		}
 	}
 	

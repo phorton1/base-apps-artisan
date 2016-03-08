@@ -58,6 +58,21 @@ sub mimeType
 }
 
 
+sub getPublicArtUri
+{
+	my ($this) = @_;
+	my $rslt;
+	if ($this->{is_local} && $this->{has_art} & $HAS_FOLDER_ART)
+	{
+		$rslt = "http://$server_ip:$server_port/get_art/$this->{parent_id}/folder.jpg";
+	}
+	else
+	{
+		$rslt = $this->{art_uri};
+	}
+	return $rslt;
+}
+
 
 #------------------------------------------------------------------
 # Construction
