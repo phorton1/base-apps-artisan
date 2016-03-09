@@ -368,7 +368,7 @@ function update_explorer_album_info(title,rec)
 		(rec.has_art ? 'has_art:'+rec.has_art : '') + ' &nbsp;&nbsp ' +
 		'error:' + rec.folder_error + ' &nbsp;&nbsp ' +
 		'high_folder_error:' + rec.highest_folder_error +  ' &nbsp;&nbsp ' +
-		'high_track_error:' + rec.highest_error +  ' &nbsp;&nbsp ' );
+		'high_track_error:' + rec.highest_track_error +  ' &nbsp;&nbsp ' );
 
 	$('#explorer_album_info3').html(
 		'parent:' + rec.parent_id + ' &nbsp;&nbsp '

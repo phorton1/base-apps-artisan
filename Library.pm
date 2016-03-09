@@ -127,7 +127,7 @@ sub clean_str
 }
 
 
-sub propogate_highest_error
+sub propogate_highest_track_error
 	# given a MediaFile error level on a track,
 	# bubble it up through the track's album,
 	# and the albums parents.
@@ -141,9 +141,9 @@ sub propogate_highest_error
 	
 	while ($folder)
 	{
-		if ($level > $folder->{new_high})
+		if ($level > $folder->{new_highest_track_error})
 		{
-			$folder->{new_high} = $level;
+			$folder->{new_highest_track_error} = $level;
 		}
 		# display(0,1,"propogate($folder->{id}) parent_id=$folder->{parent_id} getting "._def($folders_by_id->{$folder->{parent_id}}));
 		$folder = $folders_by_id->{$folder->{parent_id}};
@@ -161,11 +161,11 @@ sub propogate_highest_error
 
 
 sub propogate_highest_folder_error
-	# given a folder new_high error level
+	# given a folder new_highest_track_error error level
 	# bubble it up through the parent folders
 {
 	my ($params,$in_folder) = @_;
-	my $level = $in_folder->{new_folder_high};
+	my $level = $in_folder->{new_highest_folder_error};
 	my $folders_by_id = $params->{folders_by_id};
 	my $folder = $folders_by_id->{$in_folder->{parent_id}};
 
@@ -173,9 +173,9 @@ sub propogate_highest_folder_error
 	
 	while ($folder)
 	{
-		if ($level > $folder->{new_folder_high})
+		if ($level > $folder->{new_highest_folder_error})
 		{
-			$folder->{new_folder_high} = $level;
+			$folder->{new_highest_folder_error} = $level;
 		}
 		# display(0,1,"propogate($folder->{id}) parent_id=$folder->{parent_id} getting "._def($folders_by_id->{$folder->{parent_id}}));
 		$folder = $folders_by_id->{$folder->{parent_id}};
@@ -529,8 +529,8 @@ sub scan_directory
 	# get or add the tracks to the tree
 	# clear the highest error found in this scan
 	
-	$folder->{new_high} = 0;
-	$folder->{new_folder_high} = 0;
+	$folder->{new_highest_track_error} = 0;
+	$folder->{new_highest_folder_error} = 0;
 	
     for my $file (@files)
     {
@@ -557,22 +557,22 @@ sub scan_directory
 	# has changed as result of the scan
 	
 	if ($folder->{dirty} ||
-		$folder->{new_high} != $folder->{highest_error} ||
-		$folder->{new_folder_high} != $folder->{highest_folder_error})
+		$folder->{new_highest_track_error} != $folder->{highest_track_error} ||
+		$folder->{new_highest_folder_error} != $folder->{highest_folder_error})
 	{
 		if (!$folder->{existrs})
 		{
 			display(9,0,"folder_update_changed $folder->{path}");
-			display(9,0,"folder_update_new_high old=$folder->{highest_error} new=$folder->{new_high}") if $folder->{new_high} != $folder->{highest_error};
-			display(9,0,"folder_update_new_folder_high old=$folder->{highest_folder_error} new=$folder->{new_folder_high}") if $folder->{new_folder_high} != $folder->{highest_folder_error};
+			display(9,0,"folder_update_new_highest_track_error old=$folder->{highest_track_error} new=$folder->{new_highest_track_error}") if $folder->{new_highest_track_error} != $folder->{highest_track_error};
+			display(9,0,"folder_update_new_highest_folder_error old=$folder->{highest_folder_error} new=$folder->{new_highest_folder_error}") if $folder->{new_highest_folder_error} != $folder->{highest_folder_error};
 	
 			bump_stat("folder_update_changed");
-			bump_stat("folder_update_new_high") if $folder->{new_high} != $folder->{highest_error};
-			bump_stat("folder_update_new_folder_high") if $folder->{new_folder_high} != $folder->{highest_folder_error};
+			bump_stat("folder_update_new_highest_track_error") if $folder->{new_highest_track_error} != $folder->{highest_track_error};
+			bump_stat("folder_update_new_highest_folder_error") if $folder->{new_highest_folder_error} != $folder->{highest_folder_error};
 		}
 		
-		$folder->{highest_error} = $folder->{new_high};
-		$folder->{highest_folder_error} = $folder->{new_folder_high};
+		$folder->{highest_track_error} = $folder->{new_highest_track_error};
+		$folder->{highest_folder_error} = $folder->{new_highest_folder_error};
 		$folder->{dirty} = 1;
 		
 		if (!$folder->save($params->{dbh}))
@@ -602,9 +602,9 @@ sub set_folder_error
 	$folder->{folder_error} = $error_level if ($error_level>$folder->{folder_error});
 	# finished - handle the results
 	
-	if ($params && $error_level  > $folder->{new_folder_high})
+	if ($params && $error_level  > $folder->{new_highest_folder_error})
 	{
-		$folder->{new_folder_high} = $error_level;
+		$folder->{new_highest_folder_error} = $error_level;
 		propogate_highest_folder_error($params,$folder);
 	}
 }

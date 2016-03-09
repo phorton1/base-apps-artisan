@@ -195,7 +195,7 @@ sub explorer_dir_element
 	my $mode = defined($params->{mode}) ? $params->{mode} : $SHOW_HIGH;
 
 	my $use_high =
-		$mode == $SHOW_TRACK_HIGH ? $$rec{highest_error} :
+		$mode == $SHOW_TRACK_HIGH ? $$rec{highest_track_error} :
 		$mode == $SHOW_FOLDER_HIGH ? $$rec{highest_folder_error} :
 		$$rec{highest_error} > $$rec{highest_folder_error} ?
 		$$rec{highest_error} : $$rec{highest_folder_error};

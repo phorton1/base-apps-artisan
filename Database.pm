@@ -165,10 +165,12 @@ our %artisan_field_defs = (
         'dirtype	 	VARCHAR(16)',
 		    # album, root, section, class, virtual, etc
         'has_art     	INTEGER',
-			# set to 1 if folder.jpg exists
+			# set to 1 if local folder.jpg exists
 	
         'path	 		VARCHAR(1024)',
-
+		'art_uri		VARCHAR(1024)',
+			# empty on local Folders
+			
 		# presented via DNLA ... 
 		# mostly specific to albums
 		
@@ -189,7 +191,7 @@ our %artisan_field_defs = (
 		# The highest error of this and any child track is
 		# passed up the folder tree.
 		
-		'highest_error  INTEGER'
+		'highest_track_error  INTEGER'
 
 	],	# folder
 	

@@ -58,18 +58,18 @@ our $warning_level 	= 0;
 
 our $dbg_db 		= 2;
 our $dbg_ssdp 		= 2;
-our $dbg_http 		= 0;
+our $dbg_http 		= 1;
 our $dbg_stream 	= 2;
 our $dbg_xml    	= 2;
-our $dbg_library    = 0;
+our $dbg_library    = 1;
 our $dbg_vlibrary   = 2;
-our $dbg_webui      = 0;
+our $dbg_webui      = 1;
 our $dbg_mediafile  = 2;
 our $dbg_mp3_info   = 2;
 our $dbg_mp3_read   = 2;
 our $dbg_mp3_write  = 2;
 our $dbg_mp3_tags   = 2;
-our $dbg_ren        = 0;
+our $dbg_ren        = 1;
 
 our $dbg_mem		= 0;
 
