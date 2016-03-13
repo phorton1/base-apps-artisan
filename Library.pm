@@ -717,6 +717,7 @@ sub add_folder
 		display($dbg_library,0,"add_folder($path) parent_id=$parent_id");
 
 		$folder = Folder->newFromHash({
+			is_local      => 1,
 			parent_id 	  => $parent_id,
 			dirtype   	  => $split->{type},
 			path  	      => $path,
@@ -966,7 +967,7 @@ sub	add_track
 	# propogate the highest error level upwards
 	# and return
 	
-	propogate_highest_error($params,$track);
+	propogate_highest_track_error($params,$track);
 	return 1;
 	
 }	# addTrack

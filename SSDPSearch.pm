@@ -694,7 +694,7 @@ if (@ARGV > 0)	# static testing SSDP
 	my $search_device = 'ssdp:all';
 	# my $search_device = 'upnp:rootdevice';
 	# my $search_device = 'urn:schemas-upnp-org:device:MediaRenderer:1';
-	dbg_devices($search_device,'192.168.0.101','');	# 192.168.0.103:8008');
+	dbg_devices($search_device,'192.168.0.100','');	# 192.168.0.103:8008');
 }
 
 

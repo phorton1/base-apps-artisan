@@ -372,7 +372,7 @@ else
 	$server_ip = $1;
 	$server_ip =~ s/\(.*\)//;	# remove (Preferred)
 	$server_ip =~ s/\s//g;
-	LOG(0,"Server IP Address=$server_ip");
+	LOG(0,"Server IP Address=$server_ip:$server_port");
 }
 
 

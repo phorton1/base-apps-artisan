@@ -445,6 +445,7 @@ sub get_metafield
 }
 
 
+my $call_num = 0;
 
 
 sub private_doAction
@@ -505,6 +506,7 @@ sub private_doAction
     $request .= "\r\n";
     $request .= $body;
 
+	printVarToFile(1,"/junk/request".($call_num++).".txt",$request);
     # send the action
 
     display($dbg_ren+2,1,"sending action($action) request");

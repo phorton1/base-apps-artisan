@@ -158,6 +158,18 @@ our %artisan_field_defs = (
 	#     virtual?
 	
     folders => [
+		
+		'is_local       INTEGER',
+			# indicates whether this is a directory
+			# on the local machine, in which case
+			# the id will be used to develop the
+			# public art uri, and the local art uri
+			# will be of the form file://
+			#
+			# The local database ONLY consists of
+			# these items, and it can be ASSUMED in
+			# some code (i.e. the perl Library scan)
+		
         'id			 	VARCHAR(40)',
 			# md5 checksum of the path
 			

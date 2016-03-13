@@ -54,8 +54,8 @@ my %last_event_text:shared;
 # set this to undef to do a device search
 # or provide the ip, port, and UDN
 
-# my $use_device = undef;
-my $use_device = { ip => '192.168.0.100',port => 58645,device => {UDN =>'38875023-0ca8-f211-ffff-ffff820db37d'}};
+my $use_device = undef;
+# my $use_device = { ip => '192.168.0.100',port => 58645,device => {UDN =>'38875023-0ca8-f211-ffff-ffff820db37d'}};
 
 	
 mkdir "/junk/events" if $WRITE_TO_FILE && !-d "/junk/events";
