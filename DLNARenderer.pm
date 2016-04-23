@@ -506,7 +506,6 @@ sub private_doAction
     $request .= "\r\n";
     $request .= $body;
 
-	printVarToFile(1,"/junk/request".($call_num++).".txt",$request);
     # send the action
 
     display($dbg_ren+2,1,"sending action($action) request");

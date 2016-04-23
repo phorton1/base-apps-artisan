@@ -665,6 +665,7 @@ sub unescape_tag
 
 sub millis_to_duration
 	# duplicated as prettyDuration or something like that
+	# there are actually three possibilities (see java)
 {
 	my ($millis,$precise) = @_;
 	$millis ||= 0;
@@ -680,12 +681,12 @@ sub millis_to_duration
 	$minutes -= $hours * 60 if $hours;
 	
 	my $string = '';
-	if ($precise)
+	if ($precise)	# Bub doesn't like decimals
 	{
 		$string .= add_leading_char($hours,2,'0').':'; 	# if $hours;
 		$string .= add_leading_char($minutes,2,'0').':';
-		$string .= add_leading_char($seconds,2,'0').'.';
-		$string .= add_leading_char($millis,3,'0');
+		$string .= add_leading_char($seconds,2,'0'); # .'.';
+		# $string .= add_leading_char($millis,3,'0');
 	}
 	else
 	{

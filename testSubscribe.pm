@@ -2,10 +2,9 @@
 #------------------------------------------------
 # testSubscribe.pm
 #
-# Setup a little HTTP Server that receives openHome events
-# and displays/writes them to text files, find the desired
-# openHome "product" and subscribe to events from one or
-# more of the openHome services
+# Setup a little HTTP Server that receives UPnP events
+# and displays/writes them to text files, and subscribe
+# to one or more Devices/Services
 
 package testSubscriber;
 use strict;
@@ -15,53 +14,29 @@ use IO::Socket::INET;
 use XML::Simple;
 use Utils;
 use SSDPSearch;
-	
-$server_port = 8092;
-	# use a port different than the standard Artisan server
-	
 
-my $dbg_events = 1;
-	# set to 1 to see only -->EVENT
-	# set to 0 to see contents of events
-	# set to -1 to see details of Event HTTP flow
-my $dbg_subscribe = 1;
-	# set to 0 to see details of subscription reply
-	
-my $ONE_TIME_PER_OTHER_EVENT = 1;
-	# set to 1 to only debug the first time event
-	# and only those that immediately follow some other event
+my $dbg_http = -1;
+my $dbg_subscribe = 0;
+
+
 my $WRITE_TO_FILE = 1;
-	# set to 1 to write events to files in /junk/events
-
-
+	# to write to /junk/events
 my $SINGLE_THREAD = 1;
 	# probably want a single thread server for this testing
-my @services = qw(Product Playlist Volume Info Time);
-	# all services
-my $running = 1;
-	# set to zero to stop the program endless loop
-my $in_method : shared = 0;
-	# force event processing to wait until a subscribe is finished
-my $non_time_event : shared = 1;
-	# reset after non-time events
-my $event_num = '000000';
-	# for filenames
-my %last_event_text:shared;
-	# keep the text for the last event per service, and
-	# don't write a text file if it did not change ...
+my $server_port = 8092;
+	# use a port different than the standard Artisan server
 	
-
-# set this to undef to do a device search
-# or provide the ip, port, and UDN
-
-my $use_device = undef;
-# my $use_device = { ip => '192.168.0.100',port => 58645,device => {UDN =>'38875023-0ca8-f211-ffff-ffff820db37d'}};
-
+my $LOOPING_EVENT_RE = 'Time|RenderingControl';
+	# will not be shown
 	
-mkdir "/junk/events" if $WRITE_TO_FILE && !-d "/junk/events";
-	# make the event directory
+my $in_connection = 0;
 
 
+mkdir "/junk/events" if ($WRITE_TO_FILE);
+
+$debug_level = 0;
+	# SET THE GLOBAL DEBUG LEVEL
+	
 #----------------------------------------------------------------------------
 # HTTP Server (this)
 #----------------------------------------------------------------------------
@@ -92,7 +67,7 @@ sub start_webserver_on_this_thread
 	while(1)
 	{
 		my @connections_pending = $ss->can_read($SINGLE_THREAD?1:60);
-		display($dbg_events+2,0,"accepted ".scalar(@connections_pending)." pending connections")
+		display($dbg_http+2,0,"accepted ".scalar(@connections_pending)." pending connections")
 			if (@connections_pending);
 		for my $connection (@connections_pending)
 		{
@@ -116,34 +91,36 @@ sub start_webserver_on_this_thread
 
 
 
+#-----------------------
+# Connection
+#-----------------------
+
+
+my %last_event_text;
+
 sub handle_connection
 {
-	while ($in_method) { sleep(1); }
-	$in_method = 1;
+	while ($in_connection) { sleep(1); }
+	$in_connection = 1;
 
 	my ($FH,$peer_ip_addr,$peer_src_port) = @_;
 	binmode($FH);
 	
-	my $show_event = 1;
-	$show_event = 0 if $ONE_TIME_PER_OTHER_EVENT && !$non_time_event;
-	
 	appUtils::set_alt_output(1) if (!$SINGLE_THREAD);
-	display($dbg_events+2,0,"HTTP connect from $peer_ip_addr:$peer_src_port");
+	display($dbg_http+4,0,"HTTP connect from $peer_ip_addr:$peer_src_port");
 
 	#--------------------------------
-	# show the http request header
+	# get the http request header
 	#--------------------------------
 	# and get the content-length, if any
 
-	my $text:shared = '';
+	
 	my $service = '';
 	my $line = <$FH>;
 	if ($line =~ /NOTIFY (.*) HTTP/)
 	{
 		$service = $1;
 		$service =~ s/^\///;
-		$non_time_event = $service eq "Time" ? 0 : 1;
-		display(0,0,"--> EVENT($service)") if $show_event;
 	}
 	else
 	{
@@ -155,64 +132,77 @@ sub handle_connection
 		close($FH);
 		return 0;
 	}
+
+	my $is_loop_event = $service =~ /$LOOPING_EVENT_RE/ ? 1 : 0;
+	my $use_dbg = $is_loop_event ? $dbg_http + 2 : 0;
+	$use_dbg = 0;
 	
+	display($use_dbg,0,"Event($service) from $peer_ip_addr:$peer_src_port");
+	
+	my $text = "";
+	my $result = {};
+	$result->{ip} = $peer_ip_addr;
+	$result->{port} = $peer_src_port;
+	$result->{service} = $service;
+	$result->{headers} = {};
+
 	my $content_length = 0;
-	while (defined($line) && $line ne "\r\n")
+	while (defined($line=<$FH>) && $line ne "\r\n")
 	{
 		$text .= $line;
 		chomp($line);
-		$line =~ s/\n |\r//g;
-		display($dbg_events,2,$line) if $show_event;
-		$content_length = $1 if $line =~ /Content-Length:\s*(\d+)$/;
-		$line = <$FH>;
+		$line =~ s/\n|\r//g;
+		display($use_dbg+2,2,$line);
+		my $pos = index($line,":");
+		if ($pos>=0)
+		{
+			my $lval = substr($line,0,$pos);
+			my $rval = substr($line,$pos+1);
+			$rval =~ s/^\s|\\s$//g;
+			$result->{headers}->{lc($lval)} = $rval;
+			$content_length = $1
+				if lc($line) =~	/content-length:\s*(\d+)$/;
+
+			display($use_dbg+1,1,"header($lval)=$rval");
+		}
 	}
 
 	$text .= $line if defined($line);
-	
-	
 	# if we got no request line,
 	# then it is an unrecoverable error
 
 	#--------------------------------
-	# Show the content
+	# Get the content
 	#--------------------------------
 
 	if ($content_length)
 	{
 		my $post_data = '';
-		display($dbg_events+2,1,"Getting $content_length bytes of request body") if $show_event;
+		display($use_dbg+1,1,"Getting $content_length bytes of request body");
 		my $bytes = read($FH, $post_data, $content_length);
 		warning(0,0,"Could not read $content_length bytes.  Got $bytes!!")
 			if ($bytes != $content_length);
 			
 		my $parsed = my_parse_xml($post_data);
-		$text .= $parsed;
-		display($dbg_events,1,"BODY=\n$parsed") if $show_event;
+		$text .= $post_data;
+		display($use_dbg+2,1,"BODY=\n$parsed");
+		$result->{parsed} = $parsed;
+		$result->{post_data} = $post_data;
 	}
 	
-	
+	$result->{text} = $text;
 	my $last_text = $last_event_text{$service};
 	if (!$last_text || $last_text ne $text)
 	{
-		display(0,0,"!last_text($service)") if (!$last_text);
-		my $filename = "/junk/events/".($event_num++)."-$service.txt";
-		while (-f $filename)
-		{
-			$filename = "/junk/events/".($event_num++)."-$service.txt";
-		}
-		printVarToFile($show_event && $WRITE_TO_FILE,$filename,$text);
+		$last_event_text{$service} = $text;
+		processEvent($result,$is_loop_event)
 	}
-	else
-	{
-		display(0,1,"duplicate event!");
-	}
-	$last_event_text{$service} = $text;
-	
+
 	#--------------------------------
 	# send the OK response
 	#--------------------------------
 	
-	display($dbg_events+1,1,"Sending OK response") if $show_event;
+	display($use_dbg+1,1,"Sending OK response");
 	my $response = http_header({
 		'statuscode' => 501,
 		'content_type' => 'text/plain' });
@@ -220,48 +210,11 @@ sub handle_connection
 	{
 		error("Could not complete HTTP Server Response len=".length($response));
 	}
-	display($dbg_events+1,1,"Sent response") if $show_event;
+	display($use_dbg+1,1,"Sent response");
 	close($FH);
-	$in_method = 0;
+	$in_connection = 0;
 	
 }	# handle_connection();
-
-
-
-
-
-sub http_header
-{
-	my ($params) = @_;
-
-	my %HTTP_CODES = (
-		200 => 'OK',
-		206 => 'Partial Content',
-		400 => 'Bad request',
-		403 => 'Forbidden',
-		404 => 'Not found',
-		406 => 'Not acceptable',
-		501 => 'Not implemented' );
-
-	my @response = ();
-	push(@response, "HTTP/1.1 ".$$params{'statuscode'}." ".$HTTP_CODES{$$params{'statuscode'}}); # TODO (maybe) differ between http protocol versions
-	push(@response, "Server: $program_name");
-	push(@response, "Content-Type: ".$params->{'content_type'}) if $params->{'content_type'};
-	push(@response, "Content-Length: ".$params->{'content_length'}) if $params->{'content_length'};
-	push(@response, "Date: ".http_date());
-	if (defined($$params{'additional_header'}))
-	{
-		for my $header (@{$$params{'additional_header'}})
-		{
-			push(@response, $header);
-		}
-	}
-	
-	push(@response, 'Cache-Control: no-cache');
-	push(@response, 'Connection: close');
-	return join("\r\n", @response)."\r\n\r\n";
-}
-
 
 
 
@@ -310,56 +263,84 @@ sub indent
 }
 
 
+#---------------------------------------------------------------
+# Subscribe
+#---------------------------------------------------------------
 
-#----------------------------------------------------------------------------
-# Subscribe to a single service
-#----------------------------------------------------------------------------
+
+sub http_header
+{
+	my ($params) = @_;
+
+	my %HTTP_CODES = (
+		200 => 'OK',
+		206 => 'Partial Content',
+		400 => 'Bad request',
+		403 => 'Forbidden',
+		404 => 'Not found',
+		406 => 'Not acceptable',
+		501 => 'Not implemented' );
+
+	my @response = ();
+	push(@response, "HTTP/1.1 ".$$params{'statuscode'}." ".$HTTP_CODES{$$params{'statuscode'}}); # TODO (maybe) differ between http protocol versions
+	push(@response, "Server: $program_name");
+	push(@response, "Content-Type: ".$params->{'content_type'}) if $params->{'content_type'};
+	push(@response, "Content-Length: ".$params->{'content_length'}) if $params->{'content_length'};
+	push(@response, "Date: ".http_date());
+	if (defined($$params{'additional_header'}))
+	{
+		for my $header (@{$$params{'additional_header'}})
+		{
+			push(@response, $header);
+		}
+	}
+	
+	push(@response, 'Cache-Control: no-cache');
+	push(@response, 'Connection: close');
+	return join("\r\n", @response)."\r\n\r\n";
+}
+
 
 sub subscribeService
 	# subscribe to the service
 {
-	while ($in_method) { sleep(1); }
-	$in_method = 1;
-	
-	my ($device_xml,$service) = @_;
-	my $ip_port = "$device_xml->{ip}:$device_xml->{port}";
-    display(0,0,"subscribeService($ip_port,$service)");
+	while ($in_connection) { sleep(1); }
+	$in_connection = 1;
 
-	# all BubbleUp OpenHome services have the same url,
-	# based on the uuid ... otherwise, I'd have to get
-	# the actual service descriptions ...
+	my ($service) = @_;
+	my $ip = $service->{ip};
+	my $port = $service->{port};
+	my $urn = $service->{urn};
+	my $service_name = $service->{service_name};
+	my $event_path = $service->{event_path};
 	
-	my $uuid = $device_xml->{device}->{UDN};
-	$uuid =~ s/^uuid://;
-	display($dbg_subscribe,1,"uuid=$uuid");
-	my $path = "/dev/$uuid/svc/av-openhome-org/$service/event";
+    LOG(0,"subscribeService($service_name) at $ip:$port");
 	
 	# open the socket
 	
     my $sock = IO::Socket::INET->new(
-        PeerAddr => $device_xml->{ip},
-        PeerPort => $device_xml->{port},
+        PeerAddr => $ip,
+        PeerPort => $port,
         Proto => 'tcp',
         Type => SOCK_STREAM,
         Blocking => 1);
     if (!$sock)
     {
-        error("Could not open socket to $device_xml->{ip}:$device_xml->{port}");
-		$in_method = 0;
+        error("Could not open socket to $ip:$port");
+		$in_connection = 0;
         return;
     }
 
     # build the header and request
     
     my $request = '';
-    $request .= "SUBSCRIBE $path HTTP/1.1\r\n";
-    $request .= "HOST: $ip_port\r\n";
+    $request .= "SUBSCRIBE $event_path HTTP/1.1\r\n";
+    $request .= "HOST: $ip:$port\r\n";
 	$request .= "USER-AGENT: OS/version UPnP/1.1 product/version\r\n";
-	$request .= "CALLBACK: <http://$server_ip:$server_port/$service>\r\n";
+	$request .= "CALLBACK: <http://$server_ip:$server_port/$service_name>\r\n";
 	$request .= "NT: upnp:event\r\n";;
 	$request .= "TIMEOUT: Second-1800\r\n";
     $request .= "\r\n";
-
 	
     # send the request
 
@@ -372,7 +353,7 @@ sub subscribeService
     {
         error("Could not send message to renderer socket");
 	    $sock->close();
-		$in_method = 0;
+		$in_connection = 0;
         return;
     }
 
@@ -401,8 +382,8 @@ sub subscribeService
         $line = <$sock>;
     }
     
-    display(0,1,($ok?"SUCCESS":"FAILURE")." subscribing to $ip_port $service");
-	$in_method = 0;
+    display(0,1,($ok?"SUCCESS":"FAILURE")." subscribing to $service_name at $ip:$port");
+	$in_connection = 0;
 
 }   # subscribeService
 	
@@ -410,61 +391,138 @@ sub subscribeService
 
 
 
+#----------------------------------------------------------------------------
+# Process a single event (write it to a file)
+#----------------------------------------------------------------------------
+
+my $NUM_LOOPING_EVENTS = 5;
+	# only print/show the first five looping events
+	
+my %num_loopers;
+my $event_num = "00000";
+
+sub processEvent
+{
+	my ($event,$is_loop) = @_;
+	my $ip = $event->{ip};
+	my $port = $event->{port};
+	my $service = $event->{service};
+	my $key = "$ip:$port:$service";
+	
+	if ($is_loop)
+	{
+		$num_loopers{$key} ||= 0;
+		return if ($num_loopers{$key}++ >= $NUM_LOOPING_EVENTS);
+	}
+	
+	$event_num++;
+	my $filename = "/junk/events/$event_num.$ip.$port.$service.txt";
+	display(0,0,"filename=$filename");
+	printVarToFile($WRITE_TO_FILE,$filename,$event->{text},1);
+}
+
+
+
+#-------------------------------------------------
+# params
+#-------------------------------------------------
+
+my $location_exclude_re = '';
+
+# my $service_re = 'RenderingControl';
+my $service_re = 'AVTransport';
+my $device_re = 'BubbleUPnP \(GA10H\)';
+my $location_include_re = '192.168.0.100';
+
+
+
+# my $service_re = 'Playlist';
+# my $device_re = 'BubbleUPnP \(GA10H\) \(OpenHome\)';
+# my $location_include_re = '192.168.0.100';
+
+
 #-------------------------------------------------
 # main
 #-------------------------------------------------
 
-my $desired_name = 'BubbleUPnP (GA10H) (OpenHome)';
-LOG(0,"Testing Subscriptions to $desired_name");
+LOG(0,"Testing Subscriptions");
+my %found_services;
+
+# start the http server
 
 display(0,0,"Starting HTTP Server ...)");
 my $thread = threads->create('start_webserver_on_this_thread');
 $thread->detach();
 display(0,0,"HTTP Server Started");
 
+# get the devices
 
-# Find the openHome "Product" device of the desired name
+my @devices = SSDPSearch::getUPNPDeviceDescriptionList(
+	'ssdp:all',
+	undef,
+	$location_include_re,
+	$location_exclude_re);
 
-if (!$use_device)
+# subscribe to them
+
+
+for my $device_xml (@devices)
 {
-	display(0,0,"Looking for OpenHome Products ....");
-	my @devices = SSDPSearch::getUPNPDeviceDescriptionList('urn:av-openhome-org:service:Product:1',undef,'','');
-	display(0,1,"Found ".scalar(@devices)." OpenHome Products");
-	for my $check (@devices)
+	my $ip = $device_xml->{ip};
+	my $port = $device_xml->{port};
+	my $device = $device_xml->{device};
+	my $name = $device->{friendlyName};
+	display(2,0,"device: $name at $ip:$port");
+	if ($name =~ /$device_re/)
 	{
-		if ($check->{device}->{friendlyName} eq $desired_name)
+		my $service_list = $device->{serviceList};
+		my $services = $service_list->{service};
+		$services = [$services] if ref($services) !~ /ARRAY/;
+
+		display(0,0,"Device: $name at $ip:$port");
+		
+		for my $service (@$services)
 		{
-			LOG(1,"Found $desired_name at $check->{ip}:$check->{port}");
-			$use_device = $check;
-			last;
+			my $usn = $service->{serviceType};
+			my $event_path = $service->{eventSubURL};
+
+			display(3,1,"usn = $usn");
+			$usn =~ /urn:(.*):service:(.*):/;
+			my ($urn,$service_name) = ($1,$2);
+			my $key = "$ip:$port:$service_name";
+
+			if ($urn &&
+				$service_name &&
+				$service_name =~ /$service_re/ &&
+				$event_path &&
+				!$found_services{$key})
+			{
+				display(3,1,"service: $service_name  urn=$urn");
+					$found_services{$key} = {
+						ip => $ip,
+						port => $port,
+						urn => $urn,
+						service_name => $service_name,
+						event_path => $event_path } ;
+			}
 		}
 	}
 }
 
 
-# Subscribe to the service and enter an endless loop
+# SUBSCRIBE TO THE SERVICES
 
-if (!$use_device)
+LOG(0,"Subscribing to Services");
+for my $service (values(%found_services))
 {
-	error("Could not find $desired_name device!!");
-}
-elsif (0)	# subscribe to a single service
-{
-	subscribeService($use_device,"Info");
-	LOG(0,"waiting for events ...");
-	while (1) {sleep(1)};
-}
-else
-{
-	for my $service (@services)
-	{
-		subscribeService($use_device,$service);
-	}
-	LOG(0,"waiting for events ...");
-	while (1) {sleep(1)};
+	subscribeService($service);
 }
 
-LOG(0,"Subscription test finished");
+
+# ENDLESS LOOP
+
+LOG(0,"waiting for events ...");
+while (1) {sleep(1)};
 
 
 1;

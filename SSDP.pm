@@ -299,10 +299,16 @@ sub parse_ssdp_message
 	foreach my $line (@lines)
 	{
 		last if length($line) == 0;
-		
-		if ($line =~ /^([\w\-]+):\s*(.*)$/i)
+		my $pos = index($line,":");
+		if ($pos >= 0)
 		{
-			$$output_data{uc($1)} = $2;
+			my $lval = substr($line,0,$pos);
+			my $rval = substr($line,$pos+1);
+			$rval = "" if !defined($rval);
+			$rval =~ s/^\s+//;
+			$rval =~ s/\s+$//;
+			
+			$$output_data{uc($lval)} = $rval;
 		}
 		else
 		{
@@ -315,17 +321,17 @@ sub parse_ssdp_message
 
 	if (1)
 	{
-		if (defined($$output_data{USN}))
+		if (00 && defined($$output_data{USN}))
 		{
 			my ($a, undef) = split('::', $$output_data{USN});
 			$$output_data{USN} = $a;
 		}
 	
-		if (defined($$output_data{'CACHE-CONTROL'}))
+		if (defined($$output_data{'CACHE-CONTROL'}) &&
+			$$output_data{'CACHE-CONTROL'} =~ /^max-age\s*=\s*(\d+)/i)
 		{
 			my $time = time();
-			$$output_data{'CACHE-CONTROL'} = $1
-				if $$output_data{'CACHE-CONTROL'} =~ /^max-age\s*=\s*(\d+)/i;
+			$$output_data{'CACHE-CONTROL'} = $1;
 			$$output_data{'CACHE-CONTROL'} += $time;
 		}
 
@@ -522,11 +528,21 @@ sub receive_messages
 		
 		if ($message{TYPE} eq 'NOTIFY')
         {
-            display($dbg_ssdp,0,"NOTIFY  message from $peer_ip_addr:$peer_src_port");
-			for my $k (sort(keys(%message)))
+			my $nts = $message{NTS} || "";
+			my $usn = $message{USN} || "";
+			my $location = $message{LOCATION} || "";
+			my $action = $nts =~ /ssdp:(.*)/ ? $1 : "";
+			
+			if ($action eq "bye_bye")
 			{
-				display($dbg_ssdp+1,1,"$k=$message{$k}");
+				display(0,0,"Received bye_bye from $location usn=$usn");
 			}
+			
+            # display($dbg_ssdp,0,"NOTIFY  message from $peer_ip_addr:$peer_src_port");
+			# for my $k (sort(keys(%message)))
+			# {
+			# 	display($dbg_ssdp+1,1,"$k=$message{$k}");
+			# }
 
             # NTS == ssdp:byebye ||
 			# update the device database

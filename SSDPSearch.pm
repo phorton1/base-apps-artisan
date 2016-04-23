@@ -205,7 +205,7 @@ sub getServiceDescriptionFile
 	my $type = $service->{serviceType};
 	$type =~ s/^urn://;		# make it more readable
 	my $display_name = "service.$device_xml->{ip}:$device_xml->{port}-$type";
-    display($dbg_ssdp_search,1,"getServiceDescriptionFile($display_name)");
+    display($dbg_ssdp_search+1,1,"getServiceDescriptionFile($display_name)");
 
 	# get the url, and get the content
 	
@@ -225,7 +225,7 @@ sub getDescriptionFile
 {
 	my ($ua,$url,$display_name) = @_;
     display($dbg_ssdp_search,1,"getDescriptionFile($display_name)");
-    display($dbg_ssdp_search,2,"url=$url");
+    display($dbg_ssdp_search+1,2,"url=$url");
 	
     my $response = $ua->get($url);
     if (!$response->is_success())
@@ -291,7 +291,7 @@ sub getUPNPDeviceDescriptionList
 		my $url = $rec->{url};
 		my $device_name = $rec->{st};
 	    display($dbg_ssdp_search,1,"getting services($device_name)");
-		display($dbg_ssdp_search,2,"url=$url");
+		display($dbg_ssdp_search+1,2,"url=$url");
 		
 		if ($url !~ m/http:\/\/([0-9a-z.]+)[:]*([0-9]*)\/(.*)/i)
 		{
@@ -328,7 +328,7 @@ sub getUPNPDeviceDescriptionList
 				UDN))
 			{
 				my $val = $xml->{device}->{$field} || '';
-				display($dbg_ssdp_search,4,"$field=$val");
+				display($dbg_ssdp_search+1,4,"$field=$val");
 			}
 		}
     }
@@ -433,7 +433,7 @@ SSDP_SEARCH_MSG
 				}
 			}
 			display($dbg_ssdp_search,2,"device_reply from '$rec->{url}'");
-			display($dbg_ssdp_search,3,"device=$rec->{st}");
+			display($dbg_ssdp_search+1,3,"device=$rec->{st}");
 	        push @device_replies,$rec;
 		}
     }
@@ -601,7 +601,7 @@ sub dbg_devices
 		my $device_type = $device->{deviceType};
 		$device_type =~ s/^urn://;
 		my $display_name = "$device_xml->{ip}:$device_xml->{port}-$device_type";
-		display($dbg_ssdp_search,1,"checking device $display_name=$name");
+		display($dbg_ssdp_search+1,1,"checking device $display_name=$name");
 		
 		my $service_list = $device->{serviceList};
 		my $services = $service_list->{service};
@@ -611,7 +611,7 @@ sub dbg_devices
 		{
 			my $service_type = $service->{serviceType};
 			$service_type =~ s/^urn://;
-			display($dbg_ssdp_search,1,"found service $service_type");
+			display($dbg_ssdp_search+1,1,"found service $service_type");
 			getServiceDescriptionFile($ua,$device_xml,$service);
 		}
 	}
