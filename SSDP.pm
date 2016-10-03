@@ -126,7 +126,7 @@ sub send_alive_messages
 	# and one (1) thereafter for normal 'keep alive' messages
 {
 	my ($this,$init) = @_;
-	appUtils::set_alt_output(1);
+	My::Utils::set_alt_output(1);
 	
 	while(1)
 	{
@@ -427,7 +427,7 @@ sub receive_messages
 	
 {
 	my ($this) = @_;
-	appUtils::set_alt_output(1);
+	My::Utils::set_alt_output(1);
 
 	# Note on parameters for Multicast->new()
 	# Here are the original working parameters.

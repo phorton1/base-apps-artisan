@@ -320,7 +320,7 @@ sub getRenderers
 
 sub auto_update_thread
 {
-	appUtils::set_alt_output(1);
+	My::Utils::set_alt_output(1);
     LOG(0,"starting auto_update_thread");
     
     while (!$quitting)

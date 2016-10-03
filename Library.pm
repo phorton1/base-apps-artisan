@@ -51,7 +51,7 @@ use Folder;
 use Track;
 
 
-appUtils::set_alt_output(1);
+My::Utils::set_alt_output(1);
 
 
 BEGIN
@@ -232,7 +232,7 @@ sub scanner_thread
 {
     my ($one_time) = @_;
 
-	appUtils::set_alt_output(1);
+	My::Utils::set_alt_output(1);
 
 	LOG(0,"Starting scanner_thread()");
 	while(1)

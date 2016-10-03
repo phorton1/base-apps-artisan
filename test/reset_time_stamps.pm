@@ -151,7 +151,7 @@ sub do_initial_analysis
             {
                 my $local_str = History::dateToLocalText($old_rec->{TIMESTAMP});
                 LOG(1,"Setting timestamp($local_str) for $id=$new_rec->{FULLNAME})");
-                exit 1 if !appUtils::setTimestamp("$mp3_dir/$new_rec->{FULLNAME}",$local_str,1);
+                exit 1 if !My::Utils::setTimestamp("$mp3_dir/$new_rec->{FULLNAME}",$local_str,1);
                 exit 1 if !add_track_change_history_event($id,$old_rec->{TIMESTAMP}."from initial reset_timestamps.pm");
             }
         }

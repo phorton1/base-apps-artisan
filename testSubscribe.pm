@@ -46,7 +46,7 @@ $debug_level = 0;
 sub start_webserver_on_this_thread
 	# start the server on whatever thread calls this
 {
-	appUtils::set_alt_output(1);
+	My::Utils::set_alt_output(1);
 	display(0,0,"HTTPServer starting ...");
 
 	local *S;
@@ -106,7 +106,7 @@ sub handle_connection
 	my ($FH,$peer_ip_addr,$peer_src_port) = @_;
 	binmode($FH);
 	
-	appUtils::set_alt_output(1) if (!$SINGLE_THREAD);
+	My::Utils::set_alt_output(1) if (!$SINGLE_THREAD);
 	display($dbg_http+4,0,"HTTP connect from $peer_ip_addr:$peer_src_port");
 
 	#--------------------------------

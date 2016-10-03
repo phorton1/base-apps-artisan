@@ -1,7 +1,7 @@
 #---------------------------------------
 # Utils.pm
 #---------------------------------------
-# Partial re-export of appUtils with
+# Partial re-export of My::Utils with
 # application specific constants, vars, etc
 
 package Utils;
@@ -12,7 +12,7 @@ use threads::shared;
 use Socket;
 use Sys::Hostname;
 use XML::Simple;
-use appUtils qw(
+use My::Utils qw(
 	$debug_level
 	$warning_level
 	$HOME_MACHINE
@@ -42,9 +42,9 @@ use appUtils qw(
 );
 
 
-# set critical appUtils constants
+# set critical My::Utils constants
 
-appUtils::set_alt_output(1);
+My::Utils::set_alt_output(1);
 	# should not need other calls
 	# on a per-thread basis.
 
@@ -164,7 +164,7 @@ BEGIN
 	);
 
 
-	# re-exports from appUtils
+	# re-exports from My::Utils
 
 	push @EXPORT, qw(
         $debug_level
@@ -759,7 +759,7 @@ sub http_date
 sub dateToGMTText
 {
 	my ($t) = @_;
-	my $s = appUtils::timeToGMTDateTime($t);
+	my $s = My::Utils::timeToGMTDateTime($t);
 	$s =~ s/^(\d\d\d\d):(\d\d):(\d\d)/$1-$2-$3/;
 	return $s;
 }
@@ -769,7 +769,7 @@ sub dateToLocalText
 {
 	my ($t) = @_;
 	my $unix = localtime($t);
-	my $s = appUtils::unixToTimestamp($unix);
+	my $s = My::Utils::unixToTimestamp($unix);
 	$s =~ s/^(\d\d\d\d):(\d\d):(\d\d)/$1-$2-$3/;
 	return  $s;	
 }
