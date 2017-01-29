@@ -292,6 +292,7 @@ my %default_playlists = (
 			"albums/Productions/Originals/Forgotten Space" },
 	work => {
 		num => 2,
+		shuffle => $SHUFFLE_ALBUMS,
 		query => 
 			"albums/Work" },
 	dead => {
