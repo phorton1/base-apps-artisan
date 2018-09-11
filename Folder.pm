@@ -148,9 +148,10 @@ sub newFromDbId
 sub insert
 {
 	my ($this,$dbh) = @_;
-	if (!$this->{id})
+	if (!defined($this->{id}))
 	{
-		error("attempt to insert folder without an id!!");
+		error("attempt to insert folder without an id!!",0,1);
+		My::Utils::display_hash(0,0,"this",$this);
 		return;
 	}
 	if (insert_record_db($dbh,'folders',$this))

@@ -320,7 +320,8 @@ sub getRenderers
 
 sub auto_update_thread
 {
-	My::Utils::set_alt_output(1);
+	My::Utils::setOutputToSTDERR();
+	# My::Utils::set_alt_output(1);
     LOG(0,"starting auto_update_thread");
     
     while (!$quitting)

@@ -1,4 +1,2 @@
-192.168.0.100:58645	BubbleUPnP (GA10H)	192.168.0.100	58645	/dev/38875023-0ca8-f211-ffff-ffffa3c996b8/svc/upnp-org/AVTransport/action	/dev/38875023-0ca8-f211-ffff-ffffa3c996b8/svc/upnp-org/RenderingControl/action	15	1	0	0	0	0	0	0
-192.168.0.102:10184	WDTVLive - currently in use	192.168.0.102	10184	/MediaRenderer_AVTransport/control	/MediaRenderer_RenderingControl/control	100	1	0	0	0	0	0	0
-192.168.0.103:58645	BubbleUPnP (rk30sdk)	192.168.0.103	58645	/dev/3ec2d6d3-cbbe-c85e-0000-00005a28093c/svc/upnp-org/AVTransport/action	/dev/3ec2d6d3-cbbe-c85e-0000-00005a28093c/svc/upnp-org/RenderingControl/action	15	1	0	0	0	0	0	0
-192.168.0.115:8008	Artisan (emulator)	192.168.0.115	8008	/AVTransport/control	/RenderingControl/control	15	1	0	0	0	0	0	0
+192.168.0.101:8008	Artisan (car stereo)	192.168.0.101	8008	/AVTransport/control	/RenderingControl/control	15	1	0	0	0	0	0	0
+192.168.0.103:8008	Artisan (vbox-x86)	192.168.0.103	8008	/AVTransport/control	/RenderingControl/control	15	1	0	0	0	0	0	0

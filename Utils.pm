@@ -44,7 +44,7 @@ use My::Utils qw(
 
 # set critical My::Utils constants
 
-My::Utils::set_alt_output(1);
+My::Utils::init_AS_SERVICE(); # set_alt_output(1);
 	# should not need other calls
 	# on a per-thread basis.
 
@@ -63,7 +63,7 @@ our $dbg_stream 	= 2;
 our $dbg_xml    	= 2;
 our $dbg_library    = 1;
 our $dbg_vlibrary   = 2;
-our $dbg_webui      = 1;
+our $dbg_webui      = -1;
 our $dbg_mediafile  = 2;
 our $dbg_mp3_info   = 2;
 our $dbg_mp3_read   = 2;

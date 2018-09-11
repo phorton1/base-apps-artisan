@@ -55,7 +55,8 @@ my $system_update_id = time();
 sub start_webserver
 	# this is a separate thread, even if $SINGLE_THREA
 {
-	My::Utils::set_alt_output(1);
+	My::Utils::setOutputToSTDERR();
+	# My::Utils::set_alt_output(1);
 	display($dbg_http,0,"HTTPServer starting ...");
 
 	local *S;
@@ -123,7 +124,8 @@ sub handle_connection
 	my ($FH,$peer_ip_addr,$peer_src_port) = @_;
 	binmode($FH);
 	
-	My::Utils::set_alt_output(1) if (!$SINGLE_THREAD);
+	My::Utils::setOutputToSTDERR();
+	# My::Utils::set_alt_output(1) if (!$SINGLE_THREAD);
 	
 	display($dbg_http+1,0,"HTTP connect from $peer_ip_addr:$peer_src_port");
 

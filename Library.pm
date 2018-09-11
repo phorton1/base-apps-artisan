@@ -51,7 +51,7 @@ use Folder;
 use Track;
 
 
-My::Utils::set_alt_output(1);
+# My::Utils::set_alt_output(1);
 
 
 BEGIN
@@ -232,7 +232,8 @@ sub scanner_thread
 {
     my ($one_time) = @_;
 
-	My::Utils::set_alt_output(1);
+	My::Utils::setOutputToSTDERR();
+	# My::Utils::set_alt_output(1);
 
 	LOG(0,"Starting scanner_thread()");
 	while(1)
@@ -856,6 +857,14 @@ sub	add_track
 
 		if ($old_track && -f "$mp3_dir/$old_track->{path}")
 		{
+			display_bytes(0,0,"path",$path);
+			display_bytes(0,0,"old_track path",$old_track->{path});
+			
+			if ($path eq $old_track->{path})
+			{
+				warning(0,0,"apparently same file scanned twice: $path");
+				return 1;
+			}
 			error("DUPLICATE STREAM_MD5 (ID) for $path\nFOUND AT OTHER=$old_track->{path}");
 			exit 1;
 		}
