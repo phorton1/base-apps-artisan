@@ -1,4 +1,5 @@
 #!/usr/bin/perl
+
 #---------------------------------------
 # artisan.pm
 #---------------------------------------
@@ -88,7 +89,7 @@ if (0)
 {
 	# the program is aborted if any key is pressed
 	# if any key is pressed ...
-	
+
 	display(0,0,"Hit any key to Quit the Server ...");
 	getc();
 	LOG(0,"Aborted via keystroke");
@@ -97,7 +98,7 @@ else
 {
 	# or process an endless loop and allow
 	# webui to terminate the program
-	
+
 	my $webui_aborted = 0;	# vestigal
 	while (!$webui_aborted)
 	{
