@@ -1,2 +1,1 @@
-192.168.0.101:8008	Artisan (car stereo)	192.168.0.101	8008	/AVTransport/control	/RenderingControl/control	15	1	0	0	0	0	0	0
-192.168.0.103:8008	Artisan (vbox-x86)	192.168.0.103	8008	/AVTransport/control	/RenderingControl/control	15	1	0	0	0	0	0	0
+10.237.36.101:8008	Artisan (car stereo)	10.237.36.101	8008	/AVTransport/control	/RenderingControl/control	15	1	0	0	0	0	0	0

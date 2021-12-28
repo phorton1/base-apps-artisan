@@ -94,8 +94,8 @@
 #
 # It must provide member variables id and name, and might as
 # well provide useful values for maxVol, canMute, etc.
-# 
-# 
+#
+#
 # Client calls setLocalRenderer(obj) which must
 # provide getState(), getDeviceData, and doCommand()
 # methods.
@@ -179,7 +179,7 @@ my @renderer_fields : shared = qw(
 	maxHigh
 );
 
-my $local_renderer : shared;    
+my $local_renderer : shared;
 my %g_renderers : shared;
 my $renderer_cachefile = "$temp_dir/renderer_cache.txt";
 
@@ -244,7 +244,7 @@ sub static_init_dlna_renderer_cache
 }
 
 
-    
+
 sub write_dlna_renderer_cache
 {
     my $text = '';
@@ -281,7 +281,7 @@ sub doCommand
 {
 	my ($this,$command,$arg) = @_;
 	display($dbg_ren,0,"doCommand($command,$arg)");
-	
+
 	if ($command eq 'stop')
 	{
 		return $this->private_doAction(0,'Stop') ? 1 : 0;
@@ -289,7 +289,7 @@ sub doCommand
 	elsif ($command eq 'set_song')
 	{
 		my $track = get_track(undef,$arg);
-		
+
 		if (!$track)
 		{
 			error("Could not get track($arg)in doCoommand()");
@@ -314,7 +314,7 @@ sub doCommand
 	{
 		return $this->private_doAction(0,'Pause') ? 1 : 0;
 	}
-	
+
 	error("Unknown command $command in doCoommand()");
 	return 0;
 }
@@ -334,12 +334,12 @@ sub getState
     my ($this) = @_;
     my $data = $this->private_doAction(0,'GetTransportInfo');
     return if !$data;
-    
+
     display($dbg_ren+2,0,"Status Info\n$data");
-    
+
     my $status = $data =~ /<CurrentTransportStatus>(.*?)<\/CurrentTransportStatus>/s ? $1 : '';
     my $state = $data =~ /<CurrentTransportState>(.*?)<\/CurrentTransportState>/s ? $1 : '';
-    
+
     $state = 'ERROR' if ($status ne 'OK');
     display($dbg_ren+2,0,"getState=$state");
     return $state;
@@ -356,23 +356,23 @@ sub getDeviceData
     return if !$data;
 
     display($dbg_ren+2,0,"Position Info\n$data");
-    
+
     my %retval;
 	my $dur_str = $data =~ /<TrackDuration>(.*?)<\/TrackDuration>/s ? $1 : '';
     my $pos_str = $data =~ /<RelTime>(.*?)<\/RelTime>/s ? $1 : '';
-	
+
     $retval{duration} = duration_to_millis($dur_str);
     $retval{position} = duration_to_millis($pos_str);
 
     # Get the file type from the file extensionin the TrackURI
     # This will be incorrect except for MP3 due to kludge in
     # get_item_meta_didl().
-    
+
     $retval{uri} = $data =~ /<TrackURI>(.*?)<\/TrackURI>/s ? $1 : '';
     $retval{type} = $retval{uri} =~ /.*\.(.*?)$/ ? uc($1) : '';
 
     # song number
-    
+
     $retval{song_id} = "";
     if ($retval{uri} =~ /http:\/\/$server_ip:$server_port\/media\/(.*?)\.mp3/)
     {
@@ -381,7 +381,7 @@ sub getDeviceData
     }
 
     # metadata
-    
+
     $retval{metadata} = shared_clone({});
     get_metafield($data,$retval{metadata},'title','dc:title');
     get_metafield($data,$retval{metadata},'artist','upnp:artist');
@@ -398,14 +398,14 @@ sub getDeviceData
     # Get a better version of the 'type' from the DLNA info
     # esp. since we ourselves sent the wrong file extension
     # in the kludge in get_item_meta_didl()
-    
+
     $retval{type} = 'WMA' if ($data =~ /audio\/x-ms-wma/);
     $retval{type} = 'WAV' if ($data =~ /audio\/x-wav/);
     $retval{type} = 'M4A' if ($data =~ /audio\/x-m4a/);
 
     display($dbg_ren+1,0,"GOT_POSITION: position=$retval{position} duration=$retval{duration} id=$retval{song_id}");
     display($dbg_ren+2,1,"uri='$retval{uri}' type='$retval{type}'");
-    
+
     # VOLUME DOES NOT WORK ON BUBBLEUP CAR STEREO
 
     if (1)
@@ -425,7 +425,7 @@ sub getDeviceData
 		{
 			display($dbg_ren,0,"GOT MUTE:\n".Dumper($data));
 		}
-    }    
+    }
 
     return \%retval;
 }
@@ -453,9 +453,9 @@ sub private_doAction
 	# returns undef in error cases
 {
     my ($this,$rv,$action,$args) = @_;
-    
+
 	display(0,0,"$action($args->{Target})") if $action =~ /Seek/;
-	
+
 	display($dbg_ren+1,0,"private_doAction($rv,$action)");
 
     my $sock = IO::Socket::INET->new(
@@ -474,7 +474,7 @@ sub private_doAction
     my $service = $rv ? 'RenderingControl' : 'AVTransport';
     my $url = $rv ? $this->{controlURL} : $this->{transportURL};
 
-    # build the body    
+    # build the body
 
     my $body = '<?xml version="1.0" encoding="utf-8"?>'."\r\n";
     $body .= "<s:Envelope xmlns:s=\"http://schemas.xmlsoap.org/soap/envelope/\" s:encodingStyle=\"http://schemas.xmlsoap.org/soap/encoding/\">";
@@ -482,21 +482,21 @@ sub private_doAction
     $body .= "<u:$action xmlns:u=\"urn:schemas-upnp-org:service:$service:1\">";
     $body .= "<InstanceID>0</InstanceID>";
     $body .= "<Channel>Master</Channel>" if ($rv);
-    
+
     if ($args)
     {
         for my $k (keys(%$args))
         {
-            $body .= "<$k>$args->{$k}</$k>";        
+            $body .= "<$k>$args->{$k}</$k>";
         }
     }
-    
+
     $body .= "</u:$action>";
     $body .= "</s:Body>";
     $body .= "</s:Envelope>\r\n";
 
     # build the header and request
-    
+
     my $request = '';
     $request .= "POST $url HTTP/1.1\r\n";
     $request .= "HOST: $this->{ip}:$this->{port}\r\n";
@@ -512,7 +512,7 @@ sub private_doAction
     display($dbg_ren+2,1,"--------------- request --------------------");
     display($dbg_ren+2,1,$request);
     display($dbg_ren+2,1,"--------------------------------------------");
-    
+
     if (!$sock->send($request))
     {
         error("Could not send message to renderer socket");
@@ -521,9 +521,9 @@ sub private_doAction
     }
 
     # get the response
-    
+
     display($dbg_ren+1,1,"getting action($action) response");
-    
+
     my %headers;
     my $first_line = 1;
     my $line = <$sock>;
@@ -542,10 +542,10 @@ sub private_doAction
         }
         $line = <$sock>;
     }
-    
+
     # WDTV puts out chunked which I think means that
     # the length is on a the next line, in hex
-    
+
     my $length = $headers{content_length};
     display($dbg_ren+1,2,"content_length=$length");
 
@@ -559,14 +559,14 @@ sub private_doAction
     }
 
     # continuing ...
-    
+
     if (!$length)
     {
         error("No content length returned by response");
 	    $sock->close();
         return;
     }
-    
+
     my $data;
     my $rslt = $sock->read($data,$length);
     $sock->close();
@@ -581,16 +581,16 @@ sub private_doAction
         error("No data found in action response");
         return;
     }
-    
-    
+
+
     display($dbg_ren+1,2,"got "._def($rslt)." bytes from socket");
-    
+
     display($dbg_ren+1,2,"--------------- response --------------------");
     display($dbg_ren+1,2,"'$data'");
     display($dbg_ren+1,2,"--------------------------------------------");
-    
+
     # return to caller
-    
+
     return $data;
 
 }   # private_doAction
@@ -615,20 +615,20 @@ sub fix_url
 
 sub getDLNARenderers
     # Returns a hash by id (ip:port) of available DLNA Renderers,
-	# where each record has the below known fields.  
+	# where each record has the below known fields.
 {
 	my ($refresh) = @_;
 	display($dbg_ssdp_search,0,"getDLNARenderers()");
-	
+
 	if ($refresh)
 	{
 		# Get and loop through the XML MediaRenderer:1
 		# devicesreturned by getUPNPDeviceList();
-		
+
 		my $ua = LWP::UserAgent->new();
 		my @dev_list = getUPNPDeviceList('urn:schemas-upnp-org:device:MediaRenderer:1',$ua);
 		display($dbg_ssdp_search,1,"found ".scalar(@dev_list)." devices");
-	
+
 		for my $xml (@dev_list)
 		{
 			my $device = $xml->{device};
@@ -641,20 +641,20 @@ sub getDLNARenderers
 			my $id = "$xml->{ip}:$xml->{port}";
 			my $name = $device->{friendlyName};
 			display($dbg_ssdp_search,1,"found renderer(id=$id) '$name'");
-			
+
 			# loop thru the services to find the
 			# AVTransport and RenderingControl services
 			# and save their urls into the params.
-			
+
 			my $service_list = $device->{serviceList};
 			my $services = $service_list->{service};
 			$services = [$services] if ref($services) !~ /ARRAY/;
-			
+
 			my $transportURL = '';
 			my $controlURL = '';
 			my $max_vol = 0;
 			my $can_mute = 0;
-			
+
 			for my $service (@$services)
 			{
 				my $type = $service->{serviceType};
@@ -689,10 +689,10 @@ sub getDLNARenderers
 					($max_vol,$can_mute) = getSupportedControls($ua,$url);
 				}
 			}
-	
+
 			# Give error if either url is missing.
 			# The controlURL for the volume control.
-			
+
 			if (!$transportURL)
 			{
 				error("Could not find AVTransport transportURL for renderer($name)");
@@ -701,7 +701,7 @@ sub getDLNARenderers
 			{
 				error("Could not find RenderingControl controlURL for renderer($name)");
 			}
-			
+
 			# Find the existing renderer if any
 			# If we do not find an transportURL, then we will not wipe out an
 			# existing renderer, but will not create a new renderer object.
@@ -743,15 +743,15 @@ sub getDLNARenderers
 			{
 				error("Cannot create a Renderer object without a transportURL");
 			}
-			
-		}	# for each XML device	
-			
-			
+
+		}	# for each XML device
+
+
         # set the "online" status
 		# and remove stale entries
 		# client should check if it's disappeared!
 		# never take the local renderer offline
-        
+
         for my $id (keys(%g_renderers))
         {
             my $renderer = $g_renderers{$id};
@@ -760,17 +760,17 @@ sub getDLNARenderers
             $renderer->{online} = $renderer->{online}==2 ? 1 : 0;
             delete $g_renderers{$id} if $refresh == 2 && !$renderer->{online};
 		}
-		
+
         # write it out
-        
+
         write_dlna_renderer_cache();
-			
+
 	}
-	
+
 	# finished, return the global list
-	
+
     return \%g_renderers;
-}                
+}
 
 
 
@@ -789,14 +789,14 @@ sub getSupportedControls
 
     my $xml;
     my $content = $response->content();
-    
+
     if (0)	# debugging
 	{
 		my $dbg_file = $url;
 		$dbg_file =~ s/:|\//./g;
 		printVarToFile(1,"/junk/$dbg_file",$content);
 	}
-	
+
 	my $xmlsimple = XML::Simple->new();
     eval { $xml = $xmlsimple->XMLin($content) };
     if ($@)
@@ -804,9 +804,9 @@ sub getSupportedControls
         error("Unable to parse xml from $url:".$@);
         return (0,0);
     }
- 
+
     # get values with sanity checks
-    
+
 	my $max_vol = 0;
 	my $can_mute = 0;
 
@@ -817,16 +817,16 @@ sub getSupportedControls
         $max_vol = $volume->{allowedValueRange}->{maximum} || 0;
         display($dbg_ssdp_search,2,"got maxVol=$max_vol");
 	}
-	
+
     if ($xml->{actionList}->{action}->{GetMute} &&
         $xml->{actionList}->{action}->{SetMute})
     {
         $can_mute = $xml->{serviceStateTable}->{stateVariable}->{Mute} ? 1 : 0;
         display($dbg_ssdp_search,2,"got canMute=$can_mute");
     }
- 
+
     return ($max_vol,$can_mute);
-	
+
 }
 
 
@@ -851,14 +851,14 @@ sub getUPNPDeviceList
 		# ssdp:all (find everything)
 		# ssdp:discover (find root devices)
 		# urn:schemas-upnp-org:device:MediaRenderer:1 (DLNA Renderers)
-		
+
     display($dbg_ssdp_search,0,"getUPNPDeviceList()");
 	$ua ||= LWP::UserAgent->new();
-    
+
     #------------------------------------------------
     # send the broadcast message
     #------------------------------------------------
-    
+
     my $mx = 3;   # number of seconds window is open for replies
     my $mcast_addr = $ssdp_group . ':' . $ssdp_port;
     my $ssdp_header = <<"SSDP_SEARCH_MSG";
@@ -873,7 +873,7 @@ SSDP_SEARCH_MSG
     $ssdp_header =~ s/\r//g;
     $ssdp_header =~ s/\n/\r\n/g;
 
-    display($dbg_ssdp_search,1,"creating socket");
+    display($dbg_ssdp_search,1,"creating socket server_ip=$server_ip local_port=8679 ssdp_port=#ssdp_port");
 
     my $sock = IO::Socket::INET->new(
         LocalAddr => $server_ip,
@@ -888,8 +888,8 @@ SSDP_SEARCH_MSG
     }
 
     # add the socket to the correct IGMP multicast group
-    # and actually send the message. 
-    
+    # and actually send the message.
+
     _mcast_add( $sock, $mcast_addr );
     display($dbg_ssdp_search,1,"sending broadcast message");
     _mcast_send( $sock, $ssdp_header, $mcast_addr );
@@ -897,7 +897,7 @@ SSDP_SEARCH_MSG
     #------------------------------------------------------
     # loop thru replies to get list of matching devices
     #------------------------------------------------------
-    
+
     my @device_replies;
     my $sel = IO::Select->new($sock);
     while ( $sel->can_read( $mx ) )
@@ -921,7 +921,7 @@ SSDP_SEARCH_MSG
         display($dbg_ssdp_search,2,"device_reply from '$dev_location'");
         push @device_replies,$dev_location;
     }
-    
+
     #----------------------------------------------------------
     # for each found device, get it's device description
     #----------------------------------------------------------
@@ -940,14 +940,14 @@ SSDP_SEARCH_MSG
 
         my $xml;
         my $content = $response->content();
-        
+
         if (0)	# debugging
 		{
 			my $dbg_file = $url;
 			$dbg_file =~ s/:|\//./g;
 			printVarToFile(1,"/junk/$dbg_file",$content);
 		}
-		
+
         my $xmlsimple = XML::Simple->new();
         eval { $xml = $xmlsimple->XMLin($content) };
         if ($@)
@@ -961,7 +961,7 @@ SSDP_SEARCH_MSG
         {
             # massage the ip, port, and path out of the location
             # and into the xml record
-        
+
             if ($url !~ m/http:\/\/([0-9a-z.]+)[:]*([0-9]*)\/(.*)/i)
             {
                 error("ill formed device url: $url");
@@ -972,7 +972,7 @@ SSDP_SEARCH_MSG
             $xml->{path} = $3;
             $xml->{url} = $url;
             push @dev_list,$xml;
-            
+
             if (0)	# debugging
             {
                 display($dbg_ssdp_search+2,1,"------------- XML ------------------");
@@ -980,7 +980,7 @@ SSDP_SEARCH_MSG
                 print Dumper($xml);
                 display($dbg_ssdp_search+2,0,"------------- XML ------------------");
             }
-            
+
             if (1)
             {
                 for my $field (qw(
@@ -1077,8 +1077,8 @@ if (0)
 {
 	# example code to get a list of active IP numbers (no other information)
 	# Could perhaps be used to verify that $server_ip is available
-	# local-host 
-	
+	# local-host
+
 	my ($name,$aliases,$addrtype,$length,@addrs) = gethostbyname('localhost');
 	display(0,0,"name=$name");
 	foreach my $addr (@addrs)
@@ -1086,9 +1086,9 @@ if (0)
 		my $ip = join('.', unpack('C4', $addr));
 		display(0,1,"ip=$ip");
 	}
-	
+
 	# by machine name
-	
+
 	($name,$aliases,$addrtype,$length,@addrs) = gethostbyname($name);
 	foreach my $addr (@addrs)
 	{
@@ -1115,7 +1115,7 @@ if (0)	# static testing SSDP
 
 if (0)	# static testing DLNA
 {
-	static_init_dlna_renderers();	
+	static_init_dlna_renderers();
 	my $dlna_renderers = getDLNARenderers();
 }
 
