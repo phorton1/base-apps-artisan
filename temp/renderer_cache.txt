@@ -1,1 +1,0 @@
-10.237.36.101:8008	Artisan (car stereo)	10.237.36.101	8008	/AVTransport/control	/RenderingControl/control	15	1	0	0	0	0	0	0
