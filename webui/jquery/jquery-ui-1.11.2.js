@@ -7964,7 +7964,7 @@ $.widget( "ui.buttonset", {
 		// Refresh existing buttons
 		existingButtons.button( "refresh" );
 		
-		// prh this is the obnoxious code that decides that
+		// this is the obnoxious code that decides that
 		// my radio buttons are in a horizontal list and that
 		// I want rounded left corners on the first one,
 		// rounded right corners on the last one, and square

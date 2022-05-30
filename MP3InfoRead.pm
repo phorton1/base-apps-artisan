@@ -1,7 +1,7 @@
 #------------------------------------------------------
 # MP3InfoRead.pm
 #------------------------------------------------------
-# 2014-07-03 prh - derived from MP3::Info.pm
+# 2014-07-03 - derived from MP3::Info.pm
 #
 # _get_v1_tags()
 #
@@ -85,7 +85,7 @@ sub _get_v1_tags
 
     # unpack the fields into the working array
 
-    # prh - found a number of files with the comment
+    # found a number of files with the comment
     # jammed up against what was obviously a track
     # number with no preceding \000, so second part
     # if checks for tracknumber < 32 (space) ...
@@ -420,7 +420,7 @@ sub _get_v2_data
 	}
 
     # these are file offsets
-    # prh - note that I had to change end to make it work
+    #  note that I had to change end to make it work
 
     if ($off < $end)
     {
@@ -974,7 +974,7 @@ sub _find_id3_chunk
 		@mat = ('ID3 ', 'ID32');
 	}
 
-    # prh - not gonna error check this,
+    # not gonna error check this,
     # it either works or it doesn't
 
     my $fh = $this->{fh};

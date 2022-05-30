@@ -211,7 +211,7 @@ sub explorer_dir_element
 #-----------------------------------------------
 # item (track) info request
 #-----------------------------------------------
-# prh - another day
+# another day
 #
 # Kludge:  I had to introduce a td just to hold the title
 # because in the car_stereo, for the life of me, I just
@@ -245,7 +245,7 @@ sub explorer_items
 		next if (!$rec->{id});
 		
 		# note that the 'title' of the fancytree 0th td is the tracknum
-		# prh - should the title just be the tile ? 
+		# should the title just be the tile ?
 		
 		$rec->{key} = $rec->{id};
 		display(0,1,"rec->{title}=$rec->{title}");

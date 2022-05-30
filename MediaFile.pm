@@ -39,7 +39,7 @@ sub new
     display($dbg_mediafile,0,"MediaFile::new($rel_path) force=$force");
     my $utf_path = "$mp3_dir/$rel_path";
     
-    # prh 2015-07-02 Had to add handling of UTF filenames presumably from database.
+    # 2015-07-02 Had to add handling of UTF filenames presumably from database.
     # For windows, we have to utf8:downgrade the string, which is apparently not
     # really utf encoded, but which thinks it is?
     # For android we have to encode the non-encoded filename from the database
@@ -707,7 +707,7 @@ sub get_fpcalc_info
         
         if ($line =~ /^\[/)
         {
-            # prh 2014-12-18 - eliminate lines that have FILE= in them
+            # 2014-12-18 - eliminate lines that have FILE= in them
             # as 'errors' ...
             
             if ($line !~ /FILE=/)

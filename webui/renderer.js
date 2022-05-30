@@ -65,7 +65,7 @@ function init_page_renderer()
 {
 	display(dbg_renderer,0,"init_page_renderer()");
 	
-	// prh - something is kicking me out of init_renderer_pane
+	// something is kicking me out of init_renderer_pane
 	// so if these are in the opposite order, the menu
 	// and playlist_info panes are not inited ...
 

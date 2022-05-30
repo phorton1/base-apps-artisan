@@ -19,7 +19,7 @@ use Database;
 use Library;
 use WebUI;
 
-# PRH !!! THE THREADED APPROACH  NOT WORKING ON ARTISAN_WIN !!!
+# !!! THE THREADED APPROACH  NOT WORKING ON ARTISAN_WIN !!!
 # Crashes when I try to "set the renderer" from the webUI
 #
 # The last thing appears to be the close($FH) at the end of handle_connection(),

@@ -1,5 +1,5 @@
 #----------------------------------------------------
-# 2014-07-03 prh - derived from MP3::Info.pm
+# 2014-07-03 - derived from MP3::Info.pm
 #----------------------------------------------------
 # MP3TagList
 #
@@ -152,7 +152,7 @@ sub unused_set_tag_value
     my ($this,$id,$value) = @_;
     my $old_tag = $this->{tags}->{$id};
 
-    # prh - validate params
+    # validate params
     # remove the tag if it exists and no value
 
     if (!$value)
@@ -473,7 +473,7 @@ sub v3_to_v4_tag
         return 0;
     }
 
-    # prh 2014-07-10
+    # 2014-07-10
     #
     # A mess. V3 fields TYER, TDAT, TIME, and multi_string TRDA
     # all map to V4 TRDC 'Recording time'.
@@ -482,7 +482,7 @@ sub v3_to_v4_tag
     # we find it. For now, I am going to warn and just
     # drop everything except for TYER
 
-    # prh - change this to an error 0 or implement it correctly
+    # Would like to change this to an error 0 or implement it correctly
     # after initial pass
 
     if ($init_id =~ /^(TDAT|TIME|TRDA)/)

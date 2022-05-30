@@ -298,7 +298,7 @@ our %v23_tag_names_deprecated = (
     'RVAD' => 'v3 Relative volume adjustment',
         # replaced by RVA2, 'Relative volume adjustment (2)'
 
-    # prh - we're gonna drop all these
+    # we're gonna drop all these
     # and only accept TYER from old files
 
     'TDAT' => 'v3 Date',

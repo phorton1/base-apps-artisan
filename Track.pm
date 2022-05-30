@@ -231,7 +231,7 @@ sub getDidl
 	$didl .= "<upnp:albumArtURI>".encode_xml($art_uri)."</upnp:albumArtURI>";
     $didl .= "<upnp:albumArtist>".encode_xml($this->{album_artist})."</upnp:albumArtist>";
 
-    # prh - had to be careful with the <res> element, as
+    # had to be careful with the <res> element, as
     # WDTVLive did not work when there was whitespace (i.e. cr's)
     # in my template ... so note the >< are on the same line.
 	

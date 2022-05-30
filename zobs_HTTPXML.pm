@@ -246,7 +246,7 @@ sub xml_item
 	<upnp:albumArtURI>$art_uri</upnp:albumArtURI>
     <upnp:albumArtist>$src_albumArtist##album_artist##</upnp:albumArtist>
     #
-    # prh - had to be careful with the <res> element, as
+    # had to be careful with the <res> element, as
     # WDTVLive did not work when there was whitespace (i.e. cr's)
     # in my template ... so note the >< are on the same line.
     #

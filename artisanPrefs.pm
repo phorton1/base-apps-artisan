@@ -161,7 +161,7 @@ sub prefs_request
 		use Data::Dumper;
 		display($dbg_webui-1,0,"prefs_request(set) post_xml=".Dumper($post_xml));
 		
-		# prh - set the prefs from the post_xml
+		# set the prefs from the post_xml
 		
 		my $response = json_header();
 		$response .= json(\%g_prefs);

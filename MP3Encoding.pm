@@ -1,5 +1,5 @@
 #----------------------------------------------------
-# 2014-07-03 prh - derived from MP3::Info.pm
+# 2014-07-03 - derived from MP3::Info.pm
 #----------------------------------------------------
 package MP3Encoding;
 use strict;
@@ -83,7 +83,7 @@ sub decode_text
 
     if ($text =~ /[^\x0d\x0a\x00\x20-\xff]/)
     {
-        # prh - change this to level 0 warning after initial pass thru my mp3 files
+        # would like to change this to level 0 warning after initial pass thru my mp3 files
         $parent->set_error('pb',"replacing non-printable chars in $text with .'s");
         #display_bytes($dbg_encode,1,"text",$text);
         $text =~ s/[^\x0d\x0a\x00\x20-\xff]/./g;

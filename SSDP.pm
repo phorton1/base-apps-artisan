@@ -615,7 +615,7 @@ sub ssdp_message
 		}
 		$msg .= "NT: $$params{nt}\r\n";
 		$msg .= "NTS: ssdp:$$params{nts}\r\n";
-		$msg .= "SERVER: prh UPnP/1.0 $program_name\r\n"
+		$msg .= "SERVER: UPnP/1.0 $program_name\r\n"
 			if $alive;
 		$msg .= "USN: $usn\r\n";
 		$msg .= "\r\n";
@@ -625,7 +625,7 @@ sub ssdp_message
 		$msg = "HTTP/1.1 200 OK\r\n";
 		$msg .= "CACHE-CONTROL: max-age=$cache_max_age\r\n";
 		$msg .= "LOCATION: http://$server_ip:$server_port/ServerDesc.xml\r\n";
-		$msg .= "SERVER: prh UPnP/1.0 $program_name\r\n";
+		$msg .= "SERVER: UPnP/1.0 $program_name\r\n";
 
 		$msg .= "EXT:\r\n";
 		$msg .= "ST: $$params{st}\r\n";

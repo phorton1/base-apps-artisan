@@ -171,7 +171,7 @@ function init_page_explorer()
 			// distinguish and hopefully prevent
 			// namespace collisions.
 			
-			// prh - clicking on a track in the car stereo should
+			// clicking on a track in the car stereo should
 			// open up the details pane
 			
 			var node = data.node;
