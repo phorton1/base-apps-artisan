@@ -23,15 +23,15 @@ BEGIN
 	our @EXPORT = qw (
 
 		$PREF_SCAN_LIBRARY_AT_STARTUP
-	
+
 		$PREF_USE_PREVIOUS_RENDERER
 		$PREF_PREVIOUS_RENDERER
-		
+
 		$PREF_USE_PREVIOUS_PLAYSTATE
 		$PREF_PREVIOUS_PLAYSTATE
-		
+
 		$PREF_START_DLNA_SERVER
-		
+
     );
 }
 
@@ -51,13 +51,13 @@ our $PREF_START_DLNA_SERVER = "START_DLNA_SERVER";
 # default preferences
 
 my @default_prefs =  (
-	$PREF_SCAN_LIBRARY_AT_STARTUP => 0,
+	$PREF_SCAN_LIBRARY_AT_STARTUP => 1,
 	$PREF_USE_PREVIOUS_RENDERER => 0,
 	$PREF_PREVIOUS_RENDERER => '',
 	$PREF_USE_PREVIOUS_PLAYSTATE => 0,
 	$PREF_PREVIOUS_PLAYSTATE => '',
-	$PREF_START_DLNA_SERVER => 0,
-	
+	$PREF_START_DLNA_SERVER => 1,
+
 );
 
 my %g_prefs:shared = @default_prefs;
@@ -70,7 +70,7 @@ my %g_prefs:shared = @default_prefs;
 
 sub prefFilename()
 {
-	return "$artisan_perl_dir/artisan.ini";
+	return "$artisan_perl_dir/artisan.prefs";
 }
 
 
@@ -126,10 +126,10 @@ sub write_prefs
     {
         $text .= "$k=$g_prefs{$k}\n";
     }
-	
+
 	# text files to export to android must be written
 	# in binary mode with just \n's
-	
+
 	my $filename = prefFilename();
     if (!printVarToFile(1,$filename,$text,1))
     {
@@ -155,14 +155,14 @@ sub prefs_request
 		$response .= json(\%g_prefs);
 		return $response;
 	}
-	
+
 	if ($param eq 'set')
 	{
 		use Data::Dumper;
 		display($dbg_webui-1,0,"prefs_request(set) post_xml=".Dumper($post_xml));
-		
+
 		# set the prefs from the post_xml
-		
+
 		my $response = json_header();
 		$response .= json(\%g_prefs);
 		return $response;
@@ -176,9 +176,9 @@ sub prefs_request
 		$response .= json(\%g_prefs);
 		return $response;
 	}
-	
+
 	# user interface request
-	
+
 	return xml_error("unknown uiPrefs command: $param");
 }
 

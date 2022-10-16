@@ -113,7 +113,7 @@ BEGIN
         $uuid
 
         $artisan_perl_dir
-		
+
 		$mp3_dir
 		$mp3_dir_RE
         $cache_dir
@@ -123,7 +123,7 @@ BEGIN
 		$quitting
 
 		clone_hash
-		
+
 		severity_to_str
 		code_to_severity
 		highest_severity
@@ -139,7 +139,7 @@ BEGIN
 		decode_xml
         escape_tag
         unescape_tag
-		
+
         http_date
         add_leading_char
         millis_to_duration
@@ -148,7 +148,7 @@ BEGIN
 		dateToGMTText
 		dateToLocalText
 		dateFromGMTText
-		dateFromLocalText		
+		dateFromLocalText
 
 		containingPath
 		pathName
@@ -385,10 +385,10 @@ if (0)
 	my $HOST_ID = $HOME_MACHINE ? "win" :
      $temp_storage =~ /^\/mnt\/sdcard$/ ? "arm" :
     "x86";
-	
+
 	if ($HOST_ID eq "arm")   # Ubuntu on Car Stero
 	{
-		# car stereo MAC address = 
+		# car stereo MAC address =
 		$program_name = 'Artisan Android 1.1v';
 		$uuid = '56657273-696f-6e34-4d41-afacadefeed3';
 		$artisan_perl_dir = "/external_sd2/artisan";
@@ -409,7 +409,7 @@ if (0)
 
 
 our $cache_dir = "$mp3_dir/_data";
-$temp_dir = "$artisan_perl_dir/temp";
+$temp_dir = "/base/temp";
 
 $logfile = "";
 # #logfile = $temp_dir/artisan.log";
@@ -605,7 +605,7 @@ sub encode_xml
 {
 	my $string = shift;
     $string =~ s/([^\x20-\x7f])/"&#".ord($1).";"/eg;
-	$string =~ s/&/&amp;/g; 
+	$string =~ s/&/&amp;/g;
 	return $string;
 }
 
@@ -614,10 +614,10 @@ sub encode_xml
 sub decode_xml
 	# called by specific to XML encoding
 	# Note double encoding of ampersand as per
-	# http://sourceforge.net/p/minidlna/bugs/198/	
+	# http://sourceforge.net/p/minidlna/bugs/198/
 {
 	my $string = shift;
-	$string =~ s/&amp;/&/g; 
+	$string =~ s/&amp;/&/g;
     $string =~ s/\\#(\d+);/chr($1)/eg;
 	return $string;
 }
@@ -674,12 +674,12 @@ sub millis_to_duration
 	my $minutes = 0;
 	my $seconds = int($millis/1000);
 	$millis = $millis % 1000;
-	
+
 	$minutes = int($seconds / 60) if $seconds > 59;
 	$seconds -= $minutes * 60 if $seconds;
 	$hours = int($minutes / 60) if $minutes > 59;
 	$minutes -= $hours * 60 if $hours;
-	
+
 	my $string = '';
 	if ($precise)	# Bub doesn't like decimals
 	{
@@ -710,11 +710,11 @@ sub duration_to_millis
 	# duplicated as prettyDuration or something like that
 {
 	my ($duration) = @_;
-	
-	
+
+
 	my $secs = 0;
 	my $millis = 0;
-	
+
 	my @parts = split(/:/,$duration);
 	my $num_parts = @parts;
 	if ($num_parts && $parts[$num_parts-1] =~ /\./)
@@ -723,13 +723,13 @@ sub duration_to_millis
 		$parts[$num_parts-1] = $parts2[0];
 		$millis = int($parts2[1]);
 	}
-	
+
 	for my $part (@parts)
 	{
 		$secs *= 60;
 		$secs += int($part);
 	}
-	
+
 	$millis += $secs * 1000;
 	return $millis;
 }
@@ -771,7 +771,7 @@ sub dateToLocalText
 	my $unix = localtime($t);
 	my $s = My::Utils::unixToTimestamp($unix);
 	$s =~ s/^(\d\d\d\d):(\d\d):(\d\d)/$1-$2-$3/;
-	return  $s;	
+	return  $s;
 }
 
 
@@ -1000,17 +1000,17 @@ sub compare_path_diff
 	# string that shows the difference.
 {
     my ($s1,$s2) = @_;
-	
+
 	my @parts1 = split(/\//,$s1);
 	my @parts2 = split(/\//,$s2);
-	
+
 	while (@parts1 && @parts2)
 	{
 		last if ($parts1[0] ne $parts2[0]);
 		shift @parts1;
 		shift @parts2;
 	}
-	
+
 	return (join('/',@parts1),join('/',@parts2));
 }
 
