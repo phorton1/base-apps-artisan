@@ -409,7 +409,7 @@ if (0)
 
 
 our $cache_dir = "$mp3_dir/_data";
-$temp_dir = "/base/temp";
+$temp_dir = "/base_data/temp";
 
 $logfile = "";
 # #logfile = $temp_dir/artisan.log";
