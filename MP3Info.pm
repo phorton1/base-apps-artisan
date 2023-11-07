@@ -120,7 +120,7 @@ package MP3Info;
 use strict;
 use warnings;
 use Fcntl qw(:seek);
-use Utils;
+use artisanUtils;
 use MP3InfoRead;
 use MP3TagList;
 # 2015-06-18 Comment these in for writing
@@ -149,14 +149,14 @@ sub new
     $this->{v2f} = undef;
     $this->{taglist} = MP3TagList->new($this);
     $this->{dirty} = 0;
-	
+
     # get the timestamp of the file, in case
     # we save it with preserve_timestamp
-    
+
 	my @fileinfo = stat($path);
     $this->{fileinfo} = [(@fileinfo)];
 	display($dbg_mp3_info+1,1,"new() - open mp3 file");
-    
+
 	my $mode = $readonly ? '<' : '+<';
     if (!open($this->{fh},$mode,$path))
     {
@@ -173,7 +173,7 @@ sub new
 	# was a hard error.  Otherwise, client can
 	# check hasV1, v2H, or access the TagList to
 	# see if there was any information.
-	
+
     if (!$this->_get_v1_tags() ||
         !$this->_get_v2_tags())
     {
@@ -211,7 +211,7 @@ sub close
 		error("Implementation Error - MP3Info::close(!abort_changes not supoorted)");
 		return 0;
 	}
-	
+
     my $rslt = 1;
     if ($this->{fh})
     {
@@ -238,14 +238,14 @@ sub close
 			my $fileinfo = $this->{fileinfo};
 			my $atime = $$fileinfo[8];
 			my $mtime = $$fileinfo[9];
-			
+
 			display($dbg_mp3_info,0,"setting timestamp to $atime & $mtime");
 			if (!utime $atime,$mtime,$this->{path})
 			{
 				$this->set_error($ERROR_HARD,"Could not set timestamp on $this->{path}!");
 				$rslt = 0;
 			}
-			
+
 			# set the timestamp back on the file
 		}
     }
@@ -295,12 +295,12 @@ sub set_error
 	}
 	elsif ($severity >= $ERROR_HIGH)
     {
-        error(_clip $msg,1);
+        error(_lim($msg,120),1);
     }
     else
     {
         my $warning_level = $ERROR_MEDIUM - $severity + 1;
-        warning(_clip $warning_level,0,$msg,1);
+        warning($warning_level,0,_lim($msg,120),1);
     }
 }
 

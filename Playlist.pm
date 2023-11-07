@@ -40,7 +40,7 @@ use threads;
 use threads::shared;
 use Library;
 use Database;
-use Utils;
+use artisanUtils;
 use SQLite;
 
 our $SHUFFLE_NONE = 0;

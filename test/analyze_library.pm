@@ -158,7 +158,7 @@
 
 use strict;
 use warnings;
-use Utils;
+use artisanUtils;
 use Database;
 use Digest::MD5;
 

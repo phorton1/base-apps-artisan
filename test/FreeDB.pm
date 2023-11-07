@@ -1,7 +1,7 @@
 package FreeDB; # -*- tab-width:8 -*-
 use Data::Dumper;
 use LWP::UserAgent; # Erweiterung jb
-use Utils;
+use artisanUtils;
 
 require Exporter;
 @ISA = qw(Exporter);

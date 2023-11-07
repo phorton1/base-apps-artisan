@@ -7,7 +7,7 @@
 
 use strict;
 use warnings;
-use Utils;
+use artisanUtils;
 use Database;
 
 my $CHECK_ARTISTS = 1;

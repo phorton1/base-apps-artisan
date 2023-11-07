@@ -5,7 +5,7 @@
 package uiRenderer;
 use strict;
 use warnings;
-use Utils;
+use artisanUtils;
 use uiUtils;
 use Renderer;
 use Playlist;

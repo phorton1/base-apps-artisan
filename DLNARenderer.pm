@@ -148,7 +148,7 @@ use IO::Select;
 use IO::Socket::INET;
 use XML::Simple;
 use LWP::UserAgent;
-use Utils;
+use artisanUtils;
 use Database;
 use Library;
 
@@ -229,10 +229,9 @@ sub static_init_dlna_renderer_cache
 	display(0,0,"static_init_dlna_renderer_cache()");
     if (-f $renderer_cachefile)
     {
-        my $lines = getTextLines($renderer_cachefile);
-        for my $line (@$lines)
+        my @lines = getTextLines($renderer_cachefile);
+        for my $line (@lines)
         {
-            chomp($line);
             my $renderer = DLNARenderer->new();
             @$renderer{@renderer_fields} = split(/\t/,$line);
 			$g_renderers{$renderer->{id}} = $renderer;
@@ -393,7 +392,7 @@ sub getDeviceData
     get_metafield($data,$retval{metadata},'album_artist','upnp:albumArtist');
     get_metafield($data,$retval{metadata},'track_num','upnp:originalTrackNumber');
     $retval{metadata}->{size} = ($data =~ /size="(\d+)"/) ? $1 : 0;
-	$retval{metadata}->{pretty_size} = pretty_bytes($retval{metadata}->{size});
+	$retval{metadata}->{pretty_size} = bytesAsKMGT($retval{metadata}->{size});
 
     # Get a better version of the 'type' from the DLNA info
     # esp. since we ourselves sent the wrong file extension

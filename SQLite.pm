@@ -7,7 +7,7 @@ package SQLite;
 use strict;
 use warnings;
 use DBI;
-use Utils;
+use artisanUtils;
 
 my $dbg_sqlite = 2;
 

@@ -14,7 +14,7 @@ use strict;
 use warnings;
 use threads;
 use threads::shared;
-use Utils;
+use artisanUtils;
 
 
 BEGIN
@@ -98,10 +98,9 @@ sub static_init_prefs
 	display(0,0,"Reading prefs from $filename");
 	if (-f $filename)
 	{
-	    my $lines = getTextLines($filename);
-        for my $line (@$lines)
+	    my @lines = getTextLines($filename);
+        for my $line (@lines)
         {
-            chomp($line);
 			my $pos = index($line,'=');
 			if ($pos > 1)
 			{

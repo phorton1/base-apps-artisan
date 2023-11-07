@@ -40,14 +40,14 @@
 # There is one other static method, called by the main application
 # via a thread, that starts an update loop:
 #
-#     auto_update_thread() 
+#     auto_update_thread()
 #         calls g_renderer->update() in a timer loop
 #         to keep the transport working headlessly
 #
 # ALL THE OTHER METHODS ARE OBJECT METHODS ON g_renderer.
 # The client should not cache renderers.
 # The client should only call these methods on a defined
-# result from getSelectedRenderer() 
+# result from getSelectedRenderer()
 #
 #----------------------------------------------------
 # RENDERER OBJECT METHODS
@@ -71,11 +71,11 @@
 #
 # The following methods correspond directly to UI Transport Controls
 #
-#    stop() 
+#    stop()
 #       This will stop the renderer, and any song, songlist,
 #       or playlist it might be playing. Correspon
 #       be playing.
-#    
+#
 #    play_next_song()
 #    play_prev_song()
 #       These will play the next or previous song in the playlist,
@@ -156,7 +156,7 @@
 # There used to be a thread/timer to do SSDP discovery, but it would
 # turn off the current renderer sometimes.  Therefore, we allow attempts
 # to hit any renderer, but put the renderer in a clearable error state
-# if contact fails. 
+# if contact fails.
 
 
 package Renderer;
@@ -168,10 +168,11 @@ use IO::Select;
 use IO::Socket::INET;
 use XML::Simple;
 use LWP::UserAgent;
+use Time::HiRes qw(sleep);
 use SSDPSearch;
 use Library;
 use Database;
-use Utils;
+use artisanUtils;
 use Playlist;
 use DLNARenderer;
 
@@ -195,7 +196,7 @@ my $STOP_FROM_REMOTE_THRESHOLD = 9000;
 	# clear it during asynch_play_next(),
 	# which is only called from >> and <<,
 	# so that >> and << don't stop the playlist.
-	
+
 my $REFRESH_TIME = 500;	# milliseconds
 my $STALL_COUNT = 10;
 	# how many updates at same position
@@ -215,7 +216,7 @@ sub new
 		id 	 => $dlna->{id},
 		name => $dlna->{name} });
 	bless $this,$class;
-	
+
 	$this->init_renderer(0);
 	return $this;
 };
@@ -230,7 +231,7 @@ sub init_renderer
 {
     my ($this,$level) = @_;
     $level ||= 0;
-    
+
     display($dbg_ren,0,"init_renderer($this->{name},$level)");
 
     if ($level <= 2)
@@ -247,14 +248,14 @@ sub init_renderer
 		$this->{allow_stop_from_remote} = $ALLOW_STOP_FROM_REMOTE;
 		$this->{last_position} = 0;
     }
-    
+
     if ($level <= 1)
     {
 		$this->{pending_song} = '';
 		$this->{pending_timer} = 0;
         $this->{playlist} = undef;
     }
-    
+
     if (!$level)
     {
         $this->{state} = '';
@@ -266,12 +267,12 @@ sub init_renderer
 		$this->{bass}  = 0;
 		$this->{mid}   = 0;
 		$this->{high}  = 0;
-		
+
     }
 
     display($dbg_ren,0,"init_renderer($level) finished");
-}    
-    
+}
+
 
 
 #---------------------------
@@ -316,28 +317,28 @@ sub getRenderers
     display($dbg_ren,0,"getRenderers($refresh) returning $dlna_renderers");
 	return $dlna_renderers;
 }
-	
+
 
 sub auto_update_thread
 {
 	My::Utils::setOutputToSTDERR();
 	# My::Utils::set_alt_output(1);
     LOG(0,"starting auto_update_thread");
-    
+
     while (!$quitting)
     {
         if ($g_renderer)  # && $g_renderer->{playlist})
         {
-            
+
             # issue the call to update()
             # the thread will block and wait
             # if there is a UI method call in progress
-            
+
             display($dbg_ren+1,0,"auto_update '$g_renderer->{id}'");
             $g_renderer->update();
-        }        
+        }
 
-        Utils::hires_sleep($REFRESH_TIME/1000);
+        sleep($REFRESH_TIME/1000);
     }
 }
 
@@ -346,14 +347,14 @@ sub auto_update_thread
 sub selectRenderer
 {
     my ($id) = @_;
-    
+
     display($dbg_ren,0,"selectRenderer($id)");
     lock(%locker);
     display($dbg_ren,1,"selectRenderer($id) got lock");
-	
+
 	# invalidate the renderer if no id passed in
 	# i.e. Turn off the renderer with no error
-	
+
 	if (!$id)
 	{
 		if ($g_renderer)
@@ -366,7 +367,7 @@ sub selectRenderer
 	}
 
     # find the dlna renderer
-	
+
     my $new_dlna = DLNARenderer::getDLNARenderer($id);
     if (!$new_dlna)
     {
@@ -376,7 +377,7 @@ sub selectRenderer
 
     # try to get the state to test if the renderer is online
     # return an error, without changing the state, if not.
-    
+
     my $state = $new_dlna->getState();
 	if (!$state)
 	{
@@ -384,7 +385,7 @@ sub selectRenderer
 		return;
 	}
 
-    # short ending if its the same renderer 
+    # short ending if its the same renderer
 
     if ($g_renderer && $id eq $g_renderer->{id})
 	{
@@ -395,30 +396,30 @@ sub selectRenderer
 
 	# PROCEED TO CHANGE RENDERERS
 	# Stop the playlist on the old renderer if it's playing
-	
+
     LOG(0,"selectRenderer($id)");
 	if ($g_renderer && $g_renderer->{playlist})
 	{
 		display($dbg_ren,1,"selectRenderer($id) stopping old renderer");
 		$g_renderer->command('stop');
 	}
-	
+
 	# create the new renderer if needed
-	
+
 	if (!$g_renderer)
 	{
 		$g_renderer = Renderer->new($id);
 		return if !$g_renderer;
 	}
-	
+
 	# assign the new id and name
-	
+
 	display($dbg_ren,1,"selectRenderer($id) assigning new renderer $new_dlna->{name}");
 	$g_renderer->{id} = $new_dlna->{id};
 	$g_renderer->{name} = $new_dlna->{name};
-	
+
 	# Start the playlist on the new renderer if needed
-	
+
 	if ($g_renderer->{playlist})
 	{
 		display($dbg_ren,0,"starting playlist($g_renderer->{playlist}->{name}) on new renderer. position="._def($g_renderer->{position}));
@@ -434,15 +435,15 @@ sub selectRenderer
 		# we set pending_seek, and let the update() loop do the actual seek
 		# we used to loop here until getState() got PLAYING but that didn't
 		# seem to work reliably
-		
+
 		elsif ($g_renderer->{position} && $g_renderer->{position} > 5000)
 		{
 			display($dbg_ren,1,"setting pending_seek=$g_renderer->{position}");
 			$g_renderer->{pending_seek} = $g_renderer->{position};
 		}
-		
+
 	}   # new renderer has a playlist
-    
+
     display($dbg_ren,0,"selectRenderer returning $g_renderer->{name}");
     return $g_renderer;
 }
@@ -475,7 +476,7 @@ sub update
     # metainfo and do heuristics.
 {
     my ($this) = @_;
-    
+
     display($dbg_ren+1,0,"update($this->{name})");
     lock(%locker);
     display($dbg_ren+1,1,"update($this->{name}) got lock");
@@ -483,7 +484,7 @@ sub update
     # if there is a pending song,
     # if pending_timer==0, spin around again
     # to let button presses settle, then play the song
-    
+
     if ($this->{pending_song})
     {
         if (!$this->{pending_timer})
@@ -491,7 +492,7 @@ sub update
             $this->{pending_timer}++;
             return 1;
         }
-        
+
         my $song_id = $this->{pending_song};
         display($dbg_ren,0,"playing pending song($song_id)");
         $this->play($song_id);
@@ -499,18 +500,18 @@ sub update
         $this->{pending_song} = 0;
         return 1;
     }
-    
+
     # and spin around one more time to let the
     # renderer catch up, so that we return the
     # new track
-    
+
     elsif ($this->{pending_timer} && $this->{pending_timer} == 1)
     {
         $this->{pending_timer} = 0;
         return 1;
     }
-    
-    
+
+
     # If getState returns undef, it is synonymous with
     # the renderer being offline. We will return 0,
     # and, if called from the webUI, it will return an
@@ -523,7 +524,7 @@ sub update
 		invalidate_renderer;
 		return 0;
 	}
-	
+
     my $state = $dlna->getState();
     if (!defined($state))
     {
@@ -535,11 +536,11 @@ sub update
     # We continue thru the loop in state ERROR
     # and return the renderer with the ERROR state
     # to the UI
-    
+
     elsif ($state =~ 'PLAYING')
     {
         display($dbg_ren+2,1,"update() - renderer PLAYING");
-		
+
 		if ($this->{pending_seek})
 		{
 	        display($dbg_ren,1,"PLAYING processing pending_seek to $this->{pending_seek}");
@@ -555,11 +556,11 @@ sub update
             error("Could not get device data from $dlna->{name}");
 			invalidate_renderer();
 			return 0;
-        }    
-        
+        }
+
 		$this->{metadata} = $data->{metadata};
 			# pass the metadata (fields just like a track) onto the client
-			
+
 		if (!defined($data->{position}))
         {
             warning(0,0,"update() ignoring PLAYING renderer with undefined position");
@@ -568,12 +569,12 @@ sub update
         {
 			$this->{last_position} = $data->{position};
 				# save off the last time for detecting $ALLOW_STOP_FROM_REMOTE
-			
+
             # if the song_id is "" it's not from us
             # if the song_id doesn't agree with the current songlist
             # it's not from us.  In either case, we turn off {playlist}
             # optimized to not check if pending song
-            
+
             if ($this->{playlist} && !$this->{pending_song})
             {
                 if (!$data->{song_id} || $data->{song_id} ne $this->{song_id})
@@ -584,9 +585,9 @@ sub update
 
                 }
             }
-            
+
             # if we are still in control, then check for stalled renderer
-            
+
             if ($this->{playlist})
             {
                 if ($data->{position} == $this->{position})
@@ -609,22 +610,22 @@ sub update
                     $this->{stall_count} = 0;
                 }
             }
-    
+
             $state = 'PLAYING_PLAYLIST' if $this->{playlist};
-    
+
             # update the members for the UI
 
             $this->{state} = $state;
             @$this{keys %$data} = values %$data;
-        
+
         }   # got a valid position
     }   # state == PLAYING
-    
-	
+
+
     # if we are playing the songlist and the renderer
     # is stopped, enqueue the next song.
     # optimized to not stop if pending song
-    
+
     elsif ($this->{playlist} && $state =~ 'STOPPED' && !$this->{pending_song})
     {
 		my $advance = 1;
@@ -640,7 +641,7 @@ sub update
 				$advance = 0;
 			}
 		}
-		
+
 		if ($advance)
 		{
 			display($dbg_ren,1,"update() calling play_next_song()");
@@ -652,16 +653,16 @@ sub update
 			}
 			display($dbg_ren,1,"update() back from play_next_song()");
 		}
-		
+
     }
-    
+
     # otherwise, just set the state member
-    
+
     elsif ($state ne $this->{state})
     {
         $this->{state} = $state;
     }
-    
+
     display($dbg_ren+1,1,"update($this->{name}) returning 1");
     return 1;
 }
@@ -681,7 +682,7 @@ sub command
     display($dbg_ren,0,"command($action,$arg)");
     lock(%locker);
     display($dbg_ren,1,"command($action,$arg) got lock");
-	
+
 	my $dlna = DLNARenderer::getDLNARenderer($this->{id});
 	if (!$dlna)
 	{
@@ -729,7 +730,7 @@ sub play
     display($dbg_ren,0,"play($song_id)");
     lock(%locker);
     display($dbg_ren,1,"play($song_id) got lock");
-    
+
     my $retval = 1;
     if ($song_id)
     {
@@ -740,19 +741,19 @@ sub play
         else
         {
             $retval = $this->command('set_song',$song_id);
-			
+
             # if ($retval)
             # {
             #     $this->{metadata} = get_track(undef,$song_id);
             # }
         }
     }
-    
+
     if ($retval)
     {
         $retval = $this->command('play');
     }
-    
+
     display($dbg_ren,1,"play($this->{name}) returning $retval");
     return $retval;
 }
@@ -766,10 +767,10 @@ sub setPlaylist
     display($dbg_ren,0,"setPlaylist(".($playlist?$playlist->{name}:'undef').")");
     lock(%locker);
     display($dbg_ren,1,"setPlaylist() got lock");
-    
+
     my $this_name = $this->{playlist} ? $this->{playlist}->{name} : "";
     my $that_name = $playlist ? $playlist->{name} : "";
-    
+
     if ($this_name ne $that_name)
     {
         if ($this->{playlist})
@@ -779,13 +780,13 @@ sub setPlaylist
 
         $this->init_renderer(1);
         $this->{playlist} = $playlist;
-        
+
         if ($retval && $playlist)
         {
             $retval = 0 if !$this->play_next_song();
         }
     }
-    
+
     display($dbg_ren,1,"setPlaylist(".($playlist?$playlist->{name}:'undef').") returning $retval");
     return $retval;
 }
@@ -799,7 +800,7 @@ sub play_next_song
     display($dbg_ren,0,"play_next_song()");
     lock(%locker);
     display($dbg_ren,1,"play_next_song() got lock");
-            
+
     $this->{song_id} = $this->{playlist}->getNextTrackID();
     LOG(0,"playing next($this->{playlist}->{name}) song($this->{playlist}->{track_index}) = $this->{song_id}");
 
@@ -816,7 +817,7 @@ sub play_prev_song
     display($dbg_ren,0,"play_prev_song()");
     lock(%locker);
     display($dbg_ren,1,"play_prev_song() got lock");
-            
+
     $this->{song_id} = $this->{playlist}->getPrevTrackID();
     LOG(0,"playing next($this->{playlist}->{name}) song($this->{playlist}->{track_index}) = $this->{song_id}");
 
@@ -830,9 +831,9 @@ sub async_play_song
 	# only called by webUI (not on advance)
 	# so it can reset the allow_stop_from_remote bit
 	# to prevent stopping on >>
-	
+
     # an alternative to play_next/prev_song
-    # for better responsiveness 
+    # for better responsiveness
     # bump the track number, set the pending song number,
     # and return the track to the client right away.
     # The song will start playing on the next monitor loop.
@@ -877,11 +878,11 @@ sub set_position
 {
     my ($this,$new_position) = @_;
     my $retval = 1;
-    
+
     display($dbg_ren,0,"set_position($new_position)");
     lock(%locker);
     display($dbg_ren,1,"set_position() got lock");
-    
+
     if (!$this->{duration})
     {
         error("No duration in set_position($new_position)");

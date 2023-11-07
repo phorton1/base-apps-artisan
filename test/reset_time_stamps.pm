@@ -15,7 +15,7 @@
 
 use strict;
 use warnings;
-use Utils;
+use artisanUtils;
 use SQLite;
 use History;
  

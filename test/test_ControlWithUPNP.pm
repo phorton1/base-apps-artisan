@@ -3,7 +3,7 @@
 #---------------------------------------
 use strict;
 use warnings;
-use Utils;
+use artisanUtils;
 use Database;
 use File::Copy;
 use MP3Info;
@@ -21,7 +21,7 @@ $debug_packages = join('|',(
     ));
 
 my $exclude_re = '\/_';
-    
+
 $logfile = "$log_dir/build_initial_artists.log";
 unlink $logfile;
 unlink $error_logfile;
@@ -53,7 +53,7 @@ sub do_to_all
     my ($dir,$part,$fxn_file,$fxn_dir) = @_;
     return 1 if $exclude_re && ($dir =~ /$exclude_re/);
     bump_stat("$part total_dirs");
-    
+
     display(1,0,$dir);
 
     my @files;
@@ -63,7 +63,7 @@ sub do_to_all
         error("Could not opendir $dir");
         return;
     }
-    
+
     while (my $entry=readdir(DIR))
     {
         next if ($entry =~ /^\./);
@@ -112,21 +112,21 @@ sub check_media_file
 {
     my ($part,$path) = @_;
     display(1,0,"$part - $path");
-    
+
     my $info = MediaFile->new($path);
     if (!$info)
     {
         error("Could not create MediaFile($path)");
         return;
     }
-        
+
     my $errors = $info->get_errors();
     if ($errors)
     {
         display(0,0,"check_media_file $path");
         for my $e (@$errors)
         {
-            display(_clip 0,1,severity_to_str($$e[0])." - ".$$e[1]);
+            display(0,1,severity_to_str($$e[0])." - ".$$e[1]);
         }
     }
 
@@ -143,7 +143,7 @@ sub check_media_file
         bump_stat("NO ARTISAN ID");
         #return 1;
     }
-    
+
     else
     {
         my $exists = $artisan_ids{$info->{artisan_id}};
@@ -152,14 +152,14 @@ sub check_media_file
             bump_stat("DUPLICATE ARTISAN ID");
             error("DUPLICATE ARTISAN_ID $info->{artisan_id}");
             error("    prev = $exists");
-            error("    this = $path");    
+            error("    this = $path");
         }
         $artisan_ids{$info->{artisan_id}} = $path;
     }
-    
+
     return 1;
 }
-    
+
 
 #---------------------------------------------
 # Analyze DB
@@ -179,14 +179,14 @@ sub fixName
     return CapFirst($name);
 }
 
-    
+
 sub get_artist
 {
     my ($artist) = @_;
     $artist ||= '';
     return undef if !$artist;
     display(1,0,"artist: $artist");
-    
+
     $artist = fixName($artist);
     my $rec = $artists{$artist};
     if (!$rec)
@@ -207,8 +207,8 @@ sub bump
     $$a{$what} ||= 0;
     $$a{$what} += $inc;
 }
-    
-    
+
+
 sub addstr
 {
     my ($a,$key,$str) = @_;
@@ -221,8 +221,8 @@ sub addstr
         $a->{$key} .= $str;
     }
 }
-    
-    
+
+
 sub analyze_db
 {
     my $dbh = db_connect();
@@ -235,10 +235,10 @@ sub analyze_db
     }
 
     display(0,0,"found ".scalar(keys(%artists))." artists");
-    
+
     # n x n compare of artists
 
-    my $exclude_common_names = 'Air|Johnny|War|King|Train|Aventura|Robert|Rodgers|Unknown|Rem|Seal|Beck';  
+    my $exclude_common_names = 'Air|Johnny|War|King|Train|Aventura|Robert|Rodgers|Unknown|Rem|Seal|Beck';
 
     display(0,0,"--------------------- artists -----------------------");
     for my $j (sort(keys(%artists)))
@@ -248,7 +248,7 @@ sub analyze_db
         my $str = pad($aj->{artist} || '',4).pad($aj->{album_artist} || '',4);
         display(0,1,pad($str,12)."$j");
         next if $j =~ /^($exclude_common_names)$/;
-        
+
         for my $k (sort(keys(%artists)))
         {
             next if (!$k);
@@ -260,7 +260,7 @@ sub analyze_db
             }
         }
     }
-    
+
     display(0,0,"--------------------- included -----------------------");
     for my $j (sort(keys(%artists)))
     {
@@ -268,7 +268,7 @@ sub analyze_db
         next if !$rec->{included};
         display(0,1,pad($j,60)."<= ".$rec->{included});
     }
-    
+
     display(0,0,"--------------------- includes -----------------------");
     for my $j (sort(keys(%artists)))
     {
@@ -278,7 +278,7 @@ sub analyze_db
     }
 
     display(0,0,"--------------------- top 100 -----------------------");
-    
+
     my $count = 100;
     for my $rec (sort {$b->{artist} <=> $a->{artist}} values(%artists))
     {
@@ -286,7 +286,7 @@ sub analyze_db
         display(0,1,pad($str,12)."$rec->{name}");
         last if ($count-- <= 0);
     }
-    
+
     db_disconnect($dbh);
 }
 

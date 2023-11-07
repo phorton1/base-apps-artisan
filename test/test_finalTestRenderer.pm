@@ -37,7 +37,7 @@ use Net::UPnP::Device;
 use Net::UPnP::AV::MediaRenderer;
 use Net::UPnP::ControlPoint;
 
-use Utils;
+use artisanUtils;
 
 $debug_level = 0;
 

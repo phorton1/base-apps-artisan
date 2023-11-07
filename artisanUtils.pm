@@ -4,7 +4,7 @@
 # Partial re-export of My::Utils with
 # application specific constants, vars, etc
 
-package Utils;
+package artisanUtils;
 use strict;
 use warnings;
 use threads;
@@ -12,39 +12,39 @@ use threads::shared;
 use Socket;
 use Sys::Hostname;
 use XML::Simple;
-use My::Utils qw(
+use Pub::Utils qw(
 	$debug_level
-	$warning_level
-	$HOME_MACHINE
 	$data_dir
 	$temp_dir
 	$logfile
+
 	LOG
 	error
 	display
 	display_bytes
 	warning
+
 	_def
-	_clip
-	hx
-	today
-	now
+	_lim
 	pad
 	pad2
 	roundTwo
 	CapFirst
-	pretty_bytes
+	bytesAsKMGT
+
+	today
+	now
+
 	getTextFile
 	getTextLines
 	printVarToFile
 	mergeHash
-	hires_sleep
 );
 
 
 # set critical My::Utils constants
 
-My::Utils::init_AS_SERVICE(); # set_alt_output(1);
+# My::Utils::init_AS_SERVICE(); # set_alt_output(1);
 	# should not need other calls
 	# on a per-thread basis.
 
@@ -52,9 +52,6 @@ My::Utils::init_AS_SERVICE(); # set_alt_output(1);
 #-------------------------
 # debugging constants
 #-------------------------
-
-our $debug_level 	= 0;
-our $warning_level 	= 0;
 
 our $dbg_db 		= 2;
 our $dbg_ssdp 		= 2;
@@ -168,7 +165,6 @@ BEGIN
 
 	push @EXPORT, qw(
         $debug_level
-        $warning_level
 
         $temp_dir
         $logfile
@@ -178,22 +174,22 @@ BEGIN
         display
 		display_bytes
         warning
-        _clip
-		_def
-		hx
 
-        today
-        now
+		_def
+		_lim
         pad
 		pad2
 		roundTwo
 		CapFirst
-		pretty_bytes
+		bytesAsKMGT
+
+        today
+        now
+
         getTextFile
 		getTextLines
 		printVarToFile
 		mergeHash
-		hires_sleep
     );
 };
 
@@ -378,34 +374,34 @@ else
 
 # Other IP Addresses / Configurations
 
-if (0)
-{
-	my $ANDROID = !$HOME_MACHINE;
-	my $temp_storage = $ENV{EXTERNAL_STORAGE} || '';
-	my $HOST_ID = $HOME_MACHINE ? "win" :
-     $temp_storage =~ /^\/mnt\/sdcard$/ ? "arm" :
-    "x86";
-
-	if ($HOST_ID eq "arm")   # Ubuntu on Car Stero
-	{
-		# car stereo MAC address =
-		$program_name = 'Artisan Android 1.1v';
-		$uuid = '56657273-696f-6e34-4d41-afacadefeed3';
-		$artisan_perl_dir = "/external_sd2/artisan";
-		$mp3_dir = "/usb_storage2/mp3s";
-		$mp3_dir_RE = '\/usb_storage2\/mp3s';
-		$server_ip = '192.168.0.103';
-	}
-	else	# Ubuntu Virtual Box (x86)
-	{
-		$program_name = 'Artisan x86 1.1v';
-		$uuid = '56657273-696f-6e34-4d41-afacadefeed4';
-		$artisan_perl_dir = "/media/sf_base/apps/artisan";
-		$mp3_dir = "/media/sf_ccc/mp3s";
-		$mp3_dir_RE = '\/media\/sf_ccc\/mp3s';
-		# $server_ip = '192.168.100.103';
-	}
-}
+# if (0)
+# {
+# 	my $ANDROID = !$HOME_MACHINE;
+# 	my $temp_storage = $ENV{EXTERNAL_STORAGE} || '';
+# 	my $HOST_ID = $HOME_MACHINE ? "win" :
+#      $temp_storage =~ /^\/mnt\/sdcard$/ ? "arm" :
+#     "x86";
+#
+# 	if ($HOST_ID eq "arm")   # Ubuntu on Car Stero
+# 	{
+# 		# car stereo MAC address =
+# 		$program_name = 'Artisan Android 1.1v';
+# 		$uuid = '56657273-696f-6e34-4d41-afacadefeed3';
+# 		$artisan_perl_dir = "/external_sd2/artisan";
+# 		$mp3_dir = "/usb_storage2/mp3s";
+# 		$mp3_dir_RE = '\/usb_storage2\/mp3s';
+# 		$server_ip = '192.168.0.103';
+# 	}
+# 	else	# Ubuntu Virtual Box (x86)
+# 	{
+# 		$program_name = 'Artisan x86 1.1v';
+# 		$uuid = '56657273-696f-6e34-4d41-afacadefeed4';
+# 		$artisan_perl_dir = "/media/sf_base/apps/artisan";
+# 		$mp3_dir = "/media/sf_ccc/mp3s";
+# 		$mp3_dir_RE = '\/media\/sf_ccc\/mp3s';
+# 		# $server_ip = '192.168.100.103';
+# 	}
+# }
 
 
 our $cache_dir = "$mp3_dir/_data";
@@ -542,7 +538,7 @@ sub dump_stats
         for my $k (sort(keys(%$pstats)))
         {
 			my $val = $$pstats{$k};
-			$val = pretty_bytes($val) if ($k =~ /bytes/);
+			$val = bytesAsKMGT($val) if ($k =~ /bytes/);
             LOG(2,pad($val,8)." ".$k);
         }
     }
@@ -1044,7 +1040,7 @@ sub dbg_mem
 		my $free = Sys::MemInfo::freemem();
 		my $used = $total - $free;
 
-		display($dbg_mem,-1,"MEMORY  ".pretty_bytes($used)." / ".pretty_bytes($total)." $msg",1);
+		display($dbg_mem,-1,"MEMORY  ".bytesAsKMGT($used)." / ".bytesAsKMGT($total)." $msg",1);
     }
 }
 

@@ -20,7 +20,7 @@ our %error_files;
 package audioFile;
 use strict;
 BEGIN { push @INC,'../'; }
-use Utils;
+use artisanUtils;
 
 use MP3::Tag;
 use Audio::WMA;
@@ -346,7 +346,7 @@ sub fromMP3
 package audioLibrary;
 use strict;
 BEGIN { push @INC,'../'; }
-use Utils;
+use artisanUtils;
 
 
 my $audio_file_re = '\.(mp3|wma|wav|m4a|m4p|mk4|aif|aif)$';

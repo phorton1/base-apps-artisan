@@ -4,7 +4,7 @@
 package MP3Encoding;
 use strict;
 use warnings;
-use Utils;
+use artisanUtils;
 use Encode;
 use Encode::Guess;
 
@@ -21,11 +21,11 @@ sub decode_text
     my ($parent,$encoding,$text) = @_;
     return '' if (!defined($text) || !length($text));
     # display_bytes(0,0,"decode_text($text)",$text);
-    
+
     if ($encoding > 0 || (
         $encoding < 0 && $text =~ /[^\x0d\x0a\x00\x20-\xff]/ ))
     {
-        display(_clip $dbg_encode,0,"decode_text($encoding,$text)");
+        display($dbg_encode,0,_lim("decode_text($encoding,$text)",120));
 
         my $val = '';
         if ($encoding == 1)

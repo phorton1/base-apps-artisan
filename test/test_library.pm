@@ -14,7 +14,7 @@ package item;
 use strict;
 use warnings;
 BEGIN { push @INC,'../'; }
-use Utils;
+use artisanUtils;
 
 
 our %items;

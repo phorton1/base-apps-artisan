@@ -14,7 +14,7 @@ use Fcntl;
 use Socket;
 use IO::Select;
 use XML::Simple;
-use Utils;
+use artisanUtils;
 use Database;
 use Library;
 use WebUI;
@@ -85,7 +85,7 @@ sub start_webserver
 			my $remote = accept($FH, $connection);
 			my ($peer_src_port, $peer_addr) = sockaddr_in($remote);
 			my $peer_ip_addr = inet_ntoa($peer_addr);
-			
+
 			if ($SINGLE_THREAD)
 			{
 				handle_connection( $FH, $peer_ip_addr, $peer_src_port );
@@ -123,10 +123,10 @@ sub handle_connection
 {
 	my ($FH,$peer_ip_addr,$peer_src_port) = @_;
 	binmode($FH);
-	
-	My::Utils::setOutputToSTDERR();
+
+	# My::Utils::setOutputToSTDERR();
 	# My::Utils::set_alt_output(1) if (!$SINGLE_THREAD);
-	
+
 	display($dbg_http+1,0,"HTTP connect from $peer_ip_addr:$peer_src_port");
 
 	#--------------------------------
@@ -164,7 +164,7 @@ sub handle_connection
 		}
 		$request_line = <$FH>;
 	}
-	
+
 	# if we got no request line,
 	# then it is an unrecoverable error
 
@@ -183,7 +183,7 @@ sub handle_connection
 
     # debug display and/or log the request
 	# don't want to see the stupid static requests
-	
+
 	my $dbg_request = $dbg_http;
 	$dbg_request += 2  if $request_path =~ /^(\/webui\/renderer\/update_renderer|\/ContentDirectory1\.xml|\/ServerDesc\.xml)/;
 	display($dbg_request,0,"$request_method $request_path from $peer_ip_addr:$peer_src_port");
@@ -214,9 +214,9 @@ sub handle_connection
 		display($dbg_request+1,1,"POSTDATA: $post_data");
 
 		$post_xml = my_parse_xml($post_data,"from $peer_ip_addr:$peer_src_port");
-	
+
 		# debug display of incoming xml
-		
+
 		if ($post_xml)
 		{
 		    my $dbg_this = 3; # normally we don't see the xml
@@ -240,7 +240,7 @@ sub handle_connection
 
 	my $response = undef;
 	my $dbg_displayable = 1;
-	
+
 	if ($request_path =~ /^\/(favicon.ico|icons)/)
 	{
 		$response = logo();
@@ -260,11 +260,11 @@ sub handle_connection
 			'additional_header' => \@additional_header });
 		$response .= $xml;
 	}
-	
+
 	# The meat of the server, dispatch the request to
 	# a handler method. For performance and sanity purposes,
 	# we make, and pass down a database connection.
-	
+
 	else
 	{
 		if ($request_path eq '/upnp/control/ContentDirectory1')
@@ -289,9 +289,9 @@ sub handle_connection
 			$response = WebUI::web_ui($param,\%request_headers,$post_xml);
 			$dbg_displayable = 0 if ($request_path =~ /\.(gif|png)$/);
 		}
-	
+
 		# unsupported request
-	
+
 		else
 		{
 			error("Unsupported request $request_method $request_path from $peer_ip_addr");
@@ -300,7 +300,7 @@ sub handle_connection
 				'content_type' => 'text/plain' });
 		}
 	}
-	
+
     #--------------------------------
     # send response to client
     #--------------------------------
@@ -315,7 +315,7 @@ sub handle_connection
 		my $dbg_this_xml = ($response =~ /content-type:\s*text\/(json|xml)/i)  ? 1 : 0;
         $dbg_this = 0 if ($DEBUG_SEARCH && $response =~ /SearchResponse/);
         $dbg_this = 0 if ($DEBUG_BROWSE && $response =~ /BrowseResponse/);
-		
+
 		if ($debug_level >= $dbg_this)
         {
             if ($dbg_displayable)
@@ -334,7 +334,7 @@ sub handle_connection
                 $dbg_xml_part .= $line."\n" if ($started);
                 $started = 1 if ($line eq '');
             }
-			
+
             debug_xml_text($dbg_this,1,"XML RESPONSE",$dbg_xml_part)
 				if ($dbg_this_xml && $dbg_xml_part);
         }
@@ -433,7 +433,7 @@ sub http_header
 			push(@response, $header);
 		}
 	}
-	
+
 	if (0)
 	{
 		push(@response,"ETag:");
@@ -445,9 +445,9 @@ sub http_header
 	{
 		push(@response, 'Cache-Control: no-cache');
 	}
-	
+
 	push(@response, 'Connection: close');
-	
+
 	return join("\r\n", @response)."\r\n\r\n";
 }
 
@@ -805,7 +805,7 @@ sub create_sql_expr
 sub browse_directory
 {
     my ($xml,$peer_ip_addr) = @_;
-    my ($id, $start, $count, $flag) =  
+    my ($id, $start, $count, $flag) =
         get_xml_params($xml,'Browse',qw(
             ObjectID
             StartingIndex
@@ -821,7 +821,7 @@ sub browse_directory
     {
 		$error = "No ID passed to browse_directory";
 	}
-	
+
 	if (!$error)
 	{
 		display($dbg_http+1,0,"browse_directory($id)");
@@ -829,7 +829,7 @@ sub browse_directory
 		$error = "Could not get_folder($id)"
 			if (!$folder);
 	}
-	
+
 	if (!$error)
 	{
 		if ($flag eq 'BrowseMetadata')
@@ -846,20 +846,20 @@ sub browse_directory
 			$error = "BrowseFlag: $flag is NOT supported";
 		}
 	}
-	
+
     # build the http response
-	
+
 	if (!$error)
 	{
 		$count ||= 0;
 		display($dbg_http,0,"BROWSE($flag,id=$id,start=$start,count=$count)");
 		$count = 10 if !$count;
-		
+
 		my $is_album = $folder->{dirtype} eq 'album' ? 1 : 0;
 		my $table = $is_album ? "tracks" : "folders";
         my $subitems = get_subitems($dbh, $table, $id, $start, $count);
 		my $num_items = @$subitems;
-		
+
 		display($dbg_http+1,0,"building http response for $num_items $table"."s");
 
 		my $response_xml = xml_header();
@@ -875,7 +875,7 @@ sub browse_directory
     }
 
 	# error exit
-	
+
 	error($error);
 	db_disconnect($dbh);
 	return http_header({
@@ -958,7 +958,7 @@ sub get_art
 sub xml_serverdescription
 	# server description for the DLNA Server
 {
-    display(_clip $dbg_xml+1,3,"xml_serverdescription()");
+    display($dbg_xml+1,3,"xml_serverdescription()");
 
 	my $xml = <<EOXML;
 <?xml version="1.0"?>
@@ -1068,10 +1068,10 @@ sub xml_footer
 
     # $system_update_id++;
 	# for testing responsiveness
-	
+
     my $response_type = ($what ? 'Search' : 'Browse').'Response';
     my $xml .= encode_didl("</DIDL-Lite>");
-	
+
 	$xml .= <<EOXML;
         </Result>
         <NumberReturned>$num_search</NumberReturned>

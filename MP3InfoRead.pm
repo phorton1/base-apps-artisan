@@ -33,7 +33,7 @@ package MP3Info;  # continued ...
 use strict;
 use warnings;
 use Fcntl qw(:seek);
-use Utils;
+use artisanUtils;
 use MP3Vars qw(@mp3_genres %all_v2_tag_names $WRITE_VERSION);
 
 

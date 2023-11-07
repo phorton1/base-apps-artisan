@@ -8,7 +8,7 @@ use strict;
 use warnings;
 use Digest::MD5 'md5_hex';
 use Audio::WMA;
-use Utils;
+use artisanUtils;
 use MP3Info;
 use MP3Vars;
 use MP4::Info;
@@ -25,7 +25,7 @@ our @required_fields = qw(
     duration
     file_md5
     album_artist );
-    
+
 # $dbg_mediafile = 0;
 use utf8;
 
@@ -35,10 +35,10 @@ sub new
 {
     my ($class,$rel_path,$force) = @_;
     $force ||= 0;
-    
+
     display($dbg_mediafile,0,"MediaFile::new($rel_path) force=$force");
     my $utf_path = "$mp3_dir/$rel_path";
-    
+
     # 2015-07-02 Had to add handling of UTF filenames presumably from database.
     # For windows, we have to utf8:downgrade the string, which is apparently not
     # really utf encoded, but which thinks it is?
@@ -48,7 +48,7 @@ sub new
     # on both platforms, sheesh.
 
     my $path = $utf_path;
-    
+
     if (0)
     {
 		# if running on the car stereo, I found I needed this
@@ -59,10 +59,10 @@ sub new
 		# and otherwise, I guess I need this
         utf8::downgrade($path);
     }
-	
+
    	my @fileinfo = stat($path);
 	my $size = $fileinfo[7];
-	my $timestamp = $fileinfo[9];    
+	my $timestamp = $fileinfo[9];
 
     if (!(-f $path))
     {
@@ -73,25 +73,25 @@ sub new
 
     my $this = {};
     bless $this,$class;
-    
+
     $this->{id} = '';
     $this->{path} = $path;
     $this->{has_art} = 0;
     $this->{file_md5} = '';
     $this->{errors} = undef;
     $this->{error_codes} = '';
-    
+
     if ($path =~ /\.mp3$/i)
     {
         $this->{type} = 'mp3';
-        return if !$this->fromMP3($path); 
+        return if !$this->fromMP3($path);
     }
     elsif ($path =~ /\.wma$/i)
     {
         $this->{type} = 'wma';
         return if !$this->fromWMA($path);
     }
-    elsif ($path =~ /\.(m4a)/i)  
+    elsif ($path =~ /\.(m4a)/i)
     {
         $this->{type} = 'm4a';
         return if !$this->fromM4A($path);
@@ -130,12 +130,12 @@ sub new
     # as set_default_info() will get a genre of '' which will not
     # overwrite an existing value, so only /unresolved songs with
     # no genre tag will end up as 'undefined' genre.
-    
+
     my $genre = $this->{genre} || 'undefined';
     bump_stat("genre($genre)");
 
     # get the file_md5
-    
+
     my $fh;
     if (!open ($fh, '<', $path))
     {
@@ -148,17 +148,17 @@ sub new
         display(9,0,"file_md5($path) = $file_md5");
         $this->set('mediaFile',$path,'file_md5',$file_md5);
         close($fh);
-        
+
         if (!$file_md5)
         {
             error("FATAL ERROR - no file_md5 for $path");
             return;
         }
-    
+
         # get the stream_md5 and, while at it, use the duration from
         # fpcalc if there was not one in the tags.  The fpcalc_info
         # will be cached to text files by the file_md5.
-        
+
         my $info = $this->get_fpcalc_info($force);
         if (!$info)
         {
@@ -173,28 +173,28 @@ sub new
         else
         {
             $this->set('mediaFile',$path,'id',$info->{stream_md5});
-			
+
 			# think fpcalc returns decimal seconds
 			# which we convert to milliseconds here
-			
+
             if (!$this->{duration} &&
                 $info->{duration} &&
                 $info->{duration} =~ /^[\.\d]+$/)
-            {    
+            {
                 $this->set("mediaFile",$path,'duration',$info->{duration} * 1000);
             }
         }
     }
-	
+
     # debugging and warnings
-    
+
     if (1)
     {
         display($dbg_mediafile,0,"FINAL from MediaFile");
         for my $k (sort(keys(%$this)))
         {
             my $val = $$this{$k};
-            display(_clip $dbg_mediafile,1,pad($k,15)."= '$val'")
+            display(_clip $dbg_mediafile,1,pad($k,15)."= '"._lim($val,60)."'")
                 if (defined($val) && $val ne '');
         }
     }
@@ -205,13 +205,13 @@ sub new
         push @missing_required,$field
             if (!$this->{$field});
     }
-    
+
     $this->set_error('md',
         "Missing required metadata '".join(',',@missing_required).'"')
         if (@missing_required);
-        
+
     # separate cosmetic error for tracks missing a year
-	
+
 	$this->set_error('my',"No YEAR_STR")
 		if (!$this->{year_str});
 
@@ -234,11 +234,11 @@ sub set_error
     my ($this,$code,$msg,$call_level) = @_;
     my $severity = code_to_severity($code);
     my $severity_str = severity_to_str($severity);
-    
+
     $call_level ||= 0;
 
     bump_stat("SET_ERROR($severity_str,$code)".error_code_str($code));
-    
+
     my $in_msg =  "in ".
         ($this->{file_md5} ? "file_md5($this->{file_md5}) ":'').
         ($this->{id} ? "id($this->{id}) ":'').
@@ -259,7 +259,7 @@ sub set_error
         push @parts,$code;
         $this->{error_codes} = join(',',sort(@parts));
     }
-    
+
     $this->{errors} = [] if (!$this->{errors});
     push @{$this->{errors}},[$severity,$msg];
 }
@@ -287,30 +287,30 @@ sub set
         if ($field eq 'album_artist' && $val =~ /^bob /);
 
 	# find tracks named 01 - Track.mp3, etc
-	
+
     if ($field eq 'title' && $parser eq 'default_info')
     {
         my $check_title = $val;
         while ($check_title =~ s/(\s|new|afro|track|_|-|\d)//ig) {};
-        $this->set_error('mt',"Bad Track Title") 
+        $this->set_error('mt',"Bad Track Title")
             if (!$check_title);
     }
-    
+
     # values that I just don't want in my database
-    
+
     $old =~ s/http:\/\/music\.download\.com//;
     $val =~ s/http:\/\/music\.download\.com//;
-    
+
     if ($old && $val && $old ne $val)
     {
         # special overwrite track number to clear the track number
-        
+
         $val = '' if ($val eq '0000' && $field eq 'tracknum');
-        
+
         # for now, I'm highlingting when album (name) or album_artist
         # minus all punctuation and white space is different than tags
         # also remove "featuring" from artist name's and leading "the "
-        
+
         my $error_code = 'note';
         if ($field !~ /^(track|tracknum|duration|genre)$/)
         {
@@ -318,38 +318,38 @@ sub set
             my $check_old = lc($old);
 
             # disk 1 of 2
-            
+
             $check_old =~ s/(\(|\[)(\d)\/(\d)(\)|\])/($2 of $3)/ if ($field =~ /^(album_title)$/);
 
             # various extra junk specific to a few albums
-            
+
             $check_old =~ s/featuring.*$//i if ($field =~ /^(artist|album_artist)$/);
             $check_old =~ s/\(duet.*$//i if ($field =~ /^(title)$/);
             $check_old =~ s/\(with.*$//i if ($field =~ /^(artist)$/);
-            
+
             # general conversions
-            
+
             $check_val =~ s/\s+&\s+/and/;
             $check_old =~ s/\s+&\s+/and/;
             $check_val =~ s/^the\s+//i;
             $check_old =~ s/^the\s+//i;
             $check_val =~ s/\s|_|!|>|:|-|'|"|\.|,|\?|\/|\(|\)|\[|\]//g;
             $check_old =~ s/\s|_|!|>|:|-|'|"|\.|,|\?|\/|\(|\)|\[|\]//g;
-            
+
             if ($check_val ne $check_old)
             {
                 $error_code = ($field eq 'album_title') ? 'mi' : 'mj';
             }
         }
-        
+
         $this->set_error($error_code,"$parser overwriting $field old=$old with new=$val");
-        display(_clip $dbg_mediafile+1,0,"  **set($parser,$field)='$val'");
+        display($dbg_mediafile+1,0,"  **set($parser,$field)='"._lim($val,80)."'");
         $this->{$field} = $val;
     }
     elsif ($val)
     {
         $this->set_error('note',"$parser initial set $field=$val");
-        display(_clip $dbg_mediafile+1,0,"set($parser,$field)='$val'");
+        display($dbg_mediafile+1,0,"set($parser,$field)='"._lim($val,60)."'");
         $this->{$field} = $val;
     }
 }
@@ -370,7 +370,7 @@ sub set_default_info
 
     $split->{tracknum} ||= '0000';
         # special overwrite track number to clear the track number
-    
+
     $this->set("default_info",$path,'genre',$split->{class});
     $this->set("default_info",$path,'artist',$split->{artist})
         if $split->{artist} ne 'Various';
@@ -413,7 +413,7 @@ sub fromM4A
 
     $this->set("fromM4A",$path,'has_art',$HAS_TRACK_ART)
         if ($tags->{COVR});
-    
+
     $this->set("fromM4A",$path,'title',$$tags{TITLE});
     $this->set("fromM4A",$path,'artist',$$tags{ARTIST});
     $this->set("fromM4A",$path,'album_title',$$tags{album_title});
@@ -421,15 +421,15 @@ sub fromM4A
     $this->set("fromM4A",$path,'track',$$tags{tracknum});
     $this->set("fromM4A",$path,'year_str',$$tags{year_str});
     $this->set("fromM4A",$path,'duration',$$info{SECS} * 1000);
-    
+
     return 1;
-    
+
     my $known_tags = join('|',qw(
-        ALB APID ART CMT COVR CPIL CPRT DAY DISK   
-        GNRE GRP NAM RTNG TMPO TOO TRKN WRT    
+        ALB APID ART CMT COVR CPIL CPRT DAY DISK
+        GNRE GRP NAM RTNG TMPO TOO TRKN WRT
         TITLE ARTIST ALBUM YEAR COMMENT GENRE tracknum ));
     my $known_info = join('|',qw(
-        VERSION LAYER BITRATE FREQUENCY SIZE SECS    
+        VERSION LAYER BITRATE FREQUENCY SIZE SECS
         MM SS MS TIME COPYRIGHT ENCODING ENCRYPTED ));
 
     foreach my $key (sort(keys(%$tags)))
@@ -444,7 +444,7 @@ sub fromM4A
         display($dbg_mediafile+1,1,"info($key)=$$info{$key}");
         display(0,1,"info($key)=$$info{$key}");
     }
-    
+
     return 1;
 
 }
@@ -482,9 +482,9 @@ sub fromWMA
     $this->set("fromWMA",$path,'track',$$tags{tracknumBER});
     $this->set("fromWMA",$path,'year_str',$$tags{year_str});
     $this->set("fromWMA",$path,'duration',$$info{playtime_seconds} * 1000);
-    
+
     return 1;
-    
+
     my $known_tags = join('|',qw(
         ALBUMARTIST ALBUMTITLE GENRE tracknumBER YEAR TITLE
         AUTHOR COMPOSER
@@ -509,7 +509,7 @@ sub fromWMA
         next if ($key =~ /^($known_tags)$/);
         display($dbg_mediafile+1,1,"tags($key)=$$tags{$key}");
     }
-    
+
     return 1;
 }
 
@@ -575,14 +575,14 @@ sub fromMP3
 
     # populate raw_tags for debugging/webUI
     # and set has_art boolean on the fly
-    
+
     $this->{raw_tags} = {};
     my @ids = $mp3->get_tag_ids();
-    for my $id (@ids)    
+    for my $id (@ids)
     {
         my $val = $mp3->get_tag_value($id) || '';
         $this->{raw_tags}->{$id} = $val;
-       
+
 		if ($id =~ /^APIC/)
         {
             my $tag = $mp3->{taglist}->tag_by_id($id);
@@ -605,7 +605,7 @@ sub fromMP3
             }
         }
     }
-    
+
     # populate mediaFile (this) for Library
 
     for my $field (keys(%artisan_to_mp3))
@@ -636,20 +636,20 @@ sub get_fpcalc_info
 {
     my ($this,$force) = @_;
     $force ||= 0;
-    
+
     my $file_md5 = $this->{file_md5};
     if (!$file_md5)
     {
         error("Implementation Error - No file_md5 in get_fpcalc_info($this->{path})");
         return;
     }
-    
+
     bump_stat("get_fpinfo called");
-    
+
     my $dir = "$cache_dir/fpcalc_info";
     mkdir $dir if (!(-d $dir));
     my $cache_file = "$dir/$file_md5.txt";
-    
+
     my $text = '';
     if (!$force && -f $cache_file)
     {
@@ -677,7 +677,7 @@ sub get_fpcalc_info
         $exe_path =~ s/\//\\/g;
         display(0,-1,"calling '$exe_path' -md5 -stream_md5 '$path'") if (!$force);
         $text = `$exe_path  -md5 -stream_md5 "$path" 2>&1`;
-        
+
         if (!$text)
         {
             error("FATAL ERROR - Could not call prhcalc_win.exe for $path");
@@ -689,7 +689,7 @@ sub get_fpcalc_info
     my $info = {};
     my @lines = split(/\n/,$text);
     my $num_errors = 0;
-    
+
     for my $line (@lines)
     {
         $line =~ s/\s+$//;
@@ -704,12 +704,12 @@ sub get_fpcalc_info
             $this->set_error('mu',"Unknown stream (DRM)");
             return;
         }
-        
+
         if ($line =~ /^\[/)
         {
             # 2014-12-18 - eliminate lines that have FILE= in them
             # as 'errors' ...
-            
+
             if ($line !~ /FILE=/)
             {
                 $num_errors++;
@@ -731,7 +731,7 @@ sub get_fpcalc_info
             my $lval = lc(substr($line,0,$pos));
             my $rval = substr($line,$pos+1);
             next if ($lval eq 'file');
-            display(_clip $dbg_mediafile+2,1,"$lval <= $rval");
+            display(_clip $dbg_mediafile+2,1,_lim("$lval <= $rval",100));
             $info->{$lval} = $rval;
         }
     }
@@ -753,7 +753,7 @@ sub unused_get_pictures
 {
     my ($this) = @_;
     my @retval;
-    
+
     if (!$this->{has_art})
     {
         error("attempt to call get_pictures on mediaFile with !has_art");
@@ -785,11 +785,11 @@ sub unused_get_pictures
                 {
                     push @retval,$data;
                 }
-				
+
 			}	# found APIC
         }   # for every tag
     }   # in MP3 file
-    
+
     elsif ($this->{type} eq 'm4a')
     {
         my $data = $this->{raw_tags}->{tags}->{COVR};
@@ -806,7 +806,7 @@ sub unused_get_pictures
     {
         error("huh? unsupported type $this->{type} in get_picture");
     }
-    
+
     return @retval;
 }
 

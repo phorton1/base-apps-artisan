@@ -9,7 +9,7 @@ use IO::Socket::Multicast;
 use Net::UPnP::HTTP;
 use Net::UPnP::Device;
 BEGIN { push @INC,'../'; }
-use Utils;
+use artisanUtils;
 
 $logfile = 'test_dlna3.log';
 $error_logfile = 'test_dlna3.error.log';

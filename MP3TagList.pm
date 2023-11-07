@@ -80,13 +80,13 @@ package MP3TagList;
     # raw tag bytes, with some other stuff.
 use strict;
 use warnings;
-use Utils;
+use artisanUtils;
 use MP3Vars;
 use MP3Encoding;
 
 our %formats;
     # The encode/decode formats for the tags
-    
+
 #-----------------------------
 # new() and utilities
 #-----------------------------
@@ -159,7 +159,7 @@ sub unused_set_tag_value
     {
         if ($old_tag)
         {
-            display(_clip $dbg_mp3_tags,0,"set_tag_value(deleting $id) value=$old_tag->{value}");
+            display($dbg_mp3_tags,0,"set_tag_value(deleting $id) value="._lim($old_tag->{value},60));
             delete $this->{tags}->{$id};
             $this->_set_dirty();
         }
@@ -177,7 +177,7 @@ sub unused_set_tag_value
         my $old_value = $old_tag ? $old_tag->{value} : '';
         if ($value ne $old_value)
         {
-            display(_clip $dbg_mp3_tags,0,"set_tag_value($id) new=$value old=$old_value");
+            display($dbg_mp3_tags,0,"set_tag_value($id) "._lim("new=$value old=$old_value",100));
             $this->_set_dirty();
             my $tag = { id=>$id, value=>$value, update=>1, version=>$WRITE_VERSION };
             return $this->_push_tag($tag);
@@ -193,7 +193,7 @@ sub unused_set_tag_value
 
 
 #--------------------------------------
-# add_tag & tag version mapping 
+# add_tag & tag version mapping
 #--------------------------------------
 
 sub add_tag
@@ -218,7 +218,7 @@ sub add_tag
         $value ) = @_;      # the raw bytes from the
 
     my $version = $v2h ? $v2h->{major_version} : 1;
-    display(_clip $dbg_mp3_tags,0,"add_tag($version,$id) len=".length($value)." bytes=$value");
+    display($dbg_mp3_tags,0,"add_tag($version,$id) len=".length($value)." bytes="._lim($value,80));
 
     my $item = {
         id      => $id,
@@ -332,16 +332,16 @@ sub update_to_write_version
         elsif (length($init_id) == 4)
         {
             # a v3/4 tag was found in a v2 file
-            
+
             if ($init_version == 2)
             {
                 $this->set_error('td',"v3+ tag($init_id) found in v2 file - value='$init_value'");
                 return 0;
             }
-            
+
             # a v2 version specific tag was found that does not
             # match the version of the tags it was found in ...
-            
+
             elsif ($v2_name =~ /^v(\d) / && $1 != $init_version)
             {
                 $this->set_error('te',"V$1 specific frame($init_id) found in V$init_version file - value='$init_value'");
@@ -365,7 +365,7 @@ sub update_to_write_version
         return 0 if !$this->v2_to_v3_tag($item);
         return 1 if (!defined($item->{value}));
             # v2 tag dropped
-            
+
         if ($WRITE_VERSION == 4)
         {
             return 0 if !$this->v3_to_v4_tag($item);
@@ -378,7 +378,7 @@ sub update_to_write_version
         # $WRITE_VERSION must == 3
         # it's ok, we'll just change the version, if it's
         # not an 2.4 specific tag
-        
+
         my $v3_name = $v23_tag_names{$init_id};
         if ($v3_name)
         {
@@ -395,7 +395,7 @@ sub update_to_write_version
         {
             # yikes ... need to downdate version 4 tags !?!
             error("Dropping V4 tag($v2_name) while writing V3 file value=$init_value in $this->{parent}->{path}");
-            $this->set_error('tf',"Dropping V4 tag($v2_name)='$init_value' while writing V3 file");           
+            $this->set_error('tf',"Dropping V4 tag($v2_name)='$init_value' while writing V3 file");
             $item->{value} = undef;
             return 1;
         }
@@ -552,8 +552,8 @@ sub _push_tag
     my $clean_id = $item->{id};
     $clean_id =~ s/\t.*$//;
         # remove any subid
-        
-        
+
+
     my $v2_name = $WRITE_VERSION == 3 ?
         $v23_tag_names{$clean_id} :
         $v24_tag_names{$clean_id} ;
@@ -600,7 +600,7 @@ sub _push_tag
         # error attempt to set multiple unique_ids
         # in the same MP3 file without update bit
         # return 1 to let it slide
-        
+
         $this->set_error('tq',"attempt to set same tag($item->{id}) to more than one value. old=$exists->{value}  new=$value");
         return 1;
     }
@@ -657,7 +657,7 @@ sub _decode_tag
     my $bytes = $value->{bytes};
     delete $value->{bytes};
         # value is now an empty hash, owned by item
-    display(_clip $dbg_mp3_tags+1,0,"_decode_tag($item->{id}) bytes=$bytes");
+    display($dbg_mp3_tags+1,0,"_decode_tag($item->{id}) bytes="._lim($bytes,80));
 
     # actions consist of three parts
     # data_len tells how much to chew off of bytes
@@ -673,7 +673,7 @@ sub _decode_tag
     {
         my ($data_len, $field, $mod) = (@$action);
         $mod ||= '';
-        display(_clip $dbg_mp3_tags+2,1,"_decode($data_len,$field,$mod) bytes=$bytes");
+        display($dbg_mp3_tags+2,1,"_decode($data_len,$field,$mod) bytes="._lim($bytes,80));
 
         # get the data ..
 
@@ -745,17 +745,17 @@ sub _decode_tag
         if ($mod =~ /^genre/)
         {
             my $save_data = $data;
-            
+
             # do all the stuff to substitute words for numeric
             # genres.  We will write the words back!
             # change text genres that had escaped parens into ##<>## symbols
-            
+
             $data =~ s/\(\((.*?)\)\)/##<$1>##/g;
             $data =~ s/\(RX\)/ Remix /g;
             $data =~ s/\(CR\)/ Cover /g;
 
             # change paranthesized genre numbers to strings
-            
+
             while ($data =~ s/\((\d+)\)/ ###HERE### /)
             {
                 my $num = $1;
@@ -769,13 +769,13 @@ sub _decode_tag
             $data =~ s/>##/\)/g;
 
             # get rid of doubled and leading/trailing spaces
-            
+
             $data =~ s/^\s+//;
             $data =~ s/\s+$//;
             while ($data =~ s/\s\s/ /) {};
-            
+
             # for now, bail with an error if there's still a number!
-            
+
             if ($data ne $save_data)
             {
                 $this->set_error('note',"genre[$save_data] mapped to '$data'");
@@ -784,9 +784,9 @@ sub _decode_tag
             {
                 $this->set_error('ts',"there's still a number in genre");
             }
-               
+
         }
-        
+
         # there is still a question about whether
         # strings may slip thru here with null terminators,
         # and/or we might want to cleanup trailing and/or leading whitespace
@@ -820,7 +820,7 @@ sub _decode_tag
         }
         elsif ($field)
         {
-            display(_clip $dbg_mp3_tags+2,2,"value($field) len(".length($data).") = $data");
+            display($dbg_mp3_tags+2,2,"value($field) len(".length($data).") = "._lim($data,80));
             $value->{$field} = $data;
         }
     }
@@ -865,7 +865,7 @@ my $text       = [ -1, 'text' ];
 my $text_enc   = [ -1, 'text',              'encoded' ];
 my $url        = [ 0, 'text' ];
 my $genre_enc  = [ -1, 'text',              'genre_encoded' ];
-                  
+
 
 my $descrip    = [  0, 'descrip',           'encoded' ];
 my $mime_type  = [  0, 'mime_type' ];
@@ -901,7 +901,7 @@ my $method_sym = [  1, 'method_sym' ];
 
     # just for me
 
-    WCOP => [ $text_enc ],  # 2015-06-19 
+    WCOP => [ $text_enc ],  # 2015-06-19
     TENC => [ $text_enc ],  # 2015-06-19 $subid_all ],
     TIT1 => [ $subid_all ],
 
@@ -944,7 +944,7 @@ my $method_sym = [  1, 'method_sym' ];
         # the subid is the owner identifier
     'SIGN'  => [ $subid_inc, $group_sym, $data ],
         # the subid is the whole object
-        
+
     # supported v2 tags
 
     'COM'  => [ $enc, $subid_lang, $subid, $text_enc ],

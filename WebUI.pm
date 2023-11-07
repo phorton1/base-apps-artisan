@@ -25,7 +25,7 @@ use warnings;
 use threads;
 use threads::shared;
 use Date::Format;
-use Utils;
+use artisanUtils;
 
 use Database;
 use MediaFile;
@@ -51,7 +51,7 @@ my $MIN_JS_CSS = 1;
 	# car stereo;  534x320
 # my $ua4 = 'Mozilla/5.0 (Linux' Android 4.4.2; GA10H BuildKVT49L) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/3 ?? ?? ';
 	# new 16G tablet. 900x1600
-	
+
 
 #--------------------------------------
 # webUI request dispatcher
@@ -64,9 +64,9 @@ sub web_ui
 	{
 		display($dbg_webui-1,0,"--> web_ui($get_param) called");
 	}
-	
+
 	# parse query parameters
-	
+
 	my $params = {};
 	my ($path,$query) = split(/\?/,$get_param,2);
 	if ($query)
@@ -79,20 +79,20 @@ sub web_ui
 			$params->{$l} = $r;
 		}
 	}
-	
-	
+
+
     # deliver static files
-	
+
 	my $response = undef;
-	
+
 	if ($path =~ /^((.*\.)(js|css|gif|png|html|json))$/)
 	{
 		my $filename = $1;
 		my $type = $3;
 		my $query = $5;
-		
+
 		# scale fancytree CSS file if it has scale param
-		
+
 		if (!(-f "$artisan_perl_dir/webui/$filename"))
 		{
 			$response = http_error("web_ui(): Could not open file: $filename");
@@ -112,9 +112,9 @@ sub web_ui
 				$type eq 'html' ? 'text/html' :
 				$type eq 'json' ? 'application/json' :
 				'text/plain';
-				
+
 			$response = http_header($content_type);
-			
+
 			if ($type eq 'js' || $type eq 'css')
 			{
 				my $filename2 = $filename;
@@ -126,15 +126,15 @@ sub web_ui
 					$filename = $filename2;
 				}
 			}
-				
+
 			my $text = getTextFile("$artisan_perl_dir/webui/$filename",1);
 			$text = process_html($text) if ($type eq 'html');
 			$response .= $text."\r\n";
 		}
 	}
-	
+
 	# module dispatcher
-	
+
 	elsif ($path =~ s/^explorer\///)
 	{
 		$response = uiExplorer::explorer_request($path,$params);
@@ -145,8 +145,8 @@ sub web_ui
 	}
 
 	# unknown request
-	
-	else	
+
+	else
 	{
 		$response = http_error("web_ui(unknown request): $get_param");
 	}
@@ -163,27 +163,27 @@ sub process_html
 {
 	my ($html,$level) = @_;
 	$level ||= 0;
-	
+
 	while ($html =~ s/<!-- include (.*?) -->/###HERE###/s)
 	{
 		my $id = '';
 		my $spec = $1;
 		$id = $1 if ($spec =~ s/\s+id=(.*)$//);
-		
+
 		my $filename = "$artisan_perl_dir/webui/$spec";
 		display($dbg_webui-1,0,"including $filename  id='$id'");
 		my $text = getTextFile($filename,1);
-		
+
 		$text =~ s/{id}/$id/g;
-		
+
 		$text = process_html($text,$level+1);
 		$text = "\n<!-- including $filename -->\n".
 			$text.
 			"\n<!-- end of included $filename -->\n";
-			
+
 		$html =~ s/###HERE###/$text/;
 	}
-	
+
 	if (0 && !$level)
 	{
 		while ($html =~ s/<script type="text\/javascript" src="\/(.*?)"><\/script>/###HERE###/s)
@@ -192,12 +192,11 @@ sub process_html
 			display($dbg_webui-1,0,"including javascript $filename");
 			my $eol = "\r\n";
 			# my $text = getTextFile($filename,1);
-			
+
 			my $text = $eol.$eol."<script type=\"text\/javascript\">".$eol.$eol;
-			my $lines = getTextLines($filename);
-			for my $line (@$lines)
+			my @lines = getTextLines($filename);
+			for my $line (@lines)
 			{
-				chomp $line;
 				$line =~ s/\/\/.*$//;
 				$text .= $line.$eol;
 			}
@@ -207,7 +206,7 @@ sub process_html
 			$html =~ s/###HERE###/$text/s;
 		}
 	}
-			
+
 	return $html;
 }
 
@@ -224,7 +223,7 @@ sub scale_fancytree_css
 	my ($filename,$pixels) = @_;
 	my $factor = $pixels/16;
 	display($dbg_webui-1,0,"scale($pixels = $factor) $filename");
-	
+
 	my $text .= getTextFile("$artisan_perl_dir/webui/$filename",1);
 	$text =~ s/url\("icons\.gif"\);/url("icons$pixels.gif");/sg;
 	$text =~ s/font-size: 10pt;/'font-size: '.int($factor*10).'pt;'/sge;
@@ -236,7 +235,7 @@ sub scale_fancytree_css
 	$response .= "\r\n";
 	return $response;
 }
-	
+
 
 
 1;

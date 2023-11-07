@@ -34,7 +34,7 @@ sub has_error
 package uiExplorer;
 use strict;
 use warnings;
-use Utils;
+use artisanUtils;
 use Database;
 use MediaFile;
 use Library;
