@@ -101,8 +101,26 @@ table.fancytree-ext-table tbody tr td
 	overflow-x:auto !important;
 }
 
-.explorer_details_td0  { width:16px; }
-.explorer_details_td1  { width:45px; }
+
+/*
+	td0 is the expander and icons
+	td1 is the left side
+	td2 is the right side
+
+	so far these do absolutely nothing
+*/
+
+.explorer_details_td0  { width:16px; !important; font-size:30px; }
+.explorer_details_td1  { width:45px; overflow:hidden; }
 .explorer_details_td2  { width:220px; padding-left:10px; }
 
+
+
+
+.explorer_details_section_label {
+	color:#6666ff;
+	/* font-size:12px; */
+	font-weight: bold;
+	icon: auto;
+}
 

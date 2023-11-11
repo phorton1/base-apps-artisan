@@ -10,6 +10,9 @@ use warnings;
 use artisanUtils;
 
 
+my $dbg_json = 1;
+
+
 BEGIN
 {
  	use Exporter qw( import );
@@ -32,7 +35,7 @@ sub http_header
 	my ($content_type,$status_code) = @_;
 	$content_type ||= 'text/plain';
 	$status_code ||= 200;
-	
+
 	my $response = HTTPServer::http_header({
 		'statuscode' => 200,
 		'content_type' => $content_type });
@@ -41,7 +44,7 @@ sub http_header
 sub http_error
 {
 	my ($msg) = @_;
-	error($msg);
+	error($msg,1);
 	return http_header('text/plain',400);
 }
 
@@ -62,7 +65,7 @@ sub json_header
 sub json_error
 {
 	my ($msg) = @_;
-	error($msg);
+	error($msg,1);
 	my $response = json_header();
 	$response .= json({error=>$msg});
 	return $response;
@@ -75,9 +78,9 @@ sub json
 {
 	my ($obj) = @_;
 	my $response = '';
-	
-	display($dbg_webui+2,0,"obj=$obj ref=".ref($obj));
-	
+
+	display($dbg_json,0,"json obj=$obj ref=".ref($obj));
+
 	if ($obj =~ /ARRAY/)
 	{
 		for my $ele (@$obj)
@@ -87,19 +90,19 @@ sub json
 		}
 		return "[". $response . "]";
 	}
-	
+
 	if ($obj =~ /HASH/)
 	{
 		for my $k (keys(%$obj))
 		{
 			my $val = $$obj{$k};
 			$val = '' if (!defined($val));
-			
-			display($dbg_webui+2,0,"json($k) = $val = ".ref($val));
-			
+
+			display($dbg_json,1,"json hash($k) = $val = ".ref($val));
+
 			if (ref($val))
 			{
-				display($dbg_webui+1,0,"json recursing");
+				display($dbg_json,0,"json recursing");
 				$val = json($val);
 			}
 			else
@@ -111,27 +114,30 @@ sub json
 				# this is pretty close to what Utils::escape_tag() does,
 				# except that it escapes \ to \x5c and does not escape
 				# double quotes.
-				
+
 			    $val =~ s/([^\x20-\x7f])/"&#".ord($1).";"/eg;
 
 				# escape quotes and backalashes
 
 				$val =~ s/\\/\\\\/g;
 				$val =~ s/"/\\"/g;
-				$val = '"'.$val.'"';
+				$val = '"'.$val.'"' if $val !~ /^(true|false)$/;
+					# don't quote boolean values.
+					# they are provided in perl by specifically
+					# using the strings 'true' and 'false'
 			}
 
 			$response .= ',' if (length($response));
 			$response .= '"'.$k.'":'.$val."\n";
 		}
-		
+
 		return '{' . $response . '}';
 	}
-	
-	display($dbg_webui+2,0,"returning quoted string constant '$obj'");
-	
+
+	display($dbg_json+1,0,"returning quoted string constant '$obj'");
+
 	# don't forget to escape it here as well.
-	
+
     $obj =~ s/([^\x20-\x7f])/"&#".ord($1).";"/eg;
 	return "\"$obj\"";
 }
@@ -156,9 +162,9 @@ sub standard_pane
 {
 	my ($pane_name,$is_mobile) = @_;
 	my $response = html_header();
-	
+
 	my $mobile = $is_mobile ? '/mobile' : '';
-	
+
 	$response .= getTextFile("webui$mobile/artisan.html");
 
 	my $theme = $is_mobile?"black":"default";
@@ -178,7 +184,7 @@ sub standard_pane
 	return $response;
 }
 
-			
+
 
 
 1;

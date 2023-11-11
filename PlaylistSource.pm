@@ -1,9 +1,9 @@
 #!/usr/bin/perl
 #---------------------------------------
-# Library.pm
+# PLSource.pm - Playlist Source
 #---------------------------------------
 
-package Library;
+package PLSource;
 use strict;
 use warnings;
 use threads;
@@ -12,13 +12,13 @@ use artisanUtils;
 use Device;
 use base qw(Device);
 
-my $dbg_lib = 1;
+my $dbg_pls = 0;
 
 
 sub new
 {
 	my ($class,$is_local,$uuid,$friendlyName) = @_;
-	display($dbg_lib,0,"Library::new($is_local,$uuid,$friendlyName");
+	display($dbg_pls,0,"$dbg_pls::new($is_local,$uuid,$friendlyName");
 	my $this = $class->SUPER::new(
 		$is_local,
 		$DEVICE_TYPE_LIBRARY,
@@ -27,6 +27,7 @@ sub new
 	bless $this,$class;
 	return $this;
 }
+
 
 
 1;

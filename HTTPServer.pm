@@ -16,8 +16,13 @@ use IO::Select;
 use XML::Simple;
 use artisanUtils;
 use Database;
-use Library;
+use DeviceManager;
+use HTTPStream;
 use WebUI;
+
+my $dbg_http = 0;
+my $dbg_art = 0;
+
 
 # !!! THE THREADED APPROACH  NOT WORKING ON ARTISAN_WIN !!!
 # Crashes when I try to "set the renderer" from the webUI
@@ -55,7 +60,7 @@ my $system_update_id = time();
 sub start_webserver
 	# this is a separate thread, even if $SINGLE_THREA
 {
-	My::Utils::setOutputToSTDERR();
+	# My::Utils::setOutputToSTDERR();
 	# My::Utils::set_alt_output(1);
 	display($dbg_http,0,"HTTPServer starting ...");
 
@@ -129,9 +134,9 @@ sub handle_connection
 
 	display($dbg_http+1,0,"HTTP connect from $peer_ip_addr:$peer_src_port");
 
-	#--------------------------------
+	#=================================
 	# parse http request header
-	#--------------------------------
+	#=================================
 
 	my $request_method;
 	my $request_path;
@@ -185,16 +190,16 @@ sub handle_connection
 	# don't want to see the stupid static requests
 
 	my $dbg_request = $dbg_http;
-	$dbg_request += 2  if $request_path =~ /^(\/webui\/renderer\/update_renderer|\/ContentDirectory1\.xml|\/ServerDesc\.xml)/;
+	$dbg_request += 2  if $request_path =~ /^(\/webui\/renderer\/(.*)\/update|\/ContentDirectory1\.xml|\/ServerDesc\.xml)/;
 	display($dbg_request,0,"$request_method $request_path from $peer_ip_addr:$peer_src_port");
 	for my $key (keys %request_headers)
 	{
 		display($dbg_request+1,1,"$key=$request_headers{$key}");
 	}
 
-	#--------------------------------
+	#=================================
     # Parse POST request XML
-	#--------------------------------
+	#=================================
 
 	my $post_xml;
 	if ($request_method eq "POST")
@@ -232,11 +237,10 @@ sub handle_connection
 	}
 
 
-    #----------------------------------------
+	#===============================================================
 	# Handle the requests
-    #----------------------------------------
-    # Icon and Server XML descriptions
-
+	#===============================================================
+    # Icon request is generic from Browsers
 
 	my $response = undef;
 	my $dbg_displayable = 1;
@@ -246,6 +250,11 @@ sub handle_connection
 		$response = logo();
 		$dbg_displayable = 0;
 	}
+
+	#-------------------------------------------------------------------
+	# Support for Artisan Perl BEING a DLNA Media Server
+	#-------------------------------------------------------------------
+
 	elsif ($request_path =~ /\/((ServerDesc|ContentDirectory1)\.xml)/)
 	{
 		my $desc = $1;
@@ -267,6 +276,9 @@ sub handle_connection
 
 	else
 	{
+		# DLNA Support Only - Serving ContentDirectory1 requests and streaming
+		# media are NOT used by the webUI.
+
 		if ($request_path eq '/upnp/control/ContentDirectory1')
 		{
 			$response = content_directory_1($post_xml, $request_headers{SOAPACTION}, $peer_ip_addr);
@@ -276,17 +288,29 @@ sub handle_connection
 			stream_media($1, $request_method, \%request_headers, $FH, '', $peer_ip_addr);
 			$dbg_displayable = 0;
 		}
+
+		# SHORTCUT to local_library /get_art/ uri ...
+		# The specific http::ip_address::port are part of the URI, so we will
+		# only be called for our own localLibrary.  This is used both by
+		# the webUI and external DLNA Renderers.
+
 		elsif ($request_path =~ /^\/get_art*\/(.*)\/folder.jpg$/)
 		{
 			$response = get_art($1);
 			$dbg_displayable = 0;
 		}
+
+
+		#--------------------------------------------------------------------------
+		# webUI ONLY support GET calls
+		#--------------------------------------------------------------------------
+
 		elsif ($request_path =~ /^\/webui(\/.*)*$/)
 		{
-			my $param = $1;
-			$param ||= '';
-			$param =~ s/^\///;
-			$response = WebUI::web_ui($param,\%request_headers,$post_xml);
+			my $path = $1;
+			$path ||= '';
+			$path =~ s/^\///;
+			$response = WebUI::web_ui($path);	# ,\%request_headers,$post_xml);
 			$dbg_displayable = 0 if ($request_path =~ /\.(gif|png)$/);
 		}
 
@@ -301,9 +325,9 @@ sub handle_connection
 		}
 	}
 
-    #--------------------------------
+    #===========================================================
     # send response to client
-    #--------------------------------
+    #===========================================================
 
 	if ($quitting && defined($response))
 	{
@@ -456,6 +480,7 @@ sub http_header
 #----------------------------------------------
 # content_directory_1 dispatcher
 #----------------------------------------------
+# This is where Artisan Perl IS a DLNA MediaServer
 
 sub content_directory_1
 {
@@ -697,7 +722,8 @@ sub search_directory
 				if ($file->{parent_id} ne $parent_id)
 				{
 					$parent_id = $file->{parent_id};
-					$folder = get_folder($parent_id);
+					$folder = $local_library->getFolder($parent_id,$dbh);
+						# re-use database connection
 				}
                 if ($index >= $start)
                 {
@@ -814,7 +840,6 @@ sub browse_directory
             # Filter));
 
     my $error = '';
-    my $dbh = db_connect();
 	my $folder;
 
     if (!defined($id))
@@ -825,7 +850,7 @@ sub browse_directory
 	if (!$error)
 	{
 		display($dbg_http+1,0,"browse_directory($id)");
-		$folder = get_folder($dbh,$id);
+		$folder = $local_library->getFolder($id);
 		$error = "Could not get_folder($id)"
 			if (!$folder);
 	}
@@ -837,7 +862,7 @@ sub browse_directory
 			# set object_id to parentid
 			warning(0,-1,"mis-implemented BROWSE_METADATA($id) called");
 			$id = $folder->{parent_id};
-			$folder = get_folder($dbh,$id);
+			$folder = $local_library->getFolder($id);
 			$error = "Could not get_folder($id)"
 				if (!$folder);
 		}
@@ -857,7 +882,7 @@ sub browse_directory
 
 		my $is_album = $folder->{dirtype} eq 'album' ? 1 : 0;
 		my $table = $is_album ? "tracks" : "folders";
-        my $subitems = get_subitems($dbh, $table, $id, $start, $count);
+        my $subitems = $local_library->getSubitems($table, $id, $start, $count);
 		my $num_items = @$subitems;
 
 		display($dbg_http+1,0,"building http response for $num_items $table"."s");
@@ -870,14 +895,12 @@ sub browse_directory
 
         $response_xml .= xml_footer($num_items,$folder->{num_elements});
         display($dbg_http+1,1,"Done with numeric($id) dirlist response");
-	    db_disconnect($dbh);
 		return $response_xml;
     }
 
 	# error exit
 
 	error($error);
-	db_disconnect($dbh);
 	return http_header({
 		'statuscode' => 501,
 		'content_type' => 'text/plain' });
@@ -904,11 +927,9 @@ sub logo
 sub get_art
 {
 	my ($id) = @_;
-    display($dbg_http+1,0,"get_art($id)");
+    display($dbg_art,0,"get_art($id)");
 
-	my $dbh = db_connect();
-	my $folder = get_folder($dbh,$id);
-	db_disconnect($dbh);
+	my $folder = $local_library->getFolder($id);
 	if (!$folder)
 	{
 		error("get_art($id): could not get folder($id)");
@@ -927,7 +948,7 @@ sub get_art
 		$filename = "$artisan_perl_dir/images/no_image.jpg";
     }
 
-    display($dbg_http+1,1,"get_art($id) opening file: $filename");
+    display($dbg_art,1,"get_art($id) opening file: $filename");
     if (!open(IFILE,"<$filename"))
     {
         error("get_art($id): Could not open file: $filename");
@@ -940,7 +961,7 @@ sub get_art
     my $data = join('',<IFILE>);
     close IFILE;
 
-    display($dbg_http+1,1,"get_art($id): sending file: $filename");
+    display($dbg_art,1,"get_art($id): sending file: $filename");
     my $response = http_header({
         'statuscode' => 200,
         'additional_header' => [ 'Content-Type: image/jpeg' ] });
@@ -978,7 +999,7 @@ sub xml_serverdescription
         <modelNumber>1234</modelNumber>
         <modelURL>http://www.phorton.com</modelURL>
         <serialNumber>5679</serialNumber>');
-        <UDN>$uuid</UDN>
+        <UDN>$this_uuid</UDN>
         <iconList>
 EOXML
 

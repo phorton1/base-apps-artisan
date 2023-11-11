@@ -1,4 +1,0 @@
-2014-08-13 19:34:50 test_dlna3:          ERROR: Could not create socket: IO::Socket::Multicast: The requested address is not valid in its context.
-2014-08-13 19:34:50 ..//Utils:           ERROR: Could not open logfile .//data/logs/error.log for writing
-2014-08-13 19:35:08 test_dlna3:          ERROR: Could not create socket: IO::Socket::Multicast: The requested address is not valid in its context.
-2014-08-13 19:48:50 test_dlna3:          ERROR: Could not create socket: IO::Socket::Multicast: The requested address is not valid in its context.

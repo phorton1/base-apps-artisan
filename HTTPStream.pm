@@ -16,7 +16,10 @@ use IO::Select;
 use XML::Simple;
 use artisanUtils;
 use Database;
-use Library;
+use DeviceManager;
+
+
+my $dbg_stream = 1;
 
 
 sub stream_media
@@ -33,7 +36,7 @@ sub stream_media
 	{
 		display($dbg_stream+1,2,"header $key=$headers->{$key}");
 	}
-	
+
 	if ($method !~ /^(HEAD|GET)$/)
 	{
 		error("Unknown Streaming HTTP Method: $method");
@@ -50,12 +53,12 @@ sub stream_media
 	# XXX is mp3,m4a,wav, etc based on the tracks file extension.
 	# The TRACK_ID is uesd ... the XXX is ignored.
 
-	
+
 	if ($content_id =~ /^(.*?)\.(\w+)$/)
 	{
 		my $id = $1;
-		my $track = get_track(undef,$id);
-		
+		my $track = $local_library->getTrack($id);
+
         if (!$track)
         {
 			error("Content($id) not found in media library");
@@ -90,10 +93,10 @@ sub stream_media
 		}
 
 		# vestigial kludge
-		
+
 		my $is_wd = $headers->{USER_AGENT} =~ /INTEL_NMPR\/2\.1 DLNADOC\/1\.50 dma\/3\.0 alphanetworks/ ? 1 : 0;
 		my $BUF_SIZE = 3000000;   # $is_wd && $ANDROID ? 16384 : 300000;
-		
+
 		# build headers
 
 		my $to_byte = 0;
@@ -109,7 +112,7 @@ sub stream_media
 			$statuscode = 206;
 			$from_byte = int($1) || 0;
 			my $to_byte = $2 ? int($2) : 0;
-			
+
 			display($dbg_stream,1,"Range Request from $from_byte/$content_len to $to_byte");
 
 			$to_byte = $track->{size}-1 if (!$to_byte);
@@ -117,12 +120,12 @@ sub stream_media
 			$content_len = $to_byte - $from_byte + 1;
 			display($dbg_stream+1,1,"Doing Range request from $from_byte to $to_byte = $content_len bytes");
 		}
-		
+
 		my @additional_header = ();
 		# there is already a "Connection: close" header in the
 		# defaults in the method http_header()
 		# push @additional_header, "Connection: keep-alive";
-		
+
 		push @additional_header, "Content-Type: " . $track->mimeType();
 		push @additional_header, "Content-Length: $content_len";
 		#push @additional_header, "Content-Disposition: attachment; filename=\"$track->{name}\"";
@@ -133,14 +136,14 @@ sub stream_media
 			if ($is_ranged);
 
 		# SEND HEADERS
-		
+
 		display($dbg_stream+1,1,"Sending $method headers content_len=$content_len is_ranged=$is_ranged");
-		
+
 		if ($quitting)
 		{
 			warning(0,0,"not sending $method header in stream_media() due to quitting");
 		}
-		
+
 		my $ok = print $FH http_header({
 			'statuscode' => $statuscode,
 			'additional_header' => \@additional_header,
@@ -169,7 +172,7 @@ sub stream_media
 			sysseek(ITEM, $from_byte, 0);
 		}
 		display($dbg_stream+1,1,"Loop to send $content_len actual bytes of content");
-		
+
 		my $at = 0;
 		my $rslt = 1;
 		my $buf = undef;
@@ -193,14 +196,14 @@ sub stream_media
 				last;
 			}
 			display($dbg_stream+1,2,"Sending $bytes bytes at=$at of=$content_len remain=$bytes_left");
-			
+
 			if ($quitting)
 			{
 				warning(0,0,"not sending $method header in stream_media() due to quitting");
 				$rslt = 0;
 				last;
 			}
-			
+
 			# Had to use SIGPIPE on Android when WDTV Live failed
 			# a write and perl bailed ...
 
@@ -210,8 +213,8 @@ sub stream_media
 				my ($sig) = @_;
 				error("Caught SIG$sig in stream_media()");
 			}
-				
-			
+
+
 			my $ok = print $FH $buf;
 			if (!$ok)
 			{
@@ -221,7 +224,7 @@ sub stream_media
 			}
 			$at += $bytes;
 		}
-		
+
 		display($dbg_stream+1,1,"finished sending stream rslt=".($rslt?"OK":"ERROR"));
 		close(ITEM);
 		return $rslt;

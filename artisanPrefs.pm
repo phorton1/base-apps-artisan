@@ -16,6 +16,12 @@ use threads;
 use threads::shared;
 use artisanUtils;
 
+my $dbg_prefs = 1;
+	# 0 = show static_init_prefs() header msg
+	# -1 = show individual prefs
+my $dbg_web_prefs = 1;
+	# 0 = show setting of prefs
+
 
 BEGIN
 {
@@ -95,7 +101,7 @@ sub setPreference
 sub static_init_prefs
 {
 	my $filename = prefFilename();
-	display(0,0,"Reading prefs from $filename");
+	display($dbg_prefs,0,"Reading prefs from $filename");
 	if (-f $filename)
 	{
 	    my @lines = getTextLines($filename);
@@ -106,7 +112,7 @@ sub static_init_prefs
 			{
 				my $left = substr($line,0,$pos);
 				my $right = substr($line,$pos+1);
-				display(0,0,"pref($left)='$right'");
+				display($dbg_prefs,0,"pref($left)='$right'");
 				$g_prefs{$left} = $right;
 		    }
 		}
@@ -158,7 +164,7 @@ sub prefs_request
 	if ($param eq 'set')
 	{
 		use Data::Dumper;
-		display($dbg_webui-1,0,"prefs_request(set) post_xml=".Dumper($post_xml));
+		display($dbg_web_prefs,0,"prefs_request(set) post_xml=".Dumper($post_xml));
 
 		# set the prefs from the post_xml
 

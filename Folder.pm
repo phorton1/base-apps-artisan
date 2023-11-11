@@ -69,7 +69,7 @@ sub new
 	bless $this,$class;
 	return $this;
 }
-		
+
 
 sub newFromHash
 	# sets the id to the md5 hash of the path
@@ -88,12 +88,12 @@ sub newFromHash
 			return;
 		}
 	}
-	
+
 	my $this = $class->new();
 	mergeHash($this,$hash);
-	
+
 	# create id if it does not already exist
-	
+
 	if (!defined($this->{id}) || $this->{id} eq "")
 	{
 		if ($this->{path})
@@ -105,7 +105,7 @@ sub newFromHash
 			$this->{id} = "0";
 		}
 	}
-	
+
 	$this->{dirty} = 1;
 	return $this;
 }
@@ -151,7 +151,7 @@ sub insert
 	if (!defined($this->{id}))
 	{
 		error("attempt to insert folder without an id!!",0,1);
-		My::Utils::display_hash(0,0,"this",$this);
+		# My::Utils::display_hash(0,0,"this",$this);
 		return;
 	}
 	if (insert_record_db($dbh,'folders',$this))
@@ -166,9 +166,9 @@ sub insert
 	}
 	return $this;
 }
-	
-	
-	
+
+
+
 sub save
 	# returns 1=ok, 2=updated, 3=inserted
 {
@@ -228,7 +228,7 @@ sub getDidl
 
 	my $art_uri = !$this->{has_art} ? '' :
 		"http://$server_ip:$server_port/get_art/$this->{id}/folder.jpg";
-		
+
 	my $didl = "<container ";
     $didl .= "id=\"$this->{id}\" ";
     $didl .= "parentID=\"$this->{parent_id}\" ";
@@ -251,7 +251,7 @@ sub getDidl
 }
 
 
-	
+
 
 
 #------------------------------------------------
@@ -264,7 +264,7 @@ sub get_dlna_stuff
 {
 	my ($this) = @_;
 	my $type = $this->{type};
-	my $mime_type = myMimeType($type);
+	my $mime_type = DatabaseMain::myMimeType($type);
 	my $contentfeatures = '';
 
     # $contentfeatures .= 'DLNA.ORG_PN=LPCM;' if $mime_type eq 'audio/L16';

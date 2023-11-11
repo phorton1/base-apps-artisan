@@ -2,16 +2,16 @@
 // explorer.js
 //----------------------------------------------------
 
+var dbg_explorer = 1;
+
 var explorer_tracklist;
 var explorer_details;
-
-
 
 
 page_layouts['explorer'] = {
 	layout_id: '#explorer_page',
 	swipe_element: '#explorer_center_div',
-	
+
 	north: {
 		limit:400,
 		size:40,
@@ -22,13 +22,13 @@ page_layouts['explorer'] = {
 		limit:600,
 		size:280,
 		size_touch:380,
-		element_id:'#explorer_page_header_left', 
+		element_id:'#explorer_page_header_left',
 		},
 	east: {
 		limit:800,
 		size:320,
 		},
-		
+
 	defaults: {
 	},
 };
@@ -40,7 +40,7 @@ function init_page_explorer()
 	display(dbg_explorer,0,"init_page_explorer()");
 
 	// CENTER DIV LAYOUT
-	
+
 	var center_layout = $('#explorer_center_div').layout({
 		applyDemoStyles: true,
 		north__size:160,
@@ -51,18 +51,18 @@ function init_page_explorer()
 	// EXPLORER TREE
 
 	display(dbg_explorer,1,"initializizing explorer tree");
-	
+
 	$("#explorer_tree").fancytree({
-		
+
 		// checkbox: true,
 		// selectMode:3,
 		clickFolderMode:3,
-		
+
 		scrollParent: $('#explorer_tree_div'),
 
 		source:
 		{
-			url: "/webui/explorer/dir",
+			url: "/webui/library/" + current_library['uuid'] + "/dir",
 			data: {mode:explorer_mode},
 			cache: false,
 		},
@@ -72,12 +72,12 @@ function init_page_explorer()
 			var node = data.node;
 			data.result =
 			{
-				url: "/webui/explorer/dir",
+				url: "/webui/library/" + current_library['uuid'] + "/dir",
 				data: {id: node.key, mode:explorer_mode},
 				cache: true
 			};
 		},
-	
+
 
 		extensions: ["table"],
 		renderColumns: function(event, data)
@@ -85,10 +85,10 @@ function init_page_explorer()
 			var node = data.node;
 			var rec = node.data;
 			var $tdList = $(node.tr).find(">td");
-			
+
 			$tdList.eq(1).text(rec.NUM_ELEMENTS).addClass("explorer_tree_num");
-				// add the "number of tracks/children folders" 
-		
+				// add the "number of tracks/children folders"
+
 			// some other examples
 			// $tdList.eq(1).text(node.key).addClass("explorer_tree_num_column");
 			// $tdList.eq(2).text(node.getIndexHier()).addClass("alignRight");
@@ -104,10 +104,10 @@ function init_page_explorer()
 			// key and title). Should use uppercase to
 			// distinguish and hopefully prevent
 			// namespace collisions.
-			
+
 			var node = data.node;
 			var rec = node.data;
-			
+
 			display(dbg_explorer,0,"calling update_explore_album_info() " + node.title);
 			update_explorer_album_info(node.title,rec);
 			display(dbg_explorer,0,"back from update_explore_album_info()");
@@ -115,20 +115,20 @@ function init_page_explorer()
 
 		}
 	});
-	
+
 	// EXPLORER TRACKLIST
 
 	display(dbg_explorer,1,"initializizing explorer tracklist");
 
 	$("#explorer_tracklist").fancytree({
-		
+
 		scrollParent: $('#explorer_tracklist_div'),
-		
+
 		extensions: ["table"],
 		table:{
 			// nodeColumnIdx:null,		// we'll explicitly write the main node
 		},
-		
+
 		renderColumns: function(event, data)
 		{
 			var node = data.node;
@@ -137,30 +137,30 @@ function init_page_explorer()
 
 			// TITLE in lowercase conflicts with jquery-ui,
 			// so we raise it to TITLE in uiExplorer.pm
-			
+
 			// note that we use .html() for the title,
 			// which is required to work with Utils::escape_tag()
 			// which changes non-printable characters into their
 			// &#NNN; html equivilants.
-			
+
 
 			$tdList.eq(0).addClass('explorer_tracklist_td0');
 			$tdList.eq(1).text(rec.tracknum).addClass('explorer_tracklist_td1');
 			$tdList.eq(2).html(rec.TITLE)	.addClass('explorer_tracklist_td2');
 			$tdList.eq(3).text(rec.type)	.addClass('explorer_tracklist_td3');
-			
+
 			// Should note differences in GENRE and only display non-standard GENRES
 			// that don't agree with the Album Info
-			
+
 			$tdList.eq(4).text(rec.genre).addClass('explorer_tracklist_td4 explorer_tracklist_variable_td');
-			
+
 			// Should note difference in ARTIST / ALBUM / ALBUM_ARTIST and
 			// only show those that don't agree with the Album Info
 			// Other candidate fields include ID, STREAM_MD5, file_md5, etc
-			
+
 			$tdList.eq(5).text(rec.year_str).addClass('explorer_tracklist_td5 explorer_tracklist_variable_td');
 		},
-		
+
 		activate: function(event, data)
 		{
 			// The event data has the node object
@@ -170,42 +170,39 @@ function init_page_explorer()
 			// key and title). We use uppercase to
 			// distinguish and hopefully prevent
 			// namespace collisions.
-			
-			// clicking on a track in the car stereo should
-			// open up the details pane
-			
+
 			var node = data.node;
 			var rec = node.data;
 			// var details = $("#explorer_details").fancytree("getTree");
 			explorer_details.reload({
-				url:'/webui/explorer/item_tags?id=' + rec.id,
+				url:'/webui/library/'+current_library['uuid'] + '/track_metadata?id=' + rec.id,
 				cache: true});
 		},
 
 	});
 
 	// CACHE THE TRACKLIST TREE
-	
+
 	explorer_tracklist = $("#explorer_tracklist").fancytree("getTree");
 	display(dbg_explorer,1,"got explorer_tracklist=" + explorer_tracklist);
 
-	
+
 	// CONTEXT MENU
 	// Requires modified prh-jquery.ui-contextmenu.js
 
 	display(dbg_explorer,1,"initializizing explorer context menu");
-	
+
 	$("#explorer_tracklist").contextmenu({
-		
+
 		// delegate: "span.fancytree-title",
 		// menu: "#options",
-		
+
 		menu:
 		[
 			{title: "Play (Renderer)", cmd: "play_renderer", uiIcon: "ui-icon-extlink"},
 			{title: "Play (Local)", cmd: "play_local", uiIcon: ".ui-icon-newwin"},
 			{title: "Play (Download)", cmd: "play_download", uiIcon: ".ui-icon-newwin"},
-			
+
 			{title: "----"},
 			{title: "Cut", cmd: "cut", uiIcon: "ui-icon-scissors"},
 			{title: "Copy", cmd: "copy", uiIcon: "ui-icon-copy"},
@@ -218,7 +215,7 @@ function init_page_explorer()
 				{title: "Sub 2", cmd: "sub1"}
 				]}
 		],
-		
+
 		beforeOpen: function(event, ui)
 		{
 			var node = $.ui.fancytree.getNode(ui.target);
@@ -232,22 +229,9 @@ function init_page_explorer()
 
 			if (ui.cmd == 'play_renderer')
 			{
-				if (!current_renderer)
-				{
-					rerror('No current renderer selected');
-				}
-							
-				$.get('/webui/renderer/play_song' +
-					  '?id='+current_renderer.id +
-					  '&song_id=' + node.data.id,
-					function(result)
-					{
-						if (result.error)
-						{
-							rerror('Error in transport_command(' + command + '): ' + result.error);
-						}
-					}
-				);
+				renderer_command('play_song?' +
+					'library_uuid=' + current_library['uuid'] +
+					'&id=' + node.data.id );
 			}
 
 			else if (ui.cmd == 'play_local')
@@ -266,39 +250,42 @@ function init_page_explorer()
 					"width=400, height=300");
 			}
 		}
-		
+
 	});
-	
-	
+
+
 	// EXPLORER DETAILS
-	// should inherit already expanded state of tree
 
 	display(dbg_explorer,1,"initializizing explorer details");
-	
+
 	$("#explorer_details").fancytree({
-		
-		clickFolderMode:3,
+
+		clickFolderMode:3,		// activateAndExpand
 		extensions: ["table"],
+
+		expand: function(event, data)  { saveExpanded(true,data.node); },
+		collapse: function(event, data) { saveExpanded(false,data.node); },
+			// save the expanded state when done by hand
+
 		renderColumns: function(event, data)
 		{
 			var node = data.node;
 			var rec = node.data;
 			var $tdList = $(node.tr).find(">td");
 
-			// note that we use .html() for the value,
-			// which is required to work with Utils::escape_tag()
-			// which changes non-printable characters into their
-			// &#NNN; html equivilants.
+			// note that we use .html() for the error icons,
+			// and Utils::escape_tag() which changes non-printable
+			// characters into their &#NNN; html equivilants.
 			//
 			// It is worth noting that non-displayable characters
 			// will show up as a white triangle, and we *may* want
 			// to consider that chr(13), and chr(0) are special
 			// cases in Utils::escape_tag()
-			
-			$tdList.eq(0)				.addClass('explorer_details_td0');
-			$tdList.eq(1).text(rec.TITLE)	.addClass('explorer_details_td1');
+
+			$tdList.eq(0)					.addClass('explorer_details_td0');
+			$tdList.eq(1).html(rec.TITLE)	.addClass('explorer_details_td1');
 			$tdList.eq(2).html(rec.VALUE)	.addClass('explorer_details_td2');
-			
+
 			if (!node.children)
 			{
 				var expander = $tdList.eq(0).find('.fancytree-expander');
@@ -306,23 +293,37 @@ function init_page_explorer()
 			}
 			else
 			{
+				if (explorer_details)	// use saved expanded state if available
+				{
+					var exp = explorer_details['expanded_' + rec.TITLE];
+					if (exp != undefined)
+						node.setExpanded(exp);
+				}
+
+				$tdList.eq(2).prop("colspan", 2);
 				$tdList.eq(1).addClass('explorer_details_section_label');
 			}
  		},
 
 	});
-	
-	// CACHE THE EXPLORER_DETAILS
-	
+
+	// CACHE THE EXPLORER_DETAILS so we can clear it when a new
+	// folder is selected.
+
 	explorer_details = $("#explorer_details").fancytree("getTree");
 	display(dbg_explorer,1,"got explorer_details=" + explorer_details);
-	
-
 	display(dbg_explorer,1,"init_page_explorer() returning");
-	
+
 }	// init_page_explorer()
 
 
+function saveExpanded(expanded,node)
+{
+	var rec = node.data;
+	var title = rec.TITLE;
+	// alert((expanded ? "expand " : "collapse") + title);
+	explorer_details['expanded_' + title] = expanded;
+}
 
 
 //---------------------------------------------------------------
@@ -332,13 +333,9 @@ function init_page_explorer()
 function update_explorer_album_info(title,rec)
 	// Update the album pane of the explorer which in turn clears
 	// the old details and loads the tracks if any
-	//
-	// For some reason I couldn't get the explorer_details and
-	// tracklist_tree fancytrees by id at this point, so they
-	// are cached and passed in init_page_renderer();
 {
 	display(dbg_explorer,1,"update_explorer_album_info() " + title);
-			
+
 	// note that we use .html() for the title,
 	// which is required to work with Utils::escape_tag()
 	// which changes non-printable characters into their
@@ -356,11 +353,11 @@ function update_explorer_album_info(title,rec)
 			error_string += "<img src='/webui/icons/error_" + level + ".png' height='16px' width='16px'>";
 			error_string += rec.errors[i].msg + "<br>";
 		}
-	}	
-	
+	}
+
 	$('#explorer_album_info1').html(
 		'type: ' + rec.dirtype + ' &nbsp;&nbsp ' +
-		(rec.year_str ? 'year: ' + rec.year_str + ' &nbsp;&nbsp ' : '') + 
+		(rec.year_str ? 'year: ' + rec.year_str + ' &nbsp;&nbsp ' : '') +
 		(rec.genre ? 'genre: ' + rec.genre + ' &nbsp;&nbsp ' : '') +
 		'id:' + rec.id + ' &nbsp;&nbsp; ');
 
@@ -375,24 +372,19 @@ function update_explorer_album_info(title,rec)
 	 );
 
 	$('#explorer_album_info4').html(rec.path);
-		
-				
+
+
 	$('#explorer_album_info5').html(
 		error_string ? error_string : ""
 	 );
 
-	 
 	// load the track list
-	
-	// display(dbg_explorer,1,"getting explorer_tracklist");
-	// var tree = $("#explorer_tracklist").fancytree("getTree");
-	// display(dbg_explorer,1,"got explorer_tracklist");
-		
+
 	if (explorer_tracklist)
 	{
 		display(dbg_explorer,1,"loading tracks for  " + rec.TITLE);
 		explorer_tracklist.reload({
-			url:'/webui/explorer/items?id=' + rec.id,
+			url:'/webui/library/' + current_library['uuid'] + '/tracklist?id=' + rec.id,
 			cache: true});
 	}
 	else
@@ -402,9 +394,11 @@ function update_explorer_album_info(title,rec)
 
 	// clear out old track details, if any
 
-	// display(dbg_explorer,1,"clearing old explorer_details");
-	// var details = $("#explorer_details").fancytree("getTree");
-	explorer_details.getRootNode().removeChildren();			
+	explorer_details.reload({
+		url:'/webui/library/'+current_library['uuid'] + '/folder_metadata?id=' + rec.id,
+		cache: true});
+
+	// explorer_details.getRootNode().removeChildren();
 
 
 }	// update_explorer_album_info()
@@ -433,16 +427,16 @@ function set_context_explorer(context)
 			{
 				var path = result.id_path;
 				display(0,1,"id_path='" + path + "'");
-				
+
 				// strip the last track_id off if it exists
-				
+
 				var track_id = '';
 				if (path.replace(/\/track_(.*)$/,''))
 				{
 					track_id = RegExp.$1;
 				}
 
-				
+
 				var last_node;
 				var tree = $('#explorer_tree').fancytree('getTree');
 				tree.loadKeyPath(path, function(node, status)
@@ -465,16 +459,16 @@ function set_context_explorer(context)
 						last_node = node;
 					}
 				});
-				
-				
+
+
 				display(0,1,"last_node=" + last_node);
 				if (last_node)
 				{
 					last_node.makeVisible({scrollIntoView: true});
 					last_node.setActive(true);
-					
+
 					// explorer specific code
-					
+
 					if (track_id)
 					{
 						display(0,1,"set track_id=" + track_id);
@@ -486,10 +480,7 @@ function set_context_explorer(context)
 							node.setActive(true);
 						}
 					}
-				}					
+				}
 			}
 		});
 }
-
-
-

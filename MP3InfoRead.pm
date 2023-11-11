@@ -36,6 +36,7 @@ use Fcntl qw(:seek);
 use artisanUtils;
 use MP3Vars qw(@mp3_genres %all_v2_tag_names $WRITE_VERSION);
 
+my $dbg_mp3_read = 1;
 
 #-------------------------------------------------------------------------------
 # get v1 tag
@@ -51,7 +52,7 @@ sub _get_v1_tags
     my @v1_tag_names = qw(TIT2 TPE1 TALB TDRC COMM TRCK TCON);
 		# note that TDRC assumes a V4 mapping ...
 	$v1_tag_names[3] = 'TYER' if ($WRITE_VERSION == 3);
-		
+
     # use the V23 tag names for the appropriate fields
     # title, artist, album, year, comment, tracknum, & genre
     # but put them in a separate hash to begin with
@@ -116,10 +117,10 @@ sub _get_v1_tags
         # or the outer folder name from get_default_info()
 
         $value = '' if ($key eq 'TCON' && $value eq 'Other');
-		
+
 		# map V1 comment tags to V2 format
 		# by adding a subid of 'V1';
-		
+
         next if !defined($value) || !length($value);
         my $rslt = $this->{taglist}->add_tag(undef,$key,$value);
         return if (!defined($rslt));
@@ -170,7 +171,7 @@ sub _get_v2_tags
     my $eof = tell($fh);
 	my $v2f = $this->_get_v2_foot();
 	return if (!defined($v2f));
-	
+
 	if ($v2f)
     {
 		$eof -= $v2f->{tag_size};
@@ -683,7 +684,7 @@ sub _get_v2_head
         $this->set_error('rr',"no ID3v2 tag found") if (!$start);
         return 0;
     }
- 
+
 	# get version
 
 	my ($major, $minor, $flags) = unpack ("x3CCC", $header);
@@ -907,9 +908,9 @@ sub _get_v2_foot
             # This is an invalid footer marker; it doesn't make sense
             # for the footer to not be marked as the tag having a footer
             # so strictly it's an invalid tag.
-			
+
 			$this->set_error('r1',"invalid footer marker in ID3 section");
-			return 0;			
+			return 0;
 		}
 	}
 

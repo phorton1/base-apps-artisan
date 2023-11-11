@@ -21,8 +21,9 @@ use Pub::Utils qw(
 	LOG
 	error
 	display
-	display_bytes
 	warning
+	display_bytes
+	display_hash
 
 	_def
 	_lim
@@ -53,22 +54,10 @@ use Pub::Utils qw(
 # debugging constants
 #-------------------------
 
-our $dbg_db 		= 2;
-our $dbg_ssdp 		= 2;
-our $dbg_http 		= 1;
-our $dbg_stream 	= 2;
-our $dbg_xml    	= 2;
-our $dbg_library    = 1;
-our $dbg_vlibrary   = 2;
-our $dbg_webui      = -1;
-our $dbg_mediafile  = 2;
-our $dbg_mp3_info   = 2;
-our $dbg_mp3_read   = 2;
-our $dbg_mp3_write  = 2;
-our $dbg_mp3_tags   = 2;
-our $dbg_ren        = 1;
+our $dbg_xml = 1;
+	# a couple of $dbg_variables cross file boundaries
 
-our $dbg_mem		= 0;
+my $dbg_mem = 0;
 
 
 
@@ -91,35 +80,22 @@ BEGIN
 
 	push @EXPORT, qw(
 
-		$dbg_db
-		$dbg_ssdp
-		$dbg_http
-		$dbg_stream
 		$dbg_xml
-		$dbg_library
-		$dbg_vlibrary
-		$dbg_webui
-		$dbg_mediafile
-		$dbg_mp3_info
-		$dbg_mp3_read
-		$dbg_mp3_write
-		$dbg_mp3_tags
-		$dbg_ren
 
         $program_name
-        $uuid
+        $this_uuid
 
         $artisan_perl_dir
 
 		$mp3_dir
 		$mp3_dir_RE
-        $cache_dir
 
         $server_ip
         $server_port
 		$quitting
 
-		clone_hash
+		myMimeType
+		pathMimeType
 
 		severity_to_str
 		code_to_severity
@@ -167,13 +143,15 @@ BEGIN
         $debug_level
 
         $temp_dir
+		$data_dir
         $logfile
 
         LOG
         error
         display
-		display_bytes
         warning
+		display_bytes
+		display_hash
 
 		_def
 		_lim
@@ -343,7 +321,7 @@ our %error_mappings = (
 # Keeping interesting defaults for other stuff
 
 our $program_name = 'Artisan Server (Pure Perl Windows)';
-our $uuid = '56657273-696f-6e34-4d41-afacadefeed0';
+our $this_uuid = '56657273-696f-6e34-4d41-afacadefeed0';
 our $artisan_perl_dir = "/base/apps/artisan";
 	# the directory of the pure-perl artisan, which includes
 	# the bin, images, webui, and xml subdirectories
@@ -404,7 +382,7 @@ else
 # }
 
 
-our $cache_dir = "$mp3_dir/_data";
+$data_dir = "$mp3_dir/_data";
 $temp_dir = "/base_data/temp";
 
 $logfile = "";
@@ -412,8 +390,7 @@ $logfile = "";
 	# no logging by default
 	# could be a preference (getem before program "starts")
 
-our $quitting = 0;
-share($quitting);
+our $quitting:shared = 0;
 
 our %stats;
 #share(%stats);
@@ -421,15 +398,28 @@ our %stats;
 
 
 #---------------------------------
-# primitive utilities
+# Mime utilities
 #---------------------------------
 
-sub clone_hash
+
+sub myMimeType
 {
-    my ($hash) = @_;
-    my $new = {};
-    %$new = %$hash;
-    return $new;
+	my ($type) = @_;
+    return 'audio/mpeg'         if ($type =~ /^mp3$/i);	   # 7231
+    return 'audio/x-m4a'        if ($type =~ /^m4a$/i);    # 392
+	return 'audio/x-ms-wma'     if ($type =~ /^wma$/i);    # 965
+	return 'audio/x-wav'        if ($type =~ /^wav$/i);    # 0
+	# mp4 files are not currently playable
+	# return 'audio/mp4a-latm'    if ($filename =~ /\.m4p$/i);
+	return '';
+}
+
+
+sub pathMimeType
+{
+    my ($filename) = @_;
+	return myMimeType($1) if ($filename =~ /.*\.(.*)$/);
+    return '';
 }
 
 
@@ -526,15 +516,14 @@ sub init_stats
 
 sub dump_stats
 {
-    my ($package) = @_;
-    $package = package_of(1) if (!defined($package));
-    LOG(0,"dump_stats($package)");
+    # my ($package) = @_;
+    # $package = package_of(1) if (!defined($package));
+    LOG(0,"dump_stats()");	# $package)");
     for my $j (sort(keys(%stats)))
     {
-        next if ($package && $j !~ /$package/);
+        # next if ($package && $j !~ /$package/);
         my $pstats = $stats{$j};
         LOG(1,$j);
-
         for my $k (sort(keys(%$pstats)))
         {
 			my $val = $$pstats{$k};
@@ -956,12 +945,19 @@ sub split_dir
 			($rec->{album_artist},
 			 $rec->{album_title}) = split(' - ',$rec->{album_name});
 
+
+
 			if ($rec->{class} =~ /Dead/)
 			{
 				$rec->{album_title} = $rec->{album_name};
 				$rec->{album_artist} = 'Grateful Dead';
 				$rec->{album_artist} = 'Jerry Garcia'
 					if ($rec->{class} =~ /Jerry/);
+			}
+			elsif (!$rec->{album_title})
+			{
+				warning(0,0,"No title for album at $fullpath");
+				$rec->{album_title} = '';
 			}
 		}
 	}

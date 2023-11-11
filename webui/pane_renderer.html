@@ -3,15 +3,15 @@
 <!-- HEADER -->
 
 <div id='renderer_pane'>
-    
+
     <!-- include page_header_bar.html id=renderer -->
-    
+
     <div
         id="renderer_body"
         class="renderer_body">
-            
+
         <!-- ALBUM INFO -->
-        
+
         <table width='100%' style="table-layout:fixed;">
             <tr>
                 <td id="renderer_album_image_td">
@@ -21,9 +21,9 @@
                         src="/webui/icons/artisan.png"
                         onclick='javascript:show_in_explorer(event)'>
                 </td>
-                
+
                 <td id="renderer_album_info_td">
-                    
+
                     <div id="renderer_album_info_div">
                         <p id="renderer_song_title">Song Title</p>
                         <p id="renderer_album_artist">Album Artist</p>
@@ -31,7 +31,7 @@
                         <p id="renderer_album_track">Track 0</p>
                         <p id="renderer_song_genre">DATE</p>
                     </div>
-                    
+
                     <div id="renderer_slider_div">
                         <div id="renderer_slider">
                         </div>
@@ -45,18 +45,21 @@
                             </table>
                         </div>
                     </div>
-                                
-                                    
+
+
                 </td>
-                
+
             </tr>
         </table>
-    
+
         <!-- TRANSPORT CONTROLS -->
-        
-    
+
+
         <table class="renderer_table" align='center'>
             <tr>
+
+				<!-- this to become the volume control, disabled if max_vol == 0 -->
+
                 <td class="play_button" align="left">
                     <input type="button"
                         id="renderer_button_unused1"
@@ -64,33 +67,36 @@
                         value="unused1"
                         disabled>
                 </td>
+
+
+
                 <td class="play_button" align="center">
                     <input type="button"
                         id="renderer_button_prev"
                         value=" << "
                         disabled
-                        onclick = "javascript:transport_command('prev')">
+                        onclick = "javascript:renderer_command('prev')">
                 </td>
                 <td class="play_button" align="center">
                     <input type="button"
                         id="renderer_button_play_pause"
                         value=" > "
                         disabled
-                        onclick = "javascript:transport_command('play_pause')">
+                        onclick = "javascript:renderer_command('play_pause')">
                 </td>
                 <td class="play_button" align="center">
                     <input type="button"
                         id="renderer_button_stop"
                         value=" X "
                         disabled
-                        onclick = "javascript:transport_command('stop')">
+                        onclick = "javascript:renderer_command('stop')">
                 </td>
                 <td class="play_button" align="center">
                     <input type="button"
                         id="renderer_button_next"
                         value=" >> "
                         disabled
-                        onclick = "javascript:transport_command('next')">
+                        onclick = "javascript:renderer_command('next')">
                 </td>
                 <td class="play_button" align="right">
                     <input type="button"
@@ -101,12 +107,15 @@
                 </td>
             </tr>
         </table>
-        
-        
+
+
         <!-- TRANSPORT CONTROLS -->
-        
+
         <table class="renderer_table" align='center'>
             <tr>
+
+				<!-- this to become the balance control, disabled if max_vol == 0 -->
+
                 <td class="play_button" align="left">
                     <input type="button"
                         id="renderer_button_unused2"
@@ -165,7 +174,7 @@
                 </td>
             </tr>
         </table>
-    
+
     </div>
 
 </div>  <!-- renderer_pane -->
@@ -180,7 +189,7 @@
         onclick='javascript:reset_timeouts()'>
 
     <!-- ALBUM INFO -->
-    
+
     <table width='100%'>
         <tr>
             <td width='3%' style='padding:0px;margin:0px;padding-left:10px; padding-top:3px;'>
@@ -202,7 +211,7 @@
                     align="left"
                     src="/webui/icons/artisan.png" >
             </td>
-            
+
             <td id="renderer_album_info_td">
                 <div id="renderer_full_album_info_div">
                     <p id="renderer_full_album_artist">Album Artist</p>
@@ -211,13 +220,12 @@
                     <p id="renderer_full_song_genre">DATE</p>
                 </div>
             </td>
-            
-        </tr>
-    </table>    
-</div>
-    
-   
-    
-    
-<!-- END OF pane_renderer.html -->
 
+        </tr>
+    </table>
+</div>
+
+
+
+
+<!-- END OF pane_renderer.html -->

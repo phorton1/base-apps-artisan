@@ -1,132 +1,133 @@
 #!/usr/bin/perl
-
 #---------------------------------------
 # artisan.pm
 #---------------------------------------
-# A pure perl implementation of an Artisan server.
-# This file is the app.  All other perl files in this
-# folder are also used in the windows App, which is a
-# superset of this application.
-#
-# As a mimimum, this pure-perl app is a faceless Artisan
-# Playback device associated with a static (read-only)
-# Local Library.
-#
-# It has no Local Renderer.
-#
-# As a faceless Playback device, it must be associated
-# with a DLNA Renderer in order to play music, and is
-# only really useful if there is a UI to it.
-#
-# There are preferences that allow automatically
-# connecting to a previous (given) DLNA render, and starting
-# a previous (given) Playlist, so technically
-# speaking, a UI is not really required, but nonetheless,
-# by default it presents a webUI Surface (currently this
-# surface is implemented at a low level separate from the
-# proposed Surface Server. Hopefully the webUI surface can
-# be implemented in terms of the Surface Server).
-#
-# If there is no database found, a scan will be performed.
-# But otherwise, by default, no scan is performed on startup.
-# There is a preference to SCAN_LIBRARY_ON_STARTUP.
-#
-# There is also an preference to start a DLNA Server.
-# The DLNA Server is really an SSDP Server with support
-# in the HTTP Server,.
-
 
 package artisan;
 use strict;
 use warnings;
 use threads;
 use threads::shared;
+use Error qw(:try);
 use artisanUtils;
 use artisanPrefs;
-use Database;
-use HTTPServer;
-use HTTPStream;
 use SSDP;
-use Library;
-use WebUI;
-use Playlist;
-use artisanInit;
-
-# use Daemon;
-# some work needed to make this a real service
-
-our $ssdp;
-
-
-#-------------------------------------------------------------------------------
-# Start Servers, etc
-#-------------------------------------------------------------------------------
-
-start_artisan();
-	# encapsulates program startup with ini file
-	# in artisanInit.pm
-
-
-#-------------------------------------------------------------------------------
-# FALL THRU TO main()
-#-------------------------------------------------------------------------------
-
+use HTTPServer;
+use Database;
+use DatabaseMain;
+use DeviceManager;
+use localRenderer;
+use localLibrary;
+use localPLSource;
 use sigtrap 'handler', \&onSignal, 'normal-signals';
-    # $SIG{INT} = \&onSignal; only catches ^c
+
+
+my $dbg_main = 0;
+
+
+$program_name = 'Artisan Perl';
+$HTTPServer::SINGLE_THREAD=1;
+
 
 sub onSignal
 {
     my ($sig) = @_;
-    LOG(0,"artisan.pm terminating on SIG$sig");
-	end_app();
+    LOG(-1,"main terminating on SIG$sig");
+    kill 6,$$;
 }
 
-display(0,0,"$program_name Started!!");
-dbg_mem(0,"entering endless loop");
 
+#----------------------------------------
+# main
+#----------------------------------------
+
+display($dbg_main,0,"starting $program_name");
+
+
+# (0) static initialization from prefs/cache
 
 if (0)
 {
-	# the program is aborted if any key is pressed
-	# if any key is pressed ...
-
-	display(0,0,"Hit any key to Quit the Server ...");
-	getc();
-	LOG(0,"Aborted via keystroke");
+	artisanPrefs::static_init_prefs();
+	DeviceManager::init_device_cache();
 }
-else
+
+
+# (1) LIBRARY
+
+db_initialize();
+display($dbg_main,0,"Scanning Library ...");
+DatabaseMain::scanTree();
+display($dbg_main,0,"Finished Scanning Library");
+
+# (2) Create Local devices
+
+addDevice(new localLibrary());
+addDevice(new localRenderer());
+addDevice(new localPLSource());
+$local_plsource->initPlaylists();
+
+
+# (3) HTTP SERVER - establishes $server_ip
+
+display($dbg_main,0,"Starting HTTP Server ....)");
+my $thread2 = threads->create('HTTPServer::start_webserver');
+$thread2->detach();
+display($dbg_main,0,"HTTP Server Started");
+
+# (4) SSDP SERVER
+
+display($dbg_main,0,"Starting SSDP Server");
+my $ssdp = SSDP->new();
+display($dbg_main,0,"SSDP Server Started");
+
+
+# if (0)   # start the Renderer monitor thread
+# {
+# 	display(0,0,"Starting Renderer Monitor ...");
+# 	my $monitor_thread = threads->create('Renderer::auto_update_thread');
+# 	if (!$monitor_thread)
+# 	{
+# 		error("Could not create Renderer auto_update thread");
+# 	}
+# 	else
+# 	{
+# 		$monitor_thread->detach();
+# 		display(0,0,"Renderer Monitor Started");
+# 	}
+# }
+#
+# if (artisanPrefs::getPreference($PREF_USE_PREVIOUS_RENDERER) &&
+# 	(my $id = artisanPrefs::getPreference($PREF_PREVIOUS_RENDERER)))
+# {
+# 	display(0,0,"Selecting Startup Renderer: $id");
+# 	Renderer::selectRenderer($id);
+# }
+
+
+
+while (1)
 {
-	# or process an endless loop and allow
-	# webui to terminate the program
+AFTER_EXCEPTION:
 
-	my $webui_aborted = 0;	# vestigal
-	while (!$webui_aborted)
+	try
 	{
-		sleep(3);
+		display($dbg_main+1,0,"main loop");
+		# display_hash(0,0,"mp",$mp);
+		sleep(4);
 	}
-	if ($webui_aborted)
+	catch Error with
 	{
-		LOG(0,"Aborted via web_ui");
-	}
+		my $ex = shift;   # the exception object
+		display($dbg_main,0,"exception: $ex");
+		error($ex);
+		my $msg = "!!! main() caught an exception !!!\n\n";
+		error($msg);
+		goto AFTER_EXCEPTION if (1);
+	};
 }
 
-
-#-----------------------------------
-# ENDING (Fall thru or onSignal)
-#-----------------------------------
-
-end_app();
-
-sub end_app
-{
-	$quitting = 1;
-	if ($ssdp)
-	{
-		$ssdp->send_byebye(1);
-	}
-	kill 6,$$;
-}
-
+display(0,0,"never gets here to end $program_name");
 
 
 1;

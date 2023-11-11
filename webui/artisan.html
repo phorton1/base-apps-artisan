@@ -14,7 +14,7 @@
     <script type="text/javascript" src="/webui/jquery/jquery.touchSwipe.js"></script-->
     <script type="text/javascript" src="/webui/jquery/prh-jquery.ui-contextmenu.js"></script>
     <script type="text/javascript" src="/webui/artisan.js"></script>
-    <script type="text/javascript" src="/webui/renderer.js"></script>
+    <script type="text/javascript" src="/webui/home.js"></script>
     <script type="text/javascript" src="/webui/explorer.js"></script>
     <script type="text/javascript" src="/webui/playlist.js"></script>
 
@@ -22,36 +22,29 @@
     <!-- touch_enabled == media="(max-width:599px),(max-device-width:1599px)"-->
     <!-- intended to have bigger buttons, etc, on everything except the laptop -->
     <!-- and the laptop can see the big buttons under 600 in width -->
-    
+
     <link rel="stylesheet" type="text/css" href="/webui/jquery/jquery-ui-1.11.2.structure.css"/>
     <link rel="stylesheet" type="text/css" href="/webui/themes/artisan_jquery_black.css" />
     <link rel="stylesheet" type="text/css" href="/webui/themes/artisan_fancytree/ui.fancytree.css"/>
     <link rel="stylesheet" href="/webui/themes/artisan_fancytree/ui.fancytree.css?scale=32"
-        media="(max-width:599px),(max-device-width:1599px)"/>   
+        media="(max-width:599px),(max-device-width:1599px)"/>
 
 	<link rel="stylesheet" type="text/css" href="/webui/themes/artisan.css">
-	<link rel="stylesheet" type="text/css" href="/webui/themes/renderer.css">
+	<link rel="stylesheet" type="text/css" href="/webui/themes/home.css">
 	<link rel="stylesheet" type="text/css" href="/webui/themes/explorer.css">
-    <link rel="stylesheet" type="text/css" href="/webui/themes/artisan_black.css" />        
+    <link rel="stylesheet" type="text/css" href="/webui/themes/artisan_black.css" />
     <link rel="stylesheet" type="text/css" href="/webui/themes/artisan_touch.css"
-        media="(max-width:599px),(max-device-width:1599px)"/>   
+        media="(max-width:599px),(max-device-width:1599px)"/>
 
 </head>
 
 <body>
 
     <div id='artisan_body'>
-        <!-- include page_renderer.html -->
+        <!-- include page_home.html -->
         <!-- include page_explorer.html -->
     </div>
 
-    <div id='popup_input_div'>
-        <h3 id='popup_input_title'>TITLE</h3>
-        <input type='text' id='popup_input_numeric'>
-        &nbsp; &nbsp; &nbsp;
-        <button id='cancel_input' onclick='javascript:cancel_popup_input()'>cancel</button>
-    </div>
-       
 </body>
 
 </html>

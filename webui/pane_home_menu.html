@@ -1,0 +1,71 @@
+<!-- pane_home_menu.html -->
+
+<div id="home_menu">
+
+   <h3>Playlists</h3>
+   <!-- data-load="/webui/renderer/get_playlists"
+		data-onload="onload_playlists" -->
+   <div
+       id="playlists"
+       >
+       playlists not loaded!
+   </div>
+
+    <h3>Renderers</h3>
+    <div
+        id="renderers"
+ 	    data-load="/webui/getDevicesHTML/renderers"
+        data-onload="onload_renderers">
+        renderers not loaded!!
+    </div>
+
+    <h3>Libraries</h3>
+    <div
+        id="libraries"
+ 	    data-load="/webui/getDevicesHTML/libraries"
+        data-onload="onload_libraries">
+        libraries not loaded!!
+    </div>
+
+    <h3>PL Sources</h3>
+    <div
+        id="plsources"
+ 	    data-load="/webui/getDevicesHTML/plsources"
+        data-onload="onload_plsources">
+        plsources not loaded!!
+    </div>
+
+
+    <h3>Preferences</h3>
+    <div id="prefs_div" class="home_menu_list">
+
+        <div id='pref_div'
+             class='pref_div'
+             style='width:100%'>
+            <h3 class='pref_title'>Explorer Mode</h3>
+            <div class='pref_control_div pref_value'>
+                value:
+                <input
+                    type='text'
+                    id='pref_error_mode'
+                    class='popup_numeric_pref'
+                    title='Error Display Mode'
+                    style='width:40px;'
+                    value='0' />
+            </div>
+            <p class='pref_descrip'>
+                Determines what error error icon
+                shows in the explorer tree. Set
+                to 0 to show only the highest
+                track error, 1 to show only the
+                highest folder error, or 2 to
+                show the highest of either.
+            </p>
+        </div>
+
+    </div>
+
+</div>
+
+
+`

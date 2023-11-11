@@ -54,7 +54,7 @@ sub getContainingPath
 sub mimeType
 {
 	my ($this) = @_;
-	return Library::mimeType($this->{type});
+	return DatabaseMain::myMimeType($this->{type});
 }
 
 
@@ -86,7 +86,7 @@ sub new
 	bless $this,$class;
 	return $this;
 }
-		
+
 
 sub newFromHash
 	# error if no id provided
@@ -148,7 +148,7 @@ sub insert
 		error("attempt to insert track without an id!!");
 		return;
 	}
-	
+
 	if (insert_record_db($dbh,'tracks',$this))
 	{
 		$this->{dirty} = 0;
@@ -161,9 +161,9 @@ sub insert
 	}
 	return $this;
 }
-	
-	
-	
+
+
+
 sub save
 	# returns 1=ok, 2=updated, 3=inserted
 {
@@ -215,10 +215,10 @@ sub getDidl
 	my $pretty_duration = millis_to_duration($this->{duration},1);
 	my $art_uri = $this->{has_art} & 1 ?
 		"http://$server_ip:$server_port/get_art/$this->{parent_id}/folder.jpg" : "";
-	my $mime_type = Library::mimeType($this->{type});
+	my $mime_type = DatabaseMain::myMimeType($this->{type});
 	my $url = "http://$server_ip:$server_port/media/$this->{id}.$this->{type}";
-	
-	
+
+
     my $didl = "";
 	$didl .= "<item id=\"$this->{id}\" parentID=\"$this->{parent_id}\" restricted=\"1\">";
     $didl .= "<dc:title>".encode_xml($this->{title})."</dc:title>";
@@ -234,10 +234,10 @@ sub getDidl
     # had to be careful with the <res> element, as
     # WDTVLive did not work when there was whitespace (i.e. cr's)
     # in my template ... so note the >< are on the same line.
-	
+
 	my $bitrate = "";
 		# don't have this, so I deliver a blank
-	
+
     $didl .= "<res ";
     $didl .= "bitrate=\"$bitrate\" ";
     $didl .= "size=\"$this->{size}\" ";
@@ -245,7 +245,7 @@ sub getDidl
     $didl .= "protocolInfo=\"http-get:*:$mime_type:$dlna_stuff\" ";
     $didl .= ">$url</res>";
 	$didl .= "</item>";
-	
+
 	display($dbg_xml+1,0,"pre_didl=$didl");
 	$didl = encode_didl($didl);
 	display($dbg_xml+2,0,"didl=$didl");
@@ -253,7 +253,7 @@ sub getDidl
 }
 
 
-	
+
 
 
 #------------------------------------------------
@@ -266,7 +266,7 @@ sub get_dlna_stuff
 {
 	my ($this) = @_;
 	my $type = $this->{type};
-	my $mime_type = Library::mimeType($type);
+	my $mime_type = DatabaseMain::myMimeType($type);
 	my $contentfeatures = '';
 
     # $contentfeatures .= 'DLNA.ORG_PN=LPCM;' if $mime_type eq 'audio/L16';

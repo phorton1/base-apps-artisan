@@ -74,7 +74,7 @@ sub decode_text
             }
             else
             {
-                display(_clip $dbg_encode,1,"decoded_text=$val");
+                display($dbg_encode,1,"decoded_text="._lim($val,100));
                 $text = $val;  # Encode::encode('iso-8859-1',$val);
                 $text =~ s/\x00+$//;
             }

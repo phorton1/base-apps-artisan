@@ -128,6 +128,8 @@ use MP3TagList;
 # use y_MP$TagListWrite;
 
 
+my $dbg_mp3_info = 1;
+
 
 sub new
 	# Returns 0 for lack of information, or

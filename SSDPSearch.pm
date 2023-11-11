@@ -57,7 +57,7 @@ sub fix_url
 
 sub getDLNARenderers
     # Returns a hash by id (ip:port) of available DLNA Renderers,
-	# where each record has the below known fields.  
+	# where each record has the below known fields.
 {
 	my ($ua) = @_;
 	display($dbg_ssdp_search,0,"getDLNARenderers()");
@@ -66,7 +66,7 @@ sub getDLNARenderers
 	$ua ||= LWP::UserAgent->new();
 	my @dev_list = getUPNPDeviceDescriptionList('urn:schemas-upnp-org:device:MediaRenderer:1',$ua);
 	display($dbg_ssdp_search,1,"found ".scalar(@dev_list)." devices");
-	
+
 	for my $device_xml (@dev_list)
 	{
 		my $device = $device_xml->{device};
@@ -79,10 +79,10 @@ sub getDLNARenderers
 		my $id = "$device_xml->{ip}:$device_xml->{port}";
 		my $name = $device->{friendlyName};
 		display($dbg_ssdp_search,1,"found renderer(id=$id) '$name'");
-		
+
 		# create a record for the parsed object
 		# this record agrees exactly with Renderer.pm
-		
+
 		my $rec = {
 			id 			 => $id,
 			name 		 => $name,
@@ -92,9 +92,9 @@ sub getDLNARenderers
 			controlURL   => '',
 			maxVol       => 0,
 			canMute      => 0,
-			
+
 			# following are not set by this code
-			
+
 			canLoud      => 0,
 			maxBal       => 0,
 			maxFade      => 0,
@@ -106,11 +106,11 @@ sub getDLNARenderers
 		# loop thru the services to find the
 		# AVTransport and RenderingControl services
 		# and save their urls into the params.
-		
+
 		my $service_list = $device->{serviceList};
 		my $services = $service_list->{service};
 		$services = [$services] if ref($services) !~ /ARRAY/;
-		
+
 		for my $service (@$services)
 		{
 			my $type = $service->{serviceType};
@@ -128,7 +128,7 @@ sub getDLNARenderers
 		# Done with loop, give error if either url is missing.
 		# But allow client to decide if they want to use it or not.
 		# See Renderer::getRenderers().
-		
+
 		if (!$rec->{controlURL})
 		{
 			error("Could not find RenderingControl controlURL for renderer($name)");
@@ -137,17 +137,17 @@ sub getDLNARenderers
 		{
 			error("Could not find AVTransport transportURL for renderer($name)");
 		}
-		
+
 		# We're done.
 		# The client must normalize this list against the active renderer,
 		# and decide if they want to use any without avControlURLs
-		
+
 		$retval{$rec->{id}} = $rec;
 
 	}   # for every device
-    
+
     return \%retval;
-}                
+}
 
 
 
@@ -157,17 +157,17 @@ sub getSupportedControls
 	# whether the device supports Mute
 {
     my ($ua,$device_xml,$service,$rec) = @_;
-	
+
 	my $type = $service->{serviceType};
 	$type =~ s/^urn://;		# make it more readable
 	my $display_name = "service.$device_xml->{ip}:$device_xml->{port}-$type";
     display($dbg_ssdp_search,1,"getSupportedControls($display_name)");
-	
-	my $xml = getDeviceDescriptionFile($ua,$device_xml,$service);
+
+	my $xml = getServiceDescriptionFile($ua,$device_xml,$service);
 	return if !$xml;
- 
+
     # sanity checks
-    
+
     if ($xml->{actionList}->{action}->{GetMute} &&
         $xml->{actionList}->{action}->{SetMute})
     {
@@ -179,7 +179,7 @@ sub getSupportedControls
 	{
         display($dbg_ssdp_search,2,"cannot control Mute");
 	}
- 
+
     if ($xml->{actionList}->{action}->{GetVolume} &&
         $xml->{actionList}->{action}->{SetVolume})
     {
@@ -201,32 +201,32 @@ sub getServiceDescriptionFile
 	# get the Service Description, and return it as parse xml
 {
     my ($ua,$device_xml,$service) = @_;
-	
+
 	my $type = $service->{serviceType};
 	$type =~ s/^urn://;		# make it more readable
 	my $display_name = "service.$device_xml->{ip}:$device_xml->{port}-$type";
     display($dbg_ssdp_search+1,1,"getServiceDescriptionFile($display_name)");
 
 	# get the url, and get the content
-	
+
 	my $url = fix_url($service->{SCPDURL});
 	if (!$url)
 	{
 		error("Could not find SCPDURL for $display_name");
 		return;
 	}
-	
+
 	return getDescriptionFile($ua,"http://$device_xml->{ip}:$device_xml->{port}".$url,$display_name)
 }
-	
-	
+
+
 sub getDescriptionFile
 	# given an url to an xml file, get it, and parse
 {
 	my ($ua,$url,$display_name) = @_;
-    display($dbg_ssdp_search,1,"getDescriptionFile($display_name)");
+    display($dbg_ssdp_search,1,"getDescriptionFile($display_name) ua=$ua");
     display($dbg_ssdp_search+1,2,"url=$url");
-	
+
     my $response = $ua->get($url);
     if (!$response->is_success())
     {
@@ -237,9 +237,9 @@ sub getDescriptionFile
     my $content = $response->content();
 	dbg_dump($content,$display_name.".txt.xml");
 	dbg_dump_xml($content,$display_name.".xml");
-	
-	# parse it into xml    
-	
+
+	# parse it into xml
+
     my $xml;
 	my $xmlsimple = XML::Simple->new();
     eval { $xml = $xmlsimple->XMLin($content) };
@@ -255,8 +255,8 @@ sub getDescriptionFile
 	}
 	return $xml;
 }
-	
- 
+
+
 
 
 #--------------------------------------------
@@ -276,9 +276,10 @@ sub getUPNPDeviceDescriptionList
 		# ssdp:all (find everything)
 		# ssdp:discover (find root devices)
 		# urn:schemas-upnp-org:device:MediaRenderer:1 (DLNA Renderers)
-		
-    display($dbg_ssdp_search,0,"getUPNPDeviceList()");
+
 	$ua ||= LWP::UserAgent->new();
+    display($dbg_ssdp_search,0,"getUPNPDeviceList() ua=$ua");
+
 	my $device_replies = getUPNPDeviceList($search_device,$ua,$include_re,$exclude_re);
     #----------------------------------------------------------
     # for each found device, get it's device description
@@ -290,9 +291,9 @@ sub getUPNPDeviceDescriptionList
     {
 		my $url = $rec->{url};
 		my $device_name = $rec->{st};
-	    display($dbg_ssdp_search,1,"getting services($device_name)");
+	    display($dbg_ssdp_search,1,"getting services($device_name)  ua=$ua");
 		display($dbg_ssdp_search+1,2,"url=$url");
-		
+
 		if ($url !~ m/http:\/\/([0-9a-z.]+)[:]*([0-9]*)\/(.*)/i)
 		{
 			error("ill formed device url: $url");
@@ -304,7 +305,7 @@ sub getUPNPDeviceDescriptionList
 		my $display_name = "device.$ip.$port-$device_name";
 
 		# get the xml
-		
+
 		my $xml = getDescriptionFile($ua,$url,$display_name);
 		next if !$xml;
 
@@ -313,7 +314,7 @@ sub getUPNPDeviceDescriptionList
 		$xml->{path} = $path;
 		$xml->{url} = $url;
 		push @dev_list,$xml;
-            
+
 		if (1)
 		{
 			for my $field (qw(
@@ -335,9 +336,9 @@ sub getUPNPDeviceDescriptionList
 
     return @dev_list;
 }
-	
-	
-	
+
+
+
 sub getUPNPDeviceList
     # Send out a general UPNP M-SEARCH, then get the
     # service description from each device that replies,
@@ -351,14 +352,14 @@ sub getUPNPDeviceList
 		# ssdp:all (find everything)
 		# ssdp:discover (find root devices)
 		# urn:schemas-upnp-org:device:MediaRenderer:1 (DLNA Renderers)
-		
+
     display($dbg_ssdp_search,0,"getUPNPDeviceList()");
 	$ua ||= LWP::UserAgent->new();
-    
+
     #------------------------------------------------
     # send the broadcast message
     #------------------------------------------------
-    
+
     my $mx = 3;   # number of seconds window is open for replies
     my $mcast_addr = $ssdp_group . ':' . $ssdp_port;
     my $ssdp_header = <<"SSDP_SEARCH_MSG";
@@ -388,8 +389,8 @@ SSDP_SEARCH_MSG
     }
 
     # add the socket to the correct IGMP multicast group
-    # and actually send the message. 
-    
+    # and actually send the message.
+
     _mcast_add( $sock, $mcast_addr );
     display($dbg_ssdp_search,1,"sending broadcast message");
     _mcast_send( $sock, $ssdp_header, $mcast_addr );
@@ -397,7 +398,7 @@ SSDP_SEARCH_MSG
     #------------------------------------------------------
     # loop thru replies to get list of matching devices
     #------------------------------------------------------
-    
+
     my @device_replies;
     my $sel = IO::Select->new($sock);
     while ( $sel->can_read( $mx ) )
@@ -410,7 +411,7 @@ SSDP_SEARCH_MSG
             error("no LOCATION found in SSDP message");
             next;
         }
-		
+
 		my $rec = { url => $1 };
 
 		if ((!$include_re || $rec->{url} =~ /$include_re/) &&
@@ -422,9 +423,9 @@ SSDP_SEARCH_MSG
 				$line =~ s/\s*$//g;
 				next if ($line eq '');
 				display($dbg_ssdp_search+2,3,$line);
-				
+
 				# only uuid records have usn: fields!!
-				
+
 				if ($line =~ /^st:(.*)$/i)
 				{
 					my $st = $1;
@@ -440,7 +441,7 @@ SSDP_SEARCH_MSG
     close $sock;
 	return  \@device_replies;
 }
-    
+
 
 
 
@@ -543,7 +544,7 @@ sub my_parse_xml
 	my ($data) = @_;
 	$data =~ s/\n/ /sg;
 	$data =~ s/^\s*//;
-	
+
 	my $level = 0;
 	my $retval = '';
 
@@ -553,7 +554,7 @@ sub my_parse_xml
 		my $token = $2;
 		$retval .= $text if length($text);
 		$data =~ s/^\s*//;
-		
+
 		my $closure = $token =~ /^\// ? 1 : 0;
 		my $self_contained = $token =~ /\/$/ ? 1 : 0;
 		my $text_follows = $data =~ /^</ ? 0 : 1;
@@ -562,7 +563,7 @@ sub my_parse_xml
 		$retval .= indent($level) if !length($text);  # if !$closure;
 		$retval .= "<".$token.">";
 		$retval .= "\n" if !$text_follows || $closure;
-		
+
 		$level++ if !$self_contained && !$closure && $token !~ /^.xml/;
 	}
 	return $retval;
@@ -589,11 +590,11 @@ sub dbg_devices
 	$include_re ||= '';
 	$exclude_re ||= '';
 	display(0,0,"dbg_devices($ssdp_search,$include_re,$exclude_re)");
-	
+
 	my $ua = LWP::UserAgent->new();
 	my @dev_list = getUPNPDeviceDescriptionList($ssdp_search,$ua,$include_re,$exclude_re);
 	display($dbg_ssdp_search,1,"found ".scalar(@dev_list)." devices");
-	
+
 	for my $device_xml (@dev_list)
 	{
 		my $device = $device_xml->{device};
@@ -602,11 +603,11 @@ sub dbg_devices
 		$device_type =~ s/^urn://;
 		my $display_name = "$device_xml->{ip}:$device_xml->{port}-$device_type";
 		display($dbg_ssdp_search+1,1,"checking device $display_name=$name");
-		
+
 		my $service_list = $device->{serviceList};
 		my $services = $service_list->{service};
 		$services = [$services] if ref($services) !~ /ARRAY/;
-		
+
 		for my $service (@$services)
 		{
 			my $service_type = $service->{serviceType};
@@ -617,9 +618,9 @@ sub dbg_devices
 	}
 	display(0,0,"dbg_devices() finished");
 }
-			
-			
-			
+
+
+
 sub dbg_get_and_group_devices
 	# group services that share a common description file
 	# returns a hash that contains records ...
@@ -645,8 +646,8 @@ sub dbg_get_and_group_devices
 	}
 	return \%hash;
 }
-			
-			
+
+
 sub dbg_compare_devices
 {
 	my ($name1,$include_re1,$name2,$include_re2) = @_;
@@ -667,8 +668,8 @@ if (0)	# obsolete
 {
 	# example code to get a list of active IP numbers (no other information)
 	# Could perhaps be used to verify that $server_ip is available
-	# local-host 
-	
+	# local-host
+
 	my ($name,$aliases,$addrtype,$length,@addrs) = gethostbyname('localhost');
 	display(0,0,"name=$name");
 	foreach my $addr (@addrs)
@@ -676,9 +677,9 @@ if (0)	# obsolete
 		my $ip = join('.', unpack('C4', $addr));
 		display(0,1,"ip=$ip");
 	}
-	
+
 	# by machine name
-	
+
 	($name,$aliases,$addrtype,$length,@addrs) = gethostbyname($name);
 	foreach my $addr (@addrs)
 	{

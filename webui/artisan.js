@@ -5,7 +5,7 @@
 // same is not true on desktop clientWidth<innerWidth<=screen.width
 // window.innerHeight < or = screen.height in general
 //
-// tablet 600 x 1024  
+// tablet 600 x 1024
 // desktop 1600 x 900
 // car_stereo 534 x 320
 //
@@ -19,230 +19,224 @@ var debug_level = 0;
 var dbg_load 	 = 0;
 var dbg_layout 	 = 0;
 var dbg_popup 	 = 1;
-var dbg_renderer = 0;
-var dbg_explorer = 1;
 var dbg_loop     = 1;
 
+var current_renderer = false;
+var current_library = false;
+var current_plsource = false;
 
 var WITH_SWIPE = true;
-	// support for swiping open side panes
-
-
-var idle_count = 0;
 var REFRESH_TIME = 600;
 
-
-var default_page = 'renderer';
-	// the default page loaded at startup 
+var default_page = 'home';
 var current_page = ''
-	// the currently loaded page
-	// found in '/webui/page_' + current_page + '.html'
 var page_layouts = {};
-	// and hash of page layouts
 
-// numbers from preferences
-// timeouts have counters and state bit
 
-var explorer_mode = 0; // getCookie('explorer_mode') || 0;
-
+var explorer_mode = 0;
 var autoclose_timeout = 0;
 var autofull_timeout = 0;
-
 var autoclose_count = 0;
 var autofull_count = 0;
 var autofull = false;
 var idle_timer = null;
+var idle_count = 0;
 
 display(dbg_load,0,"artisan.js loaded");
 
-	
-function get_explorer_mode()
-{
-	return explorer_mode;
-}
 
 
-var that;
-
-
-//-----------------------------------------------
-// INITIALIZATION
-//-----------------------------------------------
-// And main application Page Loading Logic
+//========================================================
+// Main
+//========================================================
 
 $(function()
 {
-	that = this;
-	
-	display(dbg_load,0,"$() ready function called");
-	
-	// get cookie preferences
-	
-	explorer_mode = getCookie('explorer_mode') || 0;	
+	display(dbg_load,0,"START LOADING ARTISAN");
+
+	explorer_mode = getCookie('explorer_mode') || 0;
 	autoclose_timeout = parseInt(getCookie('autoclose_timeout') || 0);
 	autofull_timeout = parseInt(getCookie('autofull_timeout') || 0);
 	default_renderer_name = getCookie('default_renderer_name')
-	// Zdisplay(dbg_load,0,"default_renderer=" + default_renderer_id + ":'" + default_renderer_name + "'");
-	
+
 	$('.artisan_menu_table').buttonset();
 	$('#context_menu_div').buttonset();
-	init_popup_editors();
 
-	// load the default page and
-	// start the application idle loop
-	
+	load_page("home");
 	load_page("explorer");
-	load_page("renderer");
-	//load_page(default_page);
-	
-	//	idle_loop
-	
-	setTimeout(idle_loop, REFRESH_TIME);
 
+	setTimeout(idle_loop, REFRESH_TIME);
+	set_page(default_page);
+
+	display(dbg_load,0,"FINISHED LOADING ARTISAN");
 });
 
 
-//---------------------------------------------
-// idle loop and window timeouts
-//---------------------------------------------
+
+$( window ).resize(function()
+{
+	display(dbg_layout,0,"$(window) resize(" + current_page + ") called");
+	resize_layout(current_page);
+});
 
 
 function idle_loop()
 {
 	display(dbg_loop,0,"idle_loop(" + current_page + ")");
 	idle_count++;
-	
-	if (current_page == 'renderer')
+
+	if (current_page == 'home')
 	{
 		display(dbg_loop,1,"idle_loop() calling renderer_pane_onidle()");
-		renderer_pane_onidle();
+		update_renderer_onidle();
 		display(dbg_loop,1,"idle_loop() back from renderer_pane_onidle()");
 	}
-	
+
 	if (false)	// crashes
 	{
 		check_timeouts();
 	}
-		
-	
+
+
 	display(dbg_loop,1,"idle_loop() settingTimeout");
 	setTimeout("idle_loop();", REFRESH_TIME);
 
-}	// monitor_loop
+}	// idle_loop
 
 
-
-function reset_timeouts()
+function toggleFullScreen()
 {
-	display(dbg_layout,0,"reset_timeouts()");
-	update_autofull(false);
-	autoclose_count = 0;
-	autofull_count = 0;
+	var doc = window.document;
+	var docEl = doc.documentElement;
+	var requestFullScreen =
+		docEl.requestFullscreen ||
+		docEl.mozRequestFullScreen ||
+		docEl.webkitRequestFullscreen ||
+		docEl.msRequestFullscreen;
+	var cancelFullScreen =
+		doc.exitFullscreen ||
+		doc.mozCancelFullScreen ||
+		doc.webkitExitFullscreen ||
+		doc.msExitFullscreen;
+	if(!doc.fullscreenElement &&
+	   !doc.mozFullScreenElement &&
+	   !doc.webkitFullscreenElement &&
+	   !doc.msFullscreenElement)
+	{
+		requestFullScreen.call(docEl);
+	}
+	else
+	{
+		cancelFullScreen.call(doc);
+	}
+
+	hide_layout_panes();
 }
 
 
+//------------------------------------------------
+// setCurrentPage
+//------------------------------------------------
 
-function check_timeouts()
+function set_page(page_id)	// ,context)
 {
-	if (autoclose_timeout > 0)
-	{
-		autoclose_count++;
-		if (autoclose_count == autoclose_timeout)
-		{
-			hide_context_menu();
-			hide_layout_panes();
-		}
-	}
-	if (autofull_timeout > 0)
-	{
-		autofull_count++;
-		if (autofull_count == autofull_timeout)
-		{
-			update_autofull(true);
-		}
-	}
-}
-
-
-function update_autofull(value)
-{
-	if (autofull != value)
-	{
-		autofull = value;
-		if (current_page == 'renderer')
-		{
-			on_renderer_autofull_changed();
-		}
-	}
-}
-
-
-
-//-------------------------------------------------------
-// page loading and sizing
-//-------------------------------------------------------
-
-
-
-function load_page(page_id,context)
-{
-	display(dbg_load,0,"load_page(" + page_id + ") context=" + context);
+	display(dbg_load,0,"set_page(" + page_id + ")");	//  context=" + context);
 	if (current_page != '')
 	{
 		$('#' + current_page + '_page').css('display','none');
 	}
-	
+
 	current_page = page_id;
 	$('#' + current_page + '_page').css('display','block');
-	
 
-	if (!page_layouts[current_page].loaded)
-	{
-		loadRecursive($('#' + current_page + '_page'));
-        
-		set_popup_editors();
-        
-		var init_fxn = 'init_page_' + page_id;
-		display(dbg_load,0,"init_fxn=" + init_fxn);
-        
-		if (window[init_fxn])
-		{
-			window[init_fxn]();
-			display(dbg_load,0,"back from " + init_fxn + "()");
-		}
-		else
-		{
-			display(dbg_load,0,"INIT FXN NOT FOUND: " + init_fxn);
-		}
-		
+	// var context_fxn = 'set_context_' + page_id;
+	// if (context && context != '' && window[context_fxn])
+	// {
+	// 	display(0,0,'calling ' + context_fxn + '(' + context + ')');
+	// 	window[context_fxn](context);
+	// }
 
-		create_layout();
-		page_layouts[current_page].loaded = true;
-
-	}
-
-
-	var context_fxn = 'set_context_' + page_id;
-	if (context && context != '' && window[context_fxn])
-	{
-		display(0,0,'calling ' + context_fxn + '(' + context + ')');
-		window[context_fxn](context);
-	}
-	
 	reset_timeouts();
-	resize_layout();
+	resize_layout(current_page);
+	display(dbg_load,0,"set_page(" + page_id + ") returning");
+}
+
+
+
+//========================================================
+// Page Loading and Resizing
+//========================================================
+// loadRecursive() is called on each page loaded
+// into the artisan_body element by loadPage().
+//
+// data-load="url" attribute
+//
+//    Within a page, any element may specify a
+//    data=load attribute, in which case it's innerHTML
+//    will be automagically loaded from the url.
+//
+// data-onload='javascript:function' attribute
+//
+//    If an element specifies an url, then it may also
+//    specify a javascript function that will be executed
+//    when that innerHTML has been loaded
+
+function load_page(page_id)
+{
+	display(dbg_load,0,"load_page(" + page_id + ")");
+
+	loadRecursive($('#' + page_id + '_page'));
+	create_layout(page_id);
+
+	var init_fxn = 'init_page_' + page_id;
+	display(dbg_load,0,"init_fxn=" + init_fxn);
+
+	if (window[init_fxn])
+	{
+		window[init_fxn]();
+		display(dbg_load,0,"back from " + init_fxn + "()");
+	}
+	else
+	{
+		display(dbg_load,0,"INIT FXN NOT FOUND: " + init_fxn);
+	}
+
 	display(dbg_load,0,"load_page(" + page_id + ") returning");
 
 }
 
 
-// first time == create
-	
-function create_layout()
+function loadRecursive(context,level)
+{
+	if (!level) level = 0;
+	display(dbg_load,level,'loadRecursive(' + context.attr('id') + ')');
+
+    context.find('[data-load]').each(function() {
+		var url = $(this).attr('data-load');
+		var onload_fxn = $(this).attr('data-onload');
+
+		display(dbg_load,level,'--> onload url='+url);
+		display(dbg_load,level,'    onload fxn='+onload_fxn);
+
+		$(this).load( url, function()
+		{
+			loadRecursive($(this),level+1);
+			if (onload_fxn && onload_fxn != '' && window[onload_fxn])
+			{
+			    display(dbg_load,level,'    calling onload fxn='+onload_fxn);
+				window[onload_fxn]();
+			}
+		});
+    });
+}
+
+
+
+function create_layout(page_id)
 {
 	var width = window.innerWidth;
 	var height = window.innerHeight;
-	var page_layout = page_layouts[current_page];
+	var page_layout = page_layouts[page_id];
 	var params = $.extend({
 		applyDemoStyles: true,
 		}, page_layout.defaults);
@@ -252,16 +246,16 @@ function create_layout()
 	page_layout.width = width;
 	page_layout.height = height;
 	page_layout.touch_enabled = width<600 || screen.width != 1600 ? true : false;
-	
-	display(dbg_layout,0,'create_layout(' + current_page + ',' + width + ',' + height + ')');
-	
+
+	display(dbg_layout,0,'create_layout(' + page_id + ',' + width + ',' + height + ')');
+
 	create_layout_pane(page_layout,params,height,'north');
 	create_layout_pane(page_layout,params,width,'west');
 	create_layout_pane(page_layout,params,width,'east');
 	create_layout_pane(page_layout,params,height,'south');
-	
+
 	var layout = $(page_layout.layout_id).layout(params);
-	
+
 	if (WITH_SWIPE)
 	{
 		$(page_layout.swipe_element).swipe({
@@ -270,7 +264,9 @@ function create_layout()
 			maxTimeThreshold:1500});
 		$(page_layout.swipe_element).on('click',hide_layout_panes);
 	}
-    
+
+	// page_layout.loaded = true;
+
 }
 
 
@@ -288,7 +284,7 @@ function create_layout_pane(page_layout,params,value,pane)
 		params[pane + '__size'] = size;
 
 		// not needed if we call resize() anyways
-		
+
 		if (false)
 		{
 			var pane_hidden = value < pane_layout.limit ? true : false;
@@ -302,53 +298,35 @@ function create_layout_pane(page_layout,params,value,pane)
 }
 
 
-// thereafter == resize
 
-
-$( window ).resize(function()
-	// We hook the global window onresize function and
-	// call page specific versions in each page specific js file,
-	// which then setup the panes by calling set_pane_slider() as needed.
-{
-	display(dbg_layout,0,"$(window) resize(" + current_page + ") called");
-	resize_layout();
-});
-
-
-	
-function resize_layout()
+function resize_layout(page_id)
 {
 	var width = window.innerWidth;
 	var height = window.innerHeight;
 	display(dbg_layout,0,"resize_layout(" + width + ',' + height + ')');
 
-	var page_layout = page_layouts[current_page];
-	if (page_layout &&
-		page_layout.loaded
-		//&&
-		//(page_layout.width != width ||
-		// page_layout.height != height)
-		)
+	var page_layout = page_layouts[page_id];
+
+	// page_layout.loaded *might* be needed if the browser is resized
+	// before it the pages have loaded ...
+
+	if (page_layout) // && page_layout.loaded)
 	{
 		page_layout.width = width;
 		page_layout.height = height;
 		page_layout.touch_enabled = width<600 || screen.width != 1600 ? true : false;
-		var layout = $('#' + current_page + '_page').layout();
+		var layout = $('#' + page_id + '_page').layout();
 
 		display(dbg_layout,0,"resizing layout(" + width + ',' + height + ')');
-		
+
 		resize_layout_pane(layout,page_layout,height,'north');
 		resize_layout_pane(layout,page_layout,width,'west');
 		resize_layout_pane(layout,page_layout,width,'east');
 		resize_layout_pane(layout,page_layout,height,'south');
 
 		display(dbg_layout+1,0,"calling layout.resizeAll()");
-		
+
 		layout.resizeAll();
-
-		display(dbg_layout+1,0,"calling set_popup_editors()");
-
-		set_popup_editors();
 	}
 	display(dbg_load,0,"resizing layout(" + width + ',' + height + ') returning');
 }
@@ -373,9 +351,9 @@ function resize_layout_pane(layout,page_layout,value,pane)
 		if (value <= pane_layout.limit)
 		{
 			display(dbg_layout,2,'sizing pane as closed');
-			
+
 			// don't see the button to re-open it if Swiping
-			
+
 			layout.options[pane].slide = true;
 			layout.options[pane].spacing_closed = (WITH_SWIPE ? 0 : 6);
 			layout.close(pane);
@@ -410,19 +388,71 @@ function resize_layout_pane(layout,page_layout,value,pane)
 			}
 		}
 		display(dbg_layout,2,'resize_layout_pane(' + pane + ') returning');
-		
+
 	}	// if pane_layout
 }
 
 
-// pane utilities
+
+
+//------------------------------------------------------------------------
+// currently untested and unused auto-close, swipe, and autofull
+//------------------------------------------------------------------------
+// auto-closing windows
+
+function reset_timeouts()
+{
+	display(dbg_layout,0,"reset_timeouts()");
+	update_autofull(false);
+	autoclose_count = 0;
+	autofull_count = 0;
+}
+
+function check_timeouts()
+{
+	if (autoclose_timeout > 0)
+	{
+		autoclose_count++;
+		if (autoclose_count == autoclose_timeout)
+		{
+			hide_context_menu();
+			hide_layout_panes();
+		}
+	}
+	if (autofull_timeout > 0)
+	{
+		autofull_count++;
+		if (autofull_count == autofull_timeout)
+		{
+			update_autofull(true);
+		}
+	}
+}
+
+
+// autofull
+
+function update_autofull(value)
+{
+	if (autofull != value)
+	{
+		autofull = value;
+		if (current_page == 'renderer')
+		{
+			on_renderer_autofull_changed();
+		}
+	}
+}
+
+
+// swiping
 
 function hide_layout_panes()
 	// close it if it is showing and has slide option set
 {
 	return;
 		// crashing
-		
+
 	onchange_popup_numeric();
 
 	var layout = $('#' + current_page + '_page').layout();
@@ -431,8 +461,6 @@ function hide_layout_panes()
 	hide_layout_pane(layout,'east');
 	hide_layout_pane(layout,'south');
 }
-
-
 
 function hide_layout_pane(layout,pane)
 {
@@ -444,7 +472,6 @@ function hide_layout_pane(layout,pane)
 	}
 }
 
-
 function onswipe_page(event,direction)
 {
 	var layout = $('#' + current_page + '_page').layout();
@@ -453,8 +480,6 @@ function onswipe_page(event,direction)
 	onswipe_open_pane(direction,'down',layout,'north');
 	onswipe_open_pane(direction,'up',layout,'south');
 }
-
-
 
 function onswipe_open_pane(direction,cmp_direction,layout,pane)
 {
@@ -469,8 +494,6 @@ function onswipe_open_pane(direction,cmp_direction,layout,pane)
 		layout.slideClose(pane);
 	}
 }
-
-
 
 function open_pane(pane)
 {
@@ -488,125 +511,11 @@ function open_pane(pane)
 
 
 
-
-//-------------------------------------------
-// loadRecursive
-//-------------------------------------------
-// Recursive loading of html and javascript.
-//
-// loadRecursive() is called on each page loaded
-// into the artisan_body element by loadPage().
-//
-// data-load="url" attribute
-//
-//    Within a page, any element may specify a
-//    data=load attribute, in which case it's innerHTML
-//    will be automagically loaded from the url.
-//
-// data-onload='javascript:function' attribute
-//
-//    An element may also specify a javascript function that
-//    will be executed when that innerHTML has been loaded
-//    by specifying a data-onloadattribute.
-//
-// The recursive load then continues gathering
-// all the items with data-load attributes on
-// subsequently loaded html chunks and recurses to
-// load the entire tree.
-//
-// Although the onload() functions *could* be presented
-// as inline-javascript, or as <script src=> calls
-// in the loaded html, for debugging with firebug,
-// it is better if all javascript is statically loaded
-// with the inital actual html page.
-//
-// So we take this approach, and in this UI, ALL
-// JAVASCRIPT IS STATICALLY INCLUDED IN THE MAIN PAGE
-// and dynamic data-onload() functions are used to
-// provide "just in time" initialization of freshly
-// loaded html pages.
-//
-// $(function() { loadRecursive($(this)); });
-//
-//    loadRecursive()*could* be called on the main
-//    page of a website (the html file that includes
-//    this javascript), in which case it would look
-//    at all the elements on the page and recursively
-//    load them.  But for artisan, the main page does
-//    not contain any data-load attributes ... those
-//    are on the pages that are atually loaded into
-//    the artisan body.
-
-
-function loadRecursive(context,level)
-{
-	if (!level)
-	{
-		level = 0;
-	}
-	
-	display(dbg_load,level,'loadRecursive(' + context.attr('id') + ')');
-	
-    context.find('[data-load]').each(function() {
-		var url = $(this).attr('data-load');
-		var onload_fxn = $(this).attr('data-onload');
-
-		display(dbg_load,level,'--> onload url='+url);
-		display(dbg_load,level,'    onload fxn='+onload_fxn);
-		
-		$(this).load( url, function()
-		{
-			loadRecursive($(this),level+1);
-			if (onload_fxn && onload_fxn != '' && window[onload_fxn])
-			{
-			    display(dbg_load,level,'    calling onload fxn='+onload_fxn);
-				window[onload_fxn]();
-			}
-		});
-    });
-}
-
-
-
-//--------------------------------------
-// fullscreen mode
-//--------------------------------------
-
-function toggleFullScreen()
-{
-	var doc = window.document;
-	var docEl = doc.documentElement;
-	var requestFullScreen =
-		docEl.requestFullscreen ||
-		docEl.mozRequestFullScreen ||
-		docEl.webkitRequestFullscreen ||
-		docEl.msRequestFullscreen;
-	var cancelFullScreen =
-		doc.exitFullscreen ||
-		doc.mozCancelFullScreen ||
-		doc.webkitExitFullscreen ||
-		doc.msExitFullscreen;
-	if(!doc.fullscreenElement &&
-	   !doc.mozFullScreenElement &&
-	   !doc.webkitFullscreenElement &&
-	   !doc.msFullscreenElement)
-	{
-		requestFullScreen.call(docEl);
-	}
-	else
-	{
-		cancelFullScreen.call(doc);
-	}
-	
-	hide_layout_panes();	
-}   
-
-
 //--------------------------------------
 // DOM utilities
 //--------------------------------------
 
-function ele_set_display(id,value)
+function unused_ele_set_display(id,value)
 {
 	var ele = document.getElementById(id);
 	if (ele)
@@ -616,7 +525,7 @@ function ele_set_display(id,value)
 }
 
 
-function ele_set_inner_html(id,html)
+function ele_set_inner_html(id,html)	// used a lot
 {
 	var ele = document.getElementById(id);
 	if (ele)
@@ -626,7 +535,7 @@ function ele_set_inner_html(id,html)
 }
 
 
-function ele_set_value(id,value)
+function ele_set_value(id,value)	// used once
 {
 	var ele = document.getElementById(id);
 	if (ele)
@@ -635,7 +544,7 @@ function ele_set_value(id,value)
 	}
 }
 
-function ele_set_src(id,src)
+function ele_set_src(id,src)	//  used twice
 {
 	var ele = document.getElementById(id);
 	if (ele)
@@ -644,7 +553,7 @@ function ele_set_src(id,src)
 	}
 }
 
-function ele_get_src(id)
+function ele_get_src(id)	//  used twice
 {
 	var src = '';
 	var ele = document.getElementById(id);
@@ -656,7 +565,7 @@ function ele_get_src(id)
 }
 
 
-function ele_set_class(id,className)
+function unused_ele_set_class(id,className)
 {
 	var ele = document.getElementById(id);
 	if (ele)
@@ -695,7 +604,7 @@ function display(level,indent,msg)
 function decode_ampersands(encoded)
 	// convert strings with double escaped ampersands
 	// into the actual display string. This *should*
-	// be safe to call multiple times ... 
+	// be safe to call multiple times ...
 {
 	var div = document.createElement('div');
 	div.innerHTML = encoded;
@@ -710,7 +619,7 @@ function unused_loadCSS(href)
 {
 	var cssLink = $("<link>");
 	$("head").append(cssLink); //IE hack: append before setting href
-	
+
 	cssLink.attr({
 		rel:  "stylesheet",
 		type: "text/css",
@@ -727,8 +636,8 @@ function setCookie(cname, cvalue, exdays)
 {
     var d = new Date();
     d.setTime(d.getTime() + (exdays*24*60*60*1000));
-    var expires = "expires="+d.toUTCString();
-    document.cookie = cname + "=" + cvalue + "; " + expires;
+    var expires = "expires="+d.toUTCString() + ";";
+    document.cookie = cname + "=" + cvalue + ";" + expires + "SameSite=Strict;";
 }
 
 function getCookie(cname)
@@ -745,195 +654,19 @@ function getCookie(cname)
 
 
 
-//----------------------------------------------------
-// popup editor for stupid android keyboard
-//----------------------------------------------------
-// it's complicated.
-//
-// client controls call create_numeric_pref
-// to both create their own spinner, and to
-// hook it up to a pref, AND to hook it up
-// to the popup editor.
-//
-// onclick calls popup_input_numeric() which
-// checks if we're in the car stereo version
-// (and which would be better based on an
-// android-specific useragent), and if so,
-// pops up the hidden div, sets the control value,
-// and puts the focus on the control.
-//
-// We then check for a variety of ending
-// conditions .. if the control loses focus,
-// it's 'change' method is called.  Or we
-// might get a chr(13) if they press 'go'
-// on the android keyboard. We also call
-// onchange_popup_numeric() if somebody
-// calls hide_layout_panes() due to a
-// click on a body.
-//
-// onchange_popup_numeric() then moves
-// the value from the control back to
-// the underlying spinner, hides the
-// popup_input_div, and blurs the control
-// so-as to lose focus (and get rid of
-// the android keyboard).
-
-
-function create_numeric_pref(min,med,max,var_name,spinner_id)
-{
-	display(dbg_layout,0,"create_numeric_pref(" + min + ',' + med + ',' + max + ',' + var_name + ',' + spinner_id + ")");
-
-	$(spinner_id).spinner({
-		width:20,
-		min:min,
-		max:max,
-		change: function(event, ui)
-		{
-			var value = parseInt($(this).spinner('value'));
-			window[var_name] = value;
-			setCookie(var_name,value,180);
-			if (false && var_name == 'explorer_mode')
-			{
-				var tree = $('#explorer_tree').fancytree('getTree');
-				tree.reload({
-					url: "/webui/explorer/dir",
-					data: {mode:explorer_mode},
-					cache: false,
-				}); 
-			}
-		},
-	});
-	
-	var value = window[var_name];
-	$(spinner_id).spinner('value',value);
-}
-
-
-
-
-
-//--------------------------
-// private
-//--------------------------
-
-var popup_input = false;
-var initial_value;
-
-
-function init_popup_editors()
-{
-	$('#popup_input_div').buttonset();
-	$('#popup_input_numeric').spinner({
-		change: onchange_popup_numeric, });
-	$('#popup_input_numeric').on('keydown',
-		onkeydown_popup_numeric);
-}
-
-
-function set_popup_editors()
-	// called from window resize
-	// hooks up or turns off the click handler
-{
-	var page_layout = page_layouts[current_page];
-	if (page_layout && page_layout.touch_enabled)
-	{
-		$('.popup_numeric_pref').on('click',function(event, ui) {
-			popup_input_numeric($(this)); });
-	}
-	else
-	{
-		$('.popup_numeric_pref').off('click');
-	}
-}
-	
-
-
-function onkeydown_popup_numeric(event)
-{
-	display(dbg_popup+1,0,"onkeydown(" + event.keyCode + ")");
-	if (event.keyCode == 13)
-	{
-		onchange_popup_numeric();
-	}		
-}
-
-
-function onchange_popup_numeric(event,ui)
-{
-	display(dbg_popup,0,"onchange_popup_numeric(" + popup_input + ")");
-	
-	if (popup_input)
-	{
-		var val = $('#popup_input_numeric').spinner('value');
-		display(dbg_popup,1,"val=" + val);
-
-		popup_input.spinner('value',val);
-		$('#popup_input_div').css('display','none');
-		
-		popup_input = false;
-		$('#popup_input_numeric').on('blur');
-
-	}
-}
-
-
-
-function popup_input_numeric(input)
-{
-	var page_layout = page_layouts[current_page];
-	if (page_layout && page_layout.touch_enabled)
-	{
-		autoclose_count = -1;
-			// turn off the autoclose counter
-			// try to keep the prefs window open
-		
-		display(dbg_popup,0,"popup_input_numeric(" + input.attr('title') + ")");
-	
-		$('#popup_input_div').css('display','block');
-		$('#popup_input_title').text(input.attr('title'));
-		
-		var val = input.spinner('value');
-		var min = input.spinner('option','min');
-		var max = input.spinner('option','max');
-		display(dbg_popup,1,"val="+val + " min="+min + " max="+max);
-		initial_value = val;
-		
-		$('#popup_input_numeric').spinner('value',val);
-		$('#popup_input_numeric').spinner('option','min',min);
-		$('#popup_input_numeric').spinner('option','max',max);
-	
-		$('#popup_input_numeric').focus();
-		popup_input = input;
-	}
-	
-}
-
-
-
-function cancel_popup_input()
-{
-	if (popup_input)
-	{
-		$('#popup_input_numeric').spinner('value',initial_value);
-		onchange_popup_numeric();
-	}
-}
-
-
-//-------------------------------------
+//------------------------------------------------------------------------
 // context menu
-//-------------------------------------
-
+//------------------------------------------------------------------------
 
 function show_in_explorer(event)
 {
-	if (current_page == "renderer" &&
+	if (current_page == "home" &&
 		current_renderer &&
 		current_renderer.song_id &&
 		current_renderer.song_id != "")
 	{
 		ele_set_inner_html('renderer_header_left',"Showing current track in explorer...");
-		
+
 		load_page("explorer");
 		set_context_explorer(current_renderer.song_id);
 	}
@@ -956,9 +689,9 @@ function unused_show_context_menu(event)
 		x = event.clientX;
 		y = event.clientY;
 	}
-	
+
 	var fudge = 20;
-	
+
 	if (x + w + fudge > width)
 		{ x = width-w-fudge; }
 	if (y + h + fudge> height)
@@ -967,10 +700,10 @@ function unused_show_context_menu(event)
 		{ x=0; }
 	if (y<0)
 		{ y=0; }
-	
+
 	$('#context_menu_div').css('left',x);
 	$('#context_menu_div').css('top',y);
-	
+
 	$('#context_menu_div').css('display','block');
 
 }
@@ -981,12 +714,12 @@ function hide_context_menu()
 }
 
 function do_context_menu(page_id)
-{ 
+{
 	display(0,0,"do_context_menu(" + page_id + ")");
 	hide_context_menu();
-	
+
 	var context = '';
-	if (current_page == 'renderer')
+	if (current_page == 'home')
 	{
 		if (current_renderer && current_renderer.song_id != '')
 		{
@@ -994,12 +727,9 @@ function do_context_menu(page_id)
 		}
 	}
 
-	if (context)
-	{
-		load_page(page_id,context);
-	}
-		
+	// if (context)
+	// {
+	// 	load_page(page_id,context);
+	// }
+
 }
-
-                
-

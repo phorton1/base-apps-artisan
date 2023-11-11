@@ -9,121 +9,58 @@ var in_playlist_spinner = false;
 
 
 
-
-function onload_playlists()
-{
-	display(dbg_renderer,0,"onload_renderer_playlists()");
-    $('#renderer_playlists').buttonset();
-	
-}
-
-
-
-function init_playlists()
-{
-	init_playlist_info();
-}
-	
-	
-	
-
 function init_playlist_info()
 {
 	display(dbg_pl,0,"init_playlist_info(" + current_page + ")");
 	var use_id = '#playlist_info_';
-	
+
 	$( use_id + 'div' ).buttonset({
 		disabled:true,
 	});
-	
+
 	$( use_id + 'slider' ).slider({
-		
+
 		disabled:true,
-		
-		stop: function( event, ui ) {
-			if (current_renderer != null &&
-				current_renderer.playlist != null)
-			
-			playlist_set_info('track_index', ui.value);
-			in_playlist_slider
+
+		slide: function( event, ui ) {
+			$( use_id + 'track_num').spinner('value',ui.value);
 		},
 		start: function( event, ui ) {
 			in_playlist_slider = true;
 		},
-		slide: function( event, ui ) {
-			$( use_id + 'track_num').spinner('value',ui.value);
+		stop: function( event, ui ) {
+			playlist_song();
 		},
 	});
 
-	
 	$( use_id + 'track_num' ).spinner({
 		// disabled:true,
 		width:20,
 		min:0,
 		max:0,
-		
+
 		spin: function(event, ui) {
 			$( use_id + 'slider').slider('value',ui.value);
 		},
 		start: function( event, ui ) {
-				in_playlist_spinner	= true;
+			in_playlist_spinner	= true;
 		},
 		stop: function( event, ui ) {
-			if (!in_playlist_spinner)
-			{
-				in_playlist_spinner	= false;
-				var value = $( use_id + 'track_num').spinner('value');
-				playlist_set_info('track_index', value);
-			}
+			playlist_song();
 		},
 	});
-	
-	update_playlist_info_ui();
+
+	update_playlist_ui();
 
 }
 
 
 
-function playlist_set_info(field,value,obj)
+function playlist_song()
 {
-	if (obj)
-	{
-		obj.blur();
-	}
-	
-	var playlist = current_renderer ? current_renderer.playlist : null;
-	if (!playlist)
-	{
-		rerror("attempt to set shuffle('+shuffle+') without a playlist");
-		return false;
-	}
-	
-	if (field == 'shuffle')
-		ele_set_inner_html('renderer_header_left',"SHUFFLE Playlist " + playlist.name);
-
-	
-	
-	$.get('/webui/renderer/set_playlist_info' +
-		'?name=' + playlist.name +
-		'&field=' + field +
-		'&value=' + value,
-		
-		function(result)
-		{
-			in_playlist_slider = false;
-
-			if (result.error)
-			{
-				error('playlist_set_info('+what+','+value+'):' + result.error);
-				return false;
-			}
-			
-			playlist_set_info[field] = value;
-			hide_layout_panes();
-			return true;
-		});
-
-	return true;
+	var index = $('#playlist_info_track_num').spinner('value');
+	renderer_command('playlist_song?index='+index);
+	return true;		// I'm not sure return value is needed
 }
 
 
@@ -133,11 +70,11 @@ function playlist_set_info(field,value,obj)
 //------------------------------------------------------
 
 
-function update_playlist_info_ui()
+function update_playlist_ui()
 {
-	display(dbg_loop,0,"update_playlist_info_ui(" + current_page + ")");
+	display(dbg_loop,0,"update_playlist_ui(" + current_page + ")");
 	var use_id = '#playlist_info_';
- 
+
 	var show_num = 'No playlist selected';
 	var shuffle = 0;
 	var unplayed_first = false;
@@ -165,9 +102,9 @@ function update_playlist_info_ui()
 	$(use_id + 'shuffle_tracks').button({disabled:disable});
 	$(use_id + 'shuffle_albums').button({disabled:disable});
 	$(use_id + 'unplayed_first').button({disabled:disable});
-	
+
 	// set the values
-	
+
 	$(use_id + 'playlist_num').html(show_num);
 	$(use_id + 'shuffle_off').prop('checked',(shuffle==0)).button('refresh').blur();
 	$(use_id + 'shuffle_tracks').prop('checked',(shuffle==1)).button('refresh').blur();
@@ -179,14 +116,12 @@ function update_playlist_info_ui()
 
 	$(use_id + 'track_num').spinner('option','min',min_track);
 	$(use_id + 'track_num').spinner('option','max',num_tracks);
-	
+
 	if (!in_playlist_spinner &&
 		!in_playlist_slider)
 	{
 		$(use_id + 'slider').slider('value',track_num);
 		$(use_id + 'track_num').spinner('value',track_num);
 	}
-	display(dbg_loop,0,"update_playlist_info_ui(" + current_page + ") returning");
+	display(dbg_loop,0,"update_playlist_ui(" + current_page + ") returning");
 }
-
-

@@ -84,6 +84,8 @@ use artisanUtils;
 use MP3Vars;
 use MP3Encoding;
 
+my $dbg_mp3_tags = 1;
+
 our %formats;
     # The encode/decode formats for the tags
 

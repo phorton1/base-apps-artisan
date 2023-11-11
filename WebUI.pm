@@ -4,7 +4,7 @@
 # The webUI is a javascript application based
 # on the EasyUI and JQuery libraries.
 #
-# There is a single persistent page loaded into
+# There is a single persistent page loaded intos
 # the browser, artisan.html, that drives all other
 # requests.
 #
@@ -26,19 +26,17 @@ use threads;
 use threads::shared;
 use Date::Format;
 use artisanUtils;
-
-use Database;
-use MediaFile;
-use Library;
-use Playlist;
-use Renderer;
-
+use Device;
+use DeviceManager;
 use uiUtils;
-use uiExplorer;
-use uiRenderer;
+use uiLibrary;
+use uiPLSource;
 
-my $MIN_JS_CSS = 1;
-	# serve up .min file if they exist
+my $dbg_webui = 1;
+	# 0 = show basic calls
+	# -1 = show building of html files with js and css
+	# -2 = show fancytree scaling pct
+
 
 # reminder of the user agents from various devices
 
@@ -59,16 +57,16 @@ my $MIN_JS_CSS = 1;
 
 sub web_ui
 {
-	my ($get_param) = @_;  # ,$headers,$post_xml) = @_;
-	if ($get_param !~ /update/)
+	my ($path_with_query) = @_;  # ,$headers,$post_xml) = @_;
+	if ($path_with_query !~ /update/)
 	{
-		display($dbg_webui-1,0,"--> web_ui($get_param) called");
+		display($dbg_webui,0,"--> web_ui($path_with_query) called");
 	}
 
 	# parse query parameters
 
 	my $params = {};
-	my ($path,$query) = split(/\?/,$get_param,2);
+	my ($path,$query) = split(/\?/,$path_with_query,2);
 	if ($query)
 	{
 		my @parts = split(/&/,$query);
@@ -76,7 +74,7 @@ sub web_ui
 		{
 			my ($l,$r) = split(/=/,$part,2);
 			display(9,1,"param($l)=$r");
-			$params->{$l} = $r;
+			$params->{$l} = defined($r) ? $r : '';
 		}
 	}
 
@@ -84,8 +82,7 @@ sub web_ui
     # deliver static files
 
 	my $response = undef;
-
-	if ($path =~ /^((.*\.)(js|css|gif|png|html|json))$/)
+	if ($path =~ /^((.*\.)(js|css|gif|png|html))$/)		# |json
 	{
 		my $filename = $1;
 		my $type = $3;
@@ -105,12 +102,12 @@ sub web_ui
 		else
 		{
 			my $content_type =
-				$type eq 'gif' ? 'image/gif' :
-				$type eq 'png' ? 'image/png' :
 				$type eq 'js'  ? 'text/javascript' :
 				$type eq 'css' ? 'text/css' :
+				$type eq 'gif' ? 'image/gif' :
+				$type eq 'png' ? 'image/png' :
 				$type eq 'html' ? 'text/html' :
-				$type eq 'json' ? 'application/json' :
+				# $type eq 'json' ? 'application/json' :
 				'text/plain';
 
 			$response = http_header($content_type);
@@ -122,7 +119,7 @@ sub web_ui
 				display(5,0,"checking MIN: $filename2");
 				if (-f "$artisan_perl_dir/webui/$filename2")
 				{
-					display($dbg_webui-1,0,"serving MIN: $filename2");
+					display($dbg_webui,1,"serving MIN: $filename2");
 					$filename = $filename2;
 				}
 			}
@@ -133,26 +130,123 @@ sub web_ui
 		}
 	}
 
-	# module dispatcher
+	# device requests
 
-	elsif ($path =~ s/^explorer\///)
+	elsif ($path =~ /^getDevicesHTML\/(renderers|libraries|plsources)$/)
 	{
-		$response = uiExplorer::explorer_request($path,$params);
+		return getDevicesHTML($1);
 	}
+	elsif ($path =~ /^getDevice\/(renderer|library|plsource)-(.*)$/)
+	{
+		my ($singular,$uuid) = ($1,$2);
+		return getDeviceJson($singular,$uuid);
+	}
+
+	# dispatch renderer request directly to object
+
 	elsif ($path =~ s/^renderer\///)
 	{
-		$response = uiRenderer::renderer_request($path,$params);
+		return json_error("could not find renderer uuid in '$path'")
+			if $path !~ s/^(.*?)\///;
+		my $uuid = $1;
+
+		# Get the renderer, do the command, return error if it fails,
+		# or return the render as json if it succeeds.
+
+		my $renderer = findDevice($DEVICE_TYPE_RENDERER,$uuid);
+		return json_error("could not find renderer '$uuid'") if !$renderer;
+		my $error = $renderer->doCommand($path,$params);
+		return json_error("renderer_request($path) error: $error")
+			if $error;
+		return json_header().json($renderer);
+	}
+
+	# pass request to sub module
+
+	elsif ($path =~ s/^library\///)
+	{
+		$response = uiLibrary::library_request($path,$params);
+	}
+	elsif ($path =~ s/^plsource\///)
+	{
+		$response = uiPLSource::plsource_request($path,$params);
 	}
 
 	# unknown request
 
 	else
 	{
-		$response = http_error("web_ui(unknown request): $get_param");
+		$response = http_error("web_ui(unknown request): $path_with_query");
 	}
 
 	return $response;
 }
+
+
+
+sub getDeviceJson
+{
+	my ($singular,$uuid) = @_;
+	my $type =
+		$singular eq 'renderer' ? $DEVICE_TYPE_RENDERER :
+		$singular eq 'library'  ? $DEVICE_TYPE_LIBRARY  :
+		$singular eq 'plsource' ? $DEVICE_TYPE_PLSOURCE : '';
+
+	display($dbg_webui,0,"getDeviceJson($type,$uuid)");
+	my $device;
+	if ($uuid eq 'local')
+	{
+		$device = $local_library if $type eq $DEVICE_TYPE_LIBRARY;
+		$device = $local_renderer if $type eq $DEVICE_TYPE_RENDERER;
+		$device = $local_plsource if $type eq $DEVICE_TYPE_PLSOURCE;
+	}
+	else
+	{
+		$device = findDevice($type,$uuid);
+	}
+	return http_error("Could not get getDeviceJson($singular,$uuid)")
+		if !$device;
+	my $response = json_header();
+	$response .= json($device);
+	return $response;
+}
+
+
+
+sub getDevicesHTML
+{
+	my ($plural) = @_;	# plural
+	my $type =
+		$plural eq 'renderers' ? $DEVICE_TYPE_RENDERER :
+		$plural eq 'libraries' ? $DEVICE_TYPE_LIBRARY  :
+		$plural eq 'plsources' ? $DEVICE_TYPE_PLSOURCE : '';
+	my $devices = getDevicesByType($type);
+	my $single = $plural;
+	$single =~ s/libraries/library/;
+	$single =~ s/s$//;	# singular
+
+	display($dbg_webui,0,"getDevicesHTML($type)");
+
+	my $text = '';
+	for my $device (@$devices)
+	{
+		display($dbg_webui,1,"$single $device->{name}");
+
+		$text .= "<input type=\"radio\" ";
+		$text .= "id=\"$single-$device->{uuid}\" ";
+		$text .= "onclick=\"javascript:selectDevice('$single',$device->{uuid}');\" ";
+		$text .= "name=\"$plural\">";
+		$text .= "<label for=\"$single-$device->{uuid}\">$device->{name}</label><br>\n";
+	}
+	my $response = http_header();
+	$response .= $text."\r\n";
+	return $response;
+}
+
+
+
+
+
 
 
 #----------------------------------------------------
@@ -171,7 +265,7 @@ sub process_html
 		$id = $1 if ($spec =~ s/\s+id=(.*)$//);
 
 		my $filename = "$artisan_perl_dir/webui/$spec";
-		display($dbg_webui-1,0,"including $filename  id='$id'");
+		display($dbg_webui+1,0,"including $filename  id='$id'");
 		my $text = getTextFile($filename,1);
 
 		$text =~ s/{id}/$id/g;
@@ -189,7 +283,7 @@ sub process_html
 		while ($html =~ s/<script type="text\/javascript" src="\/(.*?)"><\/script>/###HERE###/s)
 		{
 			my $filename = $1;
-			display($dbg_webui-1,0,"including javascript $filename");
+			display($dbg_webui+1,0,"including javascript $filename");
 			my $eol = "\r\n";
 			# my $text = getTextFile($filename,1);
 
@@ -222,7 +316,7 @@ sub scale_fancytree_css
 {
 	my ($filename,$pixels) = @_;
 	my $factor = $pixels/16;
-	display($dbg_webui-1,0,"scale($pixels = $factor) $filename");
+	display($dbg_webui+2,0,"scale($pixels = $factor) $filename");
 
 	my $text .= getTextFile("$artisan_perl_dir/webui/$filename",1);
 	$text =~ s/url\("icons\.gif"\);/url("icons$pixels.gif");/sg;

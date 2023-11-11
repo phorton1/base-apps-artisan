@@ -55,7 +55,7 @@ table
 	vertical-align:top;
 }
 
- 
+
 .header_left
 {
 	font-weight:bold;
@@ -97,7 +97,7 @@ table
  * {applyDemoStyles: true} which is useful as it
  * provides the sliders, buttons, etc */
 
- 
+
 .ui-layout-pane
 {
 	padding: 0px !important;
@@ -121,37 +121,7 @@ table.fancytree-ext-table tbody tr td
 
 
 
-/* POPUP EDITOR STYLING */
-
-
-#popup_input_div
-{
-	z-index:999999;
-	display:none;
-	position:absolute;
-	left:0px;
-	top:0px;
-	border:3px;
-	width:100%; /*300px;  */
-	height:320px; 
-	padding-left:20px;
-}
-
-#popup_input_title
-{
-	font-size:16pt;
-	width:240px;
-	margin-bottom:20px;
-}
-
-#popup_input_numeric
-{
-	font-size:16pt;
-	width:240px;
-	height:45px;
-}
-
-
+/* CONTEXT MENU STYLING */
 
 #context_menu_div
 {

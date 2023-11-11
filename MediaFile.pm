@@ -15,6 +15,9 @@ use MP4::Info;
 use Database qw($HAS_FOLDER_ART $HAS_TRACK_ART);
 
 
+my $dbg_mediafile  = 1;
+
+
 # The stream_md5 is mapped to the id by this module
 
 our @required_fields = qw(
@@ -194,7 +197,7 @@ sub new
         for my $k (sort(keys(%$this)))
         {
             my $val = $$this{$k};
-            display(_clip $dbg_mediafile,1,pad($k,15)."= '"._lim($val,60)."'")
+            display($dbg_mediafile,1,pad($k,15)."= '"._lim($val,60)."'")
                 if (defined($val) && $val ne '');
         }
     }
@@ -646,7 +649,7 @@ sub get_fpcalc_info
 
     bump_stat("get_fpinfo called");
 
-    my $dir = "$cache_dir/fpcalc_info";
+    my $dir = "$data_dir/fpcalc_info";
     mkdir $dir if (!(-d $dir));
     my $cache_file = "$dir/$file_md5.txt";
 
@@ -731,7 +734,7 @@ sub get_fpcalc_info
             my $lval = lc(substr($line,0,$pos));
             my $rval = substr($line,$pos+1);
             next if ($lval eq 'file');
-            display(_clip $dbg_mediafile+2,1,_lim("$lval <= $rval",100));
+            display($dbg_mediafile+2,1,_lim("$lval <= $rval",100));
             $info->{$lval} = $rval;
         }
     }
