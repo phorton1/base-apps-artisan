@@ -234,7 +234,7 @@ sub getDevicesHTML
 
 		$text .= "<input type=\"radio\" ";
 		$text .= "id=\"$single-$device->{uuid}\" ";
-		$text .= "onclick=\"javascript:selectDevice('$single',$device->{uuid}');\" ";
+		$text .= "onclick=\"javascript:selectDevice('$single','$device->{uuid}');\" ";
 		$text .= "name=\"$plural\">";
 		$text .= "<label for=\"$single-$device->{uuid}\">$device->{name}</label><br>\n";
 	}

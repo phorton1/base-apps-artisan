@@ -146,6 +146,16 @@ function selectDevice(singular,uuid)	// handler
 			window[cur_name] = result;
 			$('#' + singular +  '-' + uuid).prop('checked', true).button('refresh');
 			setCookie('last_'+singular,uuid,180);
+
+			// current_page indicates the app has really started
+
+			if (current_page)
+			{
+				if (singular == 'renderer')
+					update_renderer_ui();
+				if (singular == 'library')
+					update_explorer();
+			}
 		}
 	});
 }
@@ -400,7 +410,7 @@ function update_renderer_ui()
 				{
 					song_genre += ' | ';
 				}
-				song_genre += metadata.yearstr;
+				song_genre += metadata.year_str;
 			}
 
 			if (!song_genre)

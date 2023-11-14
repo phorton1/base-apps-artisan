@@ -4,6 +4,7 @@
 
 var dbg_explorer = 1;
 
+var explorer_tree;
 var explorer_tracklist;
 var explorer_details;
 
@@ -33,6 +34,18 @@ page_layouts['explorer'] = {
 	},
 };
 
+
+
+function update_explorer()
+	// called when library changes,
+	// we need to update urls
+	// and call loadpage
+{
+	display(dbg_explorer,0,"update_explorer()");
+	explorer_tree.options.source.url = "/webui/library/" + current_library['uuid'] + "/dir";
+	update_explorer_album_info('',{})
+	load_page('explorer');
+}
 
 
 function init_page_explorer()
@@ -116,6 +129,10 @@ function init_page_explorer()
 		}
 	});
 
+	// CACHE THE EXPLORER TREE
+
+	explorer_tree = $("#explorer_tree").fancytree("getTree");
+
 	// EXPLORER TRACKLIST
 
 	display(dbg_explorer,1,"initializizing explorer tracklist");
@@ -179,13 +196,25 @@ function init_page_explorer()
 				cache: true});
 		},
 
+		dblclick: function(event, data) {
+			var node = data.node;
+			var rec = node.data;
+			// var details = $("#explorer_details").fancytree("getTree");
+			var play_url = "/media/" + node.data.id + '.' + node.data.type;
+			$('#audio_player').attr('src',play_url);
+			$('#audio_player_title').html(node.data.title);
+			  // we could return false to prevent default handling, i.e. generating
+			  // activate, expand, or select events
+			return true;
+		},
+
+
 	});
 
 	// CACHE THE TRACKLIST TREE
 
 	explorer_tracklist = $("#explorer_tracklist").fancytree("getTree");
 	display(dbg_explorer,1,"got explorer_tracklist=" + explorer_tracklist);
-
 
 	// CONTEXT MENU
 	// Requires modified prh-jquery.ui-contextmenu.js
