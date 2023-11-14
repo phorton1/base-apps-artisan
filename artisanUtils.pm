@@ -1,8 +1,8 @@
 #---------------------------------------
-# Utils.pm
+# artisanUtils.pm
 #---------------------------------------
-# Partial re-export of My::Utils with
-# application specific constants, vars, etc
+# re-export of My::Utils @XPLAT with
+# artisan specific constants, vars, and methods
 
 package artisanUtils;
 use strict;
@@ -12,36 +12,7 @@ use threads::shared;
 use Socket;
 use Sys::Hostname;
 use XML::Simple;
-use Pub::Utils qw(
-	$debug_level
-	$data_dir
-	$temp_dir
-	$logfile
-
-	LOG
-	error
-	display
-	warning
-	display_bytes
-	display_hash
-
-	_def
-	_lim
-	pad
-	pad2
-	roundTwo
-	CapFirst
-	bytesAsKMGT
-
-	today
-	now
-
-	getTextFile
-	getTextLines
-	printVarToFile
-	mergeHash
-);
-
+use Pub::Utils qw(!:win_only);
 
 # set critical My::Utils constants
 
@@ -54,12 +25,6 @@ use Pub::Utils qw(
 # debugging constants
 #-------------------------
 
-our $dbg_xml = 1;
-	# a couple of $dbg_variables cross file boundaries
-
-my $dbg_mem = 0;
-
-
 
 BEGIN
 {
@@ -68,19 +33,6 @@ BEGIN
 	# our constants
 
 	our @EXPORT = qw (
-        $ERROR_NONE
-        $ERROR_INFO
-		$ERROR_LOW
-        $ERROR_MEDIUM
-        $ERROR_HIGH
-        $ERROR_HARD
-	);
-
-	# our exports
-
-	push @EXPORT, qw(
-
-		$dbg_xml
 
         $program_name
         $this_uuid
@@ -89,6 +41,17 @@ BEGIN
 
 		$mp3_dir
 		$mp3_dir_RE
+
+		$DEVICE_TYPE_LIBRARY
+		$DEVICE_TYPE_RENDERER
+		$DEVICE_TYPE_PLSOURCE
+
+        $ERROR_NONE
+        $ERROR_INFO
+		$ERROR_LOW
+        $ERROR_MEDIUM
+        $ERROR_HIGH
+        $ERROR_HARD
 
         $server_ip
         $server_port
@@ -113,15 +76,8 @@ BEGIN
         escape_tag
         unescape_tag
 
-        http_date
-        add_leading_char
         millis_to_duration
 		duration_to_millis
-
-		dateToGMTText
-		dateToLocalText
-		dateFromGMTText
-		dateFromLocalText
 
 		containingPath
 		pathName
@@ -131,45 +87,21 @@ BEGIN
 		split_dir
 		compare_path_diff
 
-		dbg_hash
-		dbg_mem
-
 	);
 
 
 	# re-exports from My::Utils
 
-	push @EXPORT, qw(
-        $debug_level
+	push @EXPORT, @Pub::Utils::EXPORT;
 
-        $temp_dir
-		$data_dir
-        $logfile
 
-        LOG
-        error
-        display
-        warning
-		display_bytes
-		display_hash
-
-		_def
-		_lim
-        pad
-		pad2
-		roundTwo
-		CapFirst
-		bytesAsKMGT
-
-        today
-        now
-
-        getTextFile
-		getTextLines
-		printVarToFile
-		mergeHash
-    );
 };
+
+
+
+our $DEVICE_TYPE_LIBRARY  = 'Library';
+our $DEVICE_TYPE_RENDERER = 'Renderer';
+our $DEVICE_TYPE_PLSOURCE = 'PLSource';
 
 
 #---------------------------------------
@@ -189,9 +121,6 @@ our ($ERROR_NONE,
      $ERROR_HIGH,
      $ERROR_HARD ) = (0..5);
 
-
-# ERROR REPORTING 2015-06-23
-#
 # Scanning files/albums can result in numerous
 # conditions that we might want to know about.
 #
@@ -208,13 +137,8 @@ our ($ERROR_NONE,
 #
 # An unmapped error is given $ERROR_HARD to highlight
 # that it needs to be added to this list.
-#
-# The mapping could eventually be placed in
-# the webUI to allow changing it wihtout
-# restarting artisan
 
-
-our %error_mappings = (
+my %error_mappings = (
 
 	# note is a special code that is not stored
 	# on the track, or propogated to parents
@@ -320,14 +244,18 @@ our %error_mappings = (
 # May be overriden by UI
 # Keeping interesting defaults for other stuff
 
-our $program_name = 'Artisan Server (Pure Perl Windows)';
-our $this_uuid = '56657273-696f-6e34-4d41-afacadefeed0';
+our $program_name = 'Artisan Perl';
+our $this_uuid = '56657273-696f-6e34-4d41-20231112feed';
 our $artisan_perl_dir = "/base/apps/artisan";
 	# the directory of the pure-perl artisan, which includes
 	# the bin, images, webui, and xml subdirectories
+	# These will later be moved to /res for Cava Packaging
+
 our $mp3_dir = "/mp3s";
 our $mp3_dir_RE = '\/mp3s';
 our $server_port = '8091';
+
+
 
 our $server_ip = '';
 	# typical home machine: 192.168.0.101';
@@ -335,6 +263,8 @@ our $server_ip = '';
 
 # determine ip address by parsing ipconfig /all
 # for first IPv4 Address ... : 192.168.0.100
+
+# WINDOWS SPECIFIC CODE
 
 my $ip_text = `ipconfig /all`;
 if ($ip_text !~ /^.*?IPv4 Address.*?:\s*(.*)$/im)
@@ -383,12 +313,10 @@ else
 
 
 $data_dir = "$mp3_dir/_data";
-$temp_dir = "/base_data/temp";
+$temp_dir = "/base_data/temp/artisan";
+mkdir $temp_dir if !-d $temp_dir;
 
-$logfile = "";
-# #logfile = $temp_dir/artisan.log";
-	# no logging by default
-	# could be a preference (getem before program "starts")
+
 
 our $quitting:shared = 0;
 
@@ -556,20 +484,6 @@ sub dump_stats
 # $text = encode('UTF-8',$text);
 # change single ascii byte E9 for é into two bytes C3 A9
 
-
-sub add_leading_char
-{
-	my ($string,$length,$char) = @_;
-	while (length($string) < $length)
-	{
-		$string = $char . $string;
-	}
-
-	return $string;
-}
-
-
-
 sub encode_didl
 	# does lightweight didl encoding
 {
@@ -649,7 +563,6 @@ sub unescape_tag
 #---------------------------------------------
 
 sub millis_to_duration
-	# duplicated as prettyDuration or something like that
 	# there are actually three possibilities (see java)
 {
 	my ($millis,$precise) = @_;
@@ -668,23 +581,22 @@ sub millis_to_duration
 	my $string = '';
 	if ($precise)	# Bub doesn't like decimals
 	{
-		$string .= add_leading_char($hours,2,'0').':'; 	# if $hours;
-		$string .= add_leading_char($minutes,2,'0').':';
-		$string .= add_leading_char($seconds,2,'0'); # .'.';
-		# $string .= add_leading_char($millis,3,'0');
+		$string .= pad2($hours).':'; 	# if $hours;
+		$string .= pad2($minutes).':';
+		$string .= pad2($seconds); # .'.';
 	}
 	else
 	{
 		if ($hours)
 		{
 			$string .= "$hours:";
-			$string .= add_leading_char($minutes,2,'0').':';
+			$string .= pad2($minutes).':';
 		}
 		else
 		{
 			$string .= "$minutes:";
 		}
-		$string .= add_leading_char($seconds,2,'0');
+		$string .= pad2($seconds);
 	}
 	return $string;
 }
@@ -692,11 +604,8 @@ sub millis_to_duration
 
 
 sub duration_to_millis
-	# duplicated as prettyDuration or something like that
 {
 	my ($duration) = @_;
-
-
 	my $secs = 0;
 	my $millis = 0;
 
@@ -719,61 +628,6 @@ sub duration_to_millis
 	return $millis;
 }
 
-
-
-
-
-sub http_date
-	# return the current gmt_time in the wonky unix date format
-{
-	my ($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst) = gmtime();
-	my @months = ('Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',);
-	my @days = ('Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat',);
-
-	$year += 1900;
-	$hour = add_leading_char($hour, 2, '0');
-	$min = add_leading_char($min, 2, '0');
-	$sec = add_leading_char($sec, 2, '0');
-
-	return "$days[$wday], $mday $months[$mon] $year $hour:$min:$sec GMT";
-}
-
-
-
-
-sub dateToGMTText
-{
-	my ($t) = @_;
-	my $s = My::Utils::timeToGMTDateTime($t);
-	$s =~ s/^(\d\d\d\d):(\d\d):(\d\d)/$1-$2-$3/;
-	return $s;
-}
-
-
-sub dateToLocalText
-{
-	my ($t) = @_;
-	my $unix = localtime($t);
-	my $s = My::Utils::unixToTimestamp($unix);
-	$s =~ s/^(\d\d\d\d):(\d\d):(\d\d)/$1-$2-$3/;
-	return  $s;
-}
-
-
-sub dateFromGMTText
-{
-	my ($ts) = @_;
-	$ts =~ /(\d\d\d\d).(\d\d).(\d\d).(\d\d):(\d\d):(\d\d)/;
-    return timegm($6,$5,$4,$3,($2-1),$1);
-}
-
-
-sub dateFromLocalText
-{
-	my ($ts) = @_;
-	$ts =~ /(\d\d\d\d).(\d\d).(\d\d).(\d\d):(\d\d):(\d\d)/;
-    return timelocal($6,$5,$4,$3,($2-1),$1);
-}
 
 
 
@@ -1009,22 +863,12 @@ sub compare_path_diff
 
 
 #----------------------------------------------------
-# debugging
+# unused debugging
 #----------------------------------------------------
 
+my $dbg_mem = 0;
 
-sub dbg_hash
-{
-	my ($level,$indent,$title,$hash) = @_;
-	display($level,$indent,"dbg_hash($title)",1);
-	for my $k (sort(keys(%$hash)))
-	{
-		display($level,$indent+1,"$k = $hash->{$k}",1);
-	}
-}
-
-
-sub dbg_mem
+sub unused_dbg_mem
 	# platform specific
 {
     my ($indent,$msg) = @_;

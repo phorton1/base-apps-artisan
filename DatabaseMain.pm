@@ -896,8 +896,8 @@ sub	add_track
 			bump_stat("file timestamp changed");
 
 			display($dbg_changes,1,"timestamp changed from ".
-				dateToLocalText($track->{timestamp}).
-				"  to ".dateToLocalText($timestamp).
+				gmtToLocalTime($track->{timestamp}).
+				"  to ".gmtToLocalTime($timestamp).
 				" in file($path)");
 
       		$track->{size} = $size;
