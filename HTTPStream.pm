@@ -19,7 +19,7 @@ use Database;
 use DeviceManager;
 
 
-my $dbg_stream = 1;
+my $dbg_stream = -1;
 
 
 sub stream_media
@@ -94,7 +94,7 @@ sub stream_media
 
 		# vestigial kludge
 
-		my $is_wd = $headers->{USER_AGENT} =~ /INTEL_NMPR\/2\.1 DLNADOC\/1\.50 dma\/3\.0 alphanetworks/ ? 1 : 0;
+		# my $is_wd = $headers->{USER_AGENT} =~ /INTEL_NMPR\/2\.1 DLNADOC\/1\.50 dma\/3\.0 alphanetworks/ ? 1 : 0;
 		my $BUF_SIZE = 3000000;   # $is_wd && $ANDROID ? 16384 : 300000;
 
 		# build headers
