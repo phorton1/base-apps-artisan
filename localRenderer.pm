@@ -239,9 +239,10 @@ sub doCommand
 
 	elsif ($command eq 'play_song')
 	{
-		my $library_uuid = checkParam(\$error,$command,$params,'plsource_uuid');
+		my $library_uuid = checkParam(\$error,$command,$params,'library_uuid');
 		return $error if !defined($library_uuid);
-		my $track_id = checkParam(\$error,$command,$params,'id');
+
+		my $track_id = checkParam(\$error,$command,$params,'track_id');
 		return $error if !defined($track_id);
 
 		return error("doCommand('play_song') library($library_uuid) not supported")
@@ -309,10 +310,18 @@ sub play_track
 
 	$this->{position} = 0;
 
-	my $url = "http://$server_ip:$server_port/media/$track->{id}.mp3";
-		# mp is not working with my streams!
 	my $path = "$mp3_dir/$track->{path}";
 	$path =~ s/\//\//g;
+
+	# use streaming url versus local file path ...
+	# turned off for now, but it definitely worked
+	# with the localRender on 2023-11-14 at 3:44pm
+
+	if (0)
+	{
+		$path = "http://$server_ip:$server_port/media/$track->{id}.mp3";
+		display($dbg_lren,2,"using url='$path'");
+	}
 
 	$mp->{URL} = $path;
 	$controls->play();

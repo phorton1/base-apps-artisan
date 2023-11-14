@@ -24,12 +24,10 @@ my $dbg_stream = -1;
 
 sub stream_media
 {
-	my ($content_id,
-        $method ,
+	my ($FH,
+        $method,
         $headers,
-        $FH,
-        $model_name,
-        $client_ip) = @_;
+        $content_id ) = @_;
 
 	display($dbg_stream,0,"stream_media($content_id)");
 	for my $key (keys %$headers)
@@ -121,18 +119,26 @@ sub stream_media
 			display($dbg_stream+1,1,"Doing Range request from $from_byte to $to_byte = $content_len bytes");
 		}
 
-		my @additional_header = ();
-		# there is already a "Connection: close" header in the
-		# defaults in the method http_header()
-		# push @additional_header, "Connection: keep-alive";
+		my @addl_headers = ();
 
-		push @additional_header, "Content-Type: " . $track->mimeType();
-		push @additional_header, "Content-Length: $content_len";
-		#push @additional_header, "Content-Disposition: attachment; filename=\"$track->{name}\"";
-		push @additional_header, "Accept-Ranges: bytes";
-        push @additional_header, "contentFeatures.dlna.org: ".$track->get_dlna_stuff();
-		push @additional_header, 'transferMode.dlna.org: Streaming';
-		push @additional_header, "Content-Range: bytes $from_byte-$to_byte/$track->{size}"
+		# Had a problem with localRenderer $mp that just went away by itself.
+		# Perhaps it's a problem with certain kinds of file.
+		# Tried sending "Connection: keep-alive" header by
+		# commenting out the default"Connection: close" already in
+		# http_header()) and adding the alive header here,
+		# but it didn't seem to help ..
+		#
+		# Then I tried adding the Content-disposition line below,
+		# and it started working, then I took it out and it kept
+		# working, so I don't know why it just up and started working ...
+
+		push @addl_headers, "Content-Type: " . $track->mimeType();
+		push @addl_headers, "Content-Length: $content_len";
+		# push @addl_headers, "Content-Disposition: attachment; filename=\"$track->{titles}\"";
+		push @addl_headers, "Accept-Ranges: bytes";
+        push @addl_headers, "contentFeatures.dlna.org: ".$track->get_dlna_stuff();
+		push @addl_headers, 'transferMode.dlna.org: Streaming';
+		push @addl_headers, "Content-Range: bytes $from_byte-$to_byte/$track->{size}"
 			if ($is_ranged);
 
 		# SEND HEADERS
@@ -146,8 +152,7 @@ sub stream_media
 
 		my $ok = print $FH http_header({
 			'statuscode' => $statuscode,
-			'additional_header' => \@additional_header,
-			'log' => 'httpstream' });
+			'addl_headers' => \@addl_headers });
 		if (!$ok)
 		{
 			error("Could not send headers for $method");

@@ -110,7 +110,7 @@ sub web_ui
 				# $type eq 'json' ? 'application/json' :
 				'text/plain';
 
-			$response = http_header($content_type);
+			$response = http_header({ content_type => $content_type });
 
 			if ($type eq 'js' || $type eq 'css')
 			{
@@ -238,7 +238,7 @@ sub getDevicesHTML
 		$text .= "name=\"$plural\">";
 		$text .= "<label for=\"$single-$device->{uuid}\">$device->{name}</label><br>\n";
 	}
-	my $response = http_header();
+	my $response = http_header({content_type => 'text/html' });
 	$response .= $text."\r\n";
 	return $response;
 }
@@ -324,7 +324,7 @@ sub scale_fancytree_css
 	$text =~ s/(\s*)((-)*(16|32|48|64|80|96|112|128|144))px/' '.int($factor*$2).'px'/sge;
 	# printVarToFile(1,"/junk/test.css",$text);
 
-	my $response = http_header('text/css');
+	my $response = http_header({ content_type => 'text/css' });
 	$response .= $text;
 	$response .= "\r\n";
 	return $response;

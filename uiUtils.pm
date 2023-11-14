@@ -18,8 +18,6 @@ BEGIN
  	use Exporter qw( import );
 	our @EXPORT = qw (
 		standard_pane
-		http_header
-		http_error
 		html_header
 		json_header
 		json_error
@@ -30,34 +28,17 @@ BEGIN
 
 
 
-sub http_header
-{
-	my ($content_type,$status_code) = @_;
-	$content_type ||= 'text/plain';
-	$status_code ||= 200;
-
-	my $response = HTTPServer::http_header({
-		'statuscode' => 200,
-		'content_type' => $content_type });
-}
-
-sub http_error
-{
-	my ($msg) = @_;
-	error($msg,1);
-	return http_header('text/plain',400);
-}
 
 
 sub html_header
 {
-	return http_header('text/html');
+	return http_header({ content_type => 'text/html' });
 }
 
 
 sub json_header
 {
-	return http_header('application/json');
+	return http_header({ content_type => 'application/json' });
 }
 
 
