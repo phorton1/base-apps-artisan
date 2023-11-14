@@ -465,8 +465,8 @@ sub http_header
 	push(@response, "Server: $program_name");
 	push(@response, "Content-Type: $content_type");
 	push(@response, "Content-Length: $params->{'content_length'}") if $params->{'content_length'};
-	push(@response, "Date: ".http_date());
-    # push(@response, "Last-Modified: ".PDLNA::Utils::http_date());
+	push(@response, "Date: ".gmtime()." GMT");
+    # push(@response, "Last-Modified: "gmtime()." GMT"));
 
 	if (defined($$params{'additional_header'}))
 	{

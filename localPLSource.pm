@@ -24,7 +24,7 @@ use localPlaylist;
 use base qw(PLSource);
 
 my $dbg_lpls = 0;
-
+my $dbg_pl_create = 1;
 
 sub new
 {
@@ -250,7 +250,7 @@ my %default_playlists = (
 sub initPlaylists
 {
 	my ($this) = @_;
-	display($dbg_lpls,0,"initPlaylists() started ...");
+	display($dbg_pl_create,0,"initPlaylists() started ...");
 
 	my $main_db_name = "$data_dir/playlists.db";
 	my $new_database = !-f $main_db_name;
@@ -267,7 +267,7 @@ sub initPlaylists
 		my $rec = get_record_db($dbh,
 			"SELECT * FROM playlists WHERE name='$name'");
 
-		display($dbg_lpls,1,"got($name) exists=$exists rec="._def($rec));
+		display($dbg_pl_create,1,"got($name) exists=$exists rec="._def($rec));
 
 		# if record does not exist, we recreate the playlist from scratch
 		# if the table doesnt exist, then we create it from the query
@@ -276,7 +276,7 @@ sub initPlaylists
 		my $playlist;
 		if (!$rec)
 		{
-			display($dbg_lpls,2,"creating new playlist($name) from default");
+			display($dbg_pl_create,2,"creating new playlist($name) from default");
 			$playlist = localPlaylist->newFromDefault(
 				$name,
 				$default_playlists{$name});
@@ -290,13 +290,13 @@ sub initPlaylists
 		}
 		elsif (!$exists)
 		{
-			display($dbg_lpls,2,"updating playlist($name) from its table");
+			display($dbg_pl_create,2,"updating playlist($name) from its table");
 			$playlist = localPlaylist->newFromQuery($rec);
 			next if !$playlist;
 		}
 		else
 		{
-			display($dbg_lpls,2,"using existing playlist ".pad($name,20)." num_tracks=$rec->{num_tracks}");
+			display($dbg_pl_create,2,"using existing playlist ".pad($name,20)." num_tracks=$rec->{num_tracks}");
 			$playlist = localPlaylist->newFromRecAndTable($rec);
 				# cannot fail
 		}
@@ -307,7 +307,7 @@ sub initPlaylists
 
 	# finished
 
-	display($dbg_lpls,0,"static_init_playlists finished");
+	display($dbg_pl_create,0,"static_init_playlists finished");
 }
 
 

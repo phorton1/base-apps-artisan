@@ -454,9 +454,8 @@ sub ssdp_message
 		$msg .= "USN: $usn\r\n";	# $$params{usn}\r\n";
 
 		# IF the date is required, gmtime() may work,
-		# and all http_date() did was add " GMT" to that.
-		# $msg .= "DATE: ".gmtime()."\r\n";
-		# $msg .= "DATE: ".http_date()."\r\n";
+		# and may not require 'GMT'
+		# $msg .= "DATE: ".gmtime()." GMT\r\n";
 
 		# $msg .= "CONTENT-LENGTH: 0\r\n"; # if 0;
 
@@ -783,7 +782,9 @@ sub processExternalMessage
 	my $show_line = $show_hash || ($mask & $show_search_dbg);
 
 	# printf "show_dbg(%03X) mask(%03X) show_hash(%03X) show_line(%03X)\n",$show_dbg,$mask,$show_hash,$show_line;
-	my $dbg_msg = sprintf "SSDP(%03X) ".pad($uuid,35)." ".pad($state,14)." ".pad($usn,50)." from $caller $from_addr",$mask;
+
+	my $PAD_USN = 0;	# 50
+	my $dbg_msg = sprintf "SSDP(%03X) ".pad($uuid,35)." ".pad($state,14)." ".pad($usn,$PAD_USN)." from $caller $from_addr",$mask;
 	display(0,-1,$dbg_msg) if $show_line;
 	display_hash(0,-1,$dbg_msg,$message) if $show_hash;
 

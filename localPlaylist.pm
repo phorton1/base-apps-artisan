@@ -37,7 +37,7 @@ use DeviceManager;
 	# by using $local_library
 
 
-my $dbg_lpl = 0;
+my $dbg_lpl = 1;
 
 
 our $SHUFFLE_NONE = 0;
