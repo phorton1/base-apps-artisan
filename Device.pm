@@ -47,8 +47,8 @@
 #			remotePLSource (Open Home Source)
 #
 # Local Devices implement the orthogonal API into direct method calls,
-# wheras Remote Devices turn those API calls into HTTP (XML and JSON)
-# requests and replies.
+# wheras Remote Devices turn those API calls into HTTP requests and replies
+
 
 package Device;
 use strict;
