@@ -51,6 +51,10 @@ my $dbg_responses = 1;
 my $dbg_search = 0;
 	#  0 == (cyan) header when starting search
 	# -1 == creating socket and sending message notifications
+my $show_search_dbg = 0x110;
+	# bitwise, high order nibble is New Devices,
+	# middle is Known Devices, and last is all msgs.
+	# 0=off, 1=line, 2=hash
 
 
 #==================================================================================
@@ -740,12 +744,6 @@ sub parse_ssdp_message
 # SSDP devices before we create our Artican Devices from the messages,
 # at which point we will use the LOCATION member to get more info.
 
-my $show_dbg = 0x111;
-	# bitwise, high order nibble is New Devices,
-	# middle is Known Devices, and last is all msgs.
-	# 0=off, 1=line, 2=hash
-
-
 sub processExternalMessage
 	# $caller will either be NOTIFY if from SSDPListener
 	# or SEARCH if from SSDPSearch. $message is a parsed
@@ -781,8 +779,8 @@ sub processExternalMessage
 	$mask |= $deviceType ? 0x10 : 0;
 	$mask |= $deviceType && !findDevice($deviceType,$uuid) ? 0x100 : 0;
 
-	my $show_hash = ($mask << 1) & $show_dbg;
-	my $show_line = $show_hash || ($mask & $show_dbg);
+	my $show_hash = ($mask << 1) & $show_search_dbg;
+	my $show_line = $show_hash || ($mask & $show_search_dbg);
 
 	# printf "show_dbg(%03X) mask(%03X) show_hash(%03X) show_line(%03X)\n",$show_dbg,$mask,$show_hash,$show_line;
 	my $dbg_msg = sprintf "SSDP(%03X) ".pad($uuid,35)." ".pad($state,14)." ".pad($usn,50)." from $caller $from_addr",$mask;
