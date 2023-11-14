@@ -45,7 +45,7 @@ my $DEBUG_SEARCH = 0;
     # Set this to one to see the full request and
     # response xml for Search requests at debug
     # level 1 or greater
-my $DEBUG_BROWSE = 0;
+my $DEBUG_BROWSE = 1;
     # Set this to one to see the full request and
     # response xml for Browse requests at debug
     # level 1 or greater
@@ -105,24 +105,7 @@ sub start_webserver
 }
 
 
-
-
-sub my_parse_xml
-{
-	my ($post_data,$msg) = @_;
-	my $xml;
-	my $xmlsimple = XML::Simple->new();
-	eval { $xml = $xmlsimple->XMLin($post_data) };
-	if ($@)
-	{
-		error("Unable to parse xml $msg:".$@);
-		$xml = undef;
-	}
-	return $xml;
-}
-
-
-
+my $dbg_hdr = 0;
 
 sub handle_connection
 {
@@ -144,11 +127,14 @@ sub handle_connection
 
 	my $first_line;
 	my $request_line = <$FH>;
+	display($dbg_hdr,0,"request");
 	while (defined($request_line) && $request_line ne "\r\n")
 	{
 		# next if !$request_line;
 		$request_line =~ s/\r\n//g;
 		chomp($request_line);
+
+		display($dbg_hdr,1,$request_line);
 
 		if (!$first_line)
 		{
@@ -170,6 +156,7 @@ sub handle_connection
 		$request_line = <$FH>;
 	}
 
+
 	# if we got no request line,
 	# then it is an unrecoverable error
 
@@ -179,7 +166,7 @@ sub handle_connection
 	{
 		error("Unable to parse HTTP from $peer_ip_addr:$peer_src_port line="._def($first_line));
 		my $response = http_header({
-			statuscode   => 501,
+			status_code   => 501,
 			content_type => 'text/plain' });
 		print $FH $response;
 		close($FH);
@@ -190,7 +177,7 @@ sub handle_connection
 	# don't want to see the stupid static requests
 
 	my $dbg_request = $dbg_http;
-	$dbg_request += 2  if $request_path =~ /^(\/webui\/renderer\/(.*)\/update|\/ContentDirectory1\.xml|\/ServerDesc\.xml)/;
+	$dbg_request += 2  if $request_path =~ /^\/webui\/renderer\/(.*)\/update/; #|\/ContentDirectory1\.xml|\/ServerDesc\.xml/;
 	display($dbg_request,0,"$request_method $request_path from $peer_ip_addr:$peer_src_port");
 	for my $key (keys %request_headers)
 	{
@@ -204,19 +191,26 @@ sub handle_connection
 	my $post_xml;
 	if ($request_method eq "POST")
 	{
+		display($dbg_hdr,1,$request_line);
+
 		my $post_data = '';
 		my $content_length = $request_headers{CONTENT_LENGTH};
 		if (defined($content_length) && length($content_length) > 0)
 		{
-			display($dbg_http+1,1,"Reading $content_length bytes from POSTDATA");
+			display($dbg_http+1,1,"Reading $content_length bytes for POSTDATA");
 			read($FH, $post_data, $content_length);
 		}
 		else
 		{
-			display($dbg_http+1,1,"Looking for cr-lf in POSTDATA");
-			$post_data = <$FH>;
+			display($dbg_http+1,1,"Reading content until  cr-lf for POSTDATA");
+			my $line = <$FH>;
+			while ($line && $line ne "\r\n")
+			{
+				$post_data .= $line;
+				$line = <$FH>;
+			}
 		}
-		display($dbg_request+1,1,"POSTDATA: $post_data");
+		display($dbg_request,1,"POSTDATA: $post_data");
 
 		$post_xml = my_parse_xml($post_data,"from $peer_ip_addr:$peer_src_port");
 
@@ -261,12 +255,10 @@ sub handle_connection
 		my $xml = $1 eq 'ServerDesc.xml' ?
 			xml_serverdescription() :
 			getTextFile("$artisan_perl_dir/xml/$desc",1);
-		my @additional_header = (
-			'Content-Type: text/xml; charset=utf8',
-			'Content-Length: '.length($xml) );
 		$response = http_header({
-			'statuscode' => 200,
-			'additional_header' => \@additional_header });
+			status_code => 200,
+			content_type => 'text/xml; charset=utf8',
+			content_length => length($xml) });
 		$response .= $xml;
 	}
 
@@ -276,13 +268,16 @@ sub handle_connection
 
 	else
 	{
-		# DLNA Support Only - Serving ContentDirectory1 requests and streaming
-		# media are NOT used by the webUI.
+		# DLNA Requets are only, of course, supported thru to the
+		# localLibrary and localRenderer
 
 		if ($request_path eq '/upnp/control/ContentDirectory1')
 		{
-			$response = content_directory_1($post_xml, $request_headers{SOAPACTION}, $peer_ip_addr);
+			$response = localContentDirectory1($post_xml, $request_headers{SOAPACTION}, $peer_ip_addr);
 		}
+
+		# media are NOT used by the webUI.
+
 		elsif ($request_path =~ /^\/media\/(.*)$/)
 		{
 			stream_media($1, $request_method, \%request_headers, $FH, '', $peer_ip_addr);
@@ -320,8 +315,8 @@ sub handle_connection
 		{
 			error("Unsupported request $request_method $request_path from $peer_ip_addr");
 			$response = http_header({
-				'statuscode' => 501,
-				'content_type' => 'text/plain' });
+				status_code => 501,
+				content_type => 'text/plain' });
 		}
 	}
 
@@ -380,6 +375,23 @@ sub handle_connection
 
 
 
+#-----------------------------------------------------------------
+# utilities
+#-----------------------------------------------------------------
+
+sub my_parse_xml
+{
+	my ($post_data,$msg) = @_;
+	my $xml;
+	my $xmlsimple = XML::Simple->new();
+	eval { $xml = $xmlsimple->XMLin($post_data) };
+	if ($@)
+	{
+		error("Unable to parse xml $msg:".$@);
+		$xml = undef;
+	}
+	return $xml;
+}
 
 sub debug_xml_text
 {
@@ -433,6 +445,10 @@ sub http_header
 {
 	my ($params) = @_;
 
+	$params ||= {};
+	my $status_code = $params->{status_code} || 200;
+	my $content_type = $params->{content_type} || 'text/plain';
+
 	my %HTTP_CODES = (
 		200 => 'OK',
 		206 => 'Partial Content',
@@ -442,11 +458,13 @@ sub http_header
 		406 => 'Not acceptable',
 		501 => 'Not implemented' );
 
+
+
 	my @response = ();
-	push(@response, "HTTP/1.1 ".$$params{'statuscode'}." ".$HTTP_CODES{$$params{'statuscode'}}); # TODO (maybe) differ between http protocol versions
+	push(@response, "HTTP/1.1 $status_code ".$HTTP_CODES{$status_code});
 	push(@response, "Server: $program_name");
-	push(@response, "Content-Type: ".$params->{'content_type'}) if $params->{'content_type'};
-	push(@response, "Content-Length: ".$params->{'content_length'}) if $params->{'content_length'};
+	push(@response, "Content-Type: $content_type");
+	push(@response, "Content-Length: $params->{'content_length'}") if $params->{'content_length'};
 	push(@response, "Date: ".http_date());
     # push(@response, "Last-Modified: ".PDLNA::Utils::http_date());
 
@@ -477,16 +495,16 @@ sub http_header
 
 
 
-#----------------------------------------------
-# content_directory_1 dispatcher
-#----------------------------------------------
+#=========================================================================
+# localContentDirectory1()
+#=========================================================================
 # This is where Artisan Perl IS a DLNA MediaServer
 
-sub content_directory_1
+sub localContentDirectory1
 {
 	my ($xml,$action,$peer_ip_addr) = @_;
 	my $response_xml = undef;
-    display($dbg_http+1,0,"content_directory_1(xml=$xml,action=$action)");
+    display($dbg_http+1,0,"localContentDirectory1(xml=$xml,action=$action)");
 
     # browser, search, bookmark
 
@@ -550,9 +568,7 @@ sub content_directory_1
 	else
 	{
 		error("Action: $action is NOT supported");
-		return http_header({
-			'statuscode' => 501,
-			'content_type' => 'text/plain' });
+		return http_header({ status_code => 501 });
 	}
 
 	# RETURN THE RESPONSE
@@ -560,19 +576,13 @@ sub content_directory_1
 	my $response = undef;
 	if (defined($response_xml))
 	{
-		$response = http_header({
-			'statuscode' => 200,
-			'log' => 'httpdir',
-			'content_length' => length($response_xml),
-			'content_type' => 'text/xml; charset=utf8' });
+		$response = http_header({ content_type => 'text/xml; charset=utf8' });
 		$response .= $response_xml;
 	}
 	else
 	{
 		error("No Response");
-		$response = http_header({
-			'statuscode' => 501,
-			'content_type' => 'text/plain' });
+		$response = http_header({ status_code => 501 });
 	}
 
 	return $response;
@@ -842,6 +852,9 @@ sub browse_directory
     my $error = '';
 	my $folder;
 
+	# $id ||= 'c5b5b8ca14b0c5f07a110fb727d3baa0';
+	# while expermenting with DLNA browser - set root to blues album
+
     if (!defined($id))
     {
 		$error = "No ID passed to browse_directory";
@@ -901,9 +914,7 @@ sub browse_directory
 	# error exit
 
 	error($error);
-	return http_header({
-		'statuscode' => 501,
-		'content_type' => 'text/plain' });
+	return http_header({ status_code => 501 });
 }
 
 
@@ -912,9 +923,7 @@ sub browse_directory
 sub logo
 {
     display($dbg_http+2,1,"logo()");
-    my $response = http_header({
-        'statuscode' => 200,
-        'additional_header' => [ 'Content-Type: image/png' ] });
+    my $response = http_header({ content_type => 'image/png' });
 	$response .= getTextFile('artisan.png',1);
     $response .= "\r\n";
 	return $response;
@@ -933,9 +942,7 @@ sub get_art
 	if (!$folder)
 	{
 		error("get_art($id): could not get folder($id)");
-		return http_header({
-			'statuscode' => 400,
-			'content_type' => 'text/plain' });
+		return http_header({ status_code => 400 });
 	}
 
 
@@ -952,9 +959,7 @@ sub get_art
     if (!open(IFILE,"<$filename"))
     {
         error("get_art($id): Could not open file: $filename");
-        return http_header({
-            'statuscode' => 400,
-            'content_type' => 'text/plain' });
+        return http_header({ status_code => 400 });
     }
 
     binmode IFILE;
@@ -962,9 +967,7 @@ sub get_art
     close IFILE;
 
     display($dbg_art,1,"get_art($id): sending file: $filename");
-    my $response = http_header({
-        'statuscode' => 200,
-        'additional_header' => [ 'Content-Type: image/jpeg' ] });
+    my $response = http_header({ content_type => 'image/jpeg' });
     $response .= $data;
     $response .= "\r\n";
     return $response;
@@ -979,8 +982,6 @@ sub get_art
 sub xml_serverdescription
 	# server description for the DLNA Server
 {
-    display($dbg_xml+1,3,"xml_serverdescription()");
-
 	my $xml = <<EOXML;
 <?xml version="1.0"?>
 <root xmlns="urn:schemas-upnp-org:device-1-0">
@@ -989,17 +990,18 @@ sub xml_serverdescription
         <minor>5</minor>
     </specVersion>
     <device>
-        <deviceType>urn:schemas-upnp-org:device:MediaServer:1</deviceType>
-        <presentationURL>http://$server_ip:$server_port/webui/</presentationURL>
+		<UDN>uuid:$this_uuid</UDN>
         <friendlyName>$program_name</friendlyName>
-        <manufacturer>Patrick Horton</manufacturer>
-        <manufacturerURL>http://www.phorton.com</manufacturerURL>
-        <modelDescription>a simple media server</modelDescription>
+        <deviceType>urn:schemas-upnp-org:device:MediaServer:1</deviceType>
+        <manufacturer>phorton1</manufacturer>
+        <manufacturerURL>https://github.com/phorton1</manufacturerURL>
         <modelName>$program_name</modelName>
-        <modelNumber>1234</modelNumber>
-        <modelURL>http://www.phorton.com</modelURL>
-        <serialNumber>5679</serialNumber>');
-        <UDN>$this_uuid</UDN>
+        <modelDescription>a simple media server</modelDescription>
+        <modelNumber>2.0</modelNumber>
+        <modelURL>https://github.com/phorton1/base-apps-artisan</modelURL>
+        <presentationURL>http://$server_ip:$server_port/webui/artisan.html</presentationURL>
+        <serialNumber>ap-12345678</serialNumber>
+		<dlna:X_DLNADOC xmlns:dlna="urn:schemas-dlna-org:device-1-0">DMS-1.50</dlna:X_DLNADOC>
         <iconList>
 EOXML
 
@@ -1105,6 +1107,18 @@ EOXML
     return $xml;
 }
 
+
+# SUBSCRIBE request from WMP
+#
+#	SUBSCRIBE /upnp/event/ContentDirectory1 HTTP/1.1
+#	Cache-Control: no-cache
+#	Connection: Close
+#	Pragma: no-cache
+#	User-Agent: Microsoft-Windows/10.0 UPnP/1.0
+#	NT: upnp:event
+#	Callback: <http://10.237.50.101:2869/upnp/eventing/esingnommv>
+#	Timeout: Second-1800
+#	Host: 10.237.50.101:8091
 
 
 
