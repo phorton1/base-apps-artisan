@@ -199,12 +199,30 @@ function init_page_explorer()
 		dblclick: function(event, data) {
 			var node = data.node;
 			var rec = node.data;
-			// var details = $("#explorer_details").fancytree("getTree");
-			var play_url = "/media/" + node.data.id + '.' + node.data.type;
-			$('#audio_player').attr('src',play_url);
-			$('#audio_player_title').html(node.data.title);
-			  // we could return false to prevent default handling, i.e. generating
-			  // activate, expand, or select events
+
+			// use embeded audio player (soon to be webUI's own 'renderer')
+			// to play it as a stream (from my local library only at this time)
+
+			if (false)
+			{
+				var play_url = "/media/" + node.data.id + '.' + node.data.type;
+				$('#audio_player').attr('src',play_url);
+				$('#audio_player_title').html(node.data.title);
+			}
+
+			// tell the renderer to stream it from the library
+			// (from my local library only at this time)
+
+			else
+			{
+				renderer_command('play_song' +
+					'?library_uuid=' + current_library['uuid'] +
+					'&track_id=' +node.data.id );
+			}
+
+			// we could return false to prevent default handling,
+			// i.e. generating subsequent activate, expand, or select events
+
 			return true;
 		},
 
