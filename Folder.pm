@@ -29,15 +29,8 @@ use Digest::MD5 'md5_hex';
 use Database;
 use artisanUtils;
 
-
-our $dbg_folder = 0;
-
-BEGIN
-{
- 	use Exporter qw( import );
-	our @EXPORT = qw (
-    );
-}
+my $dbg_folder = 0;
+my $dbg_didl = 1;
 
 
 # special accessors
@@ -220,7 +213,7 @@ sub save
 sub getDidl
 {
 	my ($this) = @_;
-    display($dbg_xml,0,"getDidl($this->{id})");
+    display($dbg_didl,0,"getDidl($this->{id})");
 
     my $container = (00 && $this->{dirtype} eq 'album') ?
         'object.container.album.musicAlbum' :
@@ -244,9 +237,9 @@ sub getDidl
     $didl .= "<upnp:albumArtURI>". encode_xml($art_uri) ."</upnp:albumArtURI> ";
 	$didl .= "</container>";
 
-	display($dbg_xml+1,0,"pre_didl=$didl");
+	display($dbg_didl+1,0,"pre_didl=$didl");
 	$didl = encode_didl($didl);
-	display($dbg_xml+2,0,"didl=$didl");
+	display($dbg_didl+2,0,"didl=$didl");
 	return $didl;
 }
 

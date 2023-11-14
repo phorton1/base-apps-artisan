@@ -30,11 +30,10 @@ sub new
 {
 	my ($class) = @_;
 	display($dbg_lpls,0,"localPLSource::new()");
-	my $this = $class->SUPER::new(
-		1,
-		$this_uuid,
-		$program_name);
-
+	my $this = $class->SUPER::new({
+		local => 1,
+		uuid => $this_uuid,
+		name => $program_name});
 
 	$this->{playlists} = shared_clone([]);
 	$this->{playlists_by_name} = shared_clone({});
@@ -137,8 +136,18 @@ my %default_playlists = (
 		query =>
 			"albums/Blues\t".
 			"singles/Blues" },
-	station7 => { num => 7, query => "" },
-	station8 => { num => 8, query => "" },
+	bands => {
+		num => 7,
+		shuffle => $SHUFFLE_ALBUMS,
+		query =>
+			"albums/Productions/Bands\t".
+			"albums/Productions/Other\t".
+			"albums/Productions/Theo"},
+	originals => {
+		num => 8,
+		shuffle => $SHUFFLE_ALBUMS,
+		query =>
+			"albums/Productions/Originals" },
     world => {
 		num => 9,
 		shuffle => $SHUFFLE_ALBUMS,

@@ -72,16 +72,6 @@ my $show_error_level = $ERROR_MEDIUM;
 # My::Utils::set_alt_output(1);
 
 
-BEGIN
-{
-    use Exporter qw( import );
-	our @EXPORT = qw (
-    );
-};
-
-
-
-
 my $CLEANUP_DATABASE = 1;
 	# remove unused database records at end of scan
 my $CLEANUP_FPCALC_FILES = 0;

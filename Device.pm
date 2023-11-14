@@ -58,47 +58,28 @@ use threads::shared;
 use artisanUtils;
 
 
-my $dbg_device = 1;
-
-
-our $DEVICE_TYPE_LIBRARY  = 'Library';
-our $DEVICE_TYPE_RENDERER = 'Renderer';
-our $DEVICE_TYPE_PLSOURCE = 'PLSource';
-
-
-BEGIN
-{
- 	use Exporter qw( import );
-	our @EXPORT = qw (
-		$DEVICE_TYPE_LIBRARY
-		$DEVICE_TYPE_RENDERER
-		$DEVICE_TYPE_PLSOURCE
-	);
-};
-
+my $dbg_device = 0;
 
 
 
 sub new
 {
-	my ($class, $is_local, $deviceType, $uuid, $friendlyName) = @_;
-	display($dbg_device,0,"Device::new($is_local,$deviceType,$uuid,$friendlyName");
-	my $this = shared_clone({
-		local => $is_local,
-		deviceType => $deviceType,
-		uuid => $uuid,
-		name => $friendlyName,
-		services => shared_clone({}) });
+	my ($class, $params) = @_;
+	display_hash($dbg_device,0,"Device::new",$params);
+	my $this = shared_clone($params);
+		# local 		=> $is_local,
+		# deviceType 	=> $deviceType,
+		# uuid 		=> $uuid,
+		# name 		=> $friendlyName,
+		# ip			=> '',
+		# port		=> '',
+		# services 	=> '',
+		# online 		=> time(),
+		# max_age 	=> $DEFAULT_MAX_AGE,
 	bless $this,$class;
 	return $this;
 }
 
-
-sub addService
-{
-	my ($this, $id, $service) = @_;
-	$this->{services}->{$id} = $service;
-}
 
 
 1;

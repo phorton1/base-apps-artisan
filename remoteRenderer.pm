@@ -17,19 +17,53 @@ my $dbg_rlib = 0;
 
 sub new
 {
-	my ($class,$uuid,$friendlyName,$params) = @_;
-	display($dbg_rlib,0,"remoteRenderer::new($uuid,$friendlyName)");
-	my $this = $class->SUPER::new(
-		0,
-		$uuid,
-		$friendlyName);
-
-	mergeHash($this,shared_clone($params));
-
+	my ($class,$params) = @_;
+	display($dbg_rlib,0,"remoteRenderer::new()");
+	my $this = $class->SUPER::new($params);
 	bless $this,$class;
 	return $this;
 }
 
 
+sub doCommand
+	# returns '' for success, or an error message
+	#
+	# Supports the following commands and arguments
+	#
+	#   update
+	#	stop
+	#   play
+	#	pause
+	#   play_pause
+	#   next
+	#   prev
+	#
+	#	mute 0 or 1		- not implemented yet
+	#	loud 0 or 1
+	#	volume 0..100
+	#	balance -100..+100
+	#	fade -100..100
+	#	bassLevel 0..100
+	#	midLevel 0..100
+	#	highLevel 0..100
+	#		value =>
+	#   seek
+	#		position => ms
+	#
+	#   play_song =>    currently only supports local library
+	#		library_uuid => uuid
+	#		id => id
+	#
+	#   set_playlist
+	#		plsource_uuid => uuid
+	#       name => name
+	#	playlist_song
+	#		index => index to use
+	#	shuffle_playlist
+	#		value => 0,1,2
+{
+	my ($this,$command,$params) = @_;
+	return "not supported";
+}
 
 1;

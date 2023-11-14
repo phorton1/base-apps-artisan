@@ -19,13 +19,14 @@ use DeviceManager;
 use localRenderer;
 use localLibrary;
 use localPLSource;
+use remoteLibrary;
+use remoteRenderer;
 use sigtrap 'handler', \&onSignal, 'normal-signals';
 
 
 my $dbg_main = 0;
 
 
-$program_name = 'Artisan Perl';
 $HTTPServer::SINGLE_THREAD=1;
 
 
@@ -44,12 +45,11 @@ sub onSignal
 display($dbg_main,0,"starting $program_name");
 
 
-# (0) static initialization from prefs/cache
+# (0) static initialization of prefs
 
 if (0)
 {
 	artisanPrefs::static_init_prefs();
-	DeviceManager::init_device_cache();
 }
 
 
@@ -60,13 +60,12 @@ display($dbg_main,0,"Scanning Library ...");
 DatabaseMain::scanTree();
 display($dbg_main,0,"Finished Scanning Library");
 
-# (2) Create Local devices
+# (2) Create Local and Cached Devices
 
 addDevice(new localLibrary());
 addDevice(new localRenderer());
 addDevice(new localPLSource());
 $local_plsource->initPlaylists();
-
 
 # (3) HTTP SERVER - establishes $server_ip
 

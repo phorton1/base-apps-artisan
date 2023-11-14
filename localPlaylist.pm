@@ -32,11 +32,12 @@ use threads::shared;
 use SQLite;
 use Database;
 use artisanUtils;
-# temporary kludge to support new API
-use localLibrary;
 use DeviceManager;
+	# temporary? kludge to support new API
+	# by using $local_library
 
-our $dbg_lpl = 0;
+
+my $dbg_lpl = 0;
 
 
 our $SHUFFLE_NONE = 0;
@@ -393,9 +394,9 @@ sub create_tracks_from_query
 
 	display($dbg_lpl,1,"inserting ".scalar(@$tracks)." items in new Playlist($this->{name})");
 
-	# presumably create_table wipes out the old one, so we don't need
-	# unlink "$playlist_dir/$name.db";
+	# create new table
 
+	unlink "$playlist_dir/$name.db";
 	$this->startDB();
 	create_table($pl_dbh,"tracks");
 	$tracks = $this->sort_shuffle_tracks($tracks);

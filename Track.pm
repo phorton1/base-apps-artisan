@@ -27,14 +27,8 @@ use artisanUtils;
 use Database;
 
 
-our $dbg_track = 0;
-
-BEGIN
-{
- 	use Exporter qw( import );
-	our @EXPORT = qw (
-    );
-}
+my $dbg_track = 0;
+my $dbg_didl = 1;
 
 
 # special accessors
@@ -209,7 +203,7 @@ sub save
 sub getDidl
 {
 	my ($this) = @_;
-    display($dbg_xml,0,"getDidl($this->{id}) type=$this->{type}  title=$this->{title}");
+    display($dbg_didl,0,"getDidl($this->{id}) type=$this->{type}  title=$this->{title}");
 
 	my $dlna_stuff = $this->get_dlna_stuff();
 	my $pretty_duration = millis_to_duration($this->{duration},1);
@@ -246,9 +240,9 @@ sub getDidl
     $didl .= ">$url</res>";
 	$didl .= "</item>";
 
-	display($dbg_xml+1,0,"pre_didl=$didl");
+	display($dbg_didl+1,0,"pre_didl=$didl");
 	$didl = encode_didl($didl);
-	display($dbg_xml+2,0,"didl=$didl");
+	display($dbg_didl+2,0,"didl=$didl");
 	return $didl;
 }
 

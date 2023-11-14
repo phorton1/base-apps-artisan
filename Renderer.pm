@@ -41,13 +41,14 @@ BEGIN
 
 sub new
 {
-	my ($class,$is_local,$uuid,$friendlyName) = @_;
-	display($dbg_ren,0,"Renderer::new($is_local,$uuid,$friendlyName");
-	my $this = $class->SUPER::new(
-		$is_local,
-		$DEVICE_TYPE_RENDERER,
-		$uuid,
-		$friendlyName);
+	my ($class,$params) = @_; # $is_local,$uuid,$friendlyName) = @_;
+	$params->{deviceType} ||= $DEVICE_TYPE_RENDERER;
+	display($dbg_ren,0,"Renderer::new()");
+	my $this = $class->SUPER::new($params);
+		# $is_local,
+		# $DEVICE_TYPE_RENDERER,
+		# $uuid,
+		# $friendlyName);
 	bless $this,$class;
 
 	mergeHash($this, shared_clone({

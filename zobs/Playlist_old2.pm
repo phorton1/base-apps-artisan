@@ -47,7 +47,8 @@ our $SHUFFLE_NONE = 0;
 our $SHUFFLE_TRACKS = 1;
 our $SHUFFLE_ALBUMS = 2;
 
-our $dbg_pl = 1;
+my $dbg_pl = 1;
+
 
 BEGIN
 {

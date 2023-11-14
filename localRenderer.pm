@@ -20,15 +20,6 @@ my $dbg_lren = 0;
 my $dbg_com_object = 1;
 
 
-BEGIN
-{
- 	use Exporter qw( import );
-	our @EXPORT = qw (
-    );
-}
-
-
-
 # field that get moved from a track to the renderer
 # art_uri will be gotten from parent if not available
 # pretty_size is built for each request
@@ -81,10 +72,10 @@ sub new
 {
 	my ($class) = @_;
 	display($dbg_lren,0,"localRenderer::new()");
-	my $this = $class->SUPER::new(
-		1,
-		$this_uuid,
-		$program_name);
+	my $this = $class->SUPER::new({
+		local => 1,
+		uuid  => $this_uuid,
+		name  => $program_name });
 	bless $this,$class;
 
 	mergeHash($this, shared_clone({
@@ -297,23 +288,17 @@ sub play_track
 {
 	my ($this,$track) = @_;
 
-	my $url = "http://$server_ip:$server_port/media/$track->{id}.mp3";
-		# mp is not working with my streams!
-
-	my $path = "$mp3_dir/$track->{path}";
-	$path =~ s/\//\//g;
-
-	display($dbg_lren,1,"play_track($path) duration=$track->{duration}");
+	display($dbg_lren,1,"play_track($track->{path}) duration=$track->{duration}");
 
 	for my $field (@track_fields_to_renderer)
 	{
 		$this->{metadata}->{$field} = $track->{$field};
 	}
 	$this->{metadata}->{pretty_size} = bytesAsKMGT($track->{size});
-	my $ext = $path =~ /\.(.*?)$/ ? uc($1) : '';
+	my $ext = $track->{path} =~ /\.(.*?)$/ ? uc($1) : '';
 	$this->{metadata}->{type} = $ext;
 
-	# get the art_uri from the parent if not provided
+	# get the art from the parent folder
 
 	$this->{metadata}->{art_uri} = "http://$server_ip:$server_port/get_art/$track->{parent_id}/folder.jpg";
 	if (!$this->{metadata}->{art_uri})
@@ -323,6 +308,12 @@ sub play_track
 	}
 
 	$this->{position} = 0;
+
+	my $url = "http://$server_ip:$server_port/media/$track->{id}.mp3";
+		# mp is not working with my streams!
+	my $path = "$mp3_dir/$track->{path}";
+	$path =~ s/\//\//g;
+
 	$mp->{URL} = $path;
 	$controls->play();
 	$this->{state} = $RENDERER_STATE_PLAYING;
@@ -384,7 +375,7 @@ sub update
 		# we stop the player and move to the next playlist song
 
 		my $play_state = $mp->{playState};
-		display(0,0,"play_state=$play_state");
+		display($dbg_lren+1,0,"play_state=$play_state");
 
 		if ($play_state == $MP_STATE_STOPPED)
 		{

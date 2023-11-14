@@ -17,12 +17,9 @@ my $dbg_rpls = 0;
 
 sub new
 {
-	my ($class,$uuid,$friendlyName) = @_;
-	display($dbg_rpls,0,"remotePLSource::new($uuid,$friendlyName)");
-	my $this = $class->SUPER::new(
-		0,
-		$uuid,
-		$friendlyName);
+	my ($class,$params) = @_;
+	display($dbg_rpls,0,"remotePLSource::new()");
+	my $this = $class->SUPER::new($params);
 	bless $this,$class;
 	return $this;
 }
