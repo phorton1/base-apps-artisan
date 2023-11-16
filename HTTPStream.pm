@@ -136,7 +136,7 @@ sub stream_media
 		push @addl_headers, "Content-Length: $content_len";
 		# push @addl_headers, "Content-Disposition: attachment; filename=\"$track->{titles}\"";
 		push @addl_headers, "Accept-Ranges: bytes";
-        push @addl_headers, "contentFeatures.dlna.org: ".$track->get_dlna_stuff();
+        push @addl_headers, "contentFeatures.dlna.org: ".$track->dlna_content_features();
 		push @addl_headers, 'transferMode.dlna.org: Streaming';
 		push @addl_headers, "Content-Range: bytes $from_byte-$to_byte/$track->{size}"
 			if ($is_ranged);

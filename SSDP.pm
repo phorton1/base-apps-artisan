@@ -784,7 +784,9 @@ sub processExternalMessage
 	# printf "show_dbg(%03X) mask(%03X) show_hash(%03X) show_line(%03X)\n",$show_dbg,$mask,$show_hash,$show_line;
 
 	my $PAD_USN = 0;	# 50
-	my $dbg_msg = sprintf "SSDP(%03X) ".pad($uuid,35)." ".pad($state,14)." ".pad($usn,$PAD_USN)." from $caller $from_addr",$mask;
+	my $PAD_ALIVE = 0;	# 14
+
+	my $dbg_msg = sprintf "SSDP(%03X) ".pad($uuid,35)." ".pad($state,$PAD_USN)." ".pad($usn,$PAD_USN)." from $caller $from_addr",$mask;
 	display(0,-1,$dbg_msg) if $show_line;
 	display_hash(0,-1,$dbg_msg,$message) if $show_hash;
 

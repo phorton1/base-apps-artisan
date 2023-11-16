@@ -6,7 +6,7 @@ package uiRenderer;
 use strict;
 use warnings;
 use artisanUtils;
-use uiUtils;
+use httpUtils;
 use Device;
 use DeviceManager;
 use Renderer;

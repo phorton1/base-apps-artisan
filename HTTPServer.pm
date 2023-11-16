@@ -14,17 +14,19 @@ use Fcntl;
 use Socket;
 use IO::Select;
 use artisanUtils;
+use httpUtils;
 use HTTPStream;
+use ContentDirectory1;
 use WebUI;
 
 
 my $dbg_http = 0;
 	#  0 == lifecycle
-my $dbg_post = 0;
+my $dbg_post = 1;
 	#  0 == show POST data
 my $dbg_art = 0;
 	# 0 == debug get_art() method
-my $dbg_server_desc = 0;
+my $dbg_server_desc = 1;
 	# 0 = show the xml to be returned for ServerDesc.xml
 
 
@@ -41,7 +43,7 @@ my $dbg_hdr = 1;
 
 # debugging that is filtered for renderer/xxx/update calls
 
-my $dbg_request = -1;
+my $dbg_request = 0;
 	#  0 == show a header for every non renderer/xxx/update call
 	# -1 == show request headers for same
 	# -2 == show header for renderer/xxx/update calls, headers for all otherw
@@ -186,7 +188,7 @@ sub handle_connection
 	# don't want to see the stupid static requests
 
 	my $use_dbg_request = $dbg_request;
-	$use_dbg_request += 2  if $request_path =~ /^\/webui\/renderer\/(.*)\/update|^/; #|\/ContentDirectory1\.xml|\/ServerDesc\.xml/;
+	$use_dbg_request += 2  if $request_path =~ /^\/webui\/renderer\/(.*)\/update/; #|\/^ContentDirectory1\.xml|\/ServerDesc\.xml/;
 	display($use_dbg_request,0,"$request_method $request_path from $peer_ip:$peer_port");
 	for my $key (keys %request_headers)
 	{
@@ -203,12 +205,12 @@ sub handle_connection
 		my $content_length = $request_headers{CONTENT_LENGTH};
 		if (defined($content_length) && length($content_length) > 0)
 		{
-			display($dbg_post,1,"Reading $content_length bytes for POSTDATA");
+			display($dbg_request,1,"Reading $content_length bytes for POSTDATA");
 			read($FH, $post_data, $content_length);
 		}
 		else
 		{
-			display($dbg_post,1,"Reading content until  cr-lf for POSTDATA");
+			display($dbg_request,1,"Reading content until  cr-lf for POSTDATA");
 			my $line = <$FH>;
 			while ($line && $line ne "\r\n")
 			{
@@ -243,9 +245,9 @@ sub handle_connection
 	elsif ($request_path =~ /^\/(ServerDesc|ContentDirectory1)\.xml/)
 	{
 		my $desc = $1;
-		my $xml = $1 eq 'ServerDesc.xml' ?
-			xml_serverdescription() :
-			getTextFile("$artisan_perl_dir/xml/$desc",1);
+		my $xml = $1 eq 'ServerDesc' ?
+			ServerDesc() :
+			getTextFile("$artisan_perl_dir/xml/$desc.xml",1);
 		$response = http_header({
 			status_code => 200,
 			content_type => 'text/xml; charset=utf8',
@@ -341,7 +343,7 @@ sub handle_connection
 				$content_len = "content_len($1)" if $line =~ /content-length:\s*(.*)$/;
 				$in_body = ($dbg_displayable ? 100 : 1) if !$line;
 
-				display($dbg_response+$in_body,2,$line);
+				display($dbg_response+$in_body+1,2,$line);
 			}
 
 			display(0,1,"RESPONSE: $first_line $content_type $content_len")
@@ -420,7 +422,7 @@ sub get_art
 
 
 
-sub xml_serverdescription
+sub ServerDesc
 	# server description for the DLNA Server
 {
 	my $xml = <<EOXML;

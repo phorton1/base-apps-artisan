@@ -199,7 +199,7 @@ sub getTrackMetadata
 #	my $state = $data =~ /<CurrentTransportState>(.*?)<\/CurrentTransportState>/s ? $1 : '';
 
 
-my $dbg_dlna = -2;
+my $dbg_dlna = 0;
 
 
 sub serviceRequest

@@ -48,7 +48,7 @@ sub getContainingPath
 sub mimeType
 {
 	my ($this) = @_;
-	return DatabaseMain::myMimeType($this->{type});
+	return myMimeType($this->{type});
 }
 
 
@@ -205,11 +205,11 @@ sub getDidl
 	my ($this) = @_;
     display($dbg_didl,0,"getDidl($this->{id}) type=$this->{type}  title=$this->{title}");
 
-	my $dlna_stuff = $this->get_dlna_stuff();
+	my $dlna_stuff = $this->dlna_content_features();
 	my $pretty_duration = millis_to_duration($this->{duration},1);
 	my $art_uri = $this->{has_art} & 1 ?
 		"http://$server_ip:$server_port/get_art/$this->{parent_id}/folder.jpg" : "";
-	my $mime_type = DatabaseMain::myMimeType($this->{type});
+	my $mime_type = myMimeType($this->{type});
 	my $url = "http://$server_ip:$server_port/media/$this->{id}.$this->{type}";
 
 
@@ -255,12 +255,12 @@ sub getDidl
 #------------------------------------------------
 
 
-sub get_dlna_stuff
+sub dlna_content_features
 	# DLNA.ORG_PN - media profile
 {
 	my ($this) = @_;
 	my $type = $this->{type};
-	my $mime_type = DatabaseMain::myMimeType($type);
+	my $mime_type = myMimeType($type);
 	my $contentfeatures = '';
 
     # $contentfeatures .= 'DLNA.ORG_PN=LPCM;' if $mime_type eq 'audio/L16';

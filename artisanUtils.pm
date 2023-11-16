@@ -57,7 +57,6 @@ BEGIN
         $server_port
 		$quitting
 
-		http_header
 		myMimeType
 		pathMimeType
 
@@ -72,6 +71,7 @@ BEGIN
         dump_stats
 
 		encode_didl
+		decode_didl
 		encode_xml
 		decode_xml
         escape_tag
@@ -327,69 +327,8 @@ our %stats;
 
 
 #---------------------------------
-# HTTP and Mime utilities
+# Mime utilities
 #---------------------------------
-
-sub http_error
-{
-	my ($msg) = @_;
-	error($msg,1);
-	return http_header({ status_code => 400 });
-}
-
-
-sub http_header
-{
-	my ($params) = @_;
-
-	$params ||= {};
-	my $status_code = $params->{status_code} || 200;
-	my $content_type = $params->{content_type} || 'text/plain';
-
-	my %HTTP_CODES = (
-		200 => 'OK',
-		206 => 'Partial Content',
-		400 => 'Bad request',
-		403 => 'Forbidden',
-		404 => 'Not found',
-		406 => 'Not acceptable',
-		501 => 'Not implemented' );
-
-	my @response = ();
-	push(@response, "HTTP/1.1 $status_code ".$HTTP_CODES{$status_code});
-	push(@response, "Server: $program_name");
-	push(@response, "Content-Type: $content_type");
-	push(@response, "Content-Length: $params->{'content_length'}") if $params->{'content_length'};
-	push(@response, "Date: ".gmtime()." GMT");
-    # push(@response, "Last-Modified: "gmtime()." GMT"));
-
-	if (defined($$params{'addl_headera'}))
-	{
-		for my $header (@{$params->{'addl_headera'}})
-		{
-			push(@response, $header);
-		}
-	}
-
-	if (0)
-	{
-		push(@response,"ETag:");
-		push(@response,'Cache-Control "max-age=0, no-cache, no-store, must-revalidate"');
-		push(@response,'Pragma "no-cache"');
-		push(@response,'Expires "Wed, 11 Jan 1984 05:00:00 GMT"');
-	}
-	else
-	{
-		push(@response, 'Cache-Control: no-cache');
-	}
-
-	push(@response, 'Connection: close');
-
-	return join("\r\n", @response)."\r\n\r\n";
-}
-
-
-
 
 sub myMimeType
 {
@@ -549,9 +488,19 @@ sub encode_didl
 	# does lightweight didl encoding
 {
 	my ($string) = @_;
-	$string =~ s/"/&quot;/g;
-	$string =~ s/</&lt;/g;
-	$string =~ s/>/&gt;/g;
+	# $string =~ s/"/&quot;/g;
+	$string =~ s/</&lt;/sg;
+	$string =~ s/>/&gt;/sg;
+	return $string;
+}
+
+sub decode_didl
+	# does lightweight didl encoding
+{
+	my ($string) = @_;
+	# $string =~ s/&quot;/"/g;
+	$string =~ s/&lt;/</sg;
+	$string =~ s/&gt;/>/sg;
 	return $string;
 }
 

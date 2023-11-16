@@ -5,153 +5,37 @@
 # handle requests to /upnp/control/ContentDirectory1,
 # which is Artisan BEING a DLNA MediaServer
 
-package HTTPServer;
+package ContentDirectory1;
 use strict;
 use warnings;
 use threads;
 use threads::shared;
-use Fcntl;
-use Socket;
-use IO::Select;
 use XML::Simple;
 use artisanUtils;
+use httpUtils;
 use Database;
 use DeviceManager;
-use HTTPStream;
-use WebUI;
 
 
-
-my $dbg_http = 0;
-	#  0 == lifecycle
-my $dbg_post = 0;
-	#  0 == show POST data
-my $dbg_art = 0;
-	# 0 == debug get_art() method
-my $dbg_server_desc = 0;
-	# 0 = show the xml to be returned for ServerDesc.xml
-
-
-# use with care - debugging that cannot be filtered by call
-
-my $dbg_connect = 0;
-	#  0 == show individual connections
-	# -1 == show pending connnections (in case more than one at a time)
-my $dbg_hdr = 0;
-	#  0 == show actual request header lines
-
-
-# debugging that is filtered for renderer/xxx/update calls
-
-my $dbg_request = 0;
-	#  0 == show a header for every non renderer/xxx/update call
-	# -1 == show request headers for same
-	# -2 == show header for renderer/xxx/update calls, headers for all otherw
-	# -3 == show headers for everything
-my $dbg_response = 0;
-	# same as for dbg_request
-
-# DLNA/XML debugging
-
-my $DEBUG_SEARCH = 0;
-    # Set this to one to see the full request and
-    # response xml for Search requests at debug
-    # level 1 or greater
-my $DEBUG_BROWSE = 1;
-    # Set this to one to see the full request and
-    # response xml for Browse requests at debug
-    # level 1 or greater
-
-
-# !!! THE THREADED APPROACH  NOT WORKING ON ARTISAN_WIN !!!
-# Crashes when I try to "set the renderer" from the webUI
-#
-# The last thing appears to be the close($FH) at the end of handle_connection(),
-# which is a thread created, and detached in start_webserver, below.
-# Does not appear to make any difference if I etach, $FH, or init
-# artisan from the main thread, or not.
-#
-# Then I get "Free to wrong pool during global destruction" error message
-# Single thread set directly in artisan.pm
-
-our $SINGLE_THREAD = 0;
-	# SET TO 1 in ARTISAN_WIN.PM !!!
-    # set this to one to see full requests
-    # while debugging, otherwise you will get
-    # messages from different threads interspersed
-    # in debug output
+my $dbg_input = 0;
+	#  0 == show header for handle_request
+	# -1 == show pretty and parsed request XML
+my $dbg_params = 0;
+	#  0 == show params
+my $dbg_browse = 0;
+	#  0 == show main stuff
+	# -1 == parse didl, show headeer
+	# -2 == show pretty and parsed didl
+my $dbg_search = 0;
+my $dbg_sql = 0;
+my $dbg_output = 0;
+	#  0 == show header for response
+	# -1 == show pretty and parsed response XML
 
 my $cache_timeout = 1800;
 
 
-my $system_update_id = time();
-# share($system_update_id);
-
-
-
-#-----------------------------------------------------------------
-# utilities
-#-----------------------------------------------------------------
-
-sub my_parse_xml
-{
-	my ($post_data,$msg) = @_;
-	my $xml;
-	my $xmlsimple = XML::Simple->new();
-	eval { $xml = $xmlsimple->XMLin($post_data) };
-	if ($@)
-	{
-		error("Unable to parse xml $msg:".$@);
-		$xml = undef;
-	}
-	return $xml;
-}
-
-sub debug_xml_text
-{
-    my ($level,$indent,$msg,$text) = @_;
-    my $xml = my_parse_xml($text,"debug_xml_text($msg)");
-
-    # always show the raw xml if the parse failed
-
-    if (!$xml)
-    {
-        #$text =~ s/&lt;/</g;
-        #$text =~ s/&gt;/>/g;
-        #$text =~ s/&quot;/"/g;
-        display(0,$indent,"");
-        display(0,$indent,"XML TEXT (PARSE FAILED)");
-        my $num = 1;
-        for my $line (split(/\n/,$text))
-        {
-            display(0,$indent+1,($num++).":".$line);
-        }
-    }
-    else
-    {
-        debug_xml($level,$indent,$msg,$xml);
-    }
-}
-
-
-sub debug_xml
-{
-    my ($level,$indent,$msg,$xml) = @_;
-    use Data::Dumper;
-    $Data::Dumper::Indent = 1;
-    my $dump = Dumper($xml);
-    my @xml_lines = split(/\n/,$dump);
-    shift @xml_lines;
-    pop @xml_lines;
-
-    display($level,$indent,"");
-    display($level,$indent,$msg);
-    for my $line (@xml_lines)
-    {
-        display($level,$indent+1,$line);
-    }
-    display($level,$indent,"");
-}
+my $system_update_id:shared = 0; # time();
 
 
 
@@ -162,83 +46,105 @@ sub debug_xml
 
 sub handle_request
 {
-	# ContentDirectory1::handle_request($post_data, $request_headers{SOAPACTION}, $peer_ip, $peer_port);
-	my ($xml,$action,$peer_ip_addr) = @_;
-	my $response_xml = undef;
-    display($dbg_http+1,0,"localContentDirectory1(xml=$xml,action=$action)");
+	my ($post_data,$action,$peer_ip,$peer_port) = @_;
+
+	$action =~ s/"//g;
+	return error("action not upnp: $action")
+		if $action !~ s/^urn:schemas-upnp-org:service://;
+	return error("action not ContentDirectory1: $action")
+		if $action !~ s/^ContentDirectory:1#//;
+
+	display($dbg_input,0,"ContentDirectory1.handle_request($action) from $peer_ip:$peer_port");
+
+	my $xml = parseXML($post_data,{
+		what => "CD1Request.$action",
+		show_hdr => $dbg_input <= 0,
+		show_dump => $dbg_input < 0,
+		addl_level => 0,
+		dump => 0,
+		decode_didl => 0,
+		raw => 0,
+		pretty => 1,
+		my_dump => 0,
+		dumper => 1 });
+
+
+	my $content = undef;
 
     # browser, search, bookmark
 
-	if ($action eq '"urn:schemas-upnp-org:service:ContentDirectory:1#Browse"')
+	if ($action eq 'Browse')
 	{
-        $response_xml = browse_directory($xml,$peer_ip_addr);
+        $content = browse_directory($xml);
     }
-    elsif ($action eq '"urn:schemas-upnp-org:service:ContentDirectory:1#Search"')
+    elsif ($action eq 'Search')
     {
-        $response_xml = search_directory($xml,$peer_ip_addr);
+        $content = search_directory($xml);
     }
-	elsif ($action eq '"urn:schemas-upnp-org:service:ContentDirectory:1#X_SetBookmark"')
-	{
-        $response_xml = set_bookmark($xml,$peer_ip_addr);
-	}
 
     # capability responses
 
-	elsif ($action eq '"urn:schemas-upnp-org:service:ContentDirectory:1#GetSearchCapabilities"')
+	elsif ($action eq 'GetSearchCapabilities')
 	{
-		$response_xml .= '<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">';
-		$response_xml .= '<s:Body>';
-		$response_xml .= '<u:GetSearchCapabilitiesResponse xmlns:u="urn:schemas-upnp-org:service:ContentDirectory:1">';
-		$response_xml .= '<SearchCaps>*</SearchCaps>';
-		$response_xml .= '</u:GetSearchCapabilitiesResponse>';
-		$response_xml .= '</s:Body>';
-		$response_xml .= '</s:Envelope>';
+		$content = soap_header();
+		$content .= '<u:GetSearchCapabilitiesResponse xmlns:u="urn:schemas-upnp-org:service:ContentDirectory:1">';
+		$content .= '<SearchCaps>*</SearchCaps>';
+		$content .= '</u:GetSearchCapabilitiesResponse>';
+		$content .= soap_footer();
 	}
-	elsif ($action eq '"urn:schemas-upnp-org:service:ContentDirectory:1#GetSortCapabilities"')
+	elsif ($action eq 'GetSortCapabilities')
 	{
-		$response_xml .= '<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">';
-		$response_xml .= '<s:Body>';
-		$response_xml .= '<u:GetSortCapabilitiesResponse xmlns:u="urn:schemas-upnp-org:service:ContentDirectory:1">';
-		$response_xml .= '<SortCaps></SortCaps>';
-		$response_xml .= '</u:GetSortCapabilitiesResponse>';
-		$response_xml .= '</s:Body>';
-		$response_xml .= '</s:Envelope>';
+		$content = soap_header();
+		$content .= '<u:GetSortCapabilitiesResponse xmlns:u="urn:schemas-upnp-org:service:ContentDirectory:1">';
+		$content .= '<SortCaps></SortCaps>';
+		$content .= '</u:GetSortCapabilitiesResponse>';
+		$content .= soap_footer();
 	}
-	elsif ($action eq '"urn:schemas-upnp-org:service:ContentDirectory:1#GetSystemUpdateID"')
+	elsif ($action eq 'GetSystemUpdateID')
 	{
         warning(0,-1,"Thats the first time I've seen someone call action = GetSystemUpdateID($system_update_id)");
-		$response_xml .= '<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">';
-		$response_xml .= '<s:Body>';
-		$response_xml .= '<u:GetSystemUpdateIDResponse xmlns:u="urn:schemas-upnp-org:service:ContentDirectory:1">';
-		$response_xml .= "<Id>$system_update_id</Id>";
-		$response_xml .= '</u:GetSystemUpdateIDResponse>';
-		$response_xml .= '</s:Body>';
-		$response_xml .= '</s:Envelope>';
+		$content = soap_header();
+		$content .= '<u:GetSystemUpdateIDResponse xmlns:u="urn:schemas-upnp-org:service:ContentDirectory:1">';
+		$content .= "<Id>$system_update_id</Id>";
+		$content .= '</u:GetSystemUpdateIDResponse>';
+		$content .= soap_footer();
 	}
-	elsif ($action eq '"urn:schemas-upnp-org:service:ContentDirectory:1#X_GetIndexfromRID"')
+	elsif ($action eq 'X_GetIndexfromRID')
 	{
-		$response_xml .= '<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">';
-		$response_xml .= '<s:Body>';
-		$response_xml .= '<u:X_GetIndexfromRIDResponse xmlns:u="urn:schemas-upnp-org:service:ContentDirectory:1">';
-		$response_xml .= '<Index>0</Index>';
+		$content = soap_header();
+		$content .= '<u:X_GetIndexfromRIDResponse xmlns:u="urn:schemas-upnp-org:service:ContentDirectory:1">';
+		$content .= '<Index>0</Index>';
            # we are setting it to 0 - so take the first item in the list to be active
-		$response_xml .= '</u:X_GetIndexfromRIDResponse>';
-		$response_xml .= '</s:Body>';
-		$response_xml .= '</s:Envelope>';
+		$content .= '</u:X_GetIndexfromRIDResponse>';
+		$content .= soap_footer();
 	}
 	else
 	{
-		error("Action: $action is NOT supported");
+		error("ContentDirectory1: $action not supported");
 		return http_header({ status_code => 501 });
 	}
 
 	# RETURN THE RESPONSE
 
 	my $response = undef;
-	if (defined($response_xml))
+	if (defined($content))
 	{
+		display($dbg_output,1,"returning ".length($content)." bytes xml content");
 		$response = http_header({ content_type => 'text/xml; charset=utf8' });
-		$response .= $response_xml;
+		$response .= $content;
+
+		parseXML($content,{
+			what => "CD1Request($action).response",
+			show_hdr  => $dbg_output <= 0,
+			show_dump => $dbg_output < 0,
+			addl_level => 1,
+			dump => 0,
+			decode_didl => 0,
+			raw => 0,
+			pretty => 1,
+			my_dump => 0,
+			dumper => 1 });
+
 	}
 	else
 	{
@@ -248,7 +154,7 @@ sub handle_request
 
 	return $response;
 
-}   # ctrl_content_directory_1()
+}   # ContentDirectory1::handle_request()
 
 
 
@@ -288,7 +194,7 @@ sub get_xml_params
     {
         my $val = $object->{$field};
         $val = $val->{content} if ($use_content);
-        display($dbg_http+1,1,"object($field) = $val");
+        display($dbg_params,1,"object($field) = $val");
         push @rslt,$val;
     }
     return @rslt;
@@ -326,7 +232,7 @@ sub search_directory
     # no longer using #filter
 {
     my ($xml,$peer_ip_addr) = @_;
-    display($dbg_http+1,0,"SEARCH(xml=$xml)");
+    display($dbg_search,0,"SEARCH()");
 
     # from bubbleUp (empty), not used in my implementation: SortCriteria;
     # from bubbleUp not used in my implementation: 'xmlns:u' => 'urn:schemas-upnp-org:service:ContentDirectory:1',
@@ -347,9 +253,9 @@ sub search_directory
 
     $count ||= 0;
     # $filter = '*' if (!$filter);
-    display($dbg_http,0,"SEARCH(id=$id start=$start count=$count");
+    display($dbg_search,1,"SEARCH(id=$id start=$start count=$count");
     # display(1,1,"filter=$filter") if ($filter && $filter ne '*');
-    display($dbg_http,1,"criteria=$criteria)");
+    display($dbg_search,1,"criteria=$criteria)");
     $count = 10 if !$count;
 
     my ($table,$sql_expr);
@@ -366,7 +272,8 @@ sub search_directory
 
     # do the query
 
-    my $response_xml = '';
+    my $num = 0;
+	my $didl = didl_header();
     my $dbh = db_connect();
     my $recs = get_records_db($dbh,"SELECT * FROM $table ".($sql_expr?"WHERE $sql_expr":''));
     if (!$recs)
@@ -379,26 +286,25 @@ sub search_directory
     }
     else
     {
-        display($dbg_http,1,"search() found ".scalar(@$recs)." records in $table");
+        display($dbg_search,1,"search() found ".scalar(@$recs)." records in $table");
 
-        $response_xml .= xml_header(1);
-        my $num = 0;
+
         my $index = 0;
         if ($table eq 'tracks')
         {
 			my $folder;
 			my $parent_id = 0;
-            for my $file (@$recs)
+            for my $track (@$recs)
             {
-				if ($file->{parent_id} ne $parent_id)
+				if ($track->{parent_id} ne $parent_id)
 				{
-					$parent_id = $file->{parent_id};
+					$parent_id = $track->{parent_id};
 					$folder = $local_library->getFolder($parent_id,$dbh);
 						# re-use database connection
 				}
                 if ($index >= $start)
                 {
-                    $response_xml .= xml_item($file,$folder);
+                    $didl .= track_search_didl($track,$folder);
                     $num++;
                     last if ($num >= $count);
                 }
@@ -407,12 +313,12 @@ sub search_directory
         }
         else
         {
-            for my $dir (@$recs)
+            for my $folder (@$recs)
             {
                 if ($index >= $start)
                 {
                     # add_dir_data($dbh,$dir);
-                    $response_xml .= xml_directory($dir);
+                    $didl .= folder_search_didl($folder);
                     $num++;
                     last if ($num >= $count);
                 }
@@ -420,12 +326,17 @@ sub search_directory
             }
         }
 
-        $response_xml .= xml_footer($num,scalar(@$recs),1);
-
     }   # got some records
-
+	$didl .= didl_footer();
     db_disconnect($dbh);
-    return $response_xml;
+
+	my $response =
+		soap_header().
+		browse_header('SearchResponse').
+		encode_didl($didl).
+		browse_footer('SearchResponse',$num,@$recs);
+		soap_footer();
+    return $response;
 
 }   # search_directory
 
@@ -487,7 +398,7 @@ sub create_sql_expr
         $expr = undef;
     }
 
-    display($dbg_http+1,0,"create_sql_expr()=$table,$expr");
+    display($dbg_sql,0,"create_sql_expr()=$table,$expr");
     return ($table,$expr);
 
 }
@@ -502,6 +413,8 @@ sub create_sql_expr
 sub browse_directory
 {
     my ($xml,$peer_ip_addr) = @_;
+	display($dbg_browse,0,"BROWSE()");
+
     my ($id, $start, $count, $flag) =
         get_xml_params($xml,'Browse',qw(
             ObjectID
@@ -523,7 +436,7 @@ sub browse_directory
 
 	if (!$error)
 	{
-		display($dbg_http+1,0,"browse_directory($id)");
+		display($dbg_browse,1,"browse folder($id)");
 		$folder = $local_library->getFolder($id);
 		$error = "Could not get_folder($id)"
 			if (!$folder);
@@ -551,7 +464,7 @@ sub browse_directory
 	if (!$error)
 	{
 		$count ||= 0;
-		display($dbg_http,0,"BROWSE($flag,id=$id,start=$start,count=$count)");
+		display($dbg_browse,1,"$flag(id=$id,start=$start,count=$count)");
 		$count = 10 if !$count;
 
 		my $is_album = $folder->{dirtype} eq 'album' ? 1 : 0;
@@ -559,17 +472,47 @@ sub browse_directory
         my $subitems = $local_library->getSubitems($table, $id, $start, $count);
 		my $num_items = @$subitems;
 
-		display($dbg_http+1,0,"building http response for $num_items $table"."s");
+		display($dbg_browse,1,"building response for $num_items $table"."s");
 
-		my $response_xml = xml_header();
+		my $didl = didl_header();
         for my $item (@$subitems)
         {
-            $response_xml .= $item->getDidl();
+            $didl .= $item->getDidl()."\r\n";
         }
+		$didl .= didl_footer();
 
-        $response_xml .= xml_footer($num_items,$folder->{num_elements});
-        display($dbg_http+1,1,"Done with numeric($id) dirlist response");
-		return $response_xml;
+		my $content =
+			soap_header().
+			browse_header('BrowseResponse').
+			encode_didl($didl).
+			browse_footer('BrowseResponse',$num_items,$folder->{num_elements}).
+			soap_footer();
+
+		parseXML($didl,{
+			what => "$flag($id).didl",
+			show_hdr  => $dbg_browse <= 0,
+			show_dump => $dbg_browse < 0,
+			addl_level => 1,
+			dump => 1,
+			decode_didl => 1,
+			raw => 1,
+			pretty => 1,
+			my_dump => 1,
+			dumper => 1 });
+
+		parseXML($content,{
+			what => "$flag($id).content",
+			show_hdr  => $dbg_browse <= 0,
+			show_dump => $dbg_browse < 0,
+			addl_level => 1,
+			dump => 1,
+			decode_didl => 0,
+			raw => 1,
+			pretty => 1,
+			my_dump => 1,
+			dumper => 1 });
+
+		return $content;
     }
 
 	# error exit
@@ -580,60 +523,77 @@ sub browse_directory
 
 
 
-
-
-
-
-sub xml_header
+sub browse_header
 {
-    my ($what) = @_;   # 0=Browse, 1=Search
-    my $response_type = ($what ? 'Search' : 'Browse').'Response';
-	my $xml = <<EOXML;
-<s:Envelope
-    xmlns:s="http://schemas.xmlsoap.org/soap/envelope/"
-    s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">
-    <s:Body>
-        <u:$response_type xmlns:u="urn:schemas-upnp-org:service:ContentDirectory:1">
-        <Result>
-EOXML
-    $xml .= encode_didl(<<EOXML);
-<DIDL-Lite
-    xmlns="urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/"
-    xmlns:sec="http://www.sec.co.kr/dlna"
-    xmlns:dlna="urn:schemas-dlna-org:metadata-1-0/"
-    xmlns:dc="http://purl.org/dc/elements/1.1/"
-    xmlns:upnp="urn:schemas-upnp-org:metadata-1-0/upnp/" >
-EOXML
-	return $xml;
+	my ($response_type) = @_;
+	my $text = '';
+	$text .= '<m:'.$response_type.' xmlns:m="urn:schemas-upnp-org:service:ContentDirectory:1">';
+	$text .= '<Result xmlns:dt="urn:schemas-microsoft-com:datatypes" dt:dt="string">';
+	return $text;
 }
 
 
 
-
-
-sub xml_footer
+sub browse_footer
 {
-	my ($num_search,
-        $num_total,
-        $what) = @_;
-
+	my ($response_type,
+		$num_search,
+        $num_total) = @_;
     # $system_update_id++;
 	# for testing responsiveness
-
-    my $response_type = ($what ? 'Search' : 'Browse').'Response';
-    my $xml .= encode_didl("</DIDL-Lite>");
-
-	$xml .= <<EOXML;
-        </Result>
-        <NumberReturned>$num_search</NumberReturned>
-        <TotalMatches>$num_total</TotalMatches>
-        <UpdateID>$system_update_id</UpdateID>
-        </u:$response_type>
-    </s:Body>
-</s:Envelope>
-EOXML
-    return $xml;
+	my $text = '</Result>';
+	$text .= '<NumberReturned xmlns:dt="urn:schemas-microsoft-com:datatypes" dt:dt="ui4">';
+	$text .= $num_search;
+	$text .= '</NumberReturned>';
+    $text .= '<TotalMatches xmlns:dt="urn:schemas-microsoft-com:datatypes" dt:dt="ui4">';
+	$text .= $num_total;
+	$text .= '</TotalMatches>';
+    $text .= '<UpdateID xmlns:dt="urn:schemas-microsoft-com:datatypes" dt:dt="ui4">';
+	$text .= $system_update_id;
+	$text .= '</UpdateID>';
+	$text .= '</m:'.$response_type.'>';
+	return $text;
 }
+
+
+sub soap_header
+{
+	my $text = '<?xml version="1.0"?>'."\r\n";
+	$text .= '<SOAP-ENV:Envelope ';
+	$text .= 'xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/" ';
+	$text .= 'SOAP-ENV:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"';
+	$text .= '>';
+	$text .= '<SOAP-ENV:Body>';
+	return $text;
+}
+
+sub soap_footer
+{
+	my $text = '';
+	$text .= "</SOAP-ENV:Body>";
+	$text .= '</SOAP-ENV:Envelope>'."\r\n";
+    return $text;
+}
+
+
+sub didl_header
+{
+	my $text = '<DIDL-Lite ';
+    $text .= 'xmlns:dc="http://purl.org/dc/elements/1.1/"'."\r\n";
+    $text .= 'xmlns:upnp="urn:schemas-upnp-org:metadata-1-0/upnp/"'."\r\n";;
+	$text .= 'xmlns="urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/"'."\r\n";;
+	$text .= 'xmlns:microsoft="urn:schemas-microsoft-com:WMPNSS-1-0/"'."\r\n";;
+  # $text .= 'xmlns:sec="http://www.sec.co.kr/dlna" ';
+    $text .= 'xmlns:dlna="urn:schemas-dlna-org:metadata-1-0/"'."\r\n";;
+	$text .= '>';
+	return $text;
+}
+
+sub didl_footer
+{
+	return '</DIDL-Lite>';
+}
+
 
 
 # SUBSCRIBE request from WMP

@@ -781,6 +781,8 @@ sub unused_get_pictures
                 elsif (!$data)
                 {
                     use Data::Dumper;
+					$Data::Dumper::Indent = 1;
+					$Data::Dumper::Sortkeys = 1;
                     print Dumper($tag);
                     error("zero length picture found in $this->{path}");
                 }

@@ -63,6 +63,7 @@ sub new
 	return $this;
 }
 
+my $next_folder_id:shared = 0;
 
 sub newFromHash
 	# sets the id to the md5 hash of the path
@@ -89,14 +90,16 @@ sub newFromHash
 
 	if (!defined($this->{id}) || $this->{id} eq "")
 	{
-		if ($this->{path})
-		{
-			$this->{id} = md5_hex($this->{path});
-		}
-		else	# special case of the root node /mp3s
-		{
-			$this->{id} = "0";
-		}
+		$this->{id} = $next_folder_id++;
+
+		# if ($this->{path})
+		# {
+		# 	$this->{id} = md5_hex($this->{path});
+		# }
+		# else	# special case of the root node /mp3s
+		# {
+		# 	$this->{id} = "0";
+		# }
 	}
 
 	$this->{dirty} = 1;
@@ -215,28 +218,96 @@ sub getDidl
 	my ($this) = @_;
     display($dbg_didl,0,"getDidl($this->{id})");
 
-    my $container = (00 && $this->{dirtype} eq 'album') ?
+    my $container = $this->{dirtype} eq 'album' ?
         'object.container.album.musicAlbum' :
-        'object.container';
+		'object.container';
 
 	my $art_uri = !$this->{has_art} ? '' :
 		"http://$server_ip:$server_port/get_art/$this->{id}/folder.jpg";
 
 	my $didl = "<container ";
     $didl .= "id=\"$this->{id}\" ";
-    $didl .= "parentID=\"$this->{parent_id}\" ";
-    $didl .= "searchable=\"1\" ";
     $didl .= "restricted=\"1\" ";
-    $didl .= "childCount=\"$this->{num_elements}\" > ";
-    $didl .= "<dc:title>". encode_xml($this->{title}) ."</dc:title> ";
-    $didl .= "<upnp:class>$container</upnp:class> ";
-    $didl .= "<upnp:artist>". encode_xml($this->{artist}) ."</upnp:artist> ";
-    $didl .= "<upnp:albumArtist>". encode_xml($this->{artist}) ."</upnp:albumArtist> ";
-    $didl .= "<upnp:genre>". encode_xml($this->{genre}) ."</upnp:genre> ";
-    $didl .= "<dc:date>$this->{year_str}</dc:date> ";
-    $didl .= "<upnp:albumArtURI>". encode_xml($art_uri) ."</upnp:albumArtURI> ";
-	$didl .= "</container>";
+    $didl .= "parentID=\"$this->{parent_id}\" ";
+    $didl .= "childCount=\"$this->{num_elements}\" ";
+    $didl .= "searchable=\"1\" ";
+	$didl .= ">";
 
+
+	# The class is either the root 'container' type, or the
+	# final 'album.musicAlbum' type.
+
+    $didl .= "<dc:title>". encode_xml($this->{title}) ."</dc:title>";
+    $didl .= "<upnp:class name=\"$container\">$container</upnp:class>";
+	$didl .= "<upnp:writeStatus>NOT_WRITABLE</upnp:writeStatus>";
+
+	# WMP returns a list of all the possible container types a folder can
+	# be in a sublist of upnp:SearchClass containing the
+	# container type which we can used by the client filter our results
+	# down to folders they are interested in.
+
+	# container.playlistContainer
+
+	if (1)
+	{
+		my @album_types = qw(
+			item.audioItem:0
+			container:0
+			container.storageFolder:0
+			item.audioItem.musicTrack:0
+			container.album.musicAlbum:0
+			item.audioItem.audioBook:0
+		);
+
+		my @section_types = qw(
+			item.audioItem:0
+			container:0
+			container.storageFolder:0
+			item.audioItem.musicTrack:0
+			container.album.musicAlbum:0
+			item.audioItem.audioBook:0
+		);
+
+		my @root_types = qw(
+			item.audioItem:1
+			container.playlistContainer:0
+			container:0
+			container:1
+			container.storageFolder:0
+			container.genre.musicGenre:0
+			item.audioItem.musicTrack:0
+			container.album.musicAlbum:0
+			item.audioItem.audioBook:0
+			container.album:1
+			container.person.musicArtist:0 );
+
+		my $use_types =
+			($this->{dirtype} eq 'root' || !$this->{parent_id}) ? \@root_types :
+			($this->{dirtype} eq 'section') ? \@section_types :
+			\@album_types;
+
+
+		for my $combined_type (@$use_types)
+		{
+			my ($type,$derived) = split(/:/,$combined_type);
+			$didl .= "<upnp:searchClass includeDerived=\"$derived\">";
+			$didl.= "object.$type";
+			$didl .= "</upnp:searchClass>";
+		}
+	}
+
+	# these fields only included for music albums
+
+	if ($this->{dirtype} eq 'album')
+	{
+		$didl .= "<upnp:genre>". encode_xml($this->{genre}) ."</upnp:genre> ";
+		$didl .= "<upnp:artist>". encode_xml($this->{artist}) ."</upnp:artist> ";
+		$didl .= "<upnp:albumArtist>". encode_xml($this->{artist}) ."</upnp:albumArtist> ";
+		$didl .= "<dc:date>$this->{year_str}</dc:date> ";
+		$didl .= "<upnp:albumArtURI>". encode_xml($art_uri) ."</upnp:albumArtURI> ";
+	}
+
+	$didl .= "</container>";
 	display($dbg_didl+1,0,"pre_didl=$didl");
 	$didl = encode_didl($didl);
 	display($dbg_didl+2,0,"didl=$didl");
@@ -252,12 +323,12 @@ sub getDidl
 #------------------------------------------------
 
 
-sub get_dlna_stuff
+sub dlna_content_features
 	# DLNA.ORG_PN - media profile
 {
 	my ($this) = @_;
 	my $type = $this->{type};
-	my $mime_type = DatabaseMain::myMimeType($type);
+	my $mime_type = myMimeType($type);
 	my $contentfeatures = '';
 
     # $contentfeatures .= 'DLNA.ORG_PN=LPCM;' if $mime_type eq 'audio/L16';

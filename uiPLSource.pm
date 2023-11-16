@@ -8,7 +8,7 @@ use warnings;
 use artisanUtils;
 use Device;
 use DeviceManager;
-use uiUtils;
+use httpUtils;
 
 
 my $dbg_uipls = 0;

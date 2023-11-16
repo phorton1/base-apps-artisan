@@ -10,7 +10,7 @@ use warnings;
 use threads;
 use threads::shared;
 use LWP::UserAgent;
-use XML::Simple;
+use httpUtils;
 use artisanUtils;
 use Device;
 
@@ -22,10 +22,10 @@ my $dbg_devices = -1;
 my $dbg_desc = -1;
 	#  0 = show HTTP gets
 	# -1 = show descriptor details
+	# -2 = show XML parsing
 my $dbg_cache = 0;
 	# 0 = headers
 	# -1 = read details
-
 
 my $DUMP_XML_FILES = 1;
 	# debugging
@@ -177,72 +177,12 @@ sub write_device_cache
 
 
 #-------------------------------
-# xml debugging
+# process device XML
 #-------------------------------
-
-sub dbg_dump
-{
-	my ($text,$filename) = @_;
-	if ($DUMP_XML_FILES)
-	{
-		printVarToFile(1,"$temp_dir/$filename",$text);
-	}
-}
-
-sub dbg_dump_xml
-{
-	my ($xml,$filename) = @_;
-	my $text = my_dbg_parse_xml($xml);
-	dbg_dump($text,$filename);
-}
-
-sub my_dbg_parse_xml
-	# pretty print xml that comes in
-{
-	my ($data) = @_;
-	$data =~ s/\n/ /sg;
-	$data =~ s/^\s*//;
-
-	my $level = 0;
-	my $retval = '';
-
-	while ($data =~ s/^(.*?)<(.*?)>//)
-	{
-		my $text = $1;
-		my $token = $2;
-		$retval .= $text if length($text);
-		$data =~ s/^\s*//;
-
-		my $closure = $token =~ /^\// ? 1 : 0;
-		my $self_contained = $token =~ /\/$/ ? 1 : 0;
-		my $text_follows = $data =~ /^</ ? 0 : 1;
-		$level-- if !$self_contained && $closure;
-
-		$retval .= indent($level) if !length($text);  # if !$closure;
-		$retval .= "<".$token.">";
-		$retval .= "\n" if !$text_follows || $closure;
-
-		$level++ if !$self_contained && !$closure && $token !~ /^.xml/;
-	}
-	return $retval;
-}
-
-sub indent
-{
-	my ($level) = @_;
-	my $txt = '';
-	while ($level--) {$txt .= "  ";}
-	return $txt;
-}
-
-
-#-----------------------------------------------------------
-# get device XML (friendlyName, services)
-#-----------------------------------------------------------
 
 sub getXML
 {
-	my ($ua,$dbg_filename,$location) = @_;
+	my ($ua,$dbg_id,$location) = @_;
 	display($dbg_desc,0,"getXML() from $location");
 
     my $response = $ua->get($location);
@@ -251,26 +191,19 @@ sub getXML
         error("Could not get xml content from $location");
         return;
     }
-    my $content = $response->content();
 
-	dbg_dump($content,$dbg_filename.".txt");
-	dbg_dump_xml($content,$dbg_filename.".xml");
-
-	# parse it into xml
-
-    my $xml;
-	my $xmlsimple = XML::Simple->new();
-    eval { $xml = $xmlsimple->XMLin($content) };
-    if ($@)
-    {
-        error("Unable to parse xml from $location:".$@);
-        return;
-    }
-	if (!$xml)
-	{
-		error("No parsed xml return for $location!!");
-		return;
-	}
+    my $data = $response->content();
+	my $xml = parseXML($data, {
+		what => $dbg_id,
+		addl_level => 0,
+		show_hdr => $dbg_desc,
+		show_dump => $dbg_desc < -1,
+		dump => $DUMP_XML_FILES,
+		decode_didl => 0,
+		raw => 0,
+		pretty => 1,
+		my_dump => 0,
+		dumper => 1 });
 
 	return $xml;
 }
@@ -295,8 +228,8 @@ sub getDeviceXML
 		services => shared_clone({}), });
 
 	my $ua = LWP::UserAgent->new();
-	my $dbg_filename = "$deviceType.$uuid";
-	my $device_xml = getXML($ua,$dbg_filename,$location);
+	my $dbg_id = "$deviceType.$uuid";
+	my $device_xml = getXML($ua,$dbg_id,$location);
 	return if !$device_xml;
 
 	my $xml_dev = $device_xml->{device};

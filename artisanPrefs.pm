@@ -164,6 +164,8 @@ sub prefs_request
 	if ($param eq 'set')
 	{
 		use Data::Dumper;
+		$Data::Dumper::Indent = 1;
+		$Data::Dumper::Sortkeys = 1;
 		display($dbg_web_prefs,0,"prefs_request(set) post_xml=".Dumper($post_xml));
 
 		# set the prefs from the post_xml

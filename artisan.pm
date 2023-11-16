@@ -9,6 +9,8 @@ use warnings;
 use threads;
 use threads::shared;
 use Error qw(:try);
+use Win32::Console;
+use Time::HiRes;
 use artisanUtils;
 use artisanPrefs;
 use SSDP;
@@ -21,6 +23,7 @@ use localLibrary;
 use localPLSource;
 use remoteLibrary;
 use remoteRenderer;
+use Pub::Utils;
 use sigtrap 'handler', \&onSignal, 'normal-signals';
 
 
@@ -36,6 +39,9 @@ sub onSignal
     LOG(-1,"main terminating on SIG$sig");
     kill 6,$$;
 }
+
+my $CONSOLE_IN = Win32::Console->new(STD_INPUT_HANDLE);
+$CONSOLE_IN->Mode(ENABLE_MOUSE_INPUT | ENABLE_WINDOW_INPUT );
 
 
 #----------------------------------------
@@ -113,7 +119,31 @@ AFTER_EXCEPTION:
 	{
 		display($dbg_main+1,0,"main loop");
 		# display_hash(0,0,"mp",$mp);
-		sleep(4);
+
+		if ($CONSOLE_IN->GetEvents())
+		{
+			my @event = $CONSOLE_IN->Input();
+			if (@event &&
+				$event[0] &&
+				$event[0] == 1) # key event
+			{
+				my $char = $event[5];
+				if ($char == 3)        # char = 0x03
+				{
+					display($dbg_main,0,"exiting Artisan on CTRL-C");
+					exit(0);
+				}
+				elsif ($event[1] == 1)       # key down
+				{
+					if ($CONSOLE && $char == 4)            # CTRL-D
+					{
+						$CONSOLE->Cls();    # clear the screen
+					}
+				}
+			}
+		}
+
+		sleep(0.2);
 	}
 	catch Error with
 	{
