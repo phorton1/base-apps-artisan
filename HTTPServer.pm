@@ -188,7 +188,12 @@ sub handle_connection
 	# don't want to see the stupid static requests
 
 	my $use_dbg_request = $dbg_request;
+	my $use_dbg_response = $dbg_response;
+
 	$use_dbg_request += 2  if $request_path =~ /^\/webui\/renderer\/(.*)\/update/; #|\/^ContentDirectory1\.xml|\/ServerDesc\.xml/;
+	$use_dbg_request -= 2  if $request_method =~ /SUBSCRIBE/;
+	# $use_dbg_response -= 2  if $request_method =~ /SUBSCRIBE/;
+
 	display($use_dbg_request,0,"$request_method $request_path from $peer_ip:$peer_port");
 	for my $key (keys %request_headers)
 	{
@@ -237,7 +242,11 @@ sub handle_connection
 
 	if ($request_path eq '/upnp/control/ContentDirectory1')
 	{
-		$response = ContentDirectory1::handle_request($post_data, $request_headers{SOAPACTION}, $peer_ip, $peer_port);
+		$response = ContentDirectory1::handle_request($request_method, \%request_headers, $post_data, $peer_ip, $peer_port);
+	}
+	elsif ($request_path eq '/upnp/event/ContentDirectory1')
+	{
+		$response = ContentDirectory1::handleSubscribe($request_method,\%request_headers,$peer_ip,$peer_port)
 	}
 
 	# DLNA GET REQUESTS
@@ -322,7 +331,7 @@ sub handle_connection
 	{
 		if ($use_dbg_request <= $debug_level)	# only show debugging for non-filtered requests
 		{
-			display($dbg_response,1,"Sending ".length($response)." byte response");
+			display($use_dbg_response,1,"Sending ".length($response)." byte response");
 
 			my $first_line = '';
 			my $content_type = '';
@@ -343,15 +352,15 @@ sub handle_connection
 				$content_len = "content_len($1)" if $line =~ /content-length:\s*(.*)$/;
 				$in_body = ($dbg_displayable ? 100 : 1) if !$line;
 
-				display($dbg_response+$in_body+1,2,$line);
+				display($use_dbg_response+$in_body+1,2,$line);
 			}
 
 			display(0,1,"RESPONSE: $first_line $content_type $content_len")
-				if $dbg_response == 0;
+				if $use_dbg_response == 0;
 		}
 
 		(print $FH $response) ?
-			display($dbg_response+1,1,"Sent response blah") :
+			display($use_dbg_response+1,1,"Sent response OK") :
 			error("Could not complete HTTP Server Response len=".length($response));
 	}
 
@@ -493,6 +502,10 @@ EOXML
 	display($dbg_server_desc,0,$xml);
 	return $xml;
 }
+
+
+
+
 
 
 1;

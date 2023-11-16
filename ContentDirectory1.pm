@@ -13,6 +13,8 @@ use threads::shared;
 use XML::Simple;
 use artisanUtils;
 use httpUtils;
+use Track;
+use Folder;
 use Database;
 use DeviceManager;
 
@@ -46,7 +48,12 @@ my $system_update_id:shared = 0; # time();
 
 sub handle_request
 {
-	my ($post_data,$action,$peer_ip,$peer_port) = @_;
+	my ($method, $headers, $post_data, $peer_ip,$peer_port) = @_;
+
+	return http_error("unsupported method($method) in ContentDirectory1")
+		if $method ne 'POST';
+
+	my $action = $headers->{SOAPACTION};
 
 	$action =~ s/"//g;
 	return error("action not upnp: $action")
@@ -258,88 +265,130 @@ sub search_directory
     display($dbg_search,1,"criteria=$criteria)");
     $count = 10 if !$count;
 
-    my ($table,$sql_expr);
-    if (1)
-    {
-        ($table,$sql_expr) = create_sql_expr($criteria);
-        return '' if (!$table);  # returns no results, not an error
-    }
-    else    # a debugging expression that should work for testing
-    {
-        $table = ($criteria =~ /musicAlbum/) ? "folders" : "tracks";
-        $sql_expr = ($table eq '') ? "title='Hard Lesson'" : "name='Blue To The Bone'";
-    }
-
     # do the query
 
     my $num = 0;
+	my $recs = [];
 	my $didl = didl_header();
-    my $dbh = db_connect();
-    my $recs = get_records_db($dbh,"SELECT * FROM $table ".($sql_expr?"WHERE $sql_expr":''));
-    if (!$recs)
-    {
-        warning(1,1,"search(FROM $table WHERE $sql_expr) returned undef");
-    }
-    elsif (!@$recs)
-    {
-        warning(1,1,"search(FROM $table WHERE $sql_expr) returned no records");
-    }
-    else
-    {
-        display($dbg_search,1,"search() found ".scalar(@$recs)." records in $table");
+
+	# testing - all searches return nothing
+
+	my ($table,$sql_expr);
+	if (0)
+	{
+		($table,$sql_expr) = create_sql_expr($criteria);
+		return '' if (!$table);  # returns no results, not an error
+	}
+	else    # a debugging expression that should work for testing
+	{
+		if ($criteria =~ /container/)
+		{
+			$table = 'folders';
+			$sql_expr = "parent_id = '$id'";
+		}
+		else
+		{
+			$table = 'tracks';
+			$sql_expr = "parent_id = 'dec5311c14b63d400774850d85264dec'";
+		}
 
 
-        my $index = 0;
-        if ($table eq 'tracks')
-        {
-			my $folder;
-			my $parent_id = 0;
-            for my $track (@$recs)
-            {
-				if ($track->{parent_id} ne $parent_id)
+
+		# $table = ($criteria =~ /musicAlbum/) ? "folders" : "tracks";
+		# $sql_expr = ($table eq '') ? "title='Hard Lesson'" : "name='Blue To The Bone'";
+	}
+
+	my $dbh = db_connect();
+	$recs = get_records_db($dbh,"SELECT * FROM $table ".($sql_expr?"WHERE $sql_expr":''));
+	if (!$recs)
+	{
+		warning($dbg_search,1,"search(FROM $table WHERE $sql_expr) returned undef");
+	}
+	elsif (!@$recs)
+	{
+		warning($dbg_search,1,"search(FROM $table WHERE $sql_expr) returned no records");
+	}
+	else
+	{
+		display($dbg_search,1,"search() found ".scalar(@$recs)." records in $table");
+
+
+		my $index = 0;
+		if ($table eq 'tracks')
+		{
+			for my $rec (@$recs)
+			{
+				if ($index >= $start)
 				{
-					$parent_id = $track->{parent_id};
-					$folder = $local_library->getFolder($parent_id,$dbh);
-						# re-use database connection
+					my $track = Track->newFromHash($rec);
+					$didl .= $track->getDidl()."\r\n";
 				}
-                if ($index >= $start)
-                {
-                    $didl .= track_search_didl($track,$folder);
-                    $num++;
-                    last if ($num >= $count);
-                }
-                $index++;
-            }
-        }
-        else
-        {
-            for my $folder (@$recs)
-            {
-                if ($index >= $start)
-                {
-                    # add_dir_data($dbh,$dir);
-                    $didl .= folder_search_didl($folder);
-                    $num++;
-                    last if ($num >= $count);
-                }
-                $index++;
-            }
-        }
+				$index++;
+			}
+		}
+		else
+		{
+			for my $rec (@$recs)
+			{
+				if ($index >= $start)
+				{
+					my $folder = Folder->newFromHash($rec);
+					$didl .= $folder->getDidl()."\r\n";
+					$num++;
+					last if ($num >= $count);
+				}
+				$index++;
+			}
+		}
+	}   # got some records
 
-    }   # got some records
+	db_disconnect($dbh);
+
 	$didl .= didl_footer();
-    db_disconnect($dbh);
 
-	my $response =
+	my $content =
 		soap_header().
 		browse_header('SearchResponse').
 		encode_didl($didl).
-		browse_footer('SearchResponse',$num,@$recs);
+		browse_footer('SearchResponse',$num,scalar(@$recs)).
 		soap_footer();
-    return $response;
+
+		parseXML($didl,{
+			what => "$table($id).didl",
+			show_hdr  => $dbg_search <= 0,
+			show_dump => $dbg_search < 0,
+			addl_level => 1,
+			dump => 1,
+			decode_didl => 1,
+			raw => 1,
+			pretty => 1,
+			my_dump => 1,
+			dumper => 1 });
+
+		parseXML($content,{
+			what => "$table($id).content",
+			show_hdr  => $dbg_search <= 0,
+			show_dump => $dbg_search < 0,
+			addl_level => 1,
+			dump => 1,
+			decode_didl => 0,
+			raw => 1,
+			pretty => 1,
+			my_dump => 1,
+			dumper => 1 });
+
+
+    return $content;
 
 }   # search_directory
 
+
+# WMP Sends following search requests
+#
+#	upnp:class derivedfrom "object.item.audioItem" and @refID exists false
+#	upnp:class derivedfrom "object.container.playlistContainer" and @refID exists false
+#
+# So it appears to either look for tracks in the given container, or playlists
 
 
 sub create_sql_expr
@@ -361,11 +410,20 @@ sub create_sql_expr
 
     my $table;
     my $orig_expr = $expr;
-    my $class_is = 'upnp:class\s+derivedfrom|upnp:class\s*=';
-    if ($expr =~ s/($class_is)\s*"(object\.(item\.audioItem|container\.album\.musicAlbum))"(\s+and)*//i)
-    {
-        $table = $3 eq 'item.audioItem' ? 'tracks' : 'folders';
-    }
+
+	# lets try this, anything that mentions a container is a folder,
+	# and anything that mentions an item is a track quey
+
+	# my $class_is = 'upnp:class\s+derivedfrom|upnp:class\s*=';
+    # if ($expr =~ s/($class_is)\s*"(object\.(item\.audioItem|container\.album\.musicAlbum))"(\s+and)*//i)
+    # {
+    #     $table = $3 eq 'item.audioItem' ? 'tracks' : 'folders';
+    # }
+
+	# $expr =~ s/and \@refID exists false//;
+	$table = $expr =~ /container/ ? 'folders' : 'tracks';
+	$expr = '';
+
     if (!$table)
     {
         error("Could not determine table from expression: $orig_expr");
@@ -402,6 +460,8 @@ sub create_sql_expr
     return ($table,$expr);
 
 }
+
+
 
 
 #--------------------------------------------------------
@@ -596,7 +656,10 @@ sub didl_footer
 
 
 
-# SUBSCRIBE request from WMP
+#--------------------------------------------------------------------
+# SUBSCRIBE & UNSUBSCRIBE
+#--------------------------------------------------------------------
+# SUBSCRIBE request from WMP at peer_ip, peer_port
 #
 #	SUBSCRIBE /upnp/event/ContentDirectory1 HTTP/1.1
 #	Cache-Control: no-cache
@@ -607,6 +670,80 @@ sub didl_footer
 #	Callback: <http://10.237.50.101:2869/upnp/eventing/esingnommv>
 #	Timeout: Second-1800
 #	Host: 10.237.50.101:8091
+#
+# Will be called with SID and no CALLBACK to renew
+#
+# send the subscription response
+# 	HTTP/1.1 200 OK
+# 	DATE: when response was generated
+# 	SERVER: OS/version UPnP/1.1 product/version
+# 	SID: uuid:subscription-UUID
+# 	CONTENT-LENGTH: 0
+# 	TIMEOUT: Second-actual subscription duration
+
+
+my $dbg_sub = 0;
+
+my $next_subscriber:shared = 0;
+my $subscribers:shared = shared_clone({});
+
+sub handleSubscribe
+{
+	my ($method,$headers,$peer_ip,$peer_port) = @_;
+
+	my $sid = $headers->{SID} || '';
+	$sid =~ s/^uuid://;
+	my $exists = $subscribers->{$sid} || '';
+
+	if ($method eq 'SUBSCRIBE')
+	{
+		my $nt = $headers->{NT} || '';
+		my $callback = $headers->{CALLBACK} || '';
+		my $timeout = $headers->{TIMEOUT} || '';
+
+		$callback =~ s/^<|>$//g;
+
+		display($dbg_sub,1,"SUBSCRIBE($nt) from $peer_ip:$peer_port");
+		display($dbg_sub,2,"timeout($timeout) exists(".($exists?1:0).") callback='$callback'");;
+
+		return http_error("no callback or valid sid in SUBSCRIBE")
+			if !$callback && !$exists;
+		return http_error("unrecognized timeout($timeout) in SUBSCRIBE")
+			if $timeout !~ s/^Second-//;
+		return http_error("illegal timeout($timeout) in SUBSCRIBE")
+			if !$timeout || $timeout !~ /^\d+$/;
+
+		if (!$exists)
+		{
+			$sid = $this_uuid."-".sprintf("%06d",$next_subscriber++);
+			my $subscriber = shared_clone({
+				sid => $sid,
+				callback => $callback,
+				timeout => $timeout });
+			$subscribers->{$sid} = $subscriber;
+		}
+		else
+		{
+			$exists->{timeout} = $timeout;
+		}
+
+		return http_header({
+			addl_headers => [
+				"SID: uuid:$sid",
+				"TIMEOUT: $timeout", ]});
+	}
+	else	# method eq UNUSUBSCRIBE
+	{
+		display($dbg_sub,1,"UNSUBSCRIBE sid($sid) from $peer_ip:$peer_port");
+		return error("could not find sid($sid) in UNSUBSCRIBE")
+			if !$exists;
+		delete $subscribers->{$sid};
+		return http_header();
+	}
+}
+
+
+
 
 
 

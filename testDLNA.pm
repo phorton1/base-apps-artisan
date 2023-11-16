@@ -82,7 +82,7 @@ for my $browse_id (0..1)
 					show_hdr  => 1,
 					show_dump => 0,
 					addl_level => 0,
-					dump => 0,
+					dump => 1,
 					decode_didl => 0,
 					raw => 1,
 					pretty => 1,

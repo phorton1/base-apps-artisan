@@ -75,9 +75,9 @@ sub http_header
 	push(@response, "Date: ".gmtime()." GMT");
     # push(@response, "Last-Modified: "gmtime()." GMT"));
 
-	if (defined($$params{'addl_headera'}))
+	if (defined($params->{'addl_headers'}))
 	{
-		for my $header (@{$params->{'addl_headera'}})
+		for my $header (@{$params->{'addl_headers'}})
 		{
 			push(@response, $header);
 		}

@@ -317,7 +317,7 @@ sub play_track
 	# turned off for now, but it definitely worked
 	# with the localRender on 2023-11-14 at 3:44pm
 
-	if (0)
+	if (1)
 	{
 		$path = "http://$server_ip:$server_port/media/$track->{id}.mp3";
 		display($dbg_lren,2,"using url='$path'");

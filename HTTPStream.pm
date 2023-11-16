@@ -121,25 +121,23 @@ sub stream_media
 
 		my @addl_headers = ();
 
-		# Had a problem with localRenderer $mp that just went away by itself.
-		# Perhaps it's a problem with certain kinds of file.
-		# Tried sending "Connection: keep-alive" header by
-		# commenting out the default"Connection: close" already in
-		# http_header()) and adding the alive header here,
-		# but it didn't seem to help ..
-		#
-		# Then I tried adding the Content-disposition line below,
-		# and it started working, then I took it out and it kept
-		# working, so I don't know why it just up and started working ...
+		# There's a problem with these headers vs WMP.
+		# WMP "mysteriously started working" when I accidentally
+		# channged http_header and mispelled 'addl_headers', so
+		# it works when these headers are NOT sent, sheesh.
+		# Dunno, is it worth figuring out?
 
-		push @addl_headers, "Content-Type: " . $track->mimeType();
-		push @addl_headers, "Content-Length: $content_len";
-		# push @addl_headers, "Content-Disposition: attachment; filename=\"$track->{titles}\"";
-		push @addl_headers, "Accept-Ranges: bytes";
-        push @addl_headers, "contentFeatures.dlna.org: ".$track->dlna_content_features();
-		push @addl_headers, 'transferMode.dlna.org: Streaming';
-		push @addl_headers, "Content-Range: bytes $from_byte-$to_byte/$track->{size}"
-			if ($is_ranged);
+		if (0)
+		{
+			push @addl_headers, "Content-Type: " . $track->mimeType();
+			push @addl_headers, "Content-Length: $content_len";
+			# push @addl_headers, "Content-Disposition: attachment; filename=\"$track->{titles}\"";
+			push @addl_headers, "Accept-Ranges: bytes";
+			push @addl_headers, "contentFeatures.dlna.org: ".$track->dlna_content_features();
+			push @addl_headers, 'transferMode.dlna.org: Streaming';
+			push @addl_headers, "Content-Range: bytes $from_byte-$to_byte/$track->{size}"
+				if ($is_ranged);
+		}
 
 		# SEND HEADERS
 

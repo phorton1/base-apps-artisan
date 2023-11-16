@@ -53,7 +53,6 @@ sub getContainingPath
 # Construction
 #------------------------------------------------------------------
 
-
 sub new
 	# create without a path
 {
@@ -62,6 +61,8 @@ sub new
 	bless $this,$class;
 	return $this;
 }
+
+
 
 my $next_folder_id:shared = 0;
 
@@ -90,16 +91,21 @@ sub newFromHash
 
 	if (!defined($this->{id}) || $this->{id} eq "")
 	{
-		$this->{id} = $next_folder_id++;
-
-		# if ($this->{path})
-		# {
-		# 	$this->{id} = md5_hex($this->{path});
-		# }
-		# else	# special case of the root node /mp3s
-		# {
-		# 	$this->{id} = "0";
-		# }
+		if (1)
+		{
+			if ($this->{path})
+			{
+				$this->{id} = md5_hex($this->{path});
+			}
+			else	# special case of the root node /mp3s
+			{
+				$this->{id} = "0";
+			}
+		}
+		else
+		{
+			$this->{id} = $next_folder_id++;
+		}
 	}
 
 	$this->{dirty} = 1;
