@@ -257,21 +257,18 @@ sub doCommand
 
 	elsif ($command eq 'set_playlist')
 	{
-		my $plsource_uuid = checkParam(\$error,$command,$params,'plsource_uuid');
-		return $error if !defined($plsource_uuid);
+		my $library_uuid = checkParam(\$error,$command,$params,'library_uuid');
+		return $error if !defined($library_uuid);
+
 		my $name = checkParam(\$error,$command,$params,'name');
 		return $error if !defined($name);
 
-		my $plsource = findDevice($DEVICE_TYPE_PLSOURCE,$plsource_uuid);
-		if ($plsource)
-		{
-			$this->{playlist} = $plsource->getPlaylist($name);
-			$error = $this->playlist_song(0);
-		}
-		else
-		{
-			return error("Could not get PLSource($plsource_uuid)");
-		}
+		return error("doCommand('set_playlist') library($library_uuid) not supported")
+			if $library_uuid ne $local_library->{uuid};
+
+		$this->{playlist} = localPlaylist::getPlaylist($name);
+		$error = $this->playlist_song(0);
+
 	}
 	else
 	{

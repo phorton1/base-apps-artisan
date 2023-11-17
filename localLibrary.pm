@@ -5,7 +5,6 @@
 # This object defines the basic API needed by
 # a remoteLibrary to support the webUI
 
-
 package localLibrary;
 use strict;
 use warnings;
@@ -18,7 +17,10 @@ use Track;
 use Library;
 use base qw(Library);
 
-my $dbg_llib = 0;
+my $dbg_llib = -2;
+my $dbg_virt = 0;
+
+my $ID_PLAYLISTS = 'playlists';
 
 
 sub new
@@ -67,18 +69,15 @@ sub getFolder
 	# if 0, return a fake record
 
 	my $folder;
+	my $playlist = localPlaylist::getPlaylist($id);
+
 	if ($id eq '0')
 	{
-		$folder = Folder->newFromHash({
-			id => 0,
-			parent_id => -1,
-			title => 'All Artisan Folders',
-			dirtype => 'root',
-			num_elements => 1,
-			artist => '',
-			genre => '',
-			path => '',
-			year => substr(today(),0,4)  });
+		$folder = virtualRootFolder();
+	}
+	elsif ($playlist)
+	{
+		$folder = virtualPlaylistFolder($id);
 	}
 	else
 	{
@@ -114,38 +113,103 @@ sub getSubitems
     $count ||= 999999;
     display($dbg_llib+2,0,"get_subitems($table,$id,$start,$count)");
 
-	my $sort_clause = ($table eq 'folders') ? 'dirtype DESC,path' : 'path';
-	my $query = "SELECT * FROM $table ".
-		"WHERE parent_id='$id' ".
-		"ORDER BY $sort_clause";
-
-	my $dbh = db_connect();
-	my $recs = get_records_db($dbh,$query);
-	db_disconnect($dbh);
-
-	my $dbg_num = $recs ? scalar(@$recs) : 0;
-	display($dbg_llib+1,1,"get_subitems($table,$id,$start,$count) found $dbg_num items");
-
+	my $num = 0;
 	my @retval;
-	for my $rec (@$recs)
+	my $playlist = localPlaylist::getPlaylist($id);
+
+	# return virtual folders for playlists
+	# table must be 'folders'
+
+	if ($table eq 'folders' && $id eq $ID_PLAYLISTS)
 	{
-		next if ($start-- > 0);
-		display($dbg_llib+2,2,pad($rec->{id},40)." ".$rec->{path});
-
-		my $item;
-		if ($table eq 'tracks')
+		my $names = localPlaylist->getPlaylistNames();
+		display($dbg_llib+1,1,"get_subitems($table,$id,$start,$count) found ".scalar(@$names)." playlists");
+		my $max = $start+$count-1;
+		$max = @$names-1 if $max > @$names-1;
+		for my $i ($start .. $max)
 		{
-			$item = Track->newFromDb($rec);
+			my $folder = virtualPlaylistFolder($names->[$i]);
+			if ($folder)
+			{
+				push @retval,$folder;
+				$num++;
+			}
 		}
-		else
+	}
+
+	# get tracks from playlist
+	# table  must be tracks
+
+	elsif ($table eq 'tracks' && $playlist)
+	{
+		my $recs = $playlist->getTracks();
+		display($dbg_llib+1,1,"get_subitems($table,$id,$start,$count) found ".scalar(@$recs)." tracks");
+		my $max = $start+$count-1;
+		$max = @$recs-1 if $max > @$recs-1;
+		for my $i ($start .. $max)
 		{
-			$item = Folder->newFromDb($rec);
-			DatabaseMain::validate_folder(undef,$rec);
+			my $rec = $recs->[$i];
+			my $track = Track->newFromHash($rec);
+			if ($track)
+			{
+				push @retval,$track;
+				$num++;
+			}
+		}
+	}
+
+
+	# regular query from database
+
+	else
+	{
+		my $sort_clause = ($table eq 'folders') ? 'dirtype DESC,path' : 'path';
+		my $query = "SELECT * FROM $table ".
+			"WHERE parent_id='$id' ".
+			"ORDER BY $sort_clause";
+
+		my $dbh = db_connect();
+		my $recs = get_records_db($dbh,$query);
+		db_disconnect($dbh);
+
+		display($dbg_llib+1,1,"get_subitems($table,$id,$start,$count) found ".scalar(@$recs)." items");
+
+		my $max = $start+$count-1;
+		$max = @$recs-1 if $max > @$recs-1;
+
+		for my $i ($start .. $max)
+		{
+			my $rec = $recs->[$i];
+
+			display($dbg_llib+2,2,pad($rec->{id},40)." ".$rec->{path});
+
+			my $item;
+			if ($table eq 'tracks')
+			{
+				$item = Track->newFromDb($rec);
+			}
+			else
+			{
+				$item = Folder->newFromDb($rec);
+				DatabaseMain::validate_folder(undef,$rec);
+			}
+
+			if ($item)
+			{
+				$num++;
+				push @retval,$item;
+			}
+
+			# last if (--$count <= 0);
 		}
 
+		# add virtual playlists folder
 
-		push @retval,$item;
-		last if (--$count <= 0);
+		if ($id eq '0' && $num < $count)
+		{
+			$num++;
+			push @retval,virtualPlaylistsFolder();
+		}
 	}
 
 	return \@retval;
@@ -154,6 +218,57 @@ sub getSubitems
 
 
 
+
+sub virtualRootFolder
+{
+	display($dbg_virt,0,"virtualRootFolder()");
+	return Folder->newFromHash({
+		id => 0,
+		parent_id => -1,
+		title => 'All Artisan Folders',
+		dirtype => 'root',
+		num_elements => 1,
+		artist => '',
+		genre => '',
+		path => '',
+		year => substr(today(),0,4)  });
+}
+
+sub virtualPlaylistsFolder
+{
+	display($dbg_virt,0,"virtualPlaylistsFolder()");
+	return Folder->newFromHash({
+		id => $ID_PLAYLISTS,
+		parent_id => 0,
+		title => 'playlists',
+		dirtype => 'section',
+		num_elements => scalar(@{localPlaylist::getPlaylistNames()}),
+		artist => '',
+		genre => '',
+		path => '\playlists',
+		year => substr(today(),0,4)  });
+}
+
+
+sub virtualPlaylistFolder
+{
+	my ($name) = @_;		# the id is the name of the playlist
+	display($dbg_virt,0,"virtualPlaylistsFolder($name)");
+	my $playlist = localPlaylist::getPlaylist($name);
+	return !error("Could not find localPlalist($name)")
+		if !$playlist;
+
+	return Folder->newFromHash({
+		id => $name,
+		parent_id => $ID_PLAYLISTS,
+		title => $name,
+		dirtype => 'album',
+		num_elements => $playlist->{num_tracks},
+		artist => '',
+		genre => '',
+		path => "/playlists/$name",
+		year => substr(today(),0,4)  });
+}
 
 
 #------------------------------------------------------

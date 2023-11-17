@@ -23,7 +23,6 @@ var dbg_loop     = 1;
 
 var current_renderer = false;
 var current_library = false;
-var current_plsource = false;
 
 var WITH_SWIPE = true;
 var REFRESH_TIME = 600;

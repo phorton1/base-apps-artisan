@@ -43,7 +43,6 @@ BEGIN
 
 		$DEVICE_TYPE_LIBRARY
 		$DEVICE_TYPE_RENDERER
-		$DEVICE_TYPE_PLSOURCE
 
         $ERROR_NONE
         $ERROR_INFO
@@ -101,7 +100,6 @@ BEGIN
 
 our $DEVICE_TYPE_LIBRARY  = 'Library';
 our $DEVICE_TYPE_RENDERER = 'Renderer';
-our $DEVICE_TYPE_PLSOURCE = 'PLSource';
 
 
 #---------------------------------------

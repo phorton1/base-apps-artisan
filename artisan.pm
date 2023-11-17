@@ -20,7 +20,7 @@ use DatabaseMain;
 use DeviceManager;
 use localRenderer;
 use localLibrary;
-use localPLSource;
+use localPlaylist;
 use remoteLibrary;
 use remoteRenderer;
 use Pub::Utils;
@@ -65,13 +65,14 @@ db_initialize();
 display($dbg_main,0,"Scanning Library ...");
 DatabaseMain::scanTree();
 display($dbg_main,0,"Finished Scanning Library");
+localPlaylist::initPlaylists();
 
 # (2) Create Local and Cached Devices
 
 addDevice(new localLibrary());
 addDevice(new localRenderer());
-addDevice(new localPLSource());
-$local_plsource->initPlaylists();
+
+
 
 # (3) HTTP SERVER - establishes $server_ip
 

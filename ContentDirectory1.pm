@@ -288,7 +288,7 @@ sub search_directory
 		else
 		{
 			$table = 'tracks';
-			$sql_expr = "parent_id = 'dec5311c14b63d400774850d85264dec'";
+			$sql_expr = "parent_id = '$id'";	#dec5311c14b63d400774850d85264dec'";
 		}
 
 

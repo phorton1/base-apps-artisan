@@ -21,6 +21,8 @@ my $dbg_uilib = 0;
 	# 0 == shows calls
 	# -1 == show results
 	# -2 == show icons
+my $dbg_uipls = 0;
+	# 'Local Playlist Source'
 
 
 #---------------------------------
@@ -144,6 +146,56 @@ sub library_request
 
 		return json_header().json({id_path=>join('/',reverse @parts)});
 	}
+
+	#-----------------------------
+	# Playlists
+	#-----------------------------
+
+	if ($path eq 'get_playlist_json')
+	{
+		my $name = $params->{name};
+		display($dbg_uipls,0,"plsource_request($path,$name)");
+		my $playlist = localPlaylist::getPlaylist($name);
+		return json_error("Could not find playlist($name}")
+			if !$playlist;
+		return json_header().json($playlist);
+	}
+	elsif ($path eq 'get_playlists')
+	{
+		display($dbg_uipls,0,"plsource_request($path)");
+
+		my $playlist_names = localPlaylist::getPlaylistNames();
+		my $html = html_header();
+		for my $name (@$playlist_names)
+		{
+			$html .= getPlaylistMenuHTML($name);
+		}
+		# display(0,0,"get_playlists returning $html");
+		return $html;
+	}
+
+	# STATION INFO COMMANDS
+
+	elsif ($path eq 'set_playlist_info')
+	{
+		# 'shuffle' or 'track_index'
+		# it is the responsibility of the UI to re-call
+		# Renderer::setPlaylist() if they modify it!
+
+		my $name = $params->{name};
+		my $field = $params->{field};
+		my $value = $params->{value};
+		display($dbg_uipls,0,"plsource_request($path,$name,$field,$value)");
+		my $json = localPlaylist::setPlaylistInfo($name,$field,$value);
+			# returns the json for the playlist, or json containing
+			# error=>msg
+		return json_header().$json;
+	}
+
+	#-----------------------------
+	# unknown
+	#-----------------------------
+
 	else
 	{
 		return json_error("unknown library_request: $path");
@@ -278,6 +330,25 @@ sub library_tracklist
 
 }
 
+
+
+
+sub getPlaylistMenuHTML
+{
+	my ($name) = @_;
+	my $text = '';
+	$text .= "<input type=\"radio\" ";
+	$text .= "id=\"playlist_button_$name\" ";
+	$text .= "class=\"playlist_button\" ";
+	$text .= "onclick=\"javascript:set_playlist('$name');\" ";
+	$text .= "name=\"playlist_button_set\">";
+	$text .= "<label for=\"playlist_button_$name\">";
+	$text .= "$name</label>";
+	$text .= "<br>";
+	$text .= "\n";
+	return $text;
+
+}
 
 
 

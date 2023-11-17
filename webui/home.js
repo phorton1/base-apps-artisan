@@ -60,7 +60,6 @@ function init_page_home()
 
 	onload_device_list('renderers',true);
 	onload_device_list('libraries',true);
-	onload_device_list('plsources',true);
 
 	init_playlists();
 	init_renderer_pane();
@@ -81,14 +80,12 @@ function makeSingular(plural)
 {
 	if (plural == 'renderers') return 'renderer';
 	if (plural == 'libraries') return 'library';
-	if (plural == 'plsources') return 'plsource';
 	return '';
 }
 function makePlural(singular)
 {
 	if (singular == 'renderer') return 'renderers';
 	if (singular == 'library')  return 'libraries';
-	if (singular == 'plsource') return 'plsources';
 	return '';
 }
 
@@ -165,8 +162,8 @@ function selectDevice(singular,uuid)	// handler
 
 function init_playlists()
 {
-	var uuid = current_plsource['uuid'];
-	$.get('/webui/plsource/' + uuid + '/get_playlists', function(result)
+	var uuid = current_library['uuid'];
+	$.get('/webui/library/' + uuid + '/get_playlists', function(result)
 	{
 		if (result.error)
 		{
@@ -297,7 +294,7 @@ function set_playlist(name)
 	display(dbg_home,0,"set_playlist("+name+")");
 	hide_layout_panes();
 	renderer_command(
-		'set_playlist?plsource_uuid=' + current_plsource['uuid'] +
+		'set_playlist?library_uuid=' + current_library['uuid'] +
 		'&name=' + name);
 }
 

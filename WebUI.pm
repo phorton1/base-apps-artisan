@@ -30,7 +30,7 @@ use Device;
 use DeviceManager;
 use httpUtils;
 use uiLibrary;
-use uiPLSource;
+
 
 my $dbg_webui = 1;
 	# 0 = show basic calls
@@ -167,10 +167,6 @@ sub web_ui
 	{
 		$response = uiLibrary::library_request($path,$params);
 	}
-	elsif ($path =~ s/^plsource\///)
-	{
-		$response = uiPLSource::plsource_request($path,$params);
-	}
 
 	# unknown request
 
@@ -189,8 +185,7 @@ sub getDeviceJson
 	my ($singular,$uuid) = @_;
 	my $type =
 		$singular eq 'renderer' ? $DEVICE_TYPE_RENDERER :
-		$singular eq 'library'  ? $DEVICE_TYPE_LIBRARY  :
-		$singular eq 'plsource' ? $DEVICE_TYPE_PLSOURCE : '';
+		$singular eq 'library'  ? $DEVICE_TYPE_LIBRARY  : '';
 
 	display($dbg_webui,0,"getDeviceJson($type,$uuid)");
 	my $device;
@@ -198,7 +193,6 @@ sub getDeviceJson
 	{
 		$device = $local_library if $type eq $DEVICE_TYPE_LIBRARY;
 		$device = $local_renderer if $type eq $DEVICE_TYPE_RENDERER;
-		$device = $local_plsource if $type eq $DEVICE_TYPE_PLSOURCE;
 	}
 	else
 	{
@@ -218,8 +212,7 @@ sub getDevicesHTML
 	my ($plural) = @_;	# plural
 	my $type =
 		$plural eq 'renderers' ? $DEVICE_TYPE_RENDERER :
-		$plural eq 'libraries' ? $DEVICE_TYPE_LIBRARY  :
-		$plural eq 'plsources' ? $DEVICE_TYPE_PLSOURCE : '';
+		$plural eq 'libraries' ? $DEVICE_TYPE_LIBRARY  : '';
 	my $devices = getDevicesByType($type);
 	my $single = $plural;
 	$single =~ s/libraries/library/;

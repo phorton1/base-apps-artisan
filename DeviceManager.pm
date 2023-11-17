@@ -42,7 +42,6 @@ BEGIN
 
 		$local_library
 		$local_renderer
-		$local_plsource
 
 	);
 };
@@ -50,7 +49,6 @@ BEGIN
 
 our $local_library;
 our $local_renderer;
-our $local_plsource;
 
 my $DEFAULT_MAX_AGE = 1800;
 
@@ -69,7 +67,6 @@ sub addDevice
 
 	$local_library = $device if $device->{local} && $device->{deviceType} eq $DEVICE_TYPE_LIBRARY;
 	$local_renderer = $device if $device->{local} && $device->{deviceType} eq $DEVICE_TYPE_RENDERER;
-	$local_plsource = $device if $device->{local} && $device->{deviceType} eq $DEVICE_TYPE_PLSOURCE;
 
 	return $device;
 }
