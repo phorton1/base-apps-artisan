@@ -236,10 +236,19 @@ sub getDeviceXML
 	return !error("$deviceType($uuid) No 'device' in device_xml")
 		if !$xml_dev;
 
-	$dev->{name} = $xml_dev->{friendlyName};
+	my $fname = $xml_dev->{friendlyName};
 	return !error("$deviceType($uuid) No 'friendlyName' in device_xml")
-		if !$dev->{name};
-	display($dbg_desc,1,"friendlyName=$dev->{name}");
+		if !$fname;
+	display($dbg_desc,1,"friendlyName=$fname");
+
+	if ($fname =~ /(.*): WMP/ ||
+		$fname =~ /\((.*) : Windows Media Player\)/)
+	{
+		$fname = "WMP.$1";
+		display($dbg_desc,1,"modified friendlyName=$fname");
+	}
+	$dev->{name} = $fname;
+
 
 	my $service_list = $xml_dev->{serviceList};
 	return !error("$deviceType($uuid) No 'serviceList' in device_xml")

@@ -13,7 +13,6 @@ use threads::shared;
 use Fcntl;
 use Socket;
 use IO::Select;
-use XML::Simple;
 use artisanUtils;
 use Database;
 use DeviceManager;

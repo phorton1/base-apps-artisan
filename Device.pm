@@ -55,10 +55,16 @@ use strict;
 use warnings;
 use threads;
 use threads::shared;
+use IO::Socket::INET;
 use artisanUtils;
+use httpUtils;
 
 
 my $dbg_device = 0;
+
+my $dbg_dlna = -2;
+
+my $dbg_response = 0;
 
 
 
@@ -79,6 +85,258 @@ sub new
 	bless $this,$class;
 	return $this;
 }
+
+
+
+sub getDbgName
+{
+	my ($this,$action,$args) = @_;
+	my $dbg_main_arg = $args->[1];
+	$dbg_main_arg = '' if !defined($dbg_main_arg);
+	my $dbg_name = "$this->{name}.$action($dbg_main_arg)";
+	$dbg_name =~ s/:|"//g;
+	return $dbg_name;
+}
+
+
+sub didlRequest
+	# method expects a <Result> containing DIDL text
+	# and is used for content requests.
+{
+    my ($this,$service_name,$action,$args) = @_;
+
+	my $dbg_name = $this->getDbgName($action,$args);
+	display($dbg_dlna,0,"DIDL($service_name) Request($dbg_name)");
+
+	my $aresponse = $this->serviceRequest($service_name,$action,$args);
+	return if !$aresponse;
+
+	my $result = $aresponse->{Result};
+	if (!$result)
+	{
+		error("Could not get <Result> from $dbg_name");
+		return;
+	}
+
+	my $content = $result ? $result->{content} : '';
+	if (!$content)
+	{
+		error("Could not get content from $dbg_name");
+		return;
+	}
+
+	my $didl = parseXML($content,{
+		what => "$dbg_name.didl",
+		show_hdr  => 1,
+		show_dump => 0,
+		addl_level => 0,
+		dump => 1,
+		decode_didl => 0,
+		raw => 0,
+		pretty => 1,
+		my_dump => 0,
+		dumper => 1, });
+	return if !$didl;
+	return $didl;
+}
+
+
+
+sub serviceRequest
+	# this method works with all kinds of actions
+	# and returns aresponses that *may* contain
+	# everything that is needed with no further
+	# parsing. see 'didlRequest' for the method
+	# that expects a <Result> containing DIDL in it.
+{
+    my ($this,$service_name,$action,$args) = @_;
+
+	my $dbg_name = $this->getDbgName($action,$args);
+	display($dbg_dlna,0,"service($service_name) Request($dbg_name)");
+
+	my $service = $this->{services}->{$service_name};
+	if (!$service)
+	{
+		error("could not find service '$service_name'");
+		return;
+	}
+
+	display($dbg_dlna,0,"creating socket to $this->{ip}:$this->{port}");
+
+    my $sock = IO::Socket::INET->new(
+        PeerAddr => $this->{ip},
+        PeerPort => $this->{port},
+        Proto => 'tcp',
+        Type => SOCK_STREAM,
+        Blocking => 1);
+    if (!$sock)
+    {
+        error("Could not open socket to $this->{ip}:$this->{port}");
+        return;
+    }
+
+    # build the body
+
+    my $content = soap_header();
+    $content .= "<u:$action xmlns:u=\"urn:schemas-upnp-org:service:$service_name:1\">";
+
+	# add sevice specific xml request elements
+
+    if ($args)
+    {
+        my $l = shift @$args;
+		my $r = shift @$args;
+		while ($l)
+		{
+            $content .= "<$l>$r</$l>";
+			$l = shift @$args;
+			$r = shift @$args;
+        }
+    }
+
+    $content .= "</u:$action>";
+	$content .= soap_footer();
+
+    # build the header and request
+
+    my $request = '';
+    $request .= "POST $service->{controlURL} HTTP/1.1\r\n";
+    $request .= "HOST: $this->{ip}:$this->{port}\r\n";
+    $request .= "Content-Type: text/xml; charset=\"utf-8\"\r\n";
+    $request .= "Content-Length: ".length($content)."\r\n";
+    $request .= "SOAPACTION: \"urn:schemas-upnp-org:service:$service_name:1#$action\"\r\n";
+    $request .= "\r\n";
+    $request .= $content;
+
+    # send the action
+
+    display($dbg_dlna+2,1,"sending $dbg_name request");
+    display($dbg_dlna+2,1,"--------------- request --------------------");
+    display($dbg_dlna+2,1,$request);
+    display($dbg_dlna+2,1,"--------------------------------------------");
+
+    if (!$sock->send($request))
+    {
+        error("Could not send message to renderer socket");
+	    $sock->close();
+        return;
+    }
+
+    # get the response
+
+    display($dbg_dlna,1,"getting action($action) response");
+
+    my %headers;
+    my $first_line = 1;
+    my $line = <$sock>;
+    while (defined($line) && $line ne "\r\n")
+    {
+        chomp($line);
+        $line =~ s/\r|\n//g;
+        display($dbg_dlna+1,2,"line=$line");
+        if ($line =~ /:/)
+        {
+			my ($name, $value) = split(':', $line, 2);
+			$name = lc($name);
+            $name =~ s/-/_/g;
+			$value =~ s/^\s//g;
+			$headers{$name} = $value;
+        }
+        $line = <$sock>;
+    }
+
+    # WDTV puts out chunked which I think means that
+    # the length is on a the next line, in hex
+
+    my $length = $headers{content_length};
+    display($dbg_dlna+1,2,"content_length=$length");
+
+    if (!$length &&
+		 $headers{transfer_encoding} &&
+		 $headers{transfer_encoding} eq 'chunked')
+    {
+        my $hex = <$sock>;
+        $hex =~ s/^\s*//g;
+        $hex =~ s/\s*$//g;
+        $length = hex($hex);
+        display($dbg_dlna+1,2,"using chunked transfer_encoding($hex) length=$length");
+    }
+
+    # continuing ...
+
+    if (!$length)
+    {
+        error("No content length returned by response");
+	    $sock->close();
+        return;
+    }
+
+    my $data;
+    my $rslt = $sock->read($data,$length);
+    $sock->close();
+
+    if (!$rslt || $rslt != $length)
+    {
+        error("Could not read $length bytes from socket");
+        return;
+    }
+    if (!$data)
+    {
+        error("No data found in $dbg_name response");
+        return;
+    }
+
+    display($dbg_dlna+1,2,"got "._def($rslt)." bytes from socket");
+    display($dbg_dlna+1,2,"--------------- response --------------------");
+    display($dbg_dlna+1,2,"'$data'");
+    display($dbg_dlna+1,2,"--------------------------------------------");
+
+	my $xml = parseXML($data,{
+		what => $dbg_name,
+		show_hdr  => $dbg_response <= 0,
+		show_dump => $dbg_response < 0,
+		addl_level => 0,
+		dump => 1,
+		decode_didl => 0,
+		raw => 0,
+		pretty => 1,
+		my_dump => 0,
+		dumper => 1, });
+	return if !$xml;
+
+	my $soap_env = $xml->{'SOAP-ENV:Body'};
+	if (!$soap_env)
+	{
+		error("Could not find SOAP_ENV:Body in $dbg_name response");
+		return;
+	}
+
+	my $fault = $soap_env->{'SOAP-ENV:Fault'};
+	if ($fault)
+	{
+		my $detail = $fault->{detail} || '';
+		my $upnp_error = $detail ? $detail->{'u:UPnPError'} : '';
+		my $code = $upnp_error ? $upnp_error->{'u:errorCode'} : '';
+		my $descrip = $upnp_error ? $upnp_error->{'u:errorDescription'} : '';
+		error("SOAP-ENV:Fault code($code) descrip($descrip) in $dbg_name response");
+		return;
+	}
+
+	my $action_response = $soap_env->{'m:'.$action.'Response'};
+	if (!$soap_env)
+	{
+		error("Could not find m:$action Response in $dbg_name response");
+		return;
+	}
+
+	display($dbg_dlna,0,"$dbg_name returning $action_response");
+	return $action_response;
+
+}   # serviceRequest()
+
+
+
+
 
 
 

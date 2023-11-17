@@ -10,7 +10,6 @@ use strict;
 use warnings;
 use threads;
 use threads::shared;
-use XML::Simple;
 use artisanUtils;
 use httpUtils;
 use Track;
@@ -68,7 +67,7 @@ sub handle_request
 		show_hdr => $dbg_input <= 0,
 		show_dump => $dbg_input < 0,
 		addl_level => 0,
-		dump => 0,
+		dump => 1,
 		decode_didl => 0,
 		raw => 0,
 		pretty => 1,
@@ -615,25 +614,6 @@ sub browse_footer
 	return $text;
 }
 
-
-sub soap_header
-{
-	my $text = '<?xml version="1.0"?>'."\r\n";
-	$text .= '<SOAP-ENV:Envelope ';
-	$text .= 'xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/" ';
-	$text .= 'SOAP-ENV:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"';
-	$text .= '>';
-	$text .= '<SOAP-ENV:Body>';
-	return $text;
-}
-
-sub soap_footer
-{
-	my $text = '';
-	$text .= "</SOAP-ENV:Body>";
-	$text .= '</SOAP-ENV:Envelope>'."\r\n";
-    return $text;
-}
 
 
 sub didl_header

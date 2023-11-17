@@ -28,6 +28,10 @@ use base qw(Library);
 my $dbg_rlib = 0;
 
 
+my $folder_cache:shared = shared_clone({});
+my $track_cache:shared = shared_clone({});
+
+
 sub new
 	# receives a $dev containing ip,port,services, etc
 {
@@ -44,21 +48,19 @@ sub getTrack
 {
     my ($this,$id) = @_;
 	display($dbg_rlib,0,"getTrack($id)");
-	my $track = '';
+	my $tcache = $track_cache->{$this->{uuid}};
+	my $track = $tcache ? $tcache->{$id} : '';
 	error("could not getTrack($id)") if !$track;
 	return $track;
 }
 
 
 sub getFolder
-	# called once with $dbh, from HTTPServer::search_directory()
-	# as part of the DLNA ContentServer:1 browse functionality
 {
     my ($this,$id) = @_;
 	display($dbg_rlib,0,"getFolder($id)");
-	my $folder = '';
-
-
+	my $fcache = $folder_cache->{$this->{uuid}};
+	my $folder = $fcache ? $fcache->{$id} : '';
 	error("could not getFolder($id)") if !$folder;
 	return $folder;
 }
@@ -80,15 +82,313 @@ sub getSubitems
 	my ($this,$table,$id,$start,$count) = @_;
     $start ||= 0;
     $count ||= 999999;
-    display($dbg_rlib+2,0,"get_subitems($table,$id,$start,$count)");
-	return [];
+    display($dbg_rlib,0,"get_subitems($table,$id,$start,$count)");
+
+	my $didl = $this->didlRequest(
+		'ContentDirectory',
+		'Browse',[
+			ObjectID => $id,
+			BrowseFlag => 'BrowseDirectChildren',
+			Filter => '*',
+			StartingIndex => 0,
+			RequestedCount => 100,
+			SortCriteria => '', ]);
+		# WMP Media Server is fucking sensitive to the
+		# order of arguments!  I was struggling just to
+		# get it working ... and this order, from
+		# DLNA Browser' made it go ...
+
+
+	return [] if !$didl;
+
+	# we only get tracks from folders of type 'album',
+	# and only get folders from 'sections' (and 'root').
+	# Artisan does not support music albums that contain
+	# subfolders, indeed, the presence of a track in a folder
+	# DEFINES an an album.
+
+	my $rslt = [];
+
+	if ($table eq 'tracks')
+	{
+		my $container = {};
+			# for building track_numbers, etc
+
+		my $items = $didl->{item};
+		for my $item (@$items)
+		{
+			my $remote_track = $this->remoteTrack($item,$container);
+			push @$rslt,$remote_track if $remote_track;
+		}
+	}
+	else	# table eq 'folders'
+	{
+		my $containers = $didl->{container};
+		for my $container (@$containers)
+		{
+			my $remote_folder = $this->remoteFolder($container);
+			push @$rslt,$remote_folder if $remote_folder;
+		}
+	}
+
+	return $rslt;
+
 }   # get_subitems
 
+
+
+sub remoteFolder
+{
+	my ($this,$container) = @_;
+	my $id = $container->{id};
+	my $class_name = $container->{'upnp:class'}->{content} || '';
+	my $title = $container->{'dc:title'} || '';
+	my $num_elements = $container->{childCount} || 0;
+
+	display($dbg_rlib,0,"remoteFolder($id,$class_name) $title $num_elements");
+
+	# we will only accept containers that contain music stuff
+
+	my $accept = 0;
+	my $classes = $container->{'upnp:searchClass'};
+	for my $class (@$classes)
+	{
+		my $content = $class->{content};
+		print "checking class $content\n";
+
+		if (
+			$content =~ /audioItem/ ||
+			$content =~ /musicTrack/ ||
+			$content =~ /musicAlbum/ ||
+			$content =~ /musicArtist/ ||
+			$content =~ /audioBook/ ||
+			# $content =~ /playlistContainer/ ||
+			0
+		)
+		{
+			display($dbg_rlib,1,"accepting container($id) based on class($content)");
+			$accept = 1;
+			last;
+		}
+	}
+	if (!$accept)
+	{
+		display($dbg_rlib,1,"skipping container($id)");
+		return;
+	}
+
+	my $is_album = $class_name eq 'object.container.album.musicAlbum' ? 1 : 0;
+	my $artist = getArtist($container);
+
+
+	my $folder = shared_clone({
+		# 0 is not false (if blah) in js is_local 		=> 0,
+		id 				=> $id,
+		title			=> $title,
+		parent_id		=> $container->{parentID} || 0,
+		dirtype 		=> $is_album ? 'album' : 'section',
+		num_elements    => $num_elements,
+
+		# quick and dirty for now
+
+	    has_art     	=> 0,
+        path	 		=> '',
+		art_uri			=> '',
+
+		# presented via DNLA ...
+		# mostly specific to albums
+
+
+		artist   		=> getArtist($container),
+        genre		    => $container->{'upnp:genre'} || '',
+        year_str        => '',
+		folder_error          => 0,
+		highest_folder_error  => 0,
+		highest_track_error   => 0,
+	});
+
+	my $fcache = $folder_cache->{$this->{uuid}};
+	$fcache = $folder_cache->{$this->{uuid}} = shared_clone({})
+		if !$fcache;
+	$fcache->{$id} = $folder;
+
+	return $folder;
+}
+
+
+sub remoteTrack
+{
+	my ($this,$item,$container) = @_;
+	my $id = $item->{id};
+	my $title = $item->{'dc:title'};
+
+	display($dbg_rlib,0,"remoteTrack($id) $title");
+
+	my $album_artist = $item->{'dc:creator'};
+
+	my $art_uri = getBestArtUri($item);
+	my $res = getBestRes($item);
+	my $duration = $res && $res->{duration} ?
+		duration_to_millis($res->{duration}) : 0;
+	my $path = $res ? $res->{content} : '';
+
+	# I think you need the streaming info and a different protocol
+	# to use different resolutions, so, after finding the best one
+	# we remove any query params, and that seems to work ...
+
+	$path =~ s/\?.*$//;
+
+	my $date = $item->{'dc:date'} || '';
+	my $year_str = $date =~ /^(\d\d\d\d)/ ? $1 : '';
+	my $track_num = $item->{'upnp:originalTrackNumber'} || '';
+
+	my $track = shared_clone({
+		position 		=> 0, 		# unused playlist position
+		# 0 is not a false value in js !  is_local       	=> 0,
+		id             	=> $id,
+		parent_id    	=> $item->{parent_id},
+		has_art        	=> $art_uri ? 1 : 0,
+		path			=> $path,
+		art_uri			=> $art_uri,
+		duration     	=> $duration,
+		size         	=> 0,
+		type         	=> '',
+        title		  	=> $title,
+        artist		  	=> getArtist($container),
+        album_title  	=> $item->{'upnp:album'} || '',
+        album_artist 	=> '',
+        tracknum  	  	=> $track_num,
+        genre		  	=> $item->{'upnp:genre'} || '',
+		year_str     	=> $year_str,
+		timestamp      	=> 0,
+		file_md5       	=> '',
+		error_codes 	=> '',
+		highest_error   => 0,
+	});
+
+	# cache it
+	my $tcache = $track_cache->{$this->{uuid}};
+	$tcache = $track_cache->{$this->{uuid}} = shared_clone({})
+		if !$tcache;
+	$tcache->{$id} = $track;
+
+	return $track;
+}
+
+
+
+#----------------------------------------
+# methods to sort thru the morass of
+# fields offered and try to find
+# usable values
+#----------------------------------------
+
+
+sub getArtist
+{
+	my ($cont) = @_;
+	my $artist = getField($cont,'dc:creator');
+	$artist ||= getField($cont,'upnp:actor');
+	$artist ||= getField($cont,'upnp:actor');
+	return $artist || '';
+}
+
+
+sub getField
+	# returns the referred to field,
+	# the 0th element of an array,
+	# or the first alphabetically keyed item of a hash
+{
+	my ($cont,$field) = @_;
+
+	my $retval = '';
+	my $obj = $cont->{$field};
+
+	while (ref($obj))
+	{
+		if ($obj =~ /ARRAY/)
+		{
+			$obj = $obj->[0];
+		}
+		elsif ($obj =~ /HASH/)
+		{
+			$obj = (values %$obj)[0];
+		}
+
+		# if it's still a hash, return the content member
+
+		if ($obj =~ /HASH/ && $obj->{content})
+		{
+			$obj = $obj->{content};
+		}
+	}
+
+	return $obj || '';
+}
+
+
+sub getBestRes
+{
+	my ($item) = @_;
+	my $bit_rate = 0;
+
+	my $best_res;
+	my $resources = $item->{res};
+	if ($resources)
+	{
+		for my $res (@$resources)
+		{
+			if (!$best_res || ($res->{bitrate} > $best_res->{bitrate}))
+			{
+				$best_res = $res;
+			}
+		}
+	}
+	return $best_res;
+}
+
+
+sub getBestArtUri
+{
+	my ($item) = @_;
+
+	# The sizes of the the images are, ahem, as follows
+	#
+	# 	PNG/JPEG_TN,	160x160
+	# 	PNG/JPEG_SM,	640x480
+	# 	PNG/JPEG_MED    ??
+	# 	PNG/JPEG_LRG	??
+	#
+	# There may be times where we want the larger ones,
+	# but for right now I will optimize to the smaller ones
+
+	my $art_uri = '';
+	my $uris = $item->{'upnp:albumArtURI'};
+	if ($uris)
+	{
+		for my $uri (@$uris)
+		{
+			$art_uri = $uri->{content};
+			last if $uri->{'dlna:profileID'} =~ /_TN/;
+		}
+	}
+
+	# they have comma delimited params?
+	# $art_uri =~ s/,/&/g;
+	$art_uri =~ s/,*.$//;
+	return $art_uri;
+}
+
+
+
+#-------------------------------------------------------
+# metadata - for displaying in the details section
+#-------------------------------------------------------
 
 sub getFolderMetadata
 {
 	my ($this,$id) = @_;
-	display($dbg_rlib,0,"getTrackMetadata($id)");
+	display($dbg_rlib,0,"getFolderMetadata($id)");
 
 	my $folder = $this->getFolder($id);
 	return [] if !$folder;
@@ -103,16 +403,6 @@ sub getFolderMetadata
 
 
 sub getTrackMetadata
-	# Returns an object that can be turned into json,
-	# that is the entire treegrid that will show in
-	# the right pane of the explorer page.
-	#
-	# For the localLibrary this includes a tree of
-	# three subtrees:
-	#
-	# - the Track database record
-	# - the mediaFile record
-	# - low level MP3/WMA/M4A tags
 {
 	my ($this,$id) = @_;
 	display($dbg_rlib,0,"getTrackMetadata($id)");
@@ -125,248 +415,10 @@ sub getTrackMetadata
 
 	push @$sections, meta_section(\$use_id,'Database',1,$track);
 
-	# a section that shows the resolved "mediaFile"
-	# section(s) that shows the low level tags
-
-	my $info = MediaFile->new($track->{path});
-	if (!$info)
-	{
-		error("no mediaFile($track->{path}) in item_tags request!");
-		# but don't return error (show the database anyways)
-	}
-	else
-	{
-		# the errors get their own section
-
-		my $merrors = $info->get_errors();
-		delete $info->{errors};
-
-		push @$sections,meta_section(\$use_id,'mediaFile',0,$info,'^raw_tags$');
-
-		# show any mediaFile warnings or errors
-		# we need err_num to keep the keys separate to call json()
-
-		if ($merrors)
-		{
-			my @errors;
-			my @sorted = sort {$$b[0] <=> $$a[0]} @$merrors;
-			for my $e (@sorted)
-			{
-				push @errors,[$$e[0],severity_to_str($$e[0]),$$e[1]];
-			}
-			push @$sections,error_section(\$use_id,'mediaFileErrors',1,\@errors);
-		}
-
-		# then based on the underlying file type, show the raw tag sections
-		# re-reading a lot of stuff for m4a's
-
-		if ($$info{type})
-		{
-			if ($$info{type} eq 'wma')
-			{
-				push @$sections,meta_section(\$use_id,'wmaTags',0,$$info{raw_tags}->{tags});
-				push @$sections,meta_section(\$use_id,'wmaInfo',0,$$info{raw_tags}->{info});
-			}
-			elsif ($$info{type} eq 'm4a')
-			{
-				push @$sections,meta_section(\$use_id,'m4aTags',0,$$info{raw_tags}->{tags});
-				push @$sections,meta_section(\$use_id,'m4aInfo',0,$$info{raw_tags}->{info});
-			}
-
-			else
-			{
-				push @$sections,meta_section(\$use_id,'mp3Tags',0,$$info{raw_tags});
-			}
-		}
-	}
-
 	return $sections;
 }
 
 
-
-
-
-
-#--------------------------------------------------------
-# generic DLNA serviceRequest for remoteDevices
-#--------------------------------------------------------
-# Not using XML Parser
-#
-#	my $data = $this->private_doAction(0,'SetAVTransportURI',{
-#		CurrentURI => "http://$server_ip:$server_port/media/$arg.mp3",
-#	my $status = $data =~ /<CurrentTransportStatus>(.*?)<\/CurrentTransportStatus>/s ? $1 : '';
-#	my $state = $data =~ /<CurrentTransportState>(.*?)<\/CurrentTransportState>/s ? $1 : '';
-
-
-my $dbg_dlna = 0;
-
-
-sub serviceRequest
-{
-    my ($this,$name,$action,$args) = @_;
-	display($dbg_dlna,0,"serviceRequest($name,$action)");
-
-	my $service = $this->{services}->{$name};
-	if (!$service)
-	{
-		error("could not find service '$name'");
-		return;
-	}
-
-	display($dbg_dlna,0,"creating socket to $this->{ip}:$this->{port}");
-
-    my $sock = IO::Socket::INET->new(
-        PeerAddr => $this->{ip},
-        PeerPort => $this->{port},
-        Proto => 'tcp',
-        Type => SOCK_STREAM,
-        Blocking => 1);
-    if (!$sock)
-    {
-        error("Could not open socket to $this->{ip}:$this->{port}");
-        return;
-    }
-
-    # build the body
-
-	# determine which 'Browse' element was used
-    # coherence seems use ns0:Browse, bubbleUp u:Browse,
-    # and windows m:Browse with {content}
-
-    my $body = '<?xml version="1.0" encoding="utf-8"?>'."\r\n";
-    $body .= "<s:Envelope ";
-	$body .= "s:encodingStyle=\"http://schemas.xmlsoap.org/soap/encoding/\" ";
-	$body .= "xmlns:s=\"http://schemas.xmlsoap.org/soap/envelope/\"";
-	$body .= ">";
-    $body .= "<s:Body>";
-    $body .= "<u:$action xmlns:u=\"urn:schemas-upnp-org:service:$name:1\">";
-
-	# sevice specific xml elements
-    # $body .= "<InstanceID>0</InstanceID>";
-	# $body .= "<Channel>Master</Channel>" if ($rv);
-
-    if ($args)
-    {
-        my $l = shift @$args;
-		my $r = shift @$args;
-		while ($l)
-		{
-            $body .= "<$l>$r</$l>";
-			$l = shift @$args;
-			$r = shift @$args;
-        }
-    }
-
-    $body .= "</u:$action>";
-    $body .= "</s:Body>";
-    $body .= "</s:Envelope>\r\n";
-
-    # build the header and request
-
-    my $request = '';
-    $request .= "POST $service->{controlURL} HTTP/1.1\r\n";
-    $request .= "HOST: $this->{ip}:$this->{port}\r\n";
-    $request .= "Content-Type: text/xml; charset=\"utf-8\"\r\n";
-    $request .= "Content-Length: ".length($body)."\r\n";
-    $request .= "SOAPACTION: \"urn:schemas-upnp-org:service:$name:1#$action\"\r\n";
-    $request .= "\r\n";
-    $request .= $body;
-
-    # send the action
-
-    display($dbg_dlna+2,1,"sending action($action) request");
-    display($dbg_dlna+2,1,"--------------- request --------------------");
-    display($dbg_dlna+2,1,$request);
-    display($dbg_dlna+2,1,"--------------------------------------------");
-
-    if (!$sock->send($request))
-    {
-        error("Could not send message to renderer socket");
-	    $sock->close();
-        return;
-    }
-
-    # get the response
-
-    display($dbg_dlna,1,"getting action($action) response");
-
-    my %headers;
-    my $first_line = 1;
-    my $line = <$sock>;
-    while (defined($line) && $line ne "\r\n")
-    {
-        chomp($line);
-        $line =~ s/\r|\n//g;
-        display($dbg_dlna+1,2,"line=$line");
-        if ($line =~ /:/)
-        {
-			my ($name, $value) = split(':', $line, 2);
-			$name = lc($name);
-            $name =~ s/-/_/g;
-			$value =~ s/^\s//g;
-			$headers{$name} = $value;
-        }
-        $line = <$sock>;
-    }
-
-    # WDTV puts out chunked which I think means that
-    # the length is on a the next line, in hex
-
-    my $length = $headers{content_length};
-    display($dbg_dlna+1,2,"content_length=$length");
-
-    if (!$length && $headers{transfer_encoding} eq 'chunked')
-    {
-        my $hex = <$sock>;
-        $hex =~ s/^\s*//g;
-        $hex =~ s/\s*$//g;
-        $length = hex($hex);
-        display($dbg_dlna+1,2,"using chunked transfer_encoding($hex) length=$length");
-    }
-
-    # continuing ...
-
-    if (!$length)
-    {
-        error("No content length returned by response");
-	    $sock->close();
-        return;
-    }
-
-    my $data;
-    my $rslt = $sock->read($data,$length);
-    $sock->close();
-
-    if (!$rslt || $rslt != $length)
-    {
-        error("Could not read $length bytes from socket");
-        return;
-    }
-    if (!$data)
-    {
-        error("No data found in action response");
-        return;
-    }
-
-
-    display($dbg_dlna+1,2,"got "._def($rslt)." bytes from socket");
-    display($dbg_dlna+1,2,"--------------- response --------------------");
-    display($dbg_dlna+1,2,"'$data'");
-    display($dbg_dlna+1,2,"--------------------------------------------");
-
-    # return to caller
-
-    return $data;
-
-}   # serviceRequest()
-
-
-
-
-#--------------------------------------------
-# ContentDirectory1
-#--------------------------------------------
 
 sub get_metafield
     # look for &lt/&gt bracketed value of id
@@ -380,16 +432,6 @@ sub get_metafield
 }
 
 
-
-sub ContentDirectory1
-{
-    my ($this,$action,$args) = @_;
-	display($dbg_rlib,0,"contentDirectory1($action)");
-	return $this->serviceRequest(
-		'ContentDirectory',
-		$action,
-		$args);
-}
 
 
 

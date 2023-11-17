@@ -13,6 +13,21 @@ use artisanUtils;
 $Data::Dumper::Indent = 1;
 $Data::Dumper::Sortkeys = 1;
 
+my $xmlsimple = XML::Simple->new(
+	KeyAttr => [],						# don't convert arrays with 'id' members to hashes by id
+	ForceArray => [						# identifiers that we want to always be arrayed
+		'container',					# folders within ContentDirectory1 Results
+		'item',							# tracks within ContentDirectory1 Results
+		'res',							# resource infos within ContentDirectory1 tracks (to find highest bitrate)
+		'upnp:albumArtURI',				# art_uris within a track
+		'upnp:artist',					# artists have roles
+	],
+	SuppressEmpty => '',				# empty elements will return ''
+);
+
+
+
+
 my $dbg_json = 1;
 
 
@@ -24,6 +39,8 @@ BEGIN
 		http_header
 		http_error
 		html_header
+		soap_header
+		soap_footer
 		json_header
 		json_error
 
@@ -105,6 +122,29 @@ sub html_header
 {
 	return http_header({ content_type => 'text/html' });
 }
+
+
+sub soap_header
+{
+	my $text = '<?xml version="1.0"?>'."\r\n";
+	$text .= '<SOAP-ENV:Envelope ';
+	$text .= 'xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/" ';
+	$text .= 'SOAP-ENV:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"';
+	$text .= '>';
+	$text .= '<SOAP-ENV:Body>';
+	return $text;
+}
+
+sub soap_footer
+{
+	my $text = '';
+	$text .= "</SOAP-ENV:Body>";
+	$text .= '</SOAP-ENV:Envelope>'."\r\n";
+    return $text;
+}
+
+
+
 
 
 sub json_header
@@ -247,7 +287,6 @@ sub parseXML
 	}
 
     my $xml;
-	my $xmlsimple = XML::Simple->new();
     eval { $xml = $xmlsimple->XMLin($data) };
     if ($@)
     {

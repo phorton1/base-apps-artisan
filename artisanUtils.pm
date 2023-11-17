@@ -11,7 +11,6 @@ use threads;
 use threads::shared;
 use Socket;
 use Sys::Hostname;
-use XML::Simple;
 use Pub::Utils qw(!:win_only);
 
 # set critical My::Utils constants

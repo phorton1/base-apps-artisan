@@ -97,6 +97,10 @@ sub library_request
 	{
 		return library_tracklist($library,$params);
 	}
+
+	# following two currently require a previously
+	# cached remoteTrack/Folder in remoteLibrary
+
 	elsif ($path eq 'track_metadata')
 	{
 		my $id = $params->{id} || 0;
@@ -113,13 +117,16 @@ sub library_request
 		my $json = json($metadata);
 		return json_header().$json;
 	}
-	elsif ($path eq 'get_track')
-	{
-		my $track = $library->getTrack($params->{track_id});
-		return json_error("could not get_track($params->{id})")
-			if !$track;
-		return json_header().json($track);
-	}
+	# elsif ($path eq 'get_track')
+	# {
+	# 	my $track = $library->getTrack($params->{track_id});
+	# 	return json_error("could not get_track($params->{id})")
+	# 		if !$track;
+	# 	return json_header().json($track);
+	# }
+
+	# following only used in webUI context menue
+	# which are not re-implemented yet ...
 	elsif ($path eq 'get_id_path')
 	{
 		# needs to be library agnostic
@@ -190,16 +197,21 @@ sub library_dir_element
 {
 	my ($library,$params,$rec) = @_;
 
-	$rec->{key} = $rec->{id};	# required
-	my $title = $rec->{title};
+	# required
 
+	$rec->{key} = $rec->{id};
+	my $title = $rec->{title};
 	if ($rec->{dirtype} ne 'album')
 	{
 		$rec->{folder} = '1';
 		$rec->{lazy} = '1';
 	}
 
-	if ($rec->{dirtype} eq 'album' &&
+	# title optimized for local library
+	# I should probably build this into it
+
+	if ($library->{uuid} eq $this_uuid &&
+		$rec->{dirtype} eq 'album' &&
 		$rec->{path} !~ /\/dead/i)
 	{
 		$title = "$rec->{artist} - $title"
@@ -208,15 +220,22 @@ sub library_dir_element
 	}
 
 	$rec->{title} = $title;	# required
-	$rec->{art_uri} = "http://$server_ip:$server_port/get_art/$rec->{id}/folder.jpg";
+
+	# art_uri build for localLibrary, and highest errors are
+	# zero for remoteLibraries
+
+	if ($library->{uuid} eq $this_uuid)
+	{
+		$rec->{art_uri} = "http://$server_ip:$server_port/get_art/$rec->{id}/folder.jpg";
+	}
 
 	my $mode = defined($params->{mode}) ? $params->{mode} : $SHOW_HIGH;
 
 	my $use_high =
 		$mode == $SHOW_TRACK_HIGH ? $$rec{highest_track_error} :
 		$mode == $SHOW_FOLDER_HIGH ? $$rec{highest_folder_error} :
-		$$rec{highest_error} > $$rec{highest_folder_error} ?
-		$$rec{highest_error} : $$rec{highest_folder_error};
+		$rec->{highest_error} > $rec->{highest_folder_error} ?
+		$rec->{highest_error} : $rec->{highest_folder_error};
 
 	$rec->{icon} = "/webui/icons/error_$use_high.png";
 

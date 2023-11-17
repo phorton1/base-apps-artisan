@@ -203,11 +203,24 @@ function init_page_explorer()
 			// use embeded audio player (soon to be webUI's own 'renderer')
 			// to play it as a stream (from my local library only at this time)
 
-			if (false)
+			if (true)
 			{
-				var play_url = "/media/" + node.data.id + '.' + node.data.type;
-				$('#audio_player').attr('src',play_url);
-				$('#audio_player_title').html(node.data.title);
+				var play_url;
+				if (rec.is_local)
+				{
+					play_url = "/media/" + node.data.id + '.' + node.data.type;
+				}
+				else if (rec.path)
+				{
+					play_url = rec.path;
+				}
+
+				if (play_url)
+				{
+					$('#audio_player').attr('src',play_url);
+					$('#audio_player_title').html(node.data.title);
+					$('#explorer_album_image').attr('src',rec.art_uri);
+				}
 			}
 
 			// tell the renderer to stream it from the library
