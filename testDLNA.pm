@@ -67,7 +67,7 @@ if (0)		# Browse ID(0) and ID(1)
 }
 
 
-if (1)		# Search for playlists
+if (0)		# Search for playlists
 {
 	print "\n";
 	print "================================\n";
@@ -107,6 +107,52 @@ if (1)		# Search for playlists
 		}	# for each child
 	} 	# got $didl
 }
+
+
+
+
+if (1)		# Search for audioItems(0)
+{
+	print "\n";
+	print "================================\n";
+	print "audioItems(0)\n";
+	print "================================\n";
+
+	my $didl = $device->didlRequest(
+		'ContentDirectory',
+		'Search',[
+			ContainerID => 0,
+			SearchCriteria =>  'upnp:class derivedfrom "object.item.audioItem" and @refID exists false',
+			Filter => '*',
+			StartingIndex => 0,
+			RequestedCount => 100,
+			SortCriteria => '',
+		]);
+		# Once again, WMP exhibits sensitivity to order of
+		# parameters, which must be as above for Search
+
+	if (0 && $didl)
+	{
+		# With a single playlist (first playlist)
+		# MS returns FIVE containers that all have the same ID,
+		# and varying sets of classes !?!
+
+		my $containers = $didl->{container};
+		for my $container (@$containers)
+		{
+			my $id = $container->{id};
+			print "container_id($id)) $container->{'dc:title'} $container->{childCount}\n";
+			my $classes = $container->{'upnp:searchClass'};
+			for my $class (@$classes)
+			{
+				print "   content=$class->{content}:$class->{includeDerived} \n";
+			}
+
+		}	# for each child
+	} 	# got $didl
+}
+
+
 
 
 

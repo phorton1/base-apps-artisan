@@ -212,40 +212,102 @@ sub getDidl
 	my $mime_type = myMimeType($this->{type});
 	my $url = "http://$server_ip:$server_port/media/$this->{id}.$this->{type}";
 
+	# WMP returns top three lines, then RES, then everything else
 
     my $didl = "";
-	$didl .= "<item id=\"$this->{id}\" parentID=\"$this->{parent_id}\" restricted=\"1\">";
-    $didl .= "<dc:title>".encode_xml($this->{title})."</dc:title>";
-	$didl .= "<upnp:class>object.item.audioItem</upnp:class>";
-	$didl .= "<upnp:genre>".encode_xml($this->{genre})."</upnp:genre>";
-	$didl .= "<upnp:artist>".encode_xml($this->{artist})."</upnp:artist>";
-    $didl .= "<upnp:album>".encode_xml($this->{album_title})."</upnp:album>";
-    $didl .= "<upnp:originalTrackNumber>".encode_xml($this->{tracknum})."</upnp:originalTrackNumber>";
-    $didl .= "<dc:date>".encode_xml($this->{year_str})."</dc:date>";
-	$didl .= "<upnp:albumArtURI>".encode_xml($art_uri)."</upnp:albumArtURI>";
-    $didl .= "<upnp:albumArtist>".encode_xml($this->{album_artist})."</upnp:albumArtist>";
+	$didl .= "<item id=\"$this->{id}\" parentID=\"$this->{parent_id}\" restricted=\"0\">";
+    $didl .= "<dc:title>".encode_content($this->{title})."</dc:title>";
+    $didl .= "<dc:creator>".encode_content($this->{album_artist})."</dc:creator>" if $this->{album_artist};
 
-    # had to be careful with the <res> element, as
-    # WDTVLive did not work when there was whitespace (i.e. cr's)
-    # in my template ... so note the >< are on the same line.
+	# WMP <res> includes sampleFrequency, bitsPerSample, and nrAudioChannels,
+	# that I don't have, and microsoft:codec which only it can use
 
-	my $bitrate = "";
-		# don't have this, so I deliver a blank
-
+	my $bitrate = "88200";
+		# don't have this, so I fake it to CD quality
     $didl .= "<res ";
-    $didl .= "bitrate=\"$bitrate\" ";
     $didl .= "size=\"$this->{size}\" ";
     $didl .= "duration=\"$pretty_duration\" ";
+    $didl .= "bitrate=\"$bitrate\" ";
     $didl .= "protocolInfo=\"http-get:*:$mime_type:$dlna_stuff\" ";
     $didl .= ">$url</res>";
-	$didl .= "</item>";
 
+	# Everything else
+    # class was object.item.audioItem
+	# seems like all dc's should come before all upnp's
+	# i don't include any dc:description
+
+	# this seems to be breaking on "Jimmy Thackery & the Drivers"
+	# which brings up the whole question of encoding
+
+
+	$didl .= "<upnp:class>object.item.audioItem.musicTrack</upnp:class>";
+	$didl .= "<upnp:genre>".encode_content($this->{genre})."</upnp:genre>" if $this->{genre};
+	$didl .= "<upnp:artist>".encode_content($this->{artist})."</upnp:artist>" if $this->{artist};
+    $didl .= "<upnp:album>".encode_content($this->{album_title})."</upnp:album>" if $this->{album_title};
+    $didl .= "<upnp:originalTrackNumber>".encode_xml($this->{tracknum})."</upnp:originalTrackNumber>" if $this->{tracknum};
+
+	$didl .= "<dc:date>".encode_xml($this->{year_str})."</dc:date>" if $this->{year_str};
+	$didl .= "<upnp:albumArtURI>".encode_xml($art_uri)."</upnp:albumArtURI>";
+    $didl .= "<upnp:albumArtist>".encode_content($this->{album_artist})."</upnp:albumArtist>" if $this->{album_artist};
+
+	# Try including the miscrosoft specific path
+
+	my $folder_path = pathOf($this->{path});
+	$folder_path =~ s/\//\\/g;
+	$didl .= "<desc id=\"folderPath\" ";
+	$didl .= "nameSpace=\"urn:schemas-microsoft-com:WMPNSS-1-0/\" ";
+	$didl .= "xmlns:microsoft=\"urn:schemas-microsoft-com:WMPNSS-1-0/\">";
+	$didl .= "&lt;microsoft:folderPath&gt;".encode_content($folder_path)."&lt;/microsoft:folderPath&gt;";
+	$didl .= "</desc>";
+
+	# END OF DIDL
+
+	$didl .= "</item>";
 	display($dbg_didl+1,0,"pre_didl=$didl");
 	$didl = encode_didl($didl);
 	display($dbg_didl+2,0,"didl=$didl");
 	return $didl;
 }
 
+# From WMP
+#
+#  <item id="4-11154" restricted="0" parentID="4">
+#    <dc:title>¿Y Como Es El?</dc:title>
+#    <dc:creator>José Luis Perales</dc:creator>
+#    <res size="4009469"
+#	 	duration="0:04:08.777"
+#		bitrate="16002"
+#		protocolInfo="http-get:*:audio/x-ms-wma:DLNA.ORG_PN=WMABASE;DLNA.ORG_OP=01;DLNA.ORG_FLAGS=01700000000000000000000000000000"
+#		sampleFrequency="44100"
+#		bitsPerSample="16"
+#		nrAudioChannels="2"
+#		microsoft:codec="{00000161-0000-0010-8000-00AA00389B71}">http://10.237.50.101:10243/WMPNSSv4/1140102379/1_NC0xMTE1NA.wma
+#	</res>
+#    <res duration="0:04:08.777" bitrate="176400" protocolInfo="http-get:*:audio/L16;rate=44100;channels=2:DLNA.ORG_PN=LPCM;DLNA.ORG_OP=10;DLNA.ORG_CI=1;DLNA.ORG_FLAGS=01700000000000000000000000000000" sampleFrequency="44100" bitsPerSample="16" nrAudioChannels="2" microsoft:codec="{00000001-0000-0010-8000-00AA00389B71}">http://10.237.50.101:10243/WMPNSSv4/1140102379/NC0xMTE1NA.wma?formatID=50</res>
+#    <res duration="0:04:08.777" bitrate="88200" protocolInfo="http-get:*:audio/L16;rate=44100;channels=1:DLNA.ORG_PN=LPCM;DLNA.ORG_OP=10;DLNA.ORG_CI=1;DLNA.ORG_FLAGS=01700000000000000000000000000000" sampleFrequency="44100" bitsPerSample="16" nrAudioChannels="1" microsoft:codec="{00000001-0000-0010-8000-00AA00389B71}">http://10.237.50.101:10243/WMPNSSv4/1140102379/NC0xMTE1NA.wma?formatID=47</res>
+#    <res duration="0:04:08.777" bitrate="24000" protocolInfo="http-get:*:audio/mp4:DLNA.ORG_PN=AAC_ISO_320;DLNA.ORG_OP=10;DLNA.ORG_CI=1;DLNA.ORG_FLAGS=01700000000000000000000000000000" sampleFrequency="48000" nrAudioChannels="2" microsoft:codec="{00001610-0000-0010-8000-00AA00389B71}">http://10.237.50.101:10243/WMPNSSv4/1140102379/NC0xMTE1NA.m4a?formatID=19</res>
+#    <res duration="0:04:08.777" bitrate="32000" protocolInfo="http-get:*:audio/vnd.dolby.dd-raw:DLNA.ORG_PN=AC3;DLNA.ORG_OP=10;DLNA.ORG_CI=1;DLNA.ORG_FLAGS=01700000000000000000000000000000" sampleFrequency="48000" nrAudioChannels="2" microsoft:codec="{E06D802C-DB46-11CF-B4D1-00805F6CBBEA}">http://10.237.50.101:10243/WMPNSSv4/1140102379/NC0xMTE1NA.wma?formatID=27</res>
+#    <res duration="0:04:08.777" bitrate="24000" protocolInfo="http-get:*:audio/vnd.dlna.adts:DLNA.ORG_PN=AAC_ADTS_320;DLNA.ORG_OP=10;DLNA.ORG_CI=1;DLNA.ORG_FLAGS=01700000000000000000000000000000" sampleFrequency="48000" nrAudioChannels="2" microsoft:codec="{00001610-0000-0010-8000-00AA00389B71}">http://10.237.50.101:10243/WMPNSSv4/1140102379/NC0xMTE1NA.adts?formatID=31</res>
+#    <res duration="0:04:08.777" bitrate="24000" protocolInfo="http-get:*:audio/mpeg:DLNA.ORG_PN=MP3;DLNA.ORG_OP=10;DLNA.ORG_CI=1;DLNA.ORG_FLAGS=01700000000000000000000000000000" sampleFrequency="44100" nrAudioChannels="2" microsoft:codec="{00000055-0000-0010-8000-00AA00389B71}">http://10.237.50.101:10243/WMPNSSv4/1140102379/NC0xMTE1NA.mp3?formatID=59</res>
+#    <upnp:class>object.item.audioItem.musicTrack</upnp:class>
+#    <upnp:genre>Latin</upnp:genre>
+#    <dc:publisher>EMI International</dc:publisher>
+#    <upnp:artist role="AlbumArtist">Various Artists</upnp:artist>
+#    <upnp:artist role="Performer">José Luis Perales</upnp:artist>
+#    <upnp:author role="Composer">José Luis Perales</upnp:author>
+#    <upnp:album>20 Baladas Insuperables</upnp:album>
+#    <upnp:originalTrackNumber>1</upnp:originalTrackNumber>
+#    <dc:date>2003-01-01</dc:date>
+#    <upnp:actor role="José Luis Perales">José Luis Perales</upnp:actor>
+#    <upnp:toc>14+96+4977+92F1+D21B+12167+160B4+1A961+1EFCF+237DA+278F0+2BBBF+31A3D+35791+39FD7+3E44F+42C25+474A7+4C4C0+505AC+5444D+57D4D</upnp:toc>
+#    <upnp:albumArtURI dlna:profileID="JPEG_SM">http://10.237.50.101:10243/WMPNSSv4/1140102379/0_NC0xMTE1NA.jpg?albumArt=true</upnp:albumArtURI>
+#    <upnp:albumArtURI dlna:profileID="JPEG_TN">http://10.237.50.101:10243/WMPNSSv4/1140102379/NC0xMTE1NA.jpg?albumArt=true,formatID=37,width=160,height=160</upnp:albumArtURI>
+#    <desc id="artist" nameSpace="urn:schemas-microsoft-com:WMPNSS-1-0/" xmlns:microsoft="urn:schemas-microsoft-com:WMPNSS-1-0/">&lt;microsoft:artistAlbumArtist&gt;Various Artists&lt;/microsoft:artistAlbumArtist&gt;&lt;microsoft:artistPerformer&gt;José Luis Perales&lt;/microsoft:artistPerformer&gt;</desc>
+#    <desc id="author" nameSpace="urn:schemas-microsoft-com:WMPNSS-1-0/" xmlns:microsoft="urn:schemas-microsoft-com:WMPNSS-1-0/">&lt;microsoft:authorComposer&gt;José Luis Perales&lt;/microsoft:authorComposer&gt;</desc>
+#    <desc id="Year" nameSpace="urn:schemas-microsoft-com:WMPNSS-1-0/" xmlns:microsoft="urn:schemas-microsoft-com:WMPNSS-1-0/">&lt;microsoft:year&gt;2003&lt;/microsoft:year&gt;</desc>
+#    <desc id="folderPath" nameSpace="urn:schemas-microsoft-com:WMPNSS-1-0/" xmlns:microsoft="urn:schemas-microsoft-com:WMPNSS-1-0/">&lt;microsoft:folderPath&gt;Shared Music\World\Tipico\Various - 20 Baladas Insuperables&lt;/microsoft:folderPath&gt;</desc>
+#    <desc id="fileInfo" nameSpace="urn:schemas-microsoft-com:WMPNSS-1-0/" xmlns:microsoft="urn:schemas-microsoft-com:WMPNSS-1-0/">&lt;microsoft:fileIdentifier&gt;AMGa_id=R   662145;AMGp_id=VA;AMGt_id=T  6608953&lt;/microsoft:fileIdentifier&gt;</desc>
+#  </item>
 
 
 
@@ -261,6 +323,8 @@ sub dlna_content_features
 	my ($this) = @_;
 	my $type = $this->{type};
 	my $mime_type = myMimeType($type);
+		# we get audio/x-wma,
+		# WMP returns audio/x-ms-wma
 	my $contentfeatures = '';
 
     # $contentfeatures .= 'DLNA.ORG_PN=LPCM;' if $mime_type eq 'audio/L16';
@@ -284,6 +348,7 @@ sub dlna_content_features
 	$contentfeatures .= 'DLNA.ORG_CI=0;';
 
 	# DLNA.ORG_FLAGS - binary flags with device parameters
+	# WMP returns 0170000....
 	$contentfeatures .= 'DLNA.ORG_FLAGS=01500000000000000000000000000000';
     # $contentfeatures .= 'DLNA.ORG_FLAGS=00D00000000000000000000000000000';
 

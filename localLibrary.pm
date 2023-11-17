@@ -18,7 +18,9 @@ use Library;
 use base qw(Library);
 
 my $dbg_llib = -2;
-my $dbg_virt = 0;
+my $dbg_virt = 1;
+my $dbg_subitems = 0;
+
 
 my $ID_PLAYLISTS = 'playlists';
 
@@ -75,6 +77,10 @@ sub getFolder
 	{
 		$folder = virtualRootFolder();
 	}
+	elsif ($id eq $ID_PLAYLISTS)
+	{
+		$folder = virtualPlaylistsFolder();
+	}
 	elsif ($playlist)
 	{
 		$folder = virtualPlaylistFolder($id);
@@ -95,6 +101,7 @@ sub getFolder
 }
 
 
+
 sub getSubitems
 	# Called by DLNA and webUI to return the list
 	# of items in a folder given by ID.  If the
@@ -111,7 +118,7 @@ sub getSubitems
 	my ($this,$table,$id,$start,$count) = @_;
     $start ||= 0;
     $count ||= 999999;
-    display($dbg_llib+2,0,"get_subitems($table,$id,$start,$count)");
+    display($dbg_subitems,0,"get_subitems($table,$id,$start,$count)");
 
 	my $num = 0;
 	my @retval;
@@ -123,7 +130,7 @@ sub getSubitems
 	if ($table eq 'folders' && $id eq $ID_PLAYLISTS)
 	{
 		my $names = localPlaylist->getPlaylistNames();
-		display($dbg_llib+1,1,"get_subitems($table,$id,$start,$count) found ".scalar(@$names)." playlists");
+		display($dbg_subitems,1,"found ".scalar(@$names)." playlists");
 		my $max = $start+$count-1;
 		$max = @$names-1 if $max > @$names-1;
 		for my $i ($start .. $max)
@@ -143,7 +150,7 @@ sub getSubitems
 	elsif ($table eq 'tracks' && $playlist)
 	{
 		my $recs = $playlist->getTracks();
-		display($dbg_llib+1,1,"get_subitems($table,$id,$start,$count) found ".scalar(@$recs)." tracks");
+		display($dbg_subitems,1,"found ".scalar(@$recs)." playlist tracks");
 		my $max = $start+$count-1;
 		$max = @$recs-1 if $max > @$recs-1;
 		for my $i ($start .. $max)
@@ -172,7 +179,7 @@ sub getSubitems
 		my $recs = get_records_db($dbh,$query);
 		db_disconnect($dbh);
 
-		display($dbg_llib+1,1,"get_subitems($table,$id,$start,$count) found ".scalar(@$recs)." items");
+		display($dbg_subitems,1,"found ".scalar(@$recs)." $table records");
 
 		my $max = $start+$count-1;
 		$max = @$recs-1 if $max > @$recs-1;
@@ -181,7 +188,7 @@ sub getSubitems
 		{
 			my $rec = $recs->[$i];
 
-			display($dbg_llib+2,2,pad($rec->{id},40)." ".$rec->{path});
+			display($dbg_subitems+1,2,pad($rec->{id},40)." ".$rec->{path});
 
 			my $item;
 			if ($table eq 'tracks')
@@ -212,6 +219,7 @@ sub getSubitems
 		}
 	}
 
+    display($dbg_subitems,1,"get_subitems() returning ".scalar(@retval)." items");
 	return \@retval;
 
 }   # get_subitems
@@ -262,7 +270,7 @@ sub virtualPlaylistFolder
 		id => $name,
 		parent_id => $ID_PLAYLISTS,
 		title => $name,
-		dirtype => 'album',
+		dirtype => 'playlist',
 		num_elements => $playlist->{num_tracks},
 		artist => '',
 		genre => '',

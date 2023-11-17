@@ -112,10 +112,14 @@ sub getTrackEntry
 
 
 sub getTracks
+	# Called by ContentDirectory1 for Artisan BEING a MediaServer
+	# NOT called in a local context.
+	# As far as the rest of the world is concerned, the playlist is
+	# sorted by path, and it is upto them to shuffle it if they want.
 {
 	my ($this) = @_;
 	return [] if !$this->startDB();
-	my $tracks = get_records_db($pl_dbh,"SELECT * FROM tracks ORDER BY position");
+	my $tracks = get_records_db($pl_dbh,"SELECT * FROM tracks ORDER BY path");
 	display($dbg_lpl+1,1,"getTracks() found ".scalar(@$tracks)." items in localPlaylist($this->{name})");
 	$this->stopDB();
 	return $tracks;

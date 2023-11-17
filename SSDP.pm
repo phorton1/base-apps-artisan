@@ -36,10 +36,10 @@ my $dbg_bye = 1;
 
 # SSDPListener
 
-my $dbg_listener = 0;
+my $dbg_listener = 1; # 0;
 	#  0 == quitting notice and warnings for empty messages
 	# -1 == wait loop
-my $dbg_msearch = 0;
+my $dbg_msearch = 1;  # 0;
 	#  0 == M-SEARCH messages received
 	# -1 == M-SEARCH messages skipped
 my $dbg_responses = 1;
@@ -48,10 +48,10 @@ my $dbg_responses = 1;
 
 # SSDPSearch
 
-my $dbg_search = 0;
+my $dbg_search = 1;	# 0;
 	#  0 == (cyan) header when starting search
 	# -1 == creating socket and sending message notifications
-my $show_search_dbg = 0x110;
+my $show_search_dbg = 0x000;	# 0x110;
 	# bitwise, high order nibble is New Devices,
 	# middle is Known Devices, and last is all msgs.
 	# 0=off, 1=line, 2=hash

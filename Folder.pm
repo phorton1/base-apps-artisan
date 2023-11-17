@@ -243,7 +243,7 @@ sub getDidl
 	# The class is either the root 'container' type, or the
 	# final 'album.musicAlbum' type.
 
-    $didl .= "<dc:title>". encode_xml($this->{title}) ."</dc:title>";
+    $didl .= "<dc:title>". encode_content($this->{title}) ."</dc:title>";
     $didl .= "<upnp:class name=\"$container\">$container</upnp:class>";
 	$didl .= "<upnp:writeStatus>NOT_WRITABLE</upnp:writeStatus>";
 
@@ -251,8 +251,6 @@ sub getDidl
 	# be in a sublist of upnp:SearchClass containing the
 	# container type which we can used by the client filter our results
 	# down to folders they are interested in.
-
-	# container.playlistContainer
 
 	if (1)
 	{
@@ -265,13 +263,22 @@ sub getDidl
 			item.audioItem.audioBook:0
 		);
 
-		my @section_types = qw(
+		my @playlist_types = qw(
 			item.audioItem:0
 			container:0
 			container.storageFolder:0
 			item.audioItem.musicTrack:0
 			container.album.musicAlbum:0
 			item.audioItem.audioBook:0
+		);
+
+		my @section_types = qw(
+			container:0
+			container.storageFolder:0
+			container.album.musicAlbum:1
+			item.audioItem:1
+			item.audioItem.audioBook:1
+			item.audioItem.musicTrack:1
 		);
 
 		my @root_types = qw(
@@ -288,8 +295,9 @@ sub getDidl
 			container.person.musicArtist:0 );
 
 		my $use_types =
-			($this->{dirtype} eq 'root' || !$this->{parent_id}) ? \@root_types :
+			($this->{dirtype} eq 'root')  ? \@root_types :
 			($this->{dirtype} eq 'section') ? \@section_types :
+			($this->{dirtype} eq 'playlist') ? \@playlist_types :
 			\@album_types;
 
 
@@ -306,9 +314,9 @@ sub getDidl
 
 	if ($this->{dirtype} eq 'album')
 	{
-		$didl .= "<upnp:genre>". encode_xml($this->{genre}) ."</upnp:genre> ";
-		$didl .= "<upnp:artist>". encode_xml($this->{artist}) ."</upnp:artist> ";
-		$didl .= "<upnp:albumArtist>". encode_xml($this->{artist}) ."</upnp:albumArtist> ";
+		$didl .= "<upnp:genre>". encode_content($this->{genre}) ."</upnp:genre> ";
+		$didl .= "<upnp:artist>". encode_content($this->{artist}) ."</upnp:artist> ";
+		$didl .= "<upnp:albumArtist>". encode_content($this->{artist}) ."</upnp:albumArtist> ";
 		$didl .= "<dc:date>$this->{year_str}</dc:date> ";
 		$didl .= "<upnp:albumArtURI>". encode_xml($art_uri) ."</upnp:albumArtURI> ";
 	}

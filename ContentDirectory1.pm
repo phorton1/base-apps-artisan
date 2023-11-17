@@ -17,6 +17,8 @@ use Folder;
 use Database;
 use DeviceManager;
 
+my $PARSE_RESULTS = 0;
+	# will parse results for correctness check, dumping, etcs
 
 my $dbg_input = 0;
 	#  0 == show header for handle_request
@@ -36,7 +38,7 @@ my $dbg_output = 0;
 my $cache_timeout = 1800;
 
 
-my $system_update_id:shared = 0; # time();
+my $system_update_id:shared = time();
 
 
 
@@ -67,7 +69,7 @@ sub handle_request
 		show_hdr => $dbg_input <= 0,
 		show_dump => $dbg_input < 0,
 		addl_level => 0,
-		dump => 1,
+		dump => 0,
 		decode_didl => 0,
 		raw => 0,
 		pretty => 1,
@@ -149,7 +151,7 @@ sub handle_request
 			raw => 0,
 			pretty => 1,
 			my_dump => 0,
-			dumper => 1 });
+			dumper => 1 })	if $PARSE_RESULTS;
 
 	}
 	else
@@ -200,7 +202,7 @@ sub get_xml_params
     {
         my $val = $object->{$field};
         $val = $val->{content} if ($use_content);
-        display($dbg_params,1,"object($field) = $val");
+        display($dbg_params,1,"object($field) = '$val'");
         push @rslt,$val;
     }
     return @rslt;
@@ -232,24 +234,26 @@ sub get_xml_params
 # upnp:class derivedfrom "object.item.audioItem" and (dc:creator contains "pat horton" or
 #    upnp:artist contains "pat horton")))  start=16, count=40
 #    *** to which I find 41 songs and return the last 25 as requested
-
+#
+# from bubbleUp (empty), not used in my implementation: SortCriteria;
+# from bubbleUp not used in my implementation: 'xmlns:u' => 'urn:schemas-upnp-org:service:ContentDirectory:1',
 
 sub search_directory
     # no longer using #filter
 {
     my ($xml,$peer_ip_addr) = @_;
-    display($dbg_search,0,"SEARCH()");
+    display($dbg_search,0,"SEARCH()",0,$Pub::Utils::win_color_light_magenta);
 
-    # from bubbleUp (empty), not used in my implementation: SortCriteria;
-    # from bubbleUp not used in my implementation: 'xmlns:u' => 'urn:schemas-upnp-org:service:ContentDirectory:1',
+	# upnp:class derivedfrom "object.item.audioItem" and @refID exists false
+	# upnp:class derivedfrom "object.container.playlistContainer" and @refID exists false
 
-    my ($criteria, $id, $start, $count) =
+    my ($criteria, $id, $start, $count, $filter) =
         get_xml_params($xml,'Search',qw(
             SearchCriteria
             ContainerID
             StartingIndex
-            RequestedCount ));
-            #Filter ));
+            RequestedCount
+            Filter ));
 
     if (!$criteria)
     {
@@ -257,124 +261,117 @@ sub search_directory
         return '';  # return empty result set
     }
 
+	$start ||= 0;
     $count ||= 0;
     # $filter = '*' if (!$filter);
-    display($dbg_search,1,"SEARCH(id=$id start=$start count=$count");
-    # display(1,1,"filter=$filter") if ($filter && $filter ne '*');
-    display($dbg_search,1,"criteria=$criteria)");
-    $count = 10 if !$count;
+    display($dbg_search,1,"id=$id start=$start count=$count filter=$filter");
+    display($dbg_search,1,"criteria=$criteria");
+    $count ||= 10;
 
-    # do the query
+	# start by just trying to do folders
+	# i am still confused by @refID
 
-    my $num = 0;
-	my $recs = [];
+	my $ref_id = $criteria =~ s/and \@refID exists false// ? 0 : 1;
+	my $what = $criteria =~ /^upnp:class derivedfrom "object\.(item|container)\.(.*)"/i ? $2 : 'unknown';
+
+	# now I think that what eq 'audioItem" with no other criteria
+	# means to return ALL the tracks in the library, subject to start/count,
+	# and WMP will figure out the rest of its stuff ...
+
+    display($dbg_search,1,"WHAT=$what");
+
+
+	my $num = 0;
+	my $total = 0;
 	my $didl = didl_header();
-
-	# testing - all searches return nothing
-
-	my ($table,$sql_expr);
-	if (0)
+	if ($what eq 'playlistContainer')
 	{
-		($table,$sql_expr) = create_sql_expr($criteria);
-		return '' if (!$table);  # returns no results, not an error
-	}
-	else    # a debugging expression that should work for testing
-	{
-		if ($criteria =~ /container/)
+		my $names = localPlaylist::getPlaylistNames();
+		$total = @$names;
+		display($dbg_search,2,"found $total playlists");
+
+		my $max = $start+$count-1;
+		$max = @$names-1 if $max > @$names-1;
+		for my $i ($start .. $max)
 		{
-			$table = 'folders';
-			$sql_expr = "parent_id = '$id'";
+			my $name = $names->[$i];
+			my $folder = localLibrary::virtualPlaylistFolder($name);
+			if ($folder)
+			{
+				$num++;
+				$didl .= $folder->getDidl()."\r\n";
+			}
 		}
-		else
-		{
-			$table = 'tracks';
-			$sql_expr = "parent_id = '$id'";	#dec5311c14b63d400774850d85264dec'";
-		}
-
-
-
-		# $table = ($criteria =~ /musicAlbum/) ? "folders" : "tracks";
-		# $sql_expr = ($table eq '') ? "title='Hard Lesson'" : "name='Blue To The Bone'";
-	}
-
-	my $dbh = db_connect();
-	$recs = get_records_db($dbh,"SELECT * FROM $table ".($sql_expr?"WHERE $sql_expr":''));
-	if (!$recs)
-	{
-		warning($dbg_search,1,"search(FROM $table WHERE $sql_expr) returned undef");
-	}
-	elsif (!@$recs)
-	{
-		warning($dbg_search,1,"search(FROM $table WHERE $sql_expr) returned no records");
 	}
 	else
 	{
-		display($dbg_search,1,"search() found ".scalar(@$recs)." records in $table");
+		# derived from object.item.audioItem
+		# this might require a JOIN
+		# or try both?
 
+		# in any case, I have to get the request for parent_id==0 working first
+		# lets give the exact same search  back to WMP and see what it returns ...
+		# it is definitely returning tracks  ...
 
-		my $index = 0;
-		if ($table eq 'tracks')
+		# WHERE parent_id='$id'
+
+		my $dbh = db_connect();
+		my $recs = get_records_db($dbh,"SELECT * FROM tracks ORDER BY path");
+		$total = @$recs;
+		display($dbg_search,2,"found $total tracks");
+
+		my $max = $start+$count-1;
+		$max = @$recs-1 if $max > @$recs-1;
+		for my $i ($start .. $max)
 		{
-			for my $rec (@$recs)
+			my $rec = $recs->[$i];
+			# print "    -->$rec->{path}\n";
+			my $track = Track->newFromHash($rec);
+			if ($track)
 			{
-				if ($index >= $start)
-				{
-					my $track = Track->newFromHash($rec);
-					$didl .= $track->getDidl()."\r\n";
-				}
-				$index++;
+				$num++;
+				$didl .= $track->getDidl()."\r\n";
 			}
 		}
-		else
-		{
-			for my $rec (@$recs)
-			{
-				if ($index >= $start)
-				{
-					my $folder = Folder->newFromHash($rec);
-					$didl .= $folder->getDidl()."\r\n";
-					$num++;
-					last if ($num >= $count);
-				}
-				$index++;
-			}
-		}
-	}   # got some records
-
-	db_disconnect($dbh);
-
+		db_disconnect($dbh);
+	}
 	$didl .= didl_footer();
+
+
+    display($dbg_search,1,"didl contains $num items");
 
 	my $content =
 		soap_header().
 		browse_header('SearchResponse').
 		encode_didl($didl).
-		browse_footer('SearchResponse',$num,scalar(@$recs)).
+		browse_footer('SearchResponse',$num,$total).
 		soap_footer();
 
-		parseXML($didl,{
-			what => "$table($id).didl",
-			show_hdr  => $dbg_search <= 0,
-			show_dump => $dbg_search < 0,
-			addl_level => 1,
-			dump => 1,
-			decode_didl => 1,
-			raw => 1,
-			pretty => 1,
-			my_dump => 1,
-			dumper => 1 });
+	my $dbg_name = "SEARCH.$what($id)";
 
-		parseXML($content,{
-			what => "$table($id).content",
-			show_hdr  => $dbg_search <= 0,
-			show_dump => $dbg_search < 0,
-			addl_level => 1,
-			dump => 1,
-			decode_didl => 0,
-			raw => 1,
-			pretty => 1,
-			my_dump => 1,
-			dumper => 1 });
+	parseXML($didl,{
+		what => "$dbg_name.didl",
+		show_hdr  => $dbg_search <= 0,
+		show_dump => $dbg_search < 0,
+		addl_level => 1,
+		dump => 0,
+		decode_didl => 1,
+		raw => 1,
+		pretty => 1,
+		my_dump => 1,
+		dumper => 1 }) if $PARSE_RESULTS;
+
+	parseXML($content,{
+		what => $dbg_name,
+		show_hdr  => $dbg_search <= 0,
+		show_dump => $dbg_search < 0,
+		addl_level => 1,
+		dump => 0,
+		decode_didl => 0,
+		raw => 1,
+		pretty => 1,
+		my_dump => 1,
+		dumper => 1 }) if $PARSE_RESULTS;
 
 
     return $content;
@@ -382,15 +379,8 @@ sub search_directory
 }   # search_directory
 
 
-# WMP Sends following search requests
-#
-#	upnp:class derivedfrom "object.item.audioItem" and @refID exists false
-#	upnp:class derivedfrom "object.container.playlistContainer" and @refID exists false
-#
-# So it appears to either look for tracks in the given container, or playlists
 
-
-sub create_sql_expr
+sub currently_unused_create_sql_expr
     # Flat parsing of criteria into sql
 {
     my ($expr) = @_;
@@ -472,7 +462,7 @@ sub create_sql_expr
 sub browse_directory
 {
     my ($xml,$peer_ip_addr) = @_;
-	display($dbg_browse,0,"BROWSE()");
+	display($dbg_browse,0,"BROWSE()",0,$Pub::Utils::win_color_light_cyan);
 
     my ($id, $start, $count, $flag) =
         get_xml_params($xml,'Browse',qw(
@@ -526,8 +516,8 @@ sub browse_directory
 		display($dbg_browse,1,"$flag(id=$id,start=$start,count=$count)");
 		$count = 10 if !$count;
 
-		my $is_album = $folder->{dirtype} eq 'album' ? 1 : 0;
-		my $table = $is_album ? "tracks" : "folders";
+		my $table = $folder->{dirtype} =~ /^(album|playlist)/ ?
+			"tracks" : "folders";
         my $subitems = $local_library->getSubitems($table, $id, $start, $count);
 		my $num_items = @$subitems;
 
@@ -539,6 +529,8 @@ sub browse_directory
             $didl .= $item->getDidl()."\r\n";
         }
 		$didl .= didl_footer();
+
+		display($dbg_browse,1,"didl contains ".scalar(@$subitems)." items");
 
 		my $content =
 			soap_header().
@@ -552,24 +544,24 @@ sub browse_directory
 			show_hdr  => $dbg_browse <= 0,
 			show_dump => $dbg_browse < 0,
 			addl_level => 1,
-			dump => 1,
+			dump => 0,
 			decode_didl => 1,
 			raw => 1,
 			pretty => 1,
 			my_dump => 1,
-			dumper => 1 });
+			dumper => 1 }) if $PARSE_RESULTS;
 
 		parseXML($content,{
 			what => "$flag($id).content",
 			show_hdr  => $dbg_browse <= 0,
 			show_dump => $dbg_browse < 0,
 			addl_level => 1,
-			dump => 1,
+			dump => 0,
 			decode_didl => 0,
 			raw => 1,
 			pretty => 1,
 			my_dump => 1,
-			dumper => 1 });
+			dumper => 1 }) if $PARSE_RESULTS;
 
 		return $content;
     }

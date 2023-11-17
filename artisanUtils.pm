@@ -71,6 +71,7 @@ BEGIN
 		encode_didl
 		decode_didl
 		encode_xml
+		encode_content
 		decode_xml
         escape_tag
         unescape_tag
@@ -515,6 +516,17 @@ sub encode_xml
 	return $string;
 }
 
+
+sub encode_content
+	# temporary routine? to change '&' into 'and'
+	# and then encode_xml.  perhaps that should
+	# just be done in encode_xml, but this code is
+	# very fragile, and this is currently working.
+{
+	my $string = shift;
+	$string =~ s/&/&amp;/g;
+	return encode_xml($string);
+}
 
 
 sub decode_xml
