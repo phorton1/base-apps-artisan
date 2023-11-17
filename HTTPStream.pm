@@ -22,16 +22,17 @@ my $dbg_stream = -1;
 
 
 sub stream_media
+	# $FH will be closed after this call
 {
 	my ($FH,
         $method,
         $headers,
         $content_id ) = @_;
 
-	display($dbg_stream,0,"stream_media($content_id)");
+	display($dbg_stream,0,"stream_media($method,$content_id)");
 	for my $key (keys %$headers)
 	{
-		display($dbg_stream+1,2,"header $key=$headers->{$key}");
+		display($dbg_stream+1,2,"input header($key) = '$headers->{$key}'");
 	}
 
 	if ($method !~ /^(HEAD|GET)$/)
@@ -49,7 +50,6 @@ sub stream_media
 	# where the first chars are the STREAM_MD5 TRACK_ID and
 	# XXX is mp3,m4a,wav, etc based on the tracks file extension.
 	# The TRACK_ID is uesd ... the XXX is ignored.
-
 
 	if ($content_id =~ /^(.*?)\.(\w+)$/)
 	{
@@ -69,7 +69,7 @@ sub stream_media
 
         # sanity checks
 
-		if (!$track->{path})
+		if (!$track->{path})	# ?!?!
 		{
 			error("Content($id) has no path");
 			print $FH http_header({
@@ -89,9 +89,7 @@ sub stream_media
 			return;
 		}
 
-		# vestigial kludge
 
-		# my $is_wd = $headers->{USER_AGENT} =~ /INTEL_NMPR\/2\.1 DLNADOC\/1\.50 dma\/3\.0 alphanetworks/ ? 1 : 0;
 		my $BUF_SIZE = 3000000;   # $is_wd && $ANDROID ? 16384 : 300000;
 
 		# build headers
@@ -108,59 +106,97 @@ sub stream_media
 			$is_ranged = 1;
 			$statuscode = 206;
 			$from_byte = int($1) || 0;
-			my $to_byte = $2 ? int($2) : 0;
+			$to_byte = $2 ? int($2) : '';
 
 			display($dbg_stream,1,"Range Request from $from_byte/$content_len to $to_byte");
 
-			$to_byte = $track->{size}-1 if (!$to_byte);
-			$to_byte = $track->{size}-1 if ($to_byte >= $track->{size});
+			$to_byte ||= $content_len - 1;
+			$to_byte = $content_len-1 if $to_byte >= $content_len - 1;
 			$content_len = $to_byte - $from_byte + 1;
 			display($dbg_stream+1,1,"Doing Range request from $from_byte to $to_byte = $content_len bytes");
 		}
 
+
+		# OK, so what seems to work is that if we DONT get a range request,
+		# we JUST return the headers, telling them to Accept-Ranges, then
+		# they call us back with another ranged request ?!?!
+		#
+		# On DLNABrowser if I just start returning bytes on the initial
+		# request, it fails with "could not print" to device ... and
+		# then it calls back with a range request, and sometimes same
+		# seemed to happen with WMP.  So far, all devices (WMP, DLNABrowser
+		# and the embedded HTML media player) seem to work with this approach.
+
+		# All types in my library 				MP3, WMA, M4A
+		# 	First WMA = /albums/Pop/Old/Frank/Frank Sinatra - Harmony
+		# 	First M4A = /albums/Rock/Alt/Billy McLaughlin - The Bow and the Arrow
+		# All possible types in my library: 	MP3, WMA, M4A, WAV
+		#
+		# Tested						MP3		WMA		M4A		WAV
+		#
+		#	localRenderer $mp file		X		X		X		-
+		#	localRenderer $mp stream	X		X		X		-
+		#	WMP							X		X		X		-
+		#	DLNABrowser					X		X		X		-
+		#	HTML embedded				X		0		X		-
+		#
+		#      HTML embedded works the same on:
+		#			Win10 Firefox
+		#			iPad Chrome
+		#			Xiamoi phone Chrome
+		#
+		# Thus far, the only unuspported playback is WMA in HTML embedded player
+		# as I presume WAV would work with all of them. Unfortunately 962 tracks
+		# or almost 10% of my library is WMA.
+
+
 		my @addl_headers = ();
 
-		# There's a problem with these headers vs WMP.
-		# WMP "mysteriously started working" when I accidentally
-		# channged http_header and mispelled 'addl_headers', so
-		# it works when these headers are NOT sent, sheesh.
-		# Dunno, is it worth figuring out?
-
-		if (0)
+		if (1)
 		{
-			push @addl_headers, "Content-Type: " . $track->mimeType();
-			push @addl_headers, "Content-Length: $content_len";
 			# push @addl_headers, "Content-Disposition: attachment; filename=\"$track->{titles}\"";
-			push @addl_headers, "Accept-Ranges: bytes";
 			push @addl_headers, "contentFeatures.dlna.org: ".$track->dlna_content_features();
 			push @addl_headers, 'transferMode.dlna.org: Streaming';
-			push @addl_headers, "Content-Range: bytes $from_byte-$to_byte/$track->{size}"
-				if ($is_ranged);
+			push @addl_headers, "Accept-Ranges: bytes";
+			if ($is_ranged)
+			{
+				push @addl_headers, "Content-Range: bytes $from_byte-$to_byte/$track->{size}";
+			}
 		}
 
+		#-------------------------------------
 		# SEND HEADERS
+		#-------------------------------------
 
-		display($dbg_stream+1,1,"Sending $method headers content_len=$content_len is_ranged=$is_ranged");
+		my $http_header = http_header({
+			statuscode => $statuscode,
+			content_type => $track->mimeType(),
+			content_length => $content_len,
+			addl_headers => \@addl_headers });
+		display($dbg_stream,1,"Sending $method http_header content_len=$content_len is_ranged=$is_ranged");
+		display($dbg_stream+1,2,$http_header);
 
 		if ($quitting)
 		{
 			warning(0,0,"not sending $method header in stream_media() due to quitting");
+			return;
 		}
 
-		my $ok = print $FH http_header({
-			'statuscode' => $statuscode,
-			'addl_headers' => \@addl_headers });
+		my $ok = print $FH $http_header;
 		if (!$ok)
 		{
 			error("Could not send headers for $method");
 			return;
 		}
-		return 1 if ($method eq 'HEAD' || !$content_len);
+		return if ($method eq 'HEAD' || !$content_len);
+			# This is the way I remember it working
+		return if !$is_ranged;
+			# This is apparently the way it works.
+			# See above comment
 
-		# if (defined($$CGI{'TRANSFERMODE.DLNA.ORG'}))
-		# {
-		#	if ($$CGI{'TRANSFERMODE.DLNA.ORG'} eq 'Streaming')
-		#	{
+		#-------------------------------------
+		# STREAMING BYTES
+		#-------------------------------------
 
 		display($dbg_stream+1,1,"Opening '$filename'");
 		if (!sysopen(ITEM, "$filename", O_RDONLY))
@@ -229,7 +265,6 @@ sub stream_media
 
 		display($dbg_stream+1,1,"finished sending stream rslt=".($rslt?"OK":"ERROR"));
 		close(ITEM);
-		return $rslt;
 
 		#    }       # STREAM IT
 		#    else    # unknown TRANSFERMODE.DLNA.ORG
