@@ -55,8 +55,6 @@ my $DEFAULT_MAX_AGE = 1800;
 my $device_list = shared_clone([]);
 my $device_cache_file = "$data_dir/device_cache.txt";
 	# unlink $device_cache_file;
-read_device_cache();
-	# static initialization !!
 
 
 sub addDevice

@@ -18,6 +18,7 @@ use DeviceManager;
 $Data::Dumper::Indent = 1;
 $Data::Dumper::Sortkeys = 1;
 
+DeviceManager::read_device_cache();
 
 #----------------------
 # test main

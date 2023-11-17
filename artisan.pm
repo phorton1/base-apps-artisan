@@ -67,11 +67,12 @@ DatabaseMain::scanTree();
 display($dbg_main,0,"Finished Scanning Library");
 localPlaylist::initPlaylists();
 
-# (2) Create Local and Cached Devices
+# (2) Create Local Devices, and THEN read the device Cache
+# so that local devices come first
 
 addDevice(new localLibrary());
 addDevice(new localRenderer());
-
+DeviceManager::read_device_cache();
 
 
 # (3) HTTP SERVER - establishes $server_ip
