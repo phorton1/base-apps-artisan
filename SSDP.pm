@@ -13,9 +13,10 @@ use strict;
 use warnings;
 use threads;
 use threads::shared;
+use Time::HiRes qw(sleep time);
 use IO::Socket;
 use IO::Socket::INET;
-use IO::Socket::Multicast;
+use IO::Socket::Multicast qw(:all);
 use LWP::UserAgent;
 use artisanUtils;
 use Device;
@@ -25,18 +26,18 @@ use DeviceManager;
 my $dbg_ssdp = 0;
 	# lifecycle of main object and threads
 my $dbg_self = 1;
-	# show self skippe dmessages in SSDPListener and SSDPSearch
+	# show self skipped dmessages in SSDPListener and SSDPSearch
 
 # SSDPAlive
 
-my $dbg_alive = 1;
+my $dbg_alive = 0;
 	# -1 == wait loop
-my $dbg_bye = 1;
+my $dbg_bye = 0;
 
 
 # SSDPListener
 
-my $dbg_listener = 1; # 0;
+my $dbg_listener = 0; # 0;
 	#  0 == quitting notice and warnings for empty messages
 	# -1 == wait loop
 my $dbg_msearch = 1;  # 0;
@@ -66,12 +67,14 @@ my $show_search_dbg = 0x000;	# 0x110;
 my $SSDP_PORT = 1900;
 my $SSDP_GROUP = '239.255.255.250';
 
+my $SHORT_INTERVAL = 3;
+	# time between succesive 'short' alive messages
 
 my $CACHE_MAX_AGE  = 1800;
 	# How long are our SSDP advertisements valid for?
 	# Spec says a minimum of 1800 seconds (30 minutes)
 	# but I have seen as low as 176.
-my $ALIVE_INTERVAL = 900;	# $cache_timeout;
+my $ALIVE_INTERVAL = 900;
 	# How often, do we send out 'alive' messages?
 	# Spec says we should send them out randomly
 	# at a rate of not less than 1/2 cache_max_age,
@@ -79,6 +82,16 @@ my $SSDPSEARCH_INTERVAL = 20;
 	# Interval between ssdp searches
 my $SSDPSEARCH_TIME = 4;
 	# How long to perform the search for
+
+
+my $listener_running:shared = 0;
+my $search_running:shared = 0;
+
+sub running
+{
+	return $listener_running + $search_running;
+}
+
 
 
 sub new
@@ -96,7 +109,75 @@ sub new
 		# Don't advertise that we're a connection manager, since we're not
 		# 'urn:schemas-upnp-org:service:ConnectionManager:1',
 	];
-	my $sock = IO::Socket::Multicast->new(
+
+	bless($this, $class);
+
+	my $thread = threads->create(\&SSDPListener, $this);
+	$thread->detach();
+
+	$thread = threads->create(\&SSDPSearch, $this);
+	$thread->detach();
+
+	return $this;
+}
+
+
+
+#-------------------------------------------------
+# alive and byebye
+#-------------------------------------------------
+
+sub send_byebye
+	# sends out 2 byebyes
+{
+	my ($this) = @_;
+    display($dbg_bye,0,"send_byebye()");
+	foreach my $nt (@{$this->{NTS}})
+	{
+		last if $quitting;
+		$this->{send_socket}->send(	$this->ssdp_message(1,'send_byebye',{
+			nt     => $nt,
+			nts    => 'byebye',
+			usn    => generate_usn($nt) }));
+		last if $quitting;
+	}
+}
+
+
+sub send_alive
+{
+	my ($this) = @_;
+	display($dbg_alive,0,"send_alive()");
+	foreach my $nt (@{$this->{NTS}})
+	{
+		last if $quitting;
+		$this->{send_socket}->send($this->ssdp_message(1,'send_alive',{
+			nt     => $nt,
+			nts    => 'alive',
+			usn    => generate_usn($nt)	}));
+		last if $quitting;
+	}
+}
+
+
+
+#---------------------------------------------
+# SSDPListener
+#---------------------------------------------
+
+sub SSDPListener
+{
+	my ($this) = @_;
+
+	display($dbg_ssdp,0,"SSDPListener() starting");
+
+	my $sock;
+
+	#-----------------------------------
+	# Sending socket
+	#-----------------------------------
+
+	$sock = IO::Socket::Multicast->new(
 		LocalAddr => $server_ip,
 		PeerAddr => $SSDP_GROUP,
 		PeerPort => $SSDP_PORT,
@@ -119,117 +200,15 @@ sub new
     }
     $sock->mcast_loopback(0);
 	my $got_port = $sock->sockport();
-
-    display($dbg_ssdp,0,"SSDP started on $server_ip:$got_port");
+    display($dbg_ssdp,1,"SSDPListener(send_socket) opened  $server_ip:$got_port");
 	$this->{send_socket} = $sock;
 	$this->{send_port} = $got_port;
-	$this->{recv_socket} = undef;
-	bless($this, $class);
 
-	my $thread = threads->create(\&SSDPListener, $this);
-	$thread->detach();
+	#-----------------------------------
+	# Recieving Socket
+	#-----------------------------------
 
-	$thread = threads->create(\&SSDPAlive, $this);
-	$thread->detach();
-
-	$thread = threads->create(\&SSDPSearch, $this);
-	$thread->detach();
-
-	return $this;
-}
-
-
-
-#-------------------------------------------------
-# SSDPAlive
-#-------------------------------------------------
-
-sub SSDPAlive
-	# calls twice the first time registering with network
-	# and once thereafter for normal 'keep alive' messages
-{
-	my ($this) = @_;
-	my $inited = 0;
-	display($dbg_ssdp,0,"SSDPAlive() thread running");
-	while(1)
-	{
-		if ($quitting)
-		{
-			warning(0,0,"exiting SSDPAlive() due to quitting==1");
-			last;
-		}
-		$this->send_alive($inited ? 1 : 2);
-		display($dbg_alive+1,0,"sleeping $ALIVE_INTERVAL seconds");
-		sleeper('send_alive_messages',$ALIVE_INTERVAL);
-		$inited = 1;
-	}
-	display($dbg_ssdp,0,"SSDPAlive() thread ended");
-	$this->send_byebye();
-}
-
-
-
-sub send_byebye
-	# sends out 2 byebyes
-{
-	my ($this) = @_;
-    display($dbg_bye,0,"send_byebye()");
-	for (1..2)
-	{
-		foreach my $nt (@{$this->{NTS}})
-		{
-			$this->{send_socket}->send(	$this->ssdp_message(1,'send_byebye',{
-				nt     => $nt,
-				nts    => 'byebye',
-				usn    => generate_usn($nt) }));
-		}
-		sleeper('send_byebye',3);
-	}
-}
-
-
-sub send_alive
-	# Send a number of alive messages to the multicast
-	# 'send' broadcast socket. Sends one message for each
-	# of the NTS array: uuid, rootdevice, MediaServer:1, and
-	# ContentDirectory:1
-{
-	my ($this,$amount) = @_;
-	$amount ||= 2;
-
-	if ($quitting)
-	{
-		warning(0,0,"exiting send_alive() due to quitting==1");
-		return;
-	}
-	display($dbg_alive,0,"send_alive($amount)");
-
-	for (1..$amount)
-	{
-		foreach my $nt (@{$this->{NTS}})
-		{
-			$this->{send_socket}->send($this->ssdp_message(1,'send_alive',{
-                nt     => $nt,
-                nts    => 'alive',
-                usn    => generate_usn($nt)	}));
-		}
-		sleeper('send_alive',3) if ($amount > 1);
-	}
-}
-
-
-
-#---------------------------------------------
-# SSDPListener
-#---------------------------------------------
-
-sub SSDPListener
-{
-	my ($this) = @_;
-
-	display($dbg_ssdp,0,"SSDPListener() starting");
-
-    my $sock = IO::Socket::Multicast->new(
+    $sock = IO::Socket::Multicast->new(
         Proto => 'udp',
         Blocking => 1,
         ReuseAddr => 1,
@@ -238,111 +217,162 @@ sub SSDPListener
 
     if (!$sock)
     {
+		$this->{send_socket}->close();
+		delete $this->{send_socket};
         error("Could not create socket ".$!);
         return;
     }
     if (!$sock->mcast_add($SSDP_GROUP))
     {
         $sock->close();
+		$this->{send_socket}->close();
+		delete $this->{send_socket};
         error("Could not subscribe to group: $!");
         return;
     }
 
     $this->{recv_socket} = $sock;
-    display($dbg_ssdp,0,"SSDPListener() running");
+    display($dbg_ssdp,1,"SSDPListener(recv_socket) opened");
+	$sock = undef;
+
+	my $bye_sent = 0;
+	my $alive_long = 0;
+	my $next_alive = time() + rand($SHORT_INTERVAL);
+	$this->send_alive();
 
     #---------------------------------------
     # wait for and process messages
     #---------------------------------------
 	# get a NOTIFY or M_SEARCH request
 
+	$listener_running = 1;
     while (1)
     {
-		# receive next packet
-
-        my $data = '';
-        display($dbg_listener+1,0,"waiting for data...");
-        my $peer_addr = $sock->recv($data,1024);
-        if (!$peer_addr)
-        {
-            error("received empty peer_addr".$!);
-            next;
-        }
-		if ($quitting)
+		if (!$quitting)
 		{
-			warning($dbg_listener,0,"exiting SSDPListener() due to quitting==1");
-			return;
-		}
+			# receive next packet
 
-		# read packet data
-
-		my ($peer_port, $peer_addr2) = sockaddr_in($peer_addr);
-		my $peer_ip = inet_ntoa($peer_addr2);
-        my $dlen = length($data || '');
-		if (!$dlen)
-		{
-			warning($dbg_listener,0,"empty SSDP message from  from $peer_ip$peer_port");
-			next;
-		}
-		if ($data =~ /$this_uuid/s)
-		{
-			display($dbg_self,0,"Skipping message from self\n".$data);
-			next;
-		}
-
-        #------------------------------------------------
-		# Proccess requests
-        #------------------------------------------------
-		# We are currently only responding to ssdp:discover upnp:rootdevice M-SEARCH requests
-
-		my $message = parse_ssdp_message($data,$peer_ip,$peer_port);
-		if ($message->{TYPE} eq 'NO_TYPE' || $message->{TYPE} eq 'NOTIFY')
-        {
-			processExternalMessage("LISTEN",$message,$peer_ip,$peer_port);
-        }
-	    elsif ($message->{TYPE} eq 'M-SEARCH')
-		{
-			if ($message->{MAN} eq '"ssdp:discover"')
+			my $sel = IO::Select->new($sock);
+			if ($sel->can_read(0.05))
 			{
-				if (!$message->{USER_AGENT} || $message->{USER_AGENT} ne 'Artisan')
+				my $data = '';
+				display($dbg_listener+1,0,"waiting for data...");
+				my $peer_addr = $sock->recv($data,1024);
+				if (!$peer_addr)
 				{
-					# We only respond to certain ST's (our NTS)
+					error("received empty peer_addr".$!);
+					next;
+				}
+				if ($quitting)
+				{
+					warning($dbg_listener,0,"exiting SSDPListener() due to quitting==1");
+					return;
+				}
 
-					my $send_reply = 0;
-					for my $type (@{$this->{NTS}})
+				# read packet data
+
+				my ($peer_port, $peer_addr2) = sockaddr_in($peer_addr);
+				my $peer_ip = inet_ntoa($peer_addr2);
+				my $dlen = length($data || '');
+				if (!$dlen)
+				{
+					warning($dbg_listener,0,"empty SSDP message from  from $peer_ip$peer_port");
+					next;
+				}
+				if ($data =~ /$this_uuid/s)
+				{
+					display($dbg_self,0,"Skipping message from self\n".$data);
+					next;
+				}
+
+				#------------------------------------------------
+				# Proccess requests
+				#------------------------------------------------
+				# We are currently only responding to ssdp:discover upnp:rootdevice M-SEARCH requests
+
+				my $message = parse_ssdp_message($data,$peer_ip,$peer_port);
+				if ($message->{TYPE} eq 'NO_TYPE' || $message->{TYPE} eq 'NOTIFY')
+				{
+					processExternalMessage("LISTEN",$message,$peer_ip,$peer_port);
+				}
+				elsif ($message->{TYPE} eq 'M-SEARCH')
+				{
+					if ($message->{MAN} eq '"ssdp:discover"')
 					{
-						if ($type eq $message->{ST})
+						if (!$message->{USER_AGENT} || $message->{USER_AGENT} ne 'Artisan')
 						{
-							$send_reply = 1;
-							last;
-						}
-					}
+							# We only respond to certain ST's (our NTS)
 
-					if ($send_reply)
-					{
-						display($dbg_msearch,0,"M-SEARCH($message->{ST}) from $peer_ip:$peer_port",0,$Pub::Utils::win_color_light_green);
-						$this->send_responses(
-							$peer_ip,
-							$peer_port,
-							$message->{ST},
-							$message->{MX});
+							my $send_reply = 0;
+							for my $type (@{$this->{NTS}})
+							{
+								if ($type eq $message->{ST})
+								{
+									$send_reply = 1;
+									last;
+								}
+							}
+
+							if ($send_reply)
+							{
+								display($dbg_msearch,0,"M-SEARCH($message->{ST}) from $peer_ip:$peer_port",0,$Pub::Utils::win_color_light_green);
+								$this->send_responses(
+									$peer_ip,
+									$peer_port,
+									$message->{ST},
+									$message->{MX});
+							}
+							else
+							{
+								display($dbg_msearch+1,0,"skipping M-SEARCH($message->{ST}) from $peer_ip:$peer_port");
+							}
+
+						}	# M-SEARCH from myself
 					}
 					else
 					{
-						display($dbg_msearch+1,0,"skipping M-SEARCH($message->{ST}) from $peer_ip:$peer_port");
+						display_hash(0,0,"skipping non 'ssdp:discover' M-SEARCH message",$message);
+						error("non ssdp:discover message");
 					}
+				}
+			}	# can_read()
 
-				}	# M-SEARCH from myself
-			}
-			else
+			elsif (time() > $next_alive)
 			{
-				display_hash(0,0,"skipping non 'ssdp:discover' M-SEARCH message",$message);
-				error("non ssdp:discover message");
+				$this->send_alive();
+				$alive_long = !$alive_long;
+				$next_alive = $alive_long ?
+					time() + ($ALIVE_INTERVAL/2) + rand($ALIVE_INTERVAL/2) :
+					time() + ($SHORT_INTERVAL/2) + rand($SHORT_INTERVAL/2);
 			}
-        }
-		$this->{debug_this} = 0;
 
-    }	# for each message (request)
+			sleep(0.05);	# can receive upto 20 messages per second
+
+		}	# if !$quitting
+
+		elsif ($listener_running)
+		{
+			display($dbg_ssdp,0,"suspending SSDPListener thread");
+			$this->send_byebye();
+			$listener_running = 0;
+			display($dbg_ssdp,0,"SSDPListener thread suspended");
+		}
+		else	# suspended
+		{
+			sleep(1);
+		}
+
+	}	# while 1
+
+	# never gets here
+	# display($dbg_ssdp,0,"SSDPListener() ending");
+	# $this->send_byebye();
+	# $this->{send_socket}->close();
+	# $this->{recv_socket}->close();
+	# delete $this->{send_socket};
+	# delete $this->{recv_socket};
+	display($dbg_ssdp,0,"SSDPListener() ended");
+
 }	# SSDPListener()
 
 
@@ -380,7 +410,7 @@ sub send_responses
 		display($dbg_responses,0,"send_response($stparam,MX=$mx) to $destination_ip:$destination_port");
 		foreach my $st (@sts)
 		{
-			sleeper('send_response',$mx);
+			# sleeper('send_response',$mx);
 			display($dbg_responses+1,1,"send_response($st MX=$mx) to $destination_ip:$destination_port");
 
 			my $data = $this->ssdp_message(0,'send_response',{
@@ -489,34 +519,6 @@ sub generate_usn
 }
 
 
-sub sleeper
-{
-	my ($what,$interval) = @_;
-	if (!defined($interval))
-	{
-		error("sleeper interval not defined!");
-		$interval = 3 ;
-		return;
-	}
-
-	$interval -= 1;
-	$interval = 0 if ($interval<0);
-
-	if (1)
-	{
-		my $int = int(rand($interval));
-		display($dbg_ssdp+1,0,"$what sleeping $int seconds");
-		sleep($int);
-	}
-	else	# non random for debugging
-	{
-		display($dbg_ssdp+1,0,"$what sleeping $interval seconds");
-		sleep($interval);
-	}
-}
-
-
-
 #==================================================================================
 # SSDPSearch
 #==================================================================================
@@ -526,12 +528,35 @@ sub SSDPSearch
 {
 	sleep(2);
 	display($dbg_ssdp,0,"SSDPSearch thread started");
+	$search_running = 1;
 	while (1)
 	{
-		ssdp_search();
-		sleep($SSDPSEARCH_INTERVAL);
+		if (!$quitting)
+		{
+			ssdp_search();
+			my $start = time();
+			display($dbg_ssdp+1,0,"SSDPSearch sleeping $SSDPSEARCH_INTERVAL seconds");
+			while (!$quitting && time() < $start + $SSDPSEARCH_INTERVAL)
+			{
+				sleep(1);
+			}
+		}
+		elsif ($search_running)
+		{
+			display($dbg_ssdp,0,"SSDPSearch thread suspended");
+			$search_running = 0;
+		}
+		else	# suspended
+		{
+			sleep(1);
+		}
 	}
+
+	# never gets here
+
+	display($dbg_ssdp,0,"SSDPSearch thread ended");
 }
+
 
 
 sub ssdp_search
@@ -542,8 +567,6 @@ sub ssdp_search
 		# upnp:rootdevice (find root devices)
 		# urn:schemas-upnp-org:device:MediaServer:1 (DLNA Renderers)
 		# urn:schemas-upnp-org:device:MediaRenderer:1 (DLNA Renderers)
-
-	my $ua = LWP::UserAgent->new();
 
     #------------------------------------------------
     # send the broadcast message
@@ -583,27 +606,43 @@ SSDP_SEARCH_MSG
     # add the socket to the correct IGMP multicast group
     # and actually send the message.
 
-    _mcast_add( $sock, $mcast_addr );
+    if (!_mcast_add( $sock, $mcast_addr ))
+	{
+		$sock->close();
+		$sock = undef;
+		return;
+	}
     display($dbg_search+1,1,"sending broadcast message");
     _mcast_send( $sock, $ssdp_header, $mcast_addr );
 
     # loop getting replies and passing them to
 	# processExternalMessage();
 
-    my $sel = IO::Select->new($sock);
-    while ( $sel->can_read( $SSDPSEARCH_TIME + 1) )
-    {
-        my $data;
-        recv ($sock, $data, 4096, 0);
-		if ($data =~ /$this_uuid/s)
+	my $start = time();
+	while (!$quitting && time() < $start + $SSDPSEARCH_TIME + 1)
+	{
+		my $sel = IO::Select->new($sock);
+		if ($sel->can_read(0.01))
 		{
-			display($dbg_self,0,"Skipping message from self\n".$data);
-			next;
+			my $data;
+			recv ($sock, $data, 4096, 0);
+			if ($data =~ /$this_uuid/s)
+			{
+				display($dbg_self,0,"Skipping message from self\n".$data);
+				next;
+			}
+			my $message = parse_ssdp_message($data);
+			processExternalMessage("SEARCH",$message);
 		}
-		my $message = parse_ssdp_message($data);
-		processExternalMessage("SEARCH",$message);
-    }
+
+		sleep(0.05);
+	}
+
+	# _mcast_drop($sock, $mcast_addr);
     close $sock;
+	$sock = undef;
+	# $dbg_port = undef;
+	# sleep(1);
 }
 
 
@@ -620,9 +659,31 @@ sub _mcast_add
         $ip_mreq  ))
     {
         error("Unable to add IGMP membership: $!");
-        exit 1;
+		return 0;
     }
+	return 1;
 }
+
+
+sub _mcast_drop
+{
+    my ( $sock, $host ) = @_;
+    my ( $addr, $port ) = split /:/, $host;
+    my $ip_mreq = inet_aton( $addr ) . INADDR_ANY;
+
+    if (!setsockopt(
+        $sock,
+        getprotobyname('ip') || 0,
+        _constant('IP_DROP_MEMBERSHIP'),
+        $ip_mreq  ))
+    {
+        error("Unable to drop IGMP membership: $!");
+		return 0;
+    }
+	return 1;
+}
+
+
 
 
 sub _mcast_send
@@ -648,15 +709,17 @@ sub _mcast_send
 
 
 sub _constant
+	# win32 from https://github.com/MicrosoftDocs/SupportArticles-docs/blob/main/support/windows/win32/header-library-requirement-socket-ipproto-ip.md
 {
     my ($name) = @_;
     my %names = (
         IP_MULTICAST_TTL  => 0,
         IP_ADD_MEMBERSHIP => 1,
-        IP_MULTICAST_LOOP => 0,
+		IP_DROP_MEMBERSHIP => 2,
     );
     my %constants = (
-        MSWin32 => [10,12],
+        MSWin32 => [10,12,13],
+
         cygwin  => [3,5],
         darwin  => [10,12],
         default => [33,35],

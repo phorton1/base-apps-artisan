@@ -68,13 +68,11 @@ table
 }
 
 
-
-
-
 .artisan_menu_table
 {
 	height:100%;
-	width:240px;
+	/*width:240px;*/
+	width:100%;
 }
 
 .artisan_menu_table td
@@ -82,12 +80,24 @@ table
 	vertical-align:middle;
 	padding-left:14px;
 	padding-top:2px;
+	/*width:120px;*/
 }
 
 .artisan_menu_item
 {
 	font-size:10pt;
 }
+
+
+#artisan_menu_library_name
+{
+	color:#cccccc;
+	font-size:14pt;
+	font-weight: bold;
+	padding-right:14px;
+	text-align: right;
+}
+
 
 
 

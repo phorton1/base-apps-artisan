@@ -146,6 +146,9 @@ function selectDevice(singular,uuid)	// handler
 
 			// current_page indicates the app has really started
 
+			if (singular == 'library')
+				$('#artisan_menu_library_name').html(result.name);
+
 			if (current_page)
 			{
 				if (singular == 'renderer')

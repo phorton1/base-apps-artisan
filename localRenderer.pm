@@ -10,14 +10,15 @@ use warnings;
 use threads;
 use threads::shared;
 use Win32::OLE;
+use Time::HiRes qw(sleep);
 use artisanUtils;
 use Renderer;
 use Device;
 use DeviceManager;
 use base qw(Renderer);
 
-my $dbg_lren = 0;
-my $dbg_com_object = 1;
+my $dbg_lren = 01;
+my $dbg_mp = 0;
 
 
 # field that get moved from a track to the renderer
@@ -34,22 +35,12 @@ my @track_fields_to_renderer = qw(
 	year_str);
 
 
+#------------------------------------------------------------------
 # Media Player COM object
+#------------------------------------------------------------------
+# Has to be wrapped in it's own thread and communicated with
+# via shared memory variables
 
-my $mp = Win32::OLE->new('WMPlayer.OCX');
-my $controls = $mp->{controls};
-my $settings = $mp->{settings};
-$settings->{autoStart} = 0;
-
-if ($dbg_com_object <= 0)
-{
-	display_hash(0,0,"mp",$mp);
-	display_hash(0,0,"controls",$controls);
-	display_hash(0,0,"settings",$controls);
-}
-
-# $mp->{playState}
-#
 my $MP_STATE_STOPPED 		= 1; 	# Playback of the current media item is stopped.
 my $MP_STATE_PAUSED 		= 2; 	# Playback of the current media item is paused. When a media item is paused, resuming playback begins from the same location.
 my $MP_STATE_PLAYING 		= 3; 	# The current media item is playing.
@@ -61,6 +52,94 @@ my $MP_STATE_MEDIAENDED 	= 8; 	# Media item has completed playback.
 my $MP_STATE_TRANSITIONING	= 9; 	# Preparing new media item.
 my $MP_STATE_READY 			= 10; 	# Ready to begin playing.
 my $MP_STATE_RECONNECTING 	= 11; 	# Reconnecting to stream.
+
+
+my $mp_running:shared = 0;
+my $mp_command:shared = '';
+	# stop
+	# pause
+	# play,optional_url
+	# set_position,millis
+my $mp_state:shared		= 0;		# out
+my $mp_position:shared	= '';		# out
+my $mp_duration:shared	= '';		# out
+
+sub running
+{
+	my ($this) = @_;
+	return $mp_running;
+}
+
+
+sub doMPCommand
+{
+	my ($command) = @_;
+	display($dbg_mp+1,0,"doMPCommand($command) starting");
+	while ($mp_command)
+	{
+		sleep(0.01);
+	}
+	display($dbg_mp,0,"doMPCommand($command)");
+	$mp_command = $command;
+}
+
+
+sub mpThread
+{
+	my $mp = Win32::OLE->new('WMPlayer.OCX');
+	my $controls = $mp->{controls};
+	my $settings = $mp->{settings};
+	$settings->{autoStart} = 0;
+	display($dbg_mp,0,"mpThread() started");
+	$mp_running = 1;
+	while (1)
+	{
+		if (!$quitting)
+		{
+			if ($mp_command)
+			{
+				$controls->stop() if $mp_command eq 'stop';
+				$controls->pause() if $mp_command eq 'pause';
+				$controls->play() if $mp_command eq 'play';
+				$controls->{currentPosition} = ($1/1000) if $mp_command =~ /^set_position,(.*)$/;
+
+				if ($mp_command =~ /^play,(.*)$/)
+				{
+					$mp->{URL} = $1;
+					$controls->play();
+				}
+				$mp_command = '';
+			}
+
+			$mp_state = $mp->{playState} || 0;
+			$mp_position = $controls->{currentPosition} * 1000 || 0;
+			my $media = $mp->{currentMedia};
+			$mp_duration = $media ? $media->{duration} * 1000 : 0;
+			sleep(0.1);
+		}
+		elsif ($mp_running)
+		{
+			display($dbg_mp,0,"suspending mpThread");
+			$mp->close();
+			$controls = undef;
+			$settings = undef;
+			$mp = undef;
+			$mp_running = 0;
+			display($dbg_mp,0,"mpThread suspended");
+		}
+		else
+		{
+			sleep(1);
+		}
+	}
+
+	# never gets here
+	$mp->close();
+	$controls = undef;
+	$settings = undef;
+	$mp = undef;
+	display($dbg_mp,0,"mpThread() ended");
+}
 
 
 #------------------------------------
@@ -87,6 +166,9 @@ sub new
         controlURL   => "http://$server_ip:$server_port/control",
 		playlist => '',
 	}));
+
+	my $thread = threads->create(\&mpThread);
+	$thread->detach();
 
 	return $this;
 }
@@ -152,7 +234,7 @@ sub doCommand
 	}
 	elsif ($command eq 'stop')
 	{
-		$controls->stop();
+		doMPCommand('stop');	# $controls->stop();
 		warning(0,0,"doCommand(stop) in state $this->{state}")
 			if $this->{state} eq $RENDERER_STATE_INIT;
 		$this->{state} = $RENDERER_STATE_STOPPED;
@@ -161,7 +243,7 @@ sub doCommand
 	{
 		if ($this->{state} eq $RENDERER_STATE_PLAYING)
 		{
-			$controls->pause();
+			doMPCommand('pause');	# $controls->pause();
 			$this->{state} = $RENDERER_STATE_PAUSED;
 		}
 		else
@@ -173,12 +255,12 @@ sub doCommand
 	{
 		if ($this->{state} eq $RENDERER_STATE_PLAYING)
 		{
-			$controls->pause();
+			doMPCommand('pause');	# $controls->pause();
 			$this->{state} = $RENDERER_STATE_PAUSED;
 		}
 		elsif ($this->{state} eq $RENDERER_STATE_PAUSED)
 		{
-			$controls->play();
+			doMPCommand('play');	# $controls->play();
 			$this->{state} = $RENDERER_STATE_PLAYING;
 		}
 		else
@@ -196,7 +278,7 @@ sub doCommand
 			my $ms = checkParam(\$error,$command,$params,'position');
 			return $error if !defined($ms);
 			$this->{position} = $ms;
-			$controls->{currentPosition} = $ms / 1000;
+			doMPCommand('setPosition,'.$ms);	# $controls->{currentPosition} = $ms / 1000;
 		}
 		else
 		{
@@ -320,8 +402,10 @@ sub play_track
 		display($dbg_lren,2,"using url='$path'");
 	}
 
-	$mp->{URL} = $path;
-	$controls->play();
+	doMPCommand('play,'.$path);
+	# $mp->{URL} = $path;
+	# $controls->play();
+
 	$this->{state} = $RENDERER_STATE_PLAYING;
 }
 
@@ -373,19 +457,19 @@ sub update
 
 	if ($this->{state} eq $RENDERER_STATE_PLAYING)
 	{
-		my $media = $mp->{currentMedia};
-		$this->{position} = $controls->{currentPosition} * 1000 || 0;
-		$this->{duration} = $media ? $media->{duration} * 1000 : 0;
+		# my $media = $mp->{currentMedia};
+		$this->{position} = $mp_position;	# $controls->{currentPosition} * 1000 || 0;
+		$this->{duration} = $mp_duration;	# $media ? $media->{duration} * 1000 : 0;
 		display($dbg_lren+1,1,"position=$this->{position} duration=$this->{duration}");
 
 		# we stop the player and move to the next playlist song
 
-		my $play_state = $mp->{playState};
+		my $play_state = $mp_state;		# $mp->{playState};
 		display($dbg_lren+1,0,"play_state=$play_state");
 
 		if ($play_state == $MP_STATE_STOPPED)
 		{
-			$controls->stop();
+			doMPCommand('stop');	# $controls->stop();
 			$this->{state} = $RENDERER_STATE_STOPPED;
 			if ($this->{playlist})
 			{

@@ -10,7 +10,7 @@ use threads;
 use threads::shared;
 use Error qw(:try);
 use Win32::Console;
-use Time::HiRes;
+use Time::HiRes qw(sleep time);
 use artisanUtils;
 use artisanPrefs;
 use SSDP;
@@ -37,6 +37,8 @@ sub onSignal
 {
     my ($sig) = @_;
     LOG(-1,"main terminating on SIG$sig");
+	$quitting = 1;
+	sleep(3);
     kill 6,$$;
 }
 
@@ -133,6 +135,23 @@ AFTER_EXCEPTION:
 				if ($char == 3)        # char = 0x03
 				{
 					display($dbg_main,0,"exiting Artisan on CTRL-C");
+					if (1)
+					{
+						$quitting = 1;
+						my $http_running = HTTPServer::running();
+						my $ssdp_running = $ssdp ? $ssdp->running() : 0;
+						my $lr_running = $local_renderer ? $local_renderer->running() : 0;
+
+						while ($http_running || $ssdp_running || $lr_running )
+						{
+							display($dbg_main,1,"stopping http($http_running) ssdp($ssdp_running) lr($lr_running)");
+							$http_running = HTTPServer::running();
+							$ssdp_running = $ssdp ? $ssdp->running() : 0;
+							$lr_running = $local_renderer ? $local_renderer->running() : 0;
+							sleep(0.2);
+						}
+						display($dbg_main,1,"Artisan stopped");
+					}
 					exit(0);
 				}
 				elsif ($event[1] == 1)       # key down

@@ -68,6 +68,12 @@ my $dbg_response = 0;			# show the first line
 
 our $SINGLE_THREAD = 0;
 	# SET TO 1 in ARTISAN_WIN.PM !!!
+my $http_running:shared = 0;
+
+sub running
+{
+	return $http_running;
+}
 
 
 sub start_webserver
@@ -91,30 +97,41 @@ sub start_webserver
 	my $ss = IO::Select->new();
 	$ss->add(*S);
 
-    LOG(0,"HTTPServer started on $server_ip:$server_port");
-	while(1)
-	{
-		my @connections_pending = $ss->can_read($SINGLE_THREAD?1:60);
-		display($dbg_connect+1,0,"accepted ".scalar(@connections_pending)." pending connections")
-			if (@connections_pending);
-		for my $connection (@connections_pending)
-		{
-			my $FH;
-			my $remote = accept($FH, $connection);
-			my ($peer_port, $peer_addr) = sockaddr_in($remote);
-			my $peer_ip = inet_ntoa($peer_addr);
+	$http_running = 1;
 
-			if ($SINGLE_THREAD)
+    LOG(0,"HTTPServer started on $server_ip:$server_port");
+	while ($http_running)
+	{
+		if ($quitting)
+		{
+			$http_running = 0 if $http_running == 1;
+		}
+		else
+		{
+			my @connections_pending = $ss->can_read($SINGLE_THREAD?1:60);
+			display($dbg_connect+1,0,"accepted ".scalar(@connections_pending)." pending connections")
+				if (@connections_pending);
+			for my $connection (@connections_pending)
 			{
-				handle_connection( $FH, $peer_ip, $peer_port );
-			}
-			else
-			{
-				my $thread = threads->create(\&handle_connection, $FH, $peer_ip, $peer_port);
-				$thread->detach();
+				my $FH;
+				my $remote = accept($FH, $connection);
+				my ($peer_port, $peer_addr) = sockaddr_in($remote);
+				my $peer_ip = inet_ntoa($peer_addr);
+				$http_running++;
+
+				if ($SINGLE_THREAD)
+				{
+					handle_connection( $FH, $peer_ip, $peer_port );
+				}
+				else
+				{
+					my $thread = threads->create(\&handle_connection, $FH, $peer_ip, $peer_port);
+					$thread->detach();
+				}
 			}
 		}
 	}
+    LOG(0,"HTTPServer ended on $server_ip:$server_port");
 }
 
 
@@ -181,6 +198,7 @@ sub handle_connection
 			content_type => 'text/plain' });
 		print $FH $response;
 		close($FH);
+		$http_running--;
 		return 0;
 	}
 
@@ -367,6 +385,8 @@ sub handle_connection
 	display($dbg_connect+1,1,"Closing File Handle");
 	close($FH);
 	display($dbg_connect+1,1,"File Handle Closed");
+
+	$http_running--;
 	return 1;
 
 }   # handle_connection()
