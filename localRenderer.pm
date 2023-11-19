@@ -331,11 +331,12 @@ sub doCommand
 		my $playlist_id = checkParam(\$error,$command,$params,'id');
 		return $error if !defined($playlist_id);
 
-		return error("doCommand('set_playlist') library($library_uuid) not supported")
-			if $library_uuid ne $local_library->{uuid};
+		my $library = findDevice($DEVICE_TYPE_LIBRARY,$library_uuid);
+		return error("Could not find library($library_uuid)")
+			if !$library;
 
-		$this->{playlist} = localPlaylist::getPlaylist($playlist_id);
-		$this->{playlist}->{library_name} = $local_library->{name};
+		$this->{playlist} = $library->getPlaylist($playlist_id);
+		$this->{playlist}->{library_name} = $library->{name};
 		$error = $this->playlist_song(0);
 	}
 
@@ -351,7 +352,7 @@ sub doCommand
 			if !$playlist;
 
 		return error("doCommand($command) index($index) out of range 1..$playlist->{num_tracks}")
-			if $index<1 || $index>$playlist->{num_tracks};
+			if $index<1 || $index > $playlist->{num_tracks};
 
 		# intimate knowledge of playlists!!!
 
@@ -374,11 +375,6 @@ sub doCommand
 		$playlist->sortPlaylist();
 		$error = $this->playlist_song(0);
 	}
-
-	# currently only implemented for localLibrary and localPlaylist
-
-
-
 
 	else
 	{

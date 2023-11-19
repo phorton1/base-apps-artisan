@@ -2,8 +2,17 @@
 #---------------------------------------
 # localLibrary.pm
 #---------------------------------------
-# This object defines the basic API needed by
-# a remoteLibrary to support the webUI
+# This object defines the basic API needed to support the webUI
+#
+# API
+#	getTrack
+#	getFolder
+#	getSubitems
+#	getPlaylist
+#	getPlaylists
+#	getTrackMetadata
+#	getFolderMetadata
+
 
 package localLibrary;
 use strict;
@@ -39,18 +48,10 @@ sub new
 }
 
 
-sub getPlaylists
-	# pass through
-{
-	my ($this) = @_;
-	return localPlaylist::getPlaylists();
-}
-
 
 #----------------------------------------------------------
-# library accessors
+# API
 #----------------------------------------------------------
-
 
 sub getTrack
 	# never called with $dbh, but API implemented for consistency
@@ -108,7 +109,6 @@ sub getFolder
 	error("could not getFolder($id)") if !$folder;
 	return $folder;
 }
-
 
 
 sub getSubitems
@@ -233,63 +233,35 @@ sub getSubitems
 }   # get_subitems
 
 
-
-
-sub virtualRootFolder
+sub getPlaylist
+	# pass thru
 {
-	display($dbg_virt,0,"virtualRootFolder()");
-	return Folder->newFromHash({
-		id => 0,
-		parent_id => -1,
-		title => 'All Artisan Folders',
-		dirtype => 'root',
-		num_elements => 1,
-		artist => '',
-		genre => '',
-		path => '',
-		year => substr(today(),0,4)  });
+	my ($this,$id) = @_;
+	return localPlaylist::getPlaylist($id);
 }
 
-sub virtualPlaylistsFolder
+sub getPlaylists
+	# pass through
 {
-	display($dbg_virt,0,"virtualPlaylistsFolder()");
-	return Folder->newFromHash({
-		id => $ID_PLAYLISTS,
-		parent_id => 0,
-		title => 'playlists',
-		dirtype => 'section',
-		num_elements => scalar(@{localPlaylist::getPlaylists()}),
-		artist => '',
-		genre => '',
-		path => '\playlists',
-		year => substr(today(),0,4)  });
+	my ($this) = @_;
+	return localPlaylist::getPlaylists();
 }
 
 
-sub virtualPlaylistFolder
+sub getFolderMetadata
 {
-	my ($name) = @_;		# the id is the name of the playlist
-	display($dbg_virt,0,"virtualPlaylistsFolder($name)");
-	my $playlist = localPlaylist::getPlaylist($name);
-	return !error("Could not find localPlalist($name)")
-		if !$playlist;
+	my ($this,$id) = @_;
+	display($dbg_llib,0,"getTrackMetadata($id)");
 
-	return Folder->newFromHash({
-		id => $name,
-		parent_id => $ID_PLAYLISTS,
-		title => $name,
-		dirtype => 'playlist',
-		num_elements => $playlist->{num_tracks},
-		artist => '',
-		genre => '',
-		path => "/playlists/$name",
-		year => substr(today(),0,4)  });
+	my $folder = $this->getFolder($id);
+	return [] if !$folder;
+
+	my $use_id = 0;
+	my $sections = [];
+	push @$sections, meta_section(\$use_id,'Database',1,$folder);
+	return $sections;
 }
 
-
-#------------------------------------------------------
-# Track MetaData
-#------------------------------------------------------
 
 sub getTrackMetadata
 	# Returns an object that can be turned into json,
@@ -375,26 +347,66 @@ sub getTrackMetadata
 
 
 
-#---------------------------------
-# folder meta data
-#---------------------------------
 
+#-----------------------------------------------
+# Implementation
+#-----------------------------------------------
 
-sub getFolderMetadata
+sub virtualRootFolder
 {
-	my ($this,$id) = @_;
-	display($dbg_llib,0,"getTrackMetadata($id)");
-
-	my $folder = $this->getFolder($id);
-	return [] if !$folder;
-
-	my $use_id = 0;
-	my $sections = [];
-
-	push @$sections, meta_section(\$use_id,'Database',1,$folder);
-
-	return $sections;
+	display($dbg_virt,0,"virtualRootFolder()");
+	return Folder->newFromHash({
+		id => 0,
+		parent_id => -1,
+		title => 'All Artisan Folders',
+		dirtype => 'root',
+		num_elements => 1,
+		artist => '',
+		genre => '',
+		path => '',
+		year => substr(today(),0,4)  });
 }
+
+sub virtualPlaylistsFolder
+{
+	display($dbg_virt,0,"virtualPlaylistsFolder()");
+	return Folder->newFromHash({
+		id => $ID_PLAYLISTS,
+		parent_id => 0,
+		title => 'playlists',
+		dirtype => 'section',
+		num_elements => scalar(@{localPlaylist::getPlaylists()}),
+		artist => '',
+		genre => '',
+		path => '\playlists',
+		year => substr(today(),0,4)  });
+}
+
+
+sub virtualPlaylistFolder
+{
+	my ($name) = @_;		# the id is the name of the playlist
+	display($dbg_virt,0,"virtualPlaylistsFolder($name)");
+	my $playlist = localPlaylist::getPlaylist($name);
+	return !error("Could not find localPlalist($name)")
+		if !$playlist;
+
+	return Folder->newFromHash({
+		id => $name,
+		parent_id => $ID_PLAYLISTS,
+		title => $name,
+		dirtype => 'playlist',
+		num_elements => $playlist->{num_tracks},
+		artist => '',
+		genre => '',
+		path => "/playlists/$name",
+		year => substr(today(),0,4)  });
+}
+
+
+#------------------------------------------------------
+# Track MetaData
+#------------------------------------------------------
 
 
 

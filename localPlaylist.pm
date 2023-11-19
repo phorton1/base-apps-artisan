@@ -15,6 +15,17 @@
 # And exists as a database file called playlists/name.db.
 # which duplicates the Track records from the main local
 # Artisan library.
+#
+# track_index and shuffle members are accessed directly from Renderers.
+# which also call the API
+#
+#	getTrackEntry()
+#	sortPlaylist
+#
+# Whereas the other API are generally pass-thrus via the Library
+#
+#	getPlaylist
+#   getPlaylists
 
 
 package localPlaylist;
@@ -34,21 +45,6 @@ my $dbg_lpl = 0;
 my $dbg_pl_create = 0;
 
 
-our $SHUFFLE_NONE = 0;
-our $SHUFFLE_TRACKS = 1;
-our $SHUFFLE_ALBUMS = 2;
-
-
-BEGIN
-{
- 	use Exporter qw( import );
-	our @EXPORT = qw (
-		$SHUFFLE_NONE
-		$SHUFFLE_TRACKS
-		$SHUFFLE_ALBUMS
-    );
-}
-
 
 my $pl_dbh;
 	# this is a dangerous global non-rentrant database handle!
@@ -61,9 +57,10 @@ my $playlists_by_id:shared = shared_clone({});
 
 
 
-#------------------------------------
-# client entry points
-#------------------------------------
+
+#-------------------------------------
+# API passed-thru from localLibrary
+#-------------------------------------
 
 sub getPlaylist
 {
@@ -80,6 +77,9 @@ sub getPlaylists()
 }
 
 
+#------------------------------------
+# Renderer API
+#------------------------------------
 
 sub getTrackId
 {
@@ -114,6 +114,11 @@ sub getTrackId
     return $track_id;
 }
 
+
+
+#------------------------------------
+# ContentDirectory1 API
+#------------------------------------
 
 sub getTracks
 	# Called by ContentDirectory1 for Artisan BEING a MediaServer

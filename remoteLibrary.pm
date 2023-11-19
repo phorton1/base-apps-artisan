@@ -6,6 +6,8 @@
 #	getTrack
 #	getFolder
 #	getSubitems
+#   getPlaylist
+#	getPlaylists
 #	getTrackMetadata
 #	getFolderMetadata
 #
@@ -22,6 +24,7 @@ use IO::Socket::INET;
 use XML::Simple;
 use artisanUtils;
 use Library;
+use remotePlaylist;
 use base qw(Library);
 
 
@@ -43,6 +46,9 @@ sub new
 }
 
 
+#-------------------------------------------------------
+# API
+#-------------------------------------------------------
 
 sub getTrack
 {
@@ -101,16 +107,14 @@ sub getSubitems
 		# get it working ... and this order, from
 		# DLNA Browser' made it go ...
 
-
-	return [] if !$didl;
+	my $rslt = shared_clone([]);
+	return $rslt if !$didl;
 
 	# we only get tracks from folders of type 'album',
 	# and only get folders from 'sections' (and 'root').
 	# Artisan does not support music albums that contain
 	# subfolders, indeed, the presence of a track in a folder
 	# DEFINES an an album.
-
-	my $rslt = [];
 
 	if ($table eq 'tracks')
 	{
@@ -136,6 +140,58 @@ sub getSubitems
 }   # get_subitems
 
 
+sub getPlaylist
+	# pass thru
+{
+	my ($this,$id) = @_;
+	return remotePlaylist::getPlaylist($this,$id);
+}
+
+sub getPlaylists
+	# pass through
+{
+	my ($this) = @_;
+	return remotePlaylist::getPlaylists($this);
+}
+
+
+sub getFolderMetadata
+{
+	my ($this,$id) = @_;
+	display($dbg_rlib,0,"getFolderMetadata($id)");
+	my $folder = $this->getFolder($id);
+	return [] if !$folder;
+
+	my $use_id = 0;
+	my $sections = [];
+	push @$sections, meta_section(\$use_id,'Database',1,$folder);
+	return $sections;
+}
+
+
+sub getTrackMetadata
+{
+	my ($this,$id) = @_;
+	display($dbg_rlib,0,"getTrackMetadata($id)");
+	my $track = $this->getTrack($id);
+	return [] if !$track;
+
+	my $use_id = 0;
+	my $sections = [];
+	push @$sections, meta_section(\$use_id,'Database',1,$track);
+	return $sections;
+}
+
+
+
+
+
+
+
+
+#--------------------------------------------------------
+# Implementation
+#--------------------------------------------------------
 
 sub remoteFolder
 {
@@ -379,39 +435,6 @@ sub getArtist
 #-------------------------------------------------------
 # metadata - for displaying in the details section
 #-------------------------------------------------------
-
-sub getFolderMetadata
-{
-	my ($this,$id) = @_;
-	display($dbg_rlib,0,"getFolderMetadata($id)");
-
-	my $folder = $this->getFolder($id);
-	return [] if !$folder;
-
-	my $use_id = 0;
-	my $sections = [];
-
-	push @$sections, meta_section(\$use_id,'Database',1,$folder);
-
-	return $sections;
-}
-
-
-sub getTrackMetadata
-{
-	my ($this,$id) = @_;
-	display($dbg_rlib,0,"getTrackMetadata($id)");
-
-	my $track = $this->getTrack($id);
-	return [] if !$track;
-
-	my $use_id = 0;
-	my $sections = [];
-
-	push @$sections, meta_section(\$use_id,'Database',1,$track);
-
-	return $sections;
-}
 
 
 

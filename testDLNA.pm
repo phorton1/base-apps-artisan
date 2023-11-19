@@ -68,7 +68,7 @@ if (0)		# Browse ID(0) and ID(1)
 }
 
 
-if (0)		# Search for playlists
+if (1)		# Search for playlists
 {
 	print "\n";
 	print "================================\n";
@@ -154,7 +154,7 @@ if (0)		# Search for audioItems(0)
 }
 
 
-if (1)		# Search for track(4-11846)
+if (0)		# Search for track(4-11846)
 {
 	print "\n";
 	print "================================\n";

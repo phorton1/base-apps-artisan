@@ -67,6 +67,9 @@ my $dbg_dlna = 0;
 my $dbg_response = 0;
 
 
+my $remote_cache_dir = "$mp3_dir/_data/remote_cache";
+mkdir $remote_cache_dir if !(-d $remote_cache_dir);
+
 
 sub new
 {
@@ -130,16 +133,37 @@ sub didlRequest
 		show_hdr  => 1,
 		show_dump => 0,
 		addl_level => 0,
-		dump => 1,
+		dump => !$result->{from_cache},
 		decode_didl => 0,
 		raw => 0,
 		pretty => 1,
 		my_dump => 0,
 		dumper => 1, });
+
 	return if !$didl;
 	return $didl;
 }
 
+
+
+sub cacheName
+{
+	my ($this,$service_name,$action,$args) = @_;
+	my $cache_name = "$this->{uuid}.$service_name.$action";
+	if ($args)
+	{
+
+		my $num = @$args / 2;
+		for (my $i=0; $i<$num; $i++)
+		{
+			my $l = $args->[$i*2];
+			my $r = $args->[$i*2 + 1];
+			$r =~ s/:|"|\*/~/g;
+			$cache_name .= ".$l=$r";
+		}
+	}
+	return "$remote_cache_dir/$cache_name.txt";
+}
 
 
 sub serviceRequest
@@ -151,152 +175,167 @@ sub serviceRequest
 {
     my ($this,$service_name,$action,$args) = @_;
 
+
 	my $dbg_name = $this->getDbgName($action,$args);
 	display($dbg_dlna,0,"service($service_name) Request($dbg_name)");
 
-	my $service = $this->{services}->{$service_name};
-	if (!$service)
+    my $data;
+	my $from_cache = 0;
+	my $cache_name = $this->cacheName($service_name,$action,$args);
+	if (-f $cache_name)
 	{
-		error("could not find service '$service_name'");
-		return;
+		display($dbg_dlna,1,"found cachefile");
+		$data = getTextFile($cache_name,1);
+		$from_cache = 1;
+	}
+	else
+		{
+
+		my $service = $this->{services}->{$service_name};
+		if (!$service)
+		{
+			error("could not find service '$service_name'");
+			return;
+		}
+
+		display($dbg_dlna+1,0,"creating socket to $this->{ip}:$this->{port}");
+
+		my $sock = IO::Socket::INET->new(
+			PeerAddr => $this->{ip},
+			PeerPort => $this->{port},
+			Proto => 'tcp',
+			Type => SOCK_STREAM,
+			Blocking => 1);
+		if (!$sock)
+		{
+			error("Could not open socket to $this->{ip}:$this->{port}");
+			return;
+		}
+
+		# build the body
+
+		my $content = soap_header();
+		$content .= "<u:$action xmlns:u=\"urn:schemas-upnp-org:service:$service_name:1\">";
+
+		# add sevice specific xml request elements
+
+		if ($args)
+		{
+			my $num = @$args / 2;
+			for (my $i=0; $i<$num; $i++)
+			{
+				my $l = $args->[$i*2];
+				my $r = $args->[$i*2 + 1];
+				$content .= "<$l>$r</$l>";
+			}
+		}
+
+		$content .= "</u:$action>";
+		$content .= soap_footer();
+
+		# build the header and request
+
+		my $request = '';
+		$request .= "POST $service->{controlURL} HTTP/1.1\r\n";
+		$request .= "HOST: $this->{ip}:$this->{port}\r\n";
+		$request .= "Content-Type: text/xml; charset=\"utf-8\"\r\n";
+		$request .= "Content-Length: ".length($content)."\r\n";
+		$request .= "SOAPACTION: \"urn:schemas-upnp-org:service:$service_name:1#$action\"\r\n";
+		$request .= "\r\n";
+		$request .= $content;
+
+		# send the action
+
+		display($dbg_dlna+2,1,"sending $dbg_name request");
+		display($dbg_dlna+2,1,"--------------- request --------------------");
+		display($dbg_dlna+2,1,$request);
+		display($dbg_dlna+2,1,"--------------------------------------------");
+
+		if (!$sock->send($request))
+		{
+			error("Could not send message to renderer socket");
+			$sock->close();
+			return;
+		}
+
+		# get the response
+
+		display($dbg_dlna,1,"getting action($action) response");
+
+		my %headers;
+		my $first_line = 1;
+		my $line = <$sock>;
+		while (defined($line) && $line ne "\r\n")
+		{
+			chomp($line);
+			$line =~ s/\r|\n//g;
+			display($dbg_dlna+1,2,"line=$line");
+			if ($line =~ /:/)
+			{
+				my ($name, $value) = split(':', $line, 2);
+				$name = lc($name);
+				$name =~ s/-/_/g;
+				$value =~ s/^\s//g;
+				$headers{$name} = $value;
+			}
+			$line = <$sock>;
+		}
+
+		# WDTV puts out chunked which I think means that
+		# the length is on a the next line, in hex
+
+		my $length = $headers{content_length};
+		display($dbg_dlna+1,2,"content_length=$length");
+
+		if (!$length &&
+			 $headers{transfer_encoding} &&
+			 $headers{transfer_encoding} eq 'chunked')
+		{
+			my $hex = <$sock>;
+			$hex =~ s/^\s*//g;
+			$hex =~ s/\s*$//g;
+			$length = hex($hex);
+			display($dbg_dlna+1,2,"using chunked transfer_encoding($hex) length=$length");
+		}
+
+		# continuing ...
+
+		if (!$length)
+		{
+			error("No content length returned by response");
+			$sock->close();
+			return;
+		}
+
+
+		my $rslt = $sock->read($data,$length);
+		$sock->close();
+
+		if (!$rslt || $rslt != $length)
+		{
+			error("Could not read $length bytes from socket");
+			return;
+		}
+		if (!$data)
+		{
+			error("No data found in $dbg_name response");
+			return;
+		}
+
+		display($dbg_dlna+1,2,"got "._def($rslt)." bytes from socket");
+		display($dbg_dlna+1,2,"--------------- response --------------------");
+		display($dbg_dlna+1,2,"'$data'");
+		display($dbg_dlna+1,2,"--------------------------------------------");
 	}
 
-	display($dbg_dlna+1,0,"creating socket to $this->{ip}:$this->{port}");
-
-    my $sock = IO::Socket::INET->new(
-        PeerAddr => $this->{ip},
-        PeerPort => $this->{port},
-        Proto => 'tcp',
-        Type => SOCK_STREAM,
-        Blocking => 1);
-    if (!$sock)
-    {
-        error("Could not open socket to $this->{ip}:$this->{port}");
-        return;
-    }
-
-    # build the body
-
-    my $content = soap_header();
-    $content .= "<u:$action xmlns:u=\"urn:schemas-upnp-org:service:$service_name:1\">";
-
-	# add sevice specific xml request elements
-
-    if ($args)
-    {
-        my $l = shift @$args;
-		my $r = shift @$args;
-		while ($l)
-		{
-            $content .= "<$l>$r</$l>";
-			$l = shift @$args;
-			$r = shift @$args;
-        }
-    }
-
-    $content .= "</u:$action>";
-	$content .= soap_footer();
-
-    # build the header and request
-
-    my $request = '';
-    $request .= "POST $service->{controlURL} HTTP/1.1\r\n";
-    $request .= "HOST: $this->{ip}:$this->{port}\r\n";
-    $request .= "Content-Type: text/xml; charset=\"utf-8\"\r\n";
-    $request .= "Content-Length: ".length($content)."\r\n";
-    $request .= "SOAPACTION: \"urn:schemas-upnp-org:service:$service_name:1#$action\"\r\n";
-    $request .= "\r\n";
-    $request .= $content;
-
-    # send the action
-
-    display($dbg_dlna+2,1,"sending $dbg_name request");
-    display($dbg_dlna+2,1,"--------------- request --------------------");
-    display($dbg_dlna+2,1,$request);
-    display($dbg_dlna+2,1,"--------------------------------------------");
-
-    if (!$sock->send($request))
-    {
-        error("Could not send message to renderer socket");
-	    $sock->close();
-        return;
-    }
-
-    # get the response
-
-    display($dbg_dlna,1,"getting action($action) response");
-
-    my %headers;
-    my $first_line = 1;
-    my $line = <$sock>;
-    while (defined($line) && $line ne "\r\n")
-    {
-        chomp($line);
-        $line =~ s/\r|\n//g;
-        display($dbg_dlna+1,2,"line=$line");
-        if ($line =~ /:/)
-        {
-			my ($name, $value) = split(':', $line, 2);
-			$name = lc($name);
-            $name =~ s/-/_/g;
-			$value =~ s/^\s//g;
-			$headers{$name} = $value;
-        }
-        $line = <$sock>;
-    }
-
-    # WDTV puts out chunked which I think means that
-    # the length is on a the next line, in hex
-
-    my $length = $headers{content_length};
-    display($dbg_dlna+1,2,"content_length=$length");
-
-    if (!$length &&
-		 $headers{transfer_encoding} &&
-		 $headers{transfer_encoding} eq 'chunked')
-    {
-        my $hex = <$sock>;
-        $hex =~ s/^\s*//g;
-        $hex =~ s/\s*$//g;
-        $length = hex($hex);
-        display($dbg_dlna+1,2,"using chunked transfer_encoding($hex) length=$length");
-    }
-
-    # continuing ...
-
-    if (!$length)
-    {
-        error("No content length returned by response");
-	    $sock->close();
-        return;
-    }
-
-    my $data;
-    my $rslt = $sock->read($data,$length);
-    $sock->close();
-
-    if (!$rslt || $rslt != $length)
-    {
-        error("Could not read $length bytes from socket");
-        return;
-    }
-    if (!$data)
-    {
-        error("No data found in $dbg_name response");
-        return;
-    }
-
-    display($dbg_dlna+1,2,"got "._def($rslt)." bytes from socket");
-    display($dbg_dlna+1,2,"--------------- response --------------------");
-    display($dbg_dlna+1,2,"'$data'");
-    display($dbg_dlna+1,2,"--------------------------------------------");
+	printVarToFile(!$from_cache,$cache_name,$data,1);
 
 	my $xml = parseXML($data,{
 		what => $dbg_name,
 		show_hdr  => $dbg_response <= 0,
 		show_dump => $dbg_response < 0,
 		addl_level => 0,
-		dump => 1,
+		dump => !$from_cache,
 		decode_didl => 0,
 		raw => 0,
 		pretty => 1,
@@ -330,6 +369,7 @@ sub serviceRequest
 	}
 
 	display($dbg_dlna,0,"$dbg_name returning $action_response");
+	$action_response->{from_cache} = $from_cache;
 	return $action_response;
 
 }   # serviceRequest()

@@ -44,6 +44,10 @@ BEGIN
 		$DEVICE_TYPE_LIBRARY
 		$DEVICE_TYPE_RENDERER
 
+		$SHUFFLE_NONE
+		$SHUFFLE_TRACKS
+		$SHUFFLE_ALBUMS
+
         $ERROR_NONE
         $ERROR_INFO
 		$ERROR_LOW
@@ -101,6 +105,10 @@ BEGIN
 
 our $DEVICE_TYPE_LIBRARY  = 'Library';
 our $DEVICE_TYPE_RENDERER = 'Renderer';
+
+our $SHUFFLE_NONE = 0;
+our $SHUFFLE_TRACKS = 1;
+our $SHUFFLE_ALBUMS = 2;
 
 
 #---------------------------------------
