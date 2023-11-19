@@ -75,7 +75,7 @@ function update_playlist_ui()
 	display(dbg_loop,0,"update_playlist_ui(" + current_page + ")");
 	var use_id = '#playlist_info_';
 
-	var show_num = 'No playlist selected';
+	var show_name = 'No playlist selected';
 	var shuffle = 0;
 	var unplayed_first = false;
 	var track_num = 0;
@@ -86,7 +86,7 @@ function update_playlist_ui()
 	var playlist = current_renderer ? current_renderer.playlist : null;
 	if (playlist)
 	{
-		show_num = 'Playlist ' + playlist.name;
+		show_name = playlist.library_name + "(" + playlist.name + ")";
 		shuffle = parseInt(playlist.shuffle);
 		unplayed_first = parseInt(playlist.unplayed_first);
 		track_num = parseInt(playlist.track_index);
@@ -105,7 +105,7 @@ function update_playlist_ui()
 
 	// set the values
 
-	$(use_id + 'playlist_num').html(show_num);
+	$(use_id + 'playlist_name').html(show_name);
 	$(use_id + 'shuffle_off').prop('checked',(shuffle==0)).button('refresh').blur();
 	$(use_id + 'shuffle_tracks').prop('checked',(shuffle==1)).button('refresh').blur();
 	$(use_id + 'shuffle_albums').prop('checked',(shuffle==2)).button('refresh').blur();

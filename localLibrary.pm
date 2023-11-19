@@ -15,6 +15,7 @@ use Database;
 use Folder;
 use Track;
 use Library;
+use localPlaylist;
 use base qw(Library);
 
 my $dbg_llib = -2;
@@ -35,6 +36,14 @@ sub new
 		name  => $program_name });
 	bless $this,$class;
 	return $this;
+}
+
+
+sub getPlaylists
+	# pass through
+{
+	my ($this) = @_;
+	return localPlaylist::getPlaylists();
 }
 
 
@@ -165,7 +174,6 @@ sub getSubitems
 		}
 	}
 
-
 	# regular query from database
 
 	else
@@ -250,7 +258,7 @@ sub virtualPlaylistsFolder
 		parent_id => 0,
 		title => 'playlists',
 		dirtype => 'section',
-		num_elements => scalar(@{localPlaylist::getPlaylistNames()}),
+		num_elements => scalar(@{localPlaylist::getPlaylists()}),
 		artist => '',
 		genre => '',
 		path => '\playlists',

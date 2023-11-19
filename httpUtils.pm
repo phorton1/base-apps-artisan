@@ -21,6 +21,7 @@ my $xmlsimple = XML::Simple->new(
 		'res',							# resource infos within ContentDirectory1 tracks (to find highest bitrate)
 		'upnp:albumArtURI',				# art_uris within a track
 		'upnp:artist',					# artists have roles
+		'desc',							# generaized array of descriptors
 	],
 	SuppressEmpty => '',				# empty elements will return ''
 );

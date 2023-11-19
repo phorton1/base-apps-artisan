@@ -17,7 +17,7 @@ use Device;
 use DeviceManager;
 use base qw(Renderer);
 
-my $dbg_lren = 01;
+my $dbg_lren = 0;
 my $dbg_mp = 0;
 
 
@@ -31,6 +31,7 @@ my @track_fields_to_renderer = qw(
 	duration
 	genre
 	title
+	type
 	track_num
 	year_str);
 
@@ -98,23 +99,32 @@ sub mpThread
 		{
 			if ($mp_command)
 			{
+				display($dbg_mp+1,1,"doing command '$mp_command'");
 				$controls->stop() if $mp_command eq 'stop';
 				$controls->pause() if $mp_command eq 'pause';
 				$controls->play() if $mp_command eq 'play';
-				$controls->{currentPosition} = ($1/1000) if $mp_command =~ /^set_position,(.*)$/;
-
+				if ($mp_command =~ /^set_position,(.*)$/)
+				{
+					my $mp_position = $1;
+					display($dbg_mp+1,2,"doing set_position($mp_position)");
+					$controls->{currentPosition} = $mp_position/1000;
+				}
 				if ($mp_command =~ /^play,(.*)$/)
 				{
-					$mp->{URL} = $1;
+					my $url = $1;
+					display($dbg_mp+1,2,"doing play($url)");
+					$mp->{URL} = $url;
 					$controls->play();
 				}
 				$mp_command = '';
 			}
-
-			$mp_state = $mp->{playState} || 0;
-			$mp_position = $controls->{currentPosition} * 1000 || 0;
-			my $media = $mp->{currentMedia};
-			$mp_duration = $media ? $media->{duration} * 1000 : 0;
+			else
+			{
+				$mp_state = $mp->{playState} || 0;
+				$mp_position = $controls->{currentPosition} * 1000 || 0;
+				my $media = $mp->{currentMedia};
+				$mp_duration = $media ? $media->{duration} * 1000 : 0;
+			}
 			sleep(0.1);
 		}
 		elsif ($mp_running)
@@ -278,13 +288,30 @@ sub doCommand
 			my $ms = checkParam(\$error,$command,$params,'position');
 			return $error if !defined($ms);
 			$this->{position} = $ms;
-			doMPCommand('setPosition,'.$ms);	# $controls->{currentPosition} = $ms / 1000;
+			doMPCommand('set_position,'.$ms);	# $controls->{currentPosition} = $ms / 1000;
 		}
 		else
 		{
 			warning(0,0,"doCommand(seek) in state $this->{state}");
 		}
 	}
+
+	elsif ($command eq 'play_song')
+	{
+		my $library_uuid = checkParam(\$error,$command,$params,'library_uuid');
+		return $error if !defined($library_uuid);
+		my $track_id = checkParam(\$error,$command,$params,'track_id');
+		return $error if !defined($track_id);
+		$error = $this->play_track($library_uuid,$track_id);
+		return $error;
+	}
+
+
+	#-------------------------------------
+	# playlist commands
+	#-------------------------------------
+	# next and prev
+
 	elsif ($command eq 'next')
 	{
 		$error = $this->playlist_song(1);
@@ -293,25 +320,56 @@ sub doCommand
 	{
 		$error = $this->playlist_song(-1);
 	}
+
+	# start a playlist on the current index of the playlist
+
+	elsif ($command eq 'set_playlist')
+	{
+		my $library_uuid = checkParam(\$error,$command,$params,'library_uuid');
+		return $error if !defined($library_uuid);
+
+		my $playlist_id = checkParam(\$error,$command,$params,'id');
+		return $error if !defined($playlist_id);
+
+		return error("doCommand('set_playlist') library($library_uuid) not supported")
+			if $library_uuid ne $local_library->{uuid};
+
+		$this->{playlist} = localPlaylist::getPlaylist($playlist_id);
+		$this->{playlist}->{library_name} = $local_library->{name};
+		$error = $this->playlist_song(0);
+	}
+
+	# play a song by index within the current playlist
+
 	elsif ($command eq 'playlist_song')
 	{
 		my $index = checkParam(\$error,$command,$params,'index');
 		return $error if !defined($index);
+
 		my $playlist = $this->{playlist};
 		return error("no playlist in doCommand($command)")
 			if !$playlist;
+
 		return error("doCommand($command) index($index) out of range 1..$playlist->{num_tracks}")
 			if $index<1 || $index>$playlist->{num_tracks};
-		$playlist->{track_index} = $index;	# intimate knowledge of localPlaylist
+
+		# intimate knowledge of playlists!!!
+
+		$playlist->{track_index} = $index;
 		$error = $this->playlist_song(0);
 	}
+
+	# sort/shuffle the playlist
+
 	elsif ($command eq 'shuffle_playlist')
 	{
 		my $value = checkParam(\$error,$command,$params,'value');
 		return $error if !defined($value);
+
 		my $playlist = $this->{playlist};
 		return error("no playlist in doCommand($command)")
 			if !$playlist;
+
 		$playlist->{shuffle} = $value;
 		$playlist->sortPlaylist();
 		$error = $this->playlist_song(0);
@@ -319,39 +377,9 @@ sub doCommand
 
 	# currently only implemented for localLibrary and localPlaylist
 
-	elsif ($command eq 'play_song')
-	{
-		my $library_uuid = checkParam(\$error,$command,$params,'library_uuid');
-		return $error if !defined($library_uuid);
 
-		my $track_id = checkParam(\$error,$command,$params,'track_id');
-		return $error if !defined($track_id);
 
-		return error("doCommand('play_song') library($library_uuid) not supported")
-			if $library_uuid ne $local_library->{uuid};
 
-		my $track = $local_library->getTrack($track_id);
-		return error("doCommand('play_song') could not find track($track_id)")
-			if !$track;
-
-		$this->play_track($track);
-	}
-
-	elsif ($command eq 'set_playlist')
-	{
-		my $library_uuid = checkParam(\$error,$command,$params,'library_uuid');
-		return $error if !defined($library_uuid);
-
-		my $name = checkParam(\$error,$command,$params,'name');
-		return $error if !defined($name);
-
-		return error("doCommand('set_playlist') library($library_uuid) not supported")
-			if $library_uuid ne $local_library->{uuid};
-
-		$this->{playlist} = localPlaylist::getPlaylist($name);
-		$error = $this->playlist_song(0);
-
-	}
 	else
 	{
 		return error("unknown doCommand($command)");
@@ -366,7 +394,16 @@ sub doCommand
 
 sub play_track
 {
-	my ($this,$track) = @_;
+	my ($this,$library_uuid,$track_id) = @_;
+	display($dbg_lren,1,"play_track($library_uuid,$track_id)");
+
+	my $library = findDevice($DEVICE_TYPE_LIBRARY,$library_uuid);
+	return error("Could not find library($library_uuid)")
+		if !$library;
+
+	my $track = $library->getTrack($track_id);
+	return error("Could not find track($track_id)")
+		if !$track;
 
 	display($dbg_lren,1,"play_track($track->{path}) duration=$track->{duration}");
 
@@ -375,43 +412,32 @@ sub play_track
 		$this->{metadata}->{$field} = $track->{$field};
 	}
 	$this->{metadata}->{pretty_size} = bytesAsKMGT($track->{size});
-	my $ext = $track->{path} =~ /\.(.*?)$/ ? uc($1) : '';
-	$this->{metadata}->{type} = $ext;
 
+	# special handling for local library
 	# get the art from the parent folder
 
-	$this->{metadata}->{art_uri} = "http://$server_ip:$server_port/get_art/$track->{parent_id}/folder.jpg";
-	if (!$this->{metadata}->{art_uri})
+	my $path = $track->{path};
+	if ($library->{local})
 	{
-		my $folder = $local_library->getFolder($track->{parent_id});
-		$this->{metadata}->{art_uri} = $folder->{art_uri};
+		$this->{metadata}->{art_uri} = "http://$server_ip:$server_port/get_art/$track->{parent_id}/folder.jpg";
+		$path = "http://$server_ip:$server_port/media/$track->{id}.$track->{type}";
+		# $path = "$mp3_dir/$track->{path}";		direct file access
+	}
+	else
+	{
+		$this->{metadata}->{art_uri} = $track->{art_uri};
 	}
 
 	$this->{position} = 0;
-
-	my $path = "$mp3_dir/$track->{path}";
-	$path =~ s/\//\//g;
-
-	# use streaming url versus local file path ...
-	# turned off for now, but it definitely worked
-	# with the localRender on 2023-11-14 at 3:44pm
-
-	if (1)
-	{
-		$path = "http://$server_ip:$server_port/media/$track->{id}.mp3";
-		display($dbg_lren,2,"using url='$path'");
-	}
-
 	doMPCommand('play,'.$path);
-	# $mp->{URL} = $path;
-	# $controls->play();
-
 	$this->{state} = $RENDERER_STATE_PLAYING;
+	return '';
 }
 
 
 
 sub playlist_song
+	# starts a playlist on a particular index
 {
 	my ($this,$inc) = @_;
 	my $playlist = $this->{playlist};
@@ -424,22 +450,25 @@ sub playlist_song
 		$this->{playlist} = '';
 		return error('empty playlist($name)!');
 	}
-	my $entry = $playlist->getTrackEntry($inc);
-	return error("Could not get entry(1) from playlist($name)")
-		if !$entry;
+	my $track_id = $playlist->getTrackId($inc);
+	return error("Could not get getTrackId($inc) from playlist($name)")
+		if !$track_id;
 
-	# temporary startup code
-
-	my $library = findDevice($DEVICE_TYPE_LIBRARY,$entry->{uuid});
-	return error("Could not get library($entry->{uuid}) for index($entry->{index}) from playlist($name)")
-		if !$library;
-
-	my $track = $library->getTrack($entry->{id});
-	return error("Could not get track($entry->{id} from library($entry->{uuid}) for index($entry->{index}) from playlist($name)")
-		if !$track;
-
-	$this->play_track($track);
+	$this->play_track($playlist->{uuid},$track_id);
 	return '';
+
+	# # temporary startup code
+    #
+	# my $library = findDevice($DEVICE_TYPE_LIBRARY,$playlist->{uuid});
+	# return error("Could not get library($playlist->{uuid}) for playlist($name)")
+	# 	if !$library;
+    #
+	# my $track = $library->getTrack($track_id);
+	# return error("Could not get track($track_id} from library($playlist->{uuid}) for index($playlist->{track_index}) from playlist($name)")
+	# 	if !$track;
+    #
+	# $this->play_track($track);
+	# return '';
 }
 
 

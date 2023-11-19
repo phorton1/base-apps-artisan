@@ -4,11 +4,13 @@
 #---------------------------------------
 # A Playlist has the following members:
 #
-#	num				- playlist number (id) within PLSource
-# 	name			- playlists have, and are accessed by unique names
+#	id				- playlist id within library(uuid)
+#   uuid			- uuid of the library holding the playlist
+# 	name			- playlist title
 # 	shuffle			- shuffle mode
 #   num_tracks		- number of tracks in the playlist
 #   track_index		- current track index within the playlist
+#   [track_ids]		- the ids of the tracks when loaded in memory
 #
 # And exists as a database file called playlists/name.db.
 # which duplicates the Track records from the main local
@@ -28,7 +30,7 @@ use DeviceManager;
 	# by using $local_library
 
 
-my $dbg_lpl = 1;
+my $dbg_lpl = 0;
 my $dbg_pl_create = 0;
 
 
@@ -55,7 +57,7 @@ my $playlist_dir = "$data_dir/playlists";
 mkdir $playlist_dir if (!(-d $playlist_dir));
 
 my $playlists:shared = shared_clone([]);
-my $playlists_by_name:shared = shared_clone({});
+my $playlists_by_id:shared = shared_clone({});
 
 
 
@@ -63,10 +65,26 @@ my $playlists_by_name:shared = shared_clone({});
 # client entry points
 #------------------------------------
 
-sub getTrackEntry
+sub getPlaylist
+{
+	my ($id) = @_;
+	my $playlist = $playlists_by_id->{$id};
+	return $playlist;
+}
+
+
+sub getPlaylists()
+	# returns a list of the names of the Playlists within this PLSource
+{
+	return $playlists;
+}
+
+
+
+sub getTrackId
 {
     my ($this,$inc) = @_;
-    display($dbg_lpl,0,"getTrackEntry($this->{name},$this->{track_index}) inc=$inc");
+    display($dbg_lpl,0,"getTrackId($this->{name},$this->{track_index}) inc=$inc");
     $this->{track_index} += $inc;
     $this->{track_index} = 1 if $this->{track_index} > $this->{num_tracks};
     $this->{track_index} = $this->{num_tracks} if $this->{track_index} < 1;
@@ -75,39 +93,25 @@ sub getTrackEntry
 	if (!$this->{track_ids})
 	{
 		return '' if !$this->startDB();
-		my $ids = shared_clone([]);
-		my $tracks = get_records_db($pl_dbh,"SELECT id FROM tracks ORDER BY position");
-		display($dbg_lpl+1,1,"getTrackEntry() found ".scalar(@$tracks)." items in localPlaylist($this->{name})");
+		$this->{track_ids} = shared_clone([]);
+		my $recs = get_records_db($pl_dbh,"SELECT id FROM tracks ORDER BY path");
+		display($dbg_lpl+1,1,"getTrackEntry() found ".scalar(@$recs)." items in localPlaylist($this->{name})");
 
-		for my $track (@$tracks)
+		for my $rec (@$recs)
 		{
-			push @$ids,$track->{id};
+			push @{$this->{track_ids}},$rec->{id};
 		}
 		$this->stopDB();
-		$this->{track_ids} = $ids;
-		$this->{num_tracks} = scalar(@$ids);
+		$this->{num_tracks} = scalar(@{$this->{track_ids}});
 		$this->fix_track_index();
 		$this->saveToPlaylists();
+		$this->sortPlaylist();
 	}
 
 	my $track_index = $this->{track_index};
 	my $track_id = ${$this->{track_ids}}[$track_index-1];
-	my $track = $local_library->getTrack($track_id);
-    if (!$track)
-    {
-        error("getTrackEntry($track_index) could not get kluge track($track_id}");
-        return;
-    }
-
-	# temporary kludge to support new API
-
-	my $entry = {
-		index => $track_index,		# index of track within playlist
-		id    => $track_id,			# id of track within library
-		uuid  => $local_library->{uuid} };	# Library uuid
-
-    display($dbg_lpl+1,0,"getTrackEntry($track_index) returning local ($track_index,$track_id)");
-    return $entry;
+    display($dbg_lpl+1,0,"getTrackId($track_index) returning track_id==$track_id");
+    return $track_id;
 }
 
 
@@ -115,13 +119,19 @@ sub getTracks
 	# Called by ContentDirectory1 for Artisan BEING a MediaServer
 	# NOT called in a local context.
 	# As far as the rest of the world is concerned, the playlist is
-	# sorted by path, and it is upto them to shuffle it if they want.
+	# sorted our way, and it is upto them to shuffle it if they want.
 {
 	my ($this) = @_;
 	return [] if !$this->startDB();
+
+	# we get the records by path, which is close, then sort them
+	# in our DEFAULT SORT ORDER using by_pathof_tracknum_title()
+
 	my $tracks = get_records_db($pl_dbh,"SELECT * FROM tracks ORDER BY path");
 	display($dbg_lpl+1,1,"getTracks() found ".scalar(@$tracks)." items in localPlaylist($this->{name})");
 	$this->stopDB();
+
+	$tracks = [sort {by_pathof_tracknum_title($a,$b)} @$tracks];
 	return $tracks;
 }
 
@@ -171,7 +181,7 @@ sub fix_track_index
 sub saveToPlaylists
 {
 	my ($this) = @_;
-	display($dbg_lpl+1,0,"saveToPlaylists($this->{name})");
+	display($dbg_lpl+1,0,"saveToPlaylists($this->{id}) $this->{name}");
 
 	my $dbh = sqlite_connect("$data_dir/playlists.db",'playlists','');
 	if (!$dbh)
@@ -179,7 +189,7 @@ sub saveToPlaylists
 		error("Could not connect to playlist.db database");
 		return;
 	}
-	if (!update_record_db($dbh,'playlists',$this,'name'))
+	if (!update_record_db($dbh,'playlists',$this,'id'))
 	{
 		error("Could not update playlist.db database");
 		return;
@@ -189,9 +199,8 @@ sub saveToPlaylists
 
 
 #--------------------------------------------------
-# sort and shuff
+# sort and shufffle
 #--------------------------------------------------
-
 
 sub sortPlaylist
 {
@@ -204,11 +213,11 @@ sub sortPlaylist
 	my $tracks = get_records_db($pl_dbh,"SELECT * FROM tracks");
 	db_do($pl_dbh,"DELETE FROM tracks");
 	$tracks = $this->sort_shuffle_tracks($tracks);
-	my $position = 1;
+	# my $position = 1;
 	$this->{track_ids} = shared_clone([]);
 	for my $track (@$tracks)
 	{
-		$track->{position} = $position++;
+		# $track->{position} = $position++;
 		return if !$this->insert_track($track);
 		push @{$this->{track_ids}},$track->{id};
 	}
@@ -221,7 +230,26 @@ sub sortPlaylist
 }
 
 
-sub by_album_tracknum
+
+
+sub by_pathof_tracknum_title
+	# proper DEFAULT SORT ORDER is to sort by 'album',
+	# as given by the pathOf($path) then, if a tracknum
+	# is provided, by that, and finally by the track title.
+{
+    my ($a,$b) = @_;
+    my $cmp = pathOf($a->{path}) cmp pathOf($b->{path});
+    return $cmp if $cmp;
+    $cmp = ($a->{tracknum} || 0) <=> ($b->{tracknum} || 0);
+    return $cmp if $cmp;
+    return $a->{title} cmp $b->{title};
+}
+
+
+sub within_random_album
+	# sorting within a random index of albums
+	# then, if a tracknum is provided, by that, and
+	# finally by the track title.
 {
     my ($albums,$a,$b) = @_;
     my $cmp = $albums->{$a->{parent_id}} <=> $albums->{$b->{parent_id}};
@@ -242,6 +270,10 @@ sub sort_shuffle_tracks
     my @result;
     if ($this->{shuffle} == $SHUFFLE_TRACKS)
     {
+		# position is an in-memory only variable
+		# the TRACKS will be re-written to the database
+		# in a random order
+
         for my $rec (@$recs)
         {
             $rec->{position} = 1 + int(rand($this->{num_tracks} + 1));
@@ -258,15 +290,17 @@ sub sort_shuffle_tracks
         {
             $albums{ $rec->{parent_id} } = int(rand($this->{num_tracks} + 1));
         }
-        for my $rec (sort {by_album_tracknum(\%albums,$a,$b)} @$recs)
+        for my $rec (sort {within_random_album(\%albums,$a,$b)} @$recs)
         {
             push @result,$rec;
         }
     }
-    else	# the default sort order is by path
+
+	# sort the records by the DEFAULT SORT ORDER
+
+    else	# proper default sort order
     {
-        # @result = map($_,@$recs);
-        for my $rec (sort {$a->{path} cmp $b->{path}} @$recs)
+        for my $rec (sort {by_pathof_tracknum_title($a,$b)} @$recs)
         {
             push @result,$rec;
         }
@@ -278,6 +312,152 @@ sub sort_shuffle_tracks
 
 
 
+
+#---------------------------
+# DEFAULT PLAYLISTS
+#---------------------------
+
+my %default_playlists = (
+
+	# playlist names may have spaces
+	# but since they get sent along as parts of
+	# urls, etc, they cannot have any special characters
+	# except maybe dash and dot (certainly not ampersand)
+	# which does not work unencoded in xml
+
+	'001' => {
+		id => '001',
+		name => 'test',
+		query =>
+			"albums/Productions/Originals/Forgotten Space" },
+	'002' => {
+		name => 'work',
+		shuffle => $SHUFFLE_ALBUMS,
+		query =>
+			"albums/Work" },
+	'003' => {
+		name => 'dead',
+		shuffle => $SHUFFLE_ALBUMS,
+		query =>
+			"albums/Dead\t".
+			"singles/Dead" },
+    '004' => {
+		name => 'favorite',
+		shuffle => $SHUFFLE_ALBUMS,
+		query =>
+			"albums/Favorite\t".
+			"singles/Favorite" },
+    '005' => {
+		name => 'jazz',
+		shuffle => $SHUFFLE_TRACKS,
+		query =>
+			"albums/Jazz/Old\t".
+			"albums/Jazz/Soft\t".
+			"albums/Jazz/Swing\t".
+			"singles/Jazz" },
+    '006' => {
+		name => 'blues',
+		shuffle => $SHUFFLE_TRACKS,
+		query =>
+			"albums/Blues\t".
+			"singles/Blues" },
+	'007' => {
+		name => 'bands',
+		shuffle => $SHUFFLE_ALBUMS,
+		query =>
+			"albums/Productions/Bands\t".
+			"albums/Productions/Other\t".
+			"albums/Productions/Theo"},
+	'008' => {
+		name => 'originals',
+		shuffle => $SHUFFLE_ALBUMS,
+		query =>
+			"albums/Productions/Originals" },
+    '009' => {
+		name => 'world',
+		shuffle => $SHUFFLE_ALBUMS,
+		query =>
+			"albums/World minus /Tipico\t".
+			"singles/World" },
+	'010' => {
+		name => 'orleans',
+		shuffle => $SHUFFLE_TRACKS,
+		query =>
+			"albums/NewOrleans\t".
+			"albums/Zydeco" },
+    '011' => {
+		name => 'reggae',
+		shuffle => $SHUFFLE_TRACKS,
+		query =>
+			"albums/Reggae\t".
+			"singles/Reggae" },
+	'012' => {
+		name => 'rock',
+		shuffle => $SHUFFLE_TRACKS,
+		query =>
+			"albums/Rock\t".
+			"albums/SanDiegoLocals\t".
+			"singles/Rock" },
+     '013' => {
+		name => 'RandB',
+		shuffle => $SHUFFLE_TRACKS,
+		query =>
+			"albums/R&B\t".
+			"singles/R&B" },
+    '014' => {
+		name => 'country',
+		shuffle => $SHUFFLE_TRACKS,
+		query =>
+			"albums/Country\t".
+			"singles/Country" },
+    '015' => {
+		name => 'classical',
+		shuffle => $SHUFFLE_ALBUMS,
+		query =>
+			"albums/Classical minus /Baroque\t".
+			"singles/Classical minus /Baroque" },
+    '016' => {
+		name => 'xmas',
+		shuffle => $SHUFFLE_TRACKS,
+		query =>
+			"albums/Christmas\t".
+			"singles/Christmas" },
+    '017' => {
+		name => 'friends',
+		shuffle => $SHUFFLE_ALBUMS,
+		query =>
+			"albums/Productions minus Sweardha Buddha\t".
+			"albums/Friends" },
+    '018' => {
+		name => 'folk',
+		shuffle => $SHUFFLE_TRACKS,
+		query =>
+			"albums/Folk\t".
+			"singles/Folk" },
+    '019' => {
+		name => 'compilations',
+		shuffle => $SHUFFLE_ALBUMS,
+		query =>
+			"albums/Compilations\t".
+			"singles/Compilations" },
+    '020' => {
+		name => 'soundtrack',
+		shuffle => $SHUFFLE_ALBUMS,
+		query =>
+			"albums/Soundtracks" },
+    '021' => {
+		name => 'other',
+		shuffle => $SHUFFLE_TRACKS,
+		query =>
+			"albums/Other\t".
+			"singles/Other" },
+
+
+);	# %default_playlists
+
+
+
+
 #------------------------------------------
 # Constructors
 #------------------------------------------
@@ -286,7 +466,8 @@ sub new
 {
 	my ($class) = @_;
 	my $this = shared_clone({
-		num => 0,
+		id => '',
+		uuid => $this_uuid,
 		name => '',
 		query => '',
 		shuffle => 0,
@@ -298,31 +479,31 @@ sub new
 }
 
 
-sub newFromRecAndTable
+sub newFromRec
 	# assumes the database already exists
 	# and everything in rec is correct
 {
 	my ($class,$rec) = @_;
-	display($dbg_lpl,1,"newFromRecAndTable($rec->{name})");
+	display($dbg_lpl,1,"newFromRec($rec->{id}) $rec->{name}");
 	my $this = $class->new();
 	mergeHash($this,$rec);
 	return $this;
 }
 
 
-sub newFromQuery
+sub newFromRecQuery
 	# the record already exists, and we need to create the
 	# table from the query ...
 {
 	my ($class,$rec) = @_;
-	display($dbg_lpl,1,"newFromQuery($rec->{name})");
+	display($dbg_lpl,1,"newFromRecQuery($rec->{id}) $rec->{name}");
 	my $this = $class->new();
 	mergeHash($this,$rec);
 	return if !$this->create_tracks_from_query();
 	$this->saveToPlaylists();
+	display($dbg_lpl,1,"newFromRecQuery($rec->{name}) finished");
 	return $this;
 }
-
 
 
 sub newFromDefault
@@ -331,19 +512,18 @@ sub newFromDefault
 	# create_tracks_from_query. The record will be
 	# inserted into the main database by caller.
 {
-	my ($class,$name,$def) = @_;
-	display($dbg_lpl,1,"newFromDefault($name) ...");
+	my ($class,$id,$desc) = @_;
+	display($dbg_lpl,1,"newFromDefault($id) $desc->{name}");
 
 	my $this = $class->new();
-	mergeHash($this,$def);
-	$this->{name} = $name;
+	mergeHash($this,$desc);
+	$this->{id} = $id;
 
 	return if !$this->create_tracks_from_query();
 
-	display($dbg_lpl,1,"newFromDefault($name) finished");
+	display($dbg_lpl,1,"newFromDefault($desc->{name}) finished");
 	return $this;
 }
-
 
 
 
@@ -386,7 +566,7 @@ sub create_tracks_from_query
 			push @$args,$exclude;
 			$query .= " AND instr(path,?) <= 0";
 		}
-		$query .= " ORDER BY position";
+		$query .= " ORDER BY path";
 			# "genre,album_artist,album_title,tracknum,title";
 		my $recs = get_records_db($artisan_dbh,$query,$args);
 		display($dbg_lpl,3,"found ".scalar(@$recs)." tracks from query path=$path");
@@ -411,10 +591,10 @@ sub create_tracks_from_query
 	create_table($pl_dbh,"tracks");
 	$tracks = $this->sort_shuffle_tracks($tracks);
 
-	my $position = 1;
+	# my $position = 1;
 	for my $track (@$tracks)
 	{
-		$track->{position} = $position++;
+		# $track->{position} = $position++;
 		return if !$this->insert_track($track);
 	}
 	$this->stopDB();
@@ -427,203 +607,9 @@ sub create_tracks_from_query
 }
 
 
-#-----------------------------------------------------
-# Aggregate APIs
-#-----------------------------------------------------
-
-sub getPlaylist
-{
-	my ($name) = @_;
-	my $playlist = $playlists_by_name->{$name};
-	return $playlist;
-}
-
-
-sub getPlaylistNames()
-	# returns a list of the names of the Playlists within this PLSource
-{
-	my $retval = [];
-	display($dbg_lpl,0,"getPlaylistNames(".scalar(@$playlists).")");
-
-	for my $playlist (@$playlists)
-	{
-		display($dbg_lpl+1,0,"adding $playlist->{name}");
-		push @$retval,$playlist->{name};
-	}
-	return $retval;
-}
-
-
-sub setPlaylistInfo
-	# shuffle = 0,1, or 2 or
-	# track_index = 1..num_tracks
-	# Returns the json for the playlist on success,
-	# or {error=>msg} json on a failure
-{
-	my ($name,$field,$value) = @_;
-}
-
-
-
-#---------------------------
-# DEFAULT PLAYLISTS
-#---------------------------
-
-my %default_playlists = (
-
-	# playlist names may have spaces
-	# but since they get sent along as parts of
-	# urls, etc, they cannot have any special characters
-	# except maybe dash and dot (certainly not ampersand)
-	# which does not work unencoded in xml
-
-	test => {
-		num => 1,
-		query =>
-			"albums/Productions/Originals/Forgotten Space" },
-	work => {
-		num => 2,
-		shuffle => $SHUFFLE_ALBUMS,
-		query =>
-			"albums/Work" },
-	dead => {
-		num => 3,
-		shuffle => $SHUFFLE_ALBUMS,
-		query =>
-			"albums/Dead\t".
-			"singles/Dead" },
-    favorite => {
-		num => 4,
-		shuffle => $SHUFFLE_ALBUMS,
-		query =>
-			"albums/Favorite\t".
-			"singles/Favorite" },
-    jazz => {
-		num => 5,
-		shuffle => $SHUFFLE_TRACKS,
-		query =>
-			"albums/Jazz/Old\t".
-			"albums/Jazz/Soft\t".
-			"albums/Jazz/Swing\t".
-			"singles/Jazz" },
-    blues => {
-		num => 6,
-		shuffle => $SHUFFLE_TRACKS,
-		query =>
-			"albums/Blues\t".
-			"singles/Blues" },
-	bands => {
-		num => 7,
-		shuffle => $SHUFFLE_ALBUMS,
-		query =>
-			"albums/Productions/Bands\t".
-			"albums/Productions/Other\t".
-			"albums/Productions/Theo"},
-	originals => {
-		num => 8,
-		shuffle => $SHUFFLE_ALBUMS,
-		query =>
-			"albums/Productions/Originals" },
-    world => {
-		num => 9,
-		shuffle => $SHUFFLE_ALBUMS,
-		query =>
-			"albums/World minus /Tipico\t".
-			"singles/World" },
-	orleans => {
-		num => 10,
-		shuffle => $SHUFFLE_TRACKS,
-		query =>
-			"albums/NewOrleans\t".
-			"albums/Zydeco" },
-    reggae => {
-		num => 11,
-		shuffle => $SHUFFLE_TRACKS,
-		query =>
-			"albums/Reggae\t".
-			"singles/Reggae" },
-	rock => {
-		num => 12,
-		shuffle => $SHUFFLE_TRACKS,
-		query =>
-			"albums/Rock\t".
-			"albums/SanDiegoLocals\t".
-			"singles/Rock" },
-    RandB => {
-		num  => 13,
-		shuffle => $SHUFFLE_TRACKS,
-		query =>
-			"albums/R&B\t".
-			"singles/R&B" },
-    country => {
-		num  => 14,
-		shuffle => $SHUFFLE_TRACKS,
-		query =>
-			"albums/Country\t".
-			"singles/Country" },
-    classical => {
-		num  => 15,
-		shuffle => $SHUFFLE_ALBUMS,
-		query =>
-			"albums/Classical minus /Baroque\t".
-			"singles/Classical minus /Baroque" },
-    xmas => {
-		num  => 16,
-		shuffle => $SHUFFLE_TRACKS,
-		query =>
-			"albums/Christmas\t".
-			"singles/Christmas" },
-    friends => {
-		num  => 17,
-		shuffle => $SHUFFLE_ALBUMS,
-		query =>
-			"albums/Productions minus Sweardha Buddha\t".
-			"albums/Friends" },
-    folk => {
-		num  => 18,
-		shuffle => $SHUFFLE_TRACKS,
-		query =>
-			"albums/Folk\t".
-			"singles/Folk" },
-    compilations => {
-		num  => 19,
-		shuffle => $SHUFFLE_ALBUMS,
-		query =>
-			"albums/Compilations\t".
-			"singles/Compilations" },
-    soundtrack => {
-		num  => 20,
-		shuffle => $SHUFFLE_ALBUMS,
-		query =>
-			"albums/Soundtracks" },
-    other => {
-		num  => 21,
-		shuffle => $SHUFFLE_TRACKS,
-		query =>
-			"albums/Other\t".
-			"singles/Other" },
-	station22 => { num => 22, query => "" },
-	station23 => { num => 23, query => "" },
-	station24 => { num => 24, query => "" },
-	station25 => { num => 25, query => "" },
-	station26 => { num => 26, query => "" },
-	station27 => { num => 27, query => "" },
-	station28 => { num => 28, query => "" },
-	station29 => { num => 29, query => "" },
-	station30 => { num => 30, query => "" },
-	station31 => { num => 31, query => "" },
-	station32 => { num => 32, query => "" },
-
-
-);	# %default_playlists
-
-
-
-
 #-----------------------------------------
 # initPlaylists
 #-----------------------------------------
-
 
 sub initPlaylists
 {
@@ -638,11 +624,13 @@ sub initPlaylists
 	# or update the track databases if not found
 	# the default playlists are assumed to be in the correct order.
 
-	for my $name (sort {$default_playlists{$a}->{num} <=> $default_playlists{$b}->{num}} keys(%default_playlists))
+	for my $id (sort {$a cmp $b} keys(%default_playlists))
 	{
+		my $desc = $default_playlists{$id};
+		my $name = $desc->{name};
+
 		my $exists = -f "$playlist_dir/$name.db" ? 1 : 0;
-		my $rec = get_record_db($dbh,
-			"SELECT * FROM playlists WHERE name='$name'");
+		my $rec = get_record_db($dbh, "SELECT * FROM playlists WHERE id='$id'");
 
 		display($dbg_pl_create,1,"got($name) exists=$exists rec="._def($rec));
 
@@ -654,9 +642,7 @@ sub initPlaylists
 		if (!$rec)
 		{
 			display($dbg_pl_create,2,"creating new playlist($name) from default");
-			$playlist = localPlaylist->newFromDefault(
-				$name,
-				$default_playlists{$name});
+			$playlist = localPlaylist->newFromDefault($id,$desc);
 			next if !$playlist;
 			if (!insert_record_db($dbh,'playlists',$playlist))
 			{
@@ -667,18 +653,18 @@ sub initPlaylists
 		}
 		elsif (!$exists)
 		{
-			display($dbg_pl_create,2,"updating playlist($name) from its table");
-			$playlist = localPlaylist->newFromQuery($rec);
+			display($dbg_pl_create,2,"updating playlist($name) from rec's query");
+			$playlist = localPlaylist->newFromRecQuery($rec);
 			next if !$playlist;
 		}
 		else
 		{
 			display($dbg_pl_create,2,"using existing playlist ".pad($name,20)." num_tracks=$rec->{num_tracks}");
-			$playlist = localPlaylist->newFromRecAndTable($rec);
+			$playlist = localPlaylist->newFromRec($rec);
 				# cannot fail
 		}
 
-		$playlists_by_name->{$name} = $playlist;
+		$playlists_by_id ->{$id} = $playlist;
 		push @$playlists,$playlist;
 	}
 
@@ -686,10 +672,6 @@ sub initPlaylists
 
 	display($dbg_pl_create,0,"static_init_playlists finished");
 }
-
-
-
-
 
 
 

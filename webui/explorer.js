@@ -203,7 +203,7 @@ function init_page_explorer()
 			// use embeded audio player (soon to be webUI's own 'renderer')
 			// to play it as a stream (from my local library only at this time)
 
-			if (true)
+			if (false)
 			{
 				var play_url;
 				if (rec.is_local)

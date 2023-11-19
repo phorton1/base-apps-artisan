@@ -62,7 +62,7 @@ use httpUtils;
 
 my $dbg_device = 0;
 
-my $dbg_dlna = -2;
+my $dbg_dlna = 0;
 
 my $dbg_response = 0;
 
@@ -161,7 +161,7 @@ sub serviceRequest
 		return;
 	}
 
-	display($dbg_dlna,0,"creating socket to $this->{ip}:$this->{port}");
+	display($dbg_dlna+1,0,"creating socket to $this->{ip}:$this->{port}");
 
     my $sock = IO::Socket::INET->new(
         PeerAddr => $this->{ip},

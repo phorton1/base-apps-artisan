@@ -285,4 +285,10 @@ XML RECEIVED
 
 
 
-
+	# The sizes of the the images are, ahem, as follows
+	#
+	# 	PNG/JPEG_TN,	160x160
+	# 	PNG/JPEG_SM,	640x480
+	# 	PNG/JPEG_MED    ??
+	# 	PNG/JPEG_LRG	??
+	#

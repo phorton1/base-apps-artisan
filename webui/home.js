@@ -147,7 +147,7 @@ function selectDevice(singular,uuid)	// handler
 			// current_page indicates the app has really started
 
 			if (singular == 'library')
-				$('#artisan_menu_library_name').html(result.name);
+				$('.artisan_menu_library_name').html(result.name);
 
 			if (current_page)
 			{
@@ -287,7 +287,7 @@ function on_slider_complete(event,ui)
 }
 
 
-function set_playlist(name)
+function set_playlist(uuid,id)
 	// called by easy-ui event registration on the renderer_list
 	// when the user changes the current selection.
 	// Set the current renderer name and enable the buttons.
@@ -296,9 +296,9 @@ function set_playlist(name)
 {
 	display(dbg_home,0,"set_playlist("+name+")");
 	hide_layout_panes();
-	renderer_command(
-		'set_playlist?library_uuid=' + current_library['uuid'] +
-		'&name=' + name);
+	renderer_command('set_playlist' +
+		'?library_uuid=' + uuid +
+		'&id=' + id);
 }
 
 

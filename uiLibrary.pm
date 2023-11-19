@@ -119,16 +119,10 @@ sub library_request
 		my $json = json($metadata);
 		return json_header().$json;
 	}
-	# elsif ($path eq 'get_track')
-	# {
-	# 	my $track = $library->getTrack($params->{track_id});
-	# 	return json_error("could not get_track($params->{id})")
-	# 		if !$track;
-	# 	return json_header().json($track);
-	# }
 
-	# following only used in webUI context menue
+	# following only used in webUI context menu
 	# which are not re-implemented yet ...
+
 	elsif ($path eq 'get_id_path')
 	{
 		# needs to be library agnostic
@@ -151,45 +145,16 @@ sub library_request
 	# Playlists
 	#-----------------------------
 
-	if ($path eq 'get_playlist_json')
+	if ($path eq 'get_playlists')
 	{
-		my $name = $params->{name};
-		display($dbg_uipls,0,"plsource_request($path,$name)");
-		my $playlist = localPlaylist::getPlaylist($name);
-		return json_error("Could not find playlist($name}")
-			if !$playlist;
-		return json_header().json($playlist);
-	}
-	elsif ($path eq 'get_playlists')
-	{
-		display($dbg_uipls,0,"plsource_request($path)");
-
-		my $playlist_names = localPlaylist::getPlaylistNames();
+		my $playlists = $library->getPlaylists();
 		my $html = html_header();
-		for my $name (@$playlist_names)
+		for my $playlist (@$playlists)
 		{
-			$html .= getPlaylistMenuHTML($name);
+			$html .= getPlaylistMenuHTML($playlist);
 		}
 		# display(0,0,"get_playlists returning $html");
 		return $html;
-	}
-
-	# STATION INFO COMMANDS
-
-	elsif ($path eq 'set_playlist_info')
-	{
-		# 'shuffle' or 'track_index'
-		# it is the responsibility of the UI to re-call
-		# Renderer::setPlaylist() if they modify it!
-
-		my $name = $params->{name};
-		my $field = $params->{field};
-		my $value = $params->{value};
-		display($dbg_uipls,0,"plsource_request($path,$name,$field,$value)");
-		my $json = localPlaylist::setPlaylistInfo($name,$field,$value);
-			# returns the json for the playlist, or json containing
-			# error=>msg
-		return json_header().$json;
 	}
 
 	#-----------------------------
@@ -207,7 +172,6 @@ sub library_request
 #-----------------------------------------------
 # directory requests
 #-----------------------------------------------
-
 
 sub library_dir
 	# Return the json for the list of children of the directory
@@ -240,7 +204,6 @@ sub library_dir
 	display($dbg_uilib+1,0,"dir response=$response");
 	return $response;
 }
-
 
 
 sub library_dir_element
@@ -295,7 +258,6 @@ sub library_dir_element
 }
 
 
-
 sub library_tracklist
 	# Return the json for a list of of files (tracks)
 	# associated with a directory.
@@ -327,29 +289,29 @@ sub library_tracklist
 	}
 	$response .= ']';
 	return $response;
-
 }
-
-
 
 
 sub getPlaylistMenuHTML
 {
-	my ($name) = @_;
+	my ($playlist) = @_;
+
+	my $id = $playlist->{id};
+	my $uuid = $playlist->{uuid};
+	my $name = $playlist->{name};
+
 	my $text = '';
 	$text .= "<input type=\"radio\" ";
-	$text .= "id=\"playlist_button_$name\" ";
+	$text .= "id=\"playlist_button_$id\" ";
 	$text .= "class=\"playlist_button\" ";
-	$text .= "onclick=\"javascript:set_playlist('$name');\" ";
+	$text .= "onclick=\"javascript:set_playlist('$uuid','$id');\" ";
 	$text .= "name=\"playlist_button_set\">";
-	$text .= "<label for=\"playlist_button_$name\">";
+	$text .= "<label for=\"playlist_button_$id\">";
 	$text .= "$name</label>";
 	$text .= "<br>";
 	$text .= "\n";
 	return $text;
-
 }
-
 
 
 

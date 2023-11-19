@@ -143,6 +143,8 @@ sub web_ui
 	}
 
 	# dispatch renderer request directly to object
+	# note that actual playlist commands take place
+	# on the renderer ...
 
 	elsif ($path =~ s/^renderer\///)
 	{

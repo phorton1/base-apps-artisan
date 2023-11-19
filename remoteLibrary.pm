@@ -50,6 +50,9 @@ sub getTrack
 	display($dbg_rlib,0,"getTrack($id)");
 	my $tcache = $track_cache->{$this->{uuid}};
 	my $track = $tcache ? $tcache->{$id} : '';
+
+	# currently only works if we drilled down to it
+
 	error("could not getTrack($id)") if !$track;
 	return $track;
 }
@@ -111,13 +114,10 @@ sub getSubitems
 
 	if ($table eq 'tracks')
 	{
-		my $container = {};
-			# for building track_numbers, etc
-
 		my $items = $didl->{item};
 		for my $item (@$items)
 		{
-			my $remote_track = $this->remoteTrack($item,$container);
+			my $remote_track = $this->remoteTrack($item);
 			push @$rslt,$remote_track if $remote_track;
 		}
 	}
@@ -154,7 +154,7 @@ sub remoteFolder
 	for my $class (@$classes)
 	{
 		my $content = $class->{content};
-		print "checking class $content\n";
+		# print "checking class $content\n";
 
 		if (
 			$content =~ /audioItem/ ||
@@ -177,29 +177,60 @@ sub remoteFolder
 		return;
 	}
 
-	my $is_album = $class_name eq 'object.container.album.musicAlbum' ? 1 : 0;
-	my $artist = getArtist($container);
+	my $fcache = $folder_cache->{$this->{uuid}};
+	$fcache = $folder_cache->{$this->{uuid}} = shared_clone({})
+		if !$fcache;
+
+
+	my $dir_type =
+		($class_name eq 'object.container.album.musicAlbum') ? 'album' :
+		($class_name eq 'object.container.playlistContainer') ? 'playlist' :
+		'section';
+
+	my $path = '';
+	my $descs = $container->{desc};
+	for my $desc (@$descs)
+	{
+		print "$desc->{id} --> $desc->{content}\n";
+
+		if ($desc->{id} eq 'folderPath' &&
+			$desc->{content} =~ /<microsoft:folderPath>(.*)<\/microsoft:folderPath>/)
+		{
+			$path = $1;
+			$path =~ s/\\/\//g;
+			last;
+		}
+	}
+	if (!$path)
+	{
+		my @parts = ($title);
+		my $parent = $fcache->{$container->{parentID}};
+		while ($parent)
+		{
+			push @parts,$parent->{title};
+			$parent = $fcache->{$parent->{parent_id}};
+		}
+		$path = "/" . join("/",reverse @parts);
+	}
 
 
 	my $folder = shared_clone({
-		# 0 is not false (if blah) in js is_local 		=> 0,
 		id 				=> $id,
 		title			=> $title,
 		parent_id		=> $container->{parentID} || 0,
-		dirtype 		=> $is_album ? 'album' : 'section',
+		dirtype 		=> $dir_type,
 		num_elements    => $num_elements,
 
 		# quick and dirty for now
 
 	    has_art     	=> 0,
-        path	 		=> '',
-		art_uri			=> '',
+        path	 		=> $path,
+		art_uri			=> getArtUri($container),
 
 		# presented via DNLA ...
 		# mostly specific to albums
 
-
-		artist   		=> getArtist($container),
+		artist   		=> getArtist($container,1),
         genre		    => $container->{'upnp:genre'} || '',
         year_str        => '',
 		folder_error          => 0,
@@ -207,9 +238,9 @@ sub remoteFolder
 		highest_track_error   => 0,
 	});
 
-	my $fcache = $folder_cache->{$this->{uuid}};
-	$fcache = $folder_cache->{$this->{uuid}} = shared_clone({})
-		if !$fcache;
+	$folder->{has_art} = 1 if $folder->{art_uri};
+
+
 	$fcache->{$id} = $folder;
 
 	return $folder;
@@ -218,46 +249,54 @@ sub remoteFolder
 
 sub remoteTrack
 {
-	my ($this,$item,$container) = @_;
+	my ($this,$item) = @_;
 	my $id = $item->{id};
 	my $title = $item->{'dc:title'};
 
 	display($dbg_rlib,0,"remoteTrack($id) $title");
 
-	my $album_artist = $item->{'dc:creator'};
+	my $path = '';
+	my $size = 0;
+	my $type = '';
+	my $duration = 0;
+	my $resources = $item->{res};
+	my $res = $resources ? $resources->[0] : '';
+	if ($res)
+	{
+		$size = $res->{size} || 0;
+		$path = $res->{content};
+		$path =~ s/\?.*$//;		# remove any ? query
+		$type = lc($1) if $path =~ /\.(mp3|wma|m4a)$/;
+		my $protocol = $res->{protocolInfo};
+		if (!$type && $protocol)
+		{
+			$type ||= $protocol =~ /audio\/mpeg|DLNA\.ORG_PN=MP3/ ? 'mp3' : '';
+			$type ||= $protocol =~ /audio\/x-ms-wma|DLNA\.ORG_PN=WM/ ? 'wma' : '';
+			$type ||= $protocol =~ /audio\/x-m4a|DLNA\.ORG_PN=M4A/ ? 'm4a' : '';
+		}
+		$duration = duration_to_millis($res->{duration}) if $res->{duration};
 
-	my $art_uri = getBestArtUri($item);
-	my $res = getBestRes($item);
-	my $duration = $res && $res->{duration} ?
-		duration_to_millis($res->{duration}) : 0;
-	my $path = $res ? $res->{content} : '';
-
-	# I think you need the streaming info and a different protocol
-	# to use different resolutions, so, after finding the best one
-	# we remove any query params, and that seems to work ...
-
-	$path =~ s/\?.*$//;
+	}
 
 	my $date = $item->{'dc:date'} || '';
-	my $year_str = $date =~ /^(\d\d\d\d)/ ? $1 : '';
-	my $track_num = $item->{'upnp:originalTrackNumber'} || '';
+	my $year_str = $date =~ /^(\d\d\d\d)/ ? $1 : $date;
 
 	my $track = shared_clone({
 		position 		=> 0, 		# unused playlist position
 		# 0 is not a false value in js !  is_local       	=> 0,
 		id             	=> $id,
 		parent_id    	=> $item->{parent_id},
-		has_art        	=> $art_uri ? 1 : 0,
+		has_art        	=> 0,
 		path			=> $path,
-		art_uri			=> $art_uri,
+		art_uri			=> getArtUri($item),
 		duration     	=> $duration,
-		size         	=> 0,
-		type         	=> '',
+		size         	=> $size,
+		type         	=> $type,
         title		  	=> $title,
-        artist		  	=> getArtist($container),
+        artist		  	=> getArtist($item),
         album_title  	=> $item->{'upnp:album'} || '',
-        album_artist 	=> '',
-        tracknum  	  	=> $track_num,
+        album_artist 	=> getArtist($item,1),
+        tracknum  	  	=> $item->{'upnp:originalTrackNumber'} || '',
         genre		  	=> $item->{'upnp:genre'} || '',
 		year_str     	=> $year_str,
 		timestamp      	=> 0,
@@ -265,6 +304,9 @@ sub remoteTrack
 		error_codes 	=> '',
 		highest_error   => 0,
 	});
+
+	$track->{has_art} = 1 if $track->{art_uri};
+
 
 	# cache it
 	my $tcache = $track_cache->{$this->{uuid}};
@@ -282,102 +324,55 @@ sub remoteTrack
 # fields offered and try to find
 # usable values
 #----------------------------------------
+# I dicked around for quite a while trying to get Folder.jpg's
+# from WMS.  I believe now that it ONLY sends JPGs embedded in
+# mediaFiles, although WMP shows Folder.jpg happy as a clam.
+
+
+sub getArtUri
+	# takes the first uri found
+	# minus any comma delimited params
+{
+	my ($item) = @_;
+	my $uris = $item->{'upnp:albumArtURI'};
+	my $art_uri = $uris && @$uris ? $uris->[0]->{content} : '';
+	$art_uri =~ s/,*.$// if $art_uri =~ /,/;
+	return $art_uri;
+}
+
 
 
 sub getArtist
 {
-	my ($cont) = @_;
-	my $artist = getField($cont,'dc:creator');
-	$artist ||= getField($cont,'upnp:actor');
-	$artist ||= getField($cont,'upnp:actor');
-	return $artist || '';
-}
+	my ($cont,$album) = @_;
 
+	my $creator = $cont->{'dc:creator'} || '';
+	my $author = '';
+	my $composer = '';
+	my $performer = '';
+	my $album_artist = '';
 
-sub getField
-	# returns the referred to field,
-	# the 0th element of an array,
-	# or the first alphabetically keyed item of a hash
-{
-	my ($cont,$field) = @_;
-
-	my $retval = '';
-	my $obj = $cont->{$field};
-
-	while (ref($obj))
+	my $entries = $cont->{'upnp:artist'};
+	for my $entry (@$entries)
 	{
-		if ($obj =~ /ARRAY/)
-		{
-			$obj = $obj->[0];
-		}
-		elsif ($obj =~ /HASH/)
-		{
-			$obj = (values %$obj)[0];
-		}
-
-		# if it's still a hash, return the content member
-
-		if ($obj =~ /HASH/ && $obj->{content})
-		{
-			$obj = $obj->{content};
-		}
+		my $content = $entry->{content};
+		$content =~ s/\[Unknown.*\]//;
+		$author 	  ||= $entry->{role} =~ /Author/i         ? $content : '';
+		$composer 	  ||= $entry->{role} =~ /Composer/i       ? $content : '';
+		$performer 	  ||= $entry->{role} =~ /Performer/i      ? $content : '';
+		$album_artist ||= $entry->{role} =~ /'AlbumArtist'/i  ? $content : '';
 	}
 
-	return $obj || '';
+	$album_artist ||= $creator;
+	$album_artist ||= $author;
+	$album_artist ||= $composer;
+	$album_artist ||= $performer;
+
+	$performer ||= $album_artist;
+
+	return $album ? $album_artist : $performer;
 }
 
-
-sub getBestRes
-{
-	my ($item) = @_;
-	my $bit_rate = 0;
-
-	my $best_res;
-	my $resources = $item->{res};
-	if ($resources)
-	{
-		for my $res (@$resources)
-		{
-			if (!$best_res || ($res->{bitrate} > $best_res->{bitrate}))
-			{
-				$best_res = $res;
-			}
-		}
-	}
-	return $best_res;
-}
-
-
-sub getBestArtUri
-{
-	my ($item) = @_;
-
-	# The sizes of the the images are, ahem, as follows
-	#
-	# 	PNG/JPEG_TN,	160x160
-	# 	PNG/JPEG_SM,	640x480
-	# 	PNG/JPEG_MED    ??
-	# 	PNG/JPEG_LRG	??
-	#
-	# There may be times where we want the larger ones,
-	# but for right now I will optimize to the smaller ones
-
-	my $art_uri = '';
-	my $uris = $item->{'upnp:albumArtURI'};
-	if ($uris)
-	{
-		for my $uri (@$uris)
-		{
-			$art_uri = $uri->{content};
-			last if $uri->{'dlna:profileID'} =~ /_TN/;
-		}
-	}
-
-	# they have comma delimited params?
-	# $art_uri =~ s/,/&/g;
-	$art_uri =~ s/,*.$//;
-	return $art_uri;
-}
 
 
 
@@ -416,19 +411,6 @@ sub getTrackMetadata
 	push @$sections, meta_section(\$use_id,'Database',1,$track);
 
 	return $sections;
-}
-
-
-
-sub get_metafield
-    # look for &lt/&gt bracketed value of id
-    # massage it as necessary
-    # and set it into hash as $field
-{
-    my ($data,$hash,$field,$id) = @_;
-    my $value = '';
-    $value = $1 if ($data =~ /&lt;$id&gt;(.*?)&lt;\/$id&gt/s);
-    $hash->{$field} = $value;
 }
 
 

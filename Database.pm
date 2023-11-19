@@ -65,14 +65,14 @@ my $db_name = "$data_dir/artisan.db";
 our %artisan_field_defs = (
 
 	playlists => [
-		'num		 INTEGER',
-		'name		 VARCHAR(16)',
+		'id		 	 VARCHAR(60)',
+		'uuid        VARCHAR(60)',
+		'name		 VARCHAR(60)',
 		'num_tracks  INTEGER',
 		'track_index INTEGER',
 		'shuffle	 INTEGER',
 		'query		 VARCHAR(2048)'
 	],
-
 
     #------------------------------------
     # TRACKS
@@ -80,11 +80,11 @@ our %artisan_field_defs = (
 
     tracks => [
 
-		'position 		INTEGER',
-			# the position within the playlist
-			# or in a fresh library scan. Need
-			# a query that returns MAX at the
-			# beginning of the scan ...
+		# 'position 		INTEGER',
+		# 	# the position within the playlist
+		# 	# or in a fresh library scan. Need
+		# 	# a query that returns MAX at the
+		# 	# beginning of the scan ...
 
 		'is_local       INTEGER',
 			# indicates whether this is a file

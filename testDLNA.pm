@@ -112,7 +112,7 @@ if (0)		# Search for playlists
 
 
 
-if (1)		# Search for audioItems(0)
+if (0)		# Search for audioItems(0)
 {
 	print "\n";
 	print "================================\n";
@@ -152,6 +152,30 @@ if (1)		# Search for audioItems(0)
 		}	# for each child
 	} 	# got $didl
 }
+
+
+if (1)		# Search for track(4-11846)
+{
+	print "\n";
+	print "================================\n";
+	print "track(4-11435)\n";
+	print "================================\n";
+
+	my $track_ref = '4-11435';
+
+	my $didl = $device->didlRequest(
+		'ContentDirectory',
+		'Search',[
+			ContainerID => 0,
+			SearchCriteria =>  "\@refID = \"$track_ref\"",
+			Filter => '*',
+			StartingIndex => 0,
+			RequestedCount => 100,
+			SortCriteria => '',
+		]);
+}
+
+
 
 
 

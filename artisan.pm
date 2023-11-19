@@ -141,8 +141,8 @@ AFTER_EXCEPTION:
 						my $http_running = HTTPServer::running();
 						my $ssdp_running = $ssdp ? $ssdp->running() : 0;
 						my $lr_running = $local_renderer ? $local_renderer->running() : 0;
-
-						while ($http_running || $ssdp_running || $lr_running )
+						my $start = time();
+						while (time() < $start+3 && $http_running || $ssdp_running || $lr_running )
 						{
 							display($dbg_main,1,"stopping http($http_running) ssdp($ssdp_running) lr($lr_running)");
 							$http_running = HTTPServer::running();
