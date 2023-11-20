@@ -71,6 +71,13 @@ my $show_error_level = $ERROR_MEDIUM;
 
 # My::Utils::set_alt_output(1);
 
+my $CHECK_DUPLICATE_FINGERPRINTS = 0;
+	# once in a while, check for duplicate fingerprints
+	# fpcalc does not produce the same fingerprints for
+	# two different mp3's which are obviously the same:
+	# C:\mp3s\singles\Rock\Main\Bob Dylan - Bob Dylan\Blowin' In The Wind.mp3
+	# C:\mp3s\albums\Rock\Main\Bob Dylan - Greatest Hits\02 - Blowin' In The Wind.mp3
+	# much less when one is a wma and the other is an mp3!
 
 my $CLEANUP_DATABASE = 1;
 	# remove unused database records at end of scan
@@ -244,9 +251,75 @@ sub scanTree
 	}
 	dump_stats() if $dbg_stats <= $debug_level;
 
+	checkDuplicateFingerprints($dbh) if $CHECK_DUPLICATE_FINGERPRINTS;
+
 	db_disconnect($dbh);
 	undef $params;
 }
+
+
+
+sub checkDuplicateFingerprints
+{
+	my ($dbh) = @_;
+	LOG(0,"Checking for duplicate fingerprints");
+
+	my $md5s = {};
+	my $fps  = {};
+	my $info_dir = "$data_dir/fpcalc_info";
+
+	my $tracks = get_records_db($dbh,"SELECT * FROM tracks ORDER BY path");
+	for my $track (@$tracks)
+	{
+		my $md5 = $track->{file_md5};
+		if (!$md5)
+		{
+			warning(0,1,"track($track->{path}) has no file_md5");
+		}
+		elsif ($md5s->{$md5})
+		{
+			warning(0,1,"track($track->{path} duplicate file_md5 to $md5s->{$md5}->{path}");
+		}
+		else
+		{
+			$md5s->{$md5} = $track;
+			my $filename = "$info_dir/$md5.txt";
+			if (!-f $filename)
+			{
+				warning(0,1,"track($track->{path}) no info file $filename");
+			}
+			else
+			{
+				my $fp_md5 = '';
+				my @lines = getTextLines($filename);
+				for my $line (@lines)
+				{
+					if ($line =~ /^FINGERPRINT_MD5=(.*)$/)
+					{
+						$fp_md5 = $1;
+						last;
+					}
+				}
+
+				if (!$fp_md5)
+				{
+					warning(0,1,"track($track->{path},$md5) has no FINGERPRINT_MD5");
+				}
+				elsif ($fps->{$fp_md5})
+				{
+					error("track($track->{path} duplicate fingerprint to $fps->{$fp_md5}->{path}");
+				}
+				else
+				{
+					$fps->{$fp_md5} = $track;
+				}
+			}
+		}
+	}
+
+	LOG(0,"Finished checking for duplicate fingerprints");
+}
+
 
 
 
@@ -558,6 +631,7 @@ sub scan_directory
 	# commit changes on each completed directory
 
 	$params->{dbh}->commit();
+
 	return 1;
 }
 
