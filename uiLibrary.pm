@@ -187,7 +187,7 @@ sub library_dir
 
 	# collect the child folders
 
-	my $results = $library->getSubitems('folders', $use_id, 0, 99999);
+	my $results = $library->getSubitems('folders', $use_id);
 
 	my $started = 0;
 	my $response = json_header();
@@ -265,7 +265,7 @@ sub library_tracklist
 	my ($library,$params) = @_;
 	my $id = $params->{id} || 0;
 	display($dbg_uilib,0,"library_tracklist($id)");
-	my $results = $library->getSubitems('tracks', $id, 0, 99999);
+	my $results = $library->getSubitems('tracks', $id);
 
 	my $started = 0;
 	my $response = json_header().'[';
@@ -277,7 +277,7 @@ sub library_tracklist
 		# should the title just be the tile ?
 
 		$rec->{key} = $rec->{id};
-		display($dbg_uilib,1,"rec->{title}=$rec->{title}");
+		display($dbg_uilib+1,1,"rec->{title}=$rec->{title}");
 		$rec->{TITLE} = $rec->{title};
 			# lc title appears to conflict with jquery-ui
 			# so we send upercase

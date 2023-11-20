@@ -42,7 +42,12 @@ use DeviceManager;
 
 
 my $dbg_lpl = 0;
+	#  0 = show basic API calls
+	# -1 = show API details
 my $dbg_pl_create = 0;
+	#  0 == show init_playlists header
+	# -1 == show playlist creation
+	# -2 == show playlist creation details
 
 
 
@@ -489,7 +494,7 @@ sub newFromRec
 	# and everything in rec is correct
 {
 	my ($class,$rec) = @_;
-	display($dbg_lpl,1,"newFromRec($rec->{id}) $rec->{name}");
+	display($dbg_pl_create+2,1,"newFromRec($rec->{id}) $rec->{name}");
 	my $this = $class->new();
 	mergeHash($this,$rec);
 	return $this;
@@ -501,12 +506,12 @@ sub newFromRecQuery
 	# table from the query ...
 {
 	my ($class,$rec) = @_;
-	display($dbg_lpl,1,"newFromRecQuery($rec->{id}) $rec->{name}");
+	display($dbg_pl_create+2,1,"newFromRecQuery($rec->{id}) $rec->{name}");
 	my $this = $class->new();
 	mergeHash($this,$rec);
 	return if !$this->create_tracks_from_query();
 	$this->saveToPlaylists();
-	display($dbg_lpl,1,"newFromRecQuery($rec->{name}) finished");
+	display($dbg_pl_create+2,1,"newFromRecQuery($rec->{name}) finished");
 	return $this;
 }
 
@@ -518,7 +523,7 @@ sub newFromDefault
 	# inserted into the main database by caller.
 {
 	my ($class,$id,$desc) = @_;
-	display($dbg_lpl,1,"newFromDefault($id) $desc->{name}");
+	display($dbg_pl_create+2,1,"newFromDefault($id) $desc->{name}");
 
 	my $this = $class->new();
 	mergeHash($this,$desc);
@@ -526,7 +531,7 @@ sub newFromDefault
 
 	return if !$this->create_tracks_from_query();
 
-	display($dbg_lpl,1,"newFromDefault($desc->{name}) finished");
+	display($dbg_pl_create+2,1,"newFromDefault($desc->{name}) finished");
 	return $this;
 }
 
@@ -544,8 +549,8 @@ sub create_tracks_from_query
 	my $name = $this->{name};
 	my $query = $this->{query};
 
-	display($dbg_lpl,1,"create_tracks_from_query($name) ...");
-	display($dbg_lpl,2,"query=$query");
+	display($dbg_pl_create+2,1,"create_tracks_from_query($name) ...");
+	display($dbg_pl_create+2,2,"query=$query");
 
 	$this->{num_tracks} = 0;
 	$this->{track_index} = 0;
@@ -560,34 +565,33 @@ sub create_tracks_from_query
 	my @paths = split("\t",$this->{query});
     for my $path (@paths)
     {
-		display($dbg_lpl,1,"path=$path");
+		display($dbg_pl_create+2,1,"path=$path");
 
 		my $query = "SELECT * FROM tracks WHERE instr(path,?) > 0";
 		my $exclude = ($path =~ s/\s+minus\s+(.*)$//) ? $1 : '';
 		my $args = [ $path ]; # ."/" ];
 		if ($exclude)
 		{
-			display($dbg_lpl,3,"exclude='$exclude'");
+			display($dbg_pl_create+2,3,"exclude='$exclude'");
 			push @$args,$exclude;
 			$query .= " AND instr(path,?) <= 0";
 		}
 		$query .= " ORDER BY path";
 			# "genre,album_artist,album_title,tracknum,title";
 		my $recs = get_records_db($artisan_dbh,$query,$args);
-		display($dbg_lpl,3,"found ".scalar(@$recs)." tracks from query path=$path");
+		display($dbg_pl_create+2,3,"found ".scalar(@$recs)." tracks from query path=$path");
 		$this->{num_tracks} += @$recs;
 		push @$tracks,@$recs;
 	}
 
 	# disconnect from the databases
 
-	display($dbg_lpl,2,"disconnecting ...");
     db_disconnect($artisan_dbh);
 	$this->fix_track_index();
 
 	# wipe out and recreate the tracks.db database
 
-	display($dbg_lpl,1,"inserting ".scalar(@$tracks)." items in new Playlist($this->{name})");
+	display($dbg_pl_create+2,1,"inserting ".scalar(@$tracks)." items in new Playlist($this->{name})");
 
 	# create new table
 
@@ -607,7 +611,7 @@ sub create_tracks_from_query
 	warning(0,0,"CREATED EMPTY TRACKLIST($this->{name}) FROM QUERY!!")
 		if (!@$tracks);
 
-	display($dbg_lpl,1,"create_tracks_from_query($name) finished");
+	display($dbg_pl_create+2,1,"create_tracks_from_query($name) finished");
 	return $this;
 }
 
@@ -637,7 +641,7 @@ sub initPlaylists
 		my $exists = -f "$playlist_dir/$name.db" ? 1 : 0;
 		my $rec = get_record_db($dbh, "SELECT * FROM playlists WHERE id='$id'");
 
-		display($dbg_pl_create,1,"got($name) exists=$exists rec="._def($rec));
+		display($dbg_pl_create+2,1,"got($name) exists=$exists rec="._def($rec));
 
 		# if record does not exist, we recreate the playlist from scratch
 		# if the table doesnt exist, then we create it from the query
@@ -646,7 +650,7 @@ sub initPlaylists
 		my $playlist;
 		if (!$rec)
 		{
-			display($dbg_pl_create,2,"creating new playlist($name) from default");
+			display($dbg_pl_create+1,2,"creating new playlist($name) from default");
 			$playlist = localPlaylist->newFromDefault($id,$desc);
 			next if !$playlist;
 			if (!insert_record_db($dbh,'playlists',$playlist))
@@ -658,13 +662,13 @@ sub initPlaylists
 		}
 		elsif (!$exists)
 		{
-			display($dbg_pl_create,2,"updating playlist($name) from rec's query");
+			display($dbg_pl_create+1,2,"updating playlist($name) from rec's query");
 			$playlist = localPlaylist->newFromRecQuery($rec);
 			next if !$playlist;
 		}
 		else
 		{
-			display($dbg_pl_create,2,"using existing playlist ".pad($name,20)." num_tracks=$rec->{num_tracks}");
+			display($dbg_pl_create+1,2,"using existing playlist ".pad($name,20)." num_tracks=$rec->{num_tracks}");
 			$playlist = localPlaylist->newFromRec($rec);
 				# cannot fail
 		}

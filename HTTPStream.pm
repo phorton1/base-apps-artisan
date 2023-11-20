@@ -18,7 +18,7 @@ use Database;
 use DeviceManager;
 
 
-my $dbg_stream = -1;
+my $dbg_stream = 0;
 
 
 sub stream_media
@@ -58,7 +58,6 @@ sub stream_media
 
         if (!$track)
         {
-			error("Content($id) not found in media library");
 			print $FH http_header({
 				'statuscode' => 404,
 				'content_type' => 'text/plain',
@@ -108,7 +107,7 @@ sub stream_media
 			$from_byte = int($1) || 0;
 			$to_byte = $2 ? int($2) : '';
 
-			display($dbg_stream,1,"Range Request from $from_byte/$content_len to $to_byte");
+			display($dbg_stream+1,1,"Range Request from $from_byte/$content_len to $to_byte");
 
 			$to_byte ||= $content_len - 1;
 			$to_byte = $content_len-1 if $to_byte >= $content_len - 1;
@@ -173,7 +172,7 @@ sub stream_media
 			content_type => $track->mimeType(),
 			content_length => $content_len,
 			addl_headers => \@addl_headers });
-		display($dbg_stream,1,"Sending $method http_header content_len=$content_len is_ranged=$is_ranged");
+		display($dbg_stream+1,1,"Sending $method http_header content_len=$content_len is_ranged=$is_ranged");
 		display($dbg_stream+1,2,$http_header);
 
 		if ($quitting)
@@ -233,7 +232,7 @@ sub stream_media
 			    $rslt = 0;
 				last;
 			}
-			display($dbg_stream+1,2,"Sending $bytes bytes at=$at of=$content_len remain=$bytes_left");
+			display($dbg_stream,2,"Sending $bytes bytes at=$at of=$content_len remain=$bytes_left");
 
 			if ($quitting)
 			{
@@ -263,7 +262,7 @@ sub stream_media
 			$at += $bytes;
 		}
 
-		display($dbg_stream+1,1,"finished sending stream rslt=".($rslt?"OK":"ERROR"));
+		display($dbg_stream,1,"finished sending stream rslt=".($rslt?"OK":"ERROR"));
 		close(ITEM);
 
 		#    }       # STREAM IT

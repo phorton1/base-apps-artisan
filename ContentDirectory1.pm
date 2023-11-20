@@ -18,7 +18,7 @@ use Database;
 use DeviceManager;
 
 my $PARSE_RESULTS = 0;
-	# will parse results for correctness check, dumping, etcs
+	# will parse results for correctness check, dumping, etc
 
 my $dbg_input = 0;
 	#  0 == show header for handle_request
@@ -40,6 +40,12 @@ my $cache_timeout = 1800;
 
 my $system_update_id:shared = time();
 
+sub getDumpDir
+{
+	my $dump_dir = "$temp_dir/_cd1";
+	mkdir $dump_dir if !-d $dump_dir;
+	return $dump_dir;
+}
 
 
 #=========================================================================
@@ -65,18 +71,14 @@ sub handle_request
 	display($dbg_input,0,"ContentDirectory1.handle_request($action) from $peer_ip:$peer_port");
 
 	my $xml = parseXML($post_data,{
-		what => "CD1Request.$action",
-		show_hdr => $dbg_input <= 0,
-		show_dump => $dbg_input < 0,
-		addl_level => 0,
-		dump => 0,
-		dump_dir => "$temp_dir/_CD1_dumps",
+		dbg => $dbg_input,
+		dbg_name => "$action.request",
+		dump_dir => getDumpDir(),		# comment out for no dumps
 		decode_didl => 0,
 		raw => 0,
 		pretty => 1,
 		my_dump => 0,
 		dumper => 1 });
-
 
 	my $content = undef;
 
@@ -92,6 +94,7 @@ sub handle_request
     }
 
     # capability responses
+	# For some reason WMP asks for SortCapabilities over and over
 
 	elsif ($action eq 'GetSearchCapabilities')
 	{
@@ -109,24 +112,25 @@ sub handle_request
 		$content .= '</u:GetSortCapabilitiesResponse>';
 		$content .= soap_footer();
 	}
-	elsif ($action eq 'GetSystemUpdateID')
-	{
-        warning(0,-1,"Thats the first time I've seen someone call action = GetSystemUpdateID($system_update_id)");
-		$content = soap_header();
-		$content .= '<u:GetSystemUpdateIDResponse xmlns:u="urn:schemas-upnp-org:service:ContentDirectory:1">';
-		$content .= "<Id>$system_update_id</Id>";
-		$content .= '</u:GetSystemUpdateIDResponse>';
-		$content .= soap_footer();
-	}
-	elsif ($action eq 'X_GetIndexfromRID')
-	{
-		$content = soap_header();
-		$content .= '<u:X_GetIndexfromRIDResponse xmlns:u="urn:schemas-upnp-org:service:ContentDirectory:1">';
-		$content .= '<Index>0</Index>';
-           # we are setting it to 0 - so take the first item in the list to be active
-		$content .= '</u:X_GetIndexfromRIDResponse>';
-		$content .= soap_footer();
-	}
+	# elsif ($action eq 'GetSystemUpdateID')
+	# {
+    #     warning(0,-1,"Thats the first time I've seen someone call action = GetSystemUpdateID($system_update_id)");
+	# 	$content = soap_header();
+	# 	$content .= '<u:GetSystemUpdateIDResponse xmlns:u="urn:schemas-upnp-org:service:ContentDirectory:1">';
+	# 	$content .= "<Id>$system_update_id</Id>";
+	# 	$content .= '</u:GetSystemUpdateIDResponse>';
+	# 	$content .= soap_footer();
+	# }
+	# elsif ($action eq 'X_GetIndexfromRID')
+	# {
+	# 	warning(0,-1,"Thats the first time I've seen someone call action = X_GetIndexfromRID()");
+	# 	$content = soap_header();
+	# 	$content .= '<u:X_GetIndexfromRIDResponse xmlns:u="urn:schemas-upnp-org:service:ContentDirectory:1">';
+	# 	$content .= '<Index>0</Index>';
+    #        # we are setting it to 0 - so take the first item in the list to be active
+	# 	$content .= '</u:X_GetIndexfromRIDResponse>';
+	# 	$content .= soap_footer();
+	# }
 	else
 	{
 		error("ContentDirectory1: $action not supported");
@@ -143,18 +147,14 @@ sub handle_request
 		$response .= $content;
 
 		parseXML($content,{
-			what => "CD1Request($action).response",
-			show_hdr  => $dbg_output <= 0,
-			show_dump => $dbg_output < 0,
-			addl_level => 1,
-			dump => 0,
-			dump_dir => "$temp_dir/_CD1_dumps",
+			dbg => $dbg_input,
+			dbg_name => "$action.response",
+			dump_dir => getDumpDir(),		# comment out for no dumps
 			decode_didl => 0,
 			raw => 0,
 			pretty => 1,
 			my_dump => 0,
-			dumper => 1 })	if $PARSE_RESULTS;
-
+			dumper => 1 }) if $PARSE_RESULTS;
 	}
 	else
 	{
@@ -256,7 +256,6 @@ sub search_directory
             StartingIndex
             RequestedCount
             Filter ));
-
     if (!$criteria)
     {
         error('ERROR: Unable to find SearchCriteria in search_directory()');
@@ -265,23 +264,18 @@ sub search_directory
 
 	$start ||= 0;
     $count ||= 0;
-    # $filter = '*' if (!$filter);
-    display($dbg_search,1,"id=$id start=$start count=$count filter=$filter");
-    display($dbg_search,1,"criteria=$criteria");
+    display($dbg_search+1,1,"id=$id start=$start count=$count filter=$filter");
+    display($dbg_search+1,1,"criteria=$criteria");
     $count ||= 10;
 
-	# start by just trying to do folders
-	# i am still confused by @refID
+	# We take a braindead approach that works with WMP.
+	# They either search for playlistContainers or audioItems
+	# in which case we return the virtualPlaylistFolder,
+	# or Tracks.
 
 	my $ref_id = $criteria =~ s/and \@refID exists false// ? 0 : 1;
 	my $what = $criteria =~ /^upnp:class derivedfrom "object\.(item|container)\.(.*)"/i ? $2 : 'unknown';
-
-	# now I think that what eq 'audioItem" with no other criteria
-	# means to return ALL the tracks in the library, subject to start/count,
-	# and WMP will figure out the rest of its stuff ...
-
-    display($dbg_search,1,"WHAT=$what");
-
+    display($dbg_search+1,1,"WHAT=$what");
 
 	my $num = 0;
 	my $total = 0;
@@ -290,7 +284,7 @@ sub search_directory
 	{
 		my $playlists = localPlaylist::getPlaylists();
 		$total = @$playlists;
-		display($dbg_search,2,"found $total playlists");
+		display($dbg_search+1,2,"found $total playlists");
 
 		my $max = $start+$count-1;
 		$max = @$playlists-1 if $max > @$playlists-1;
@@ -305,29 +299,19 @@ sub search_directory
 			}
 		}
 	}
-	else
+	elsif ($what eq 'audioItem')
 	{
-		# derived from object.item.audioItem
-		# this might require a JOIN
-		# or try both?
-
-		# in any case, I have to get the request for parent_id==0 working first
-		# lets give the exact same search  back to WMP and see what it returns ...
-		# it is definitely returning tracks  ...
-
-		# WHERE parent_id='$id'
 
 		my $dbh = db_connect();
 		my $recs = get_records_db($dbh,"SELECT * FROM tracks ORDER BY path");
 		$total = @$recs;
-		display($dbg_search,2,"found $total tracks");
+		display($dbg_search+1,2,"found $total tracks");
 
 		my $max = $start+$count-1;
 		$max = @$recs-1 if $max > @$recs-1;
 		for my $i ($start .. $max)
 		{
 			my $rec = $recs->[$i];
-			# print "    -->$rec->{path}\n";
 			my $track = Track->newFromHash($rec);
 			if ($track)
 			{
@@ -337,10 +321,14 @@ sub search_directory
 		}
 		db_disconnect($dbh);
 	}
+	else
+	{
+		error("!!!! UNSUPPORTED SEARCH CRITERIA($criteria) !!!!!!");
+	}
+
 	$didl .= didl_footer();
 
-
-    display($dbg_search,1,"didl contains $num items");
+    display($dbg_search,1,"didl returning $num items");
 
 	my $content =
 		soap_header().
@@ -349,15 +337,13 @@ sub search_directory
 		browse_footer('SearchResponse',$num,$total).
 		soap_footer();
 
-	my $dbg_name = "SEARCH.$what($id)";
+
+	my $dbg_name = "SEARCH.$what.$id.$start.$count";
 
 	parseXML($didl,{
-		what => "$dbg_name.didl",
-		show_hdr  => $dbg_search <= 0,
-		show_dump => $dbg_search < 0,
-		addl_level => 1,
-		dump => 0,
-		dump_dir => "$temp_dir/_CD1_dumps",
+		dbg => $dbg_search,
+		dbg_name => "$dbg_name.didl",
+		dump_dir => getDumpDir(),		# comment out to not dump
 		decode_didl => 1,
 		raw => 1,
 		pretty => 1,
@@ -365,18 +351,14 @@ sub search_directory
 		dumper => 1 }) if $PARSE_RESULTS;
 
 	parseXML($content,{
-		what => $dbg_name,
-		show_hdr  => $dbg_search <= 0,
-		show_dump => $dbg_search < 0,
-		addl_level => 1,
-		dump => 0,
-		dump_dir => "$temp_dir/_CD1_dumps",
+		dbg => $dbg_search,
+		dbg_name => $dbg_name,
+		dump_dir => getDumpDir(),		# comment out to not dump
 		decode_didl => 0,
 		raw => 1,
 		pretty => 1,
 		my_dump => 1,
 		dumper => 1 }) if $PARSE_RESULTS;
-
 
     return $content;
 
@@ -489,7 +471,7 @@ sub browse_directory
 
 	if (!$error)
 	{
-		display($dbg_browse,1,"browse folder($id)");
+		display($dbg_browse+1,1,"browse folder($id)");
 		$folder = $local_library->getFolder($id);
 		$error = "Could not get_folder($id)"
 			if (!$folder);
@@ -517,7 +499,7 @@ sub browse_directory
 	if (!$error)
 	{
 		$count ||= 0;
-		display($dbg_browse,1,"$flag(id=$id,start=$start,count=$count)");
+		display($dbg_browse+1,1,"$flag(id=$id,start=$start,count=$count)");
 		$count = 10 if !$count;
 
 		my $table = $folder->{dirtype} =~ /^(album|playlist)/ ?
@@ -525,7 +507,7 @@ sub browse_directory
         my $subitems = $local_library->getSubitems($table, $id, $start, $count);
 		my $num_items = @$subitems;
 
-		display($dbg_browse,1,"building response for $num_items $table"."s");
+		display($dbg_browse+1,1,"building response for $num_items $table"."s");
 
 		my $didl = didl_header();
         for my $item (@$subitems)
@@ -534,7 +516,7 @@ sub browse_directory
         }
 		$didl .= didl_footer();
 
-		display($dbg_browse,1,"didl contains ".scalar(@$subitems)." items");
+		display($dbg_browse,1,"didl returning ".scalar(@$subitems)." items");
 
 		my $content =
 			soap_header().
@@ -543,13 +525,12 @@ sub browse_directory
 			browse_footer('BrowseResponse',$num_items,$folder->{num_elements}).
 			soap_footer();
 
+		my $dbg_name = "BROWSE.$id.$start.$count";
+
 		parseXML($didl,{
-			what => "$flag($id).didl",
-			show_hdr  => $dbg_browse <= 0,
-			show_dump => $dbg_browse < 0,
-			addl_level => 1,
-			dump => 0,
-			dump_dir => "$temp_dir/_CD1_dumps",
+			dbg => $dbg_browse,
+			dbg_name => "$dbg_name.didl",
+			dump_dir => getDumpDir(),
 			decode_didl => 1,
 			raw => 1,
 			pretty => 1,
@@ -557,12 +538,9 @@ sub browse_directory
 			dumper => 1 }) if $PARSE_RESULTS;
 
 		parseXML($content,{
-			what => "$flag($id).content",
-			show_hdr  => $dbg_browse <= 0,
-			show_dump => $dbg_browse < 0,
-			addl_level => 1,
-			dump => 0,
-			dump_dir => "$temp_dir/_CD1_dumps",
+			dbg => $dbg_browse,
+			dbg_name => $dbg_name,
+			dump_dir => getDumpDir(),
 			decode_didl => 0,
 			raw => 1,
 			pretty => 1,

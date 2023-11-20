@@ -24,7 +24,7 @@ my $dbg_http = 0;
 	#  0 == lifecycle
 my $dbg_post = 1;
 	#  0 == show POST data
-my $dbg_art = 0;
+my $dbg_art = 1;
 	# 0 == debug get_art() method
 my $dbg_server_desc = 1;
 	# 0 = show the xml to be returned for ServerDesc.xml
@@ -49,7 +49,7 @@ my $dbg_request = 0;
 	# -2 == show header for renderer/xxx/update calls, headers for all otherw
 	# -3 == show headers for everything
 
-my $dbg_response = 0;			# show the first line
+my $dbg_response = 1;			# show the first line
 	# Response never shows for filtered requests
 	#  0 = single line with status line,, content_type, and length if present
 	# -1 = show the actual headers
@@ -229,12 +229,12 @@ sub handle_connection
 		my $content_length = $request_headers{CONTENT_LENGTH};
 		if (defined($content_length) && length($content_length) > 0)
 		{
-			display($dbg_request,1,"Reading $content_length bytes for POSTDATA");
+			display($dbg_post,1,"Reading $content_length bytes for POSTDATA");
 			read($FH, $post_data, $content_length);
 		}
 		else
 		{
-			display($dbg_request,1,"Reading content until  cr-lf for POSTDATA");
+			display($dbg_post,1,"Reading content until  cr-lf for POSTDATA");
 			my $line = <$FH>;
 			while ($line && $line ne "\r\n")
 			{
@@ -414,12 +414,9 @@ sub get_art
 	my ($id) = @_;
     display($dbg_art,0,"get_art($id)");
 
-	my $folder = $local_library->getFolder($id);
-	if (!$folder)
-	{
-		error("get_art($id): could not get folder($id)");
-		return http_header({ status_code => 400 });
-	}
+	my $folder = $local_library->getFolder($id,undef,$dbg_art);
+	return http_header({ status_code => 400 })
+		if !$folder;
 
     # open the file and send it to the client
 

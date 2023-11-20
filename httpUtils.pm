@@ -32,6 +32,7 @@ my $xmlsimple = XML::Simple->new(
 my $dbg_json = 1;
 
 
+
 BEGIN
 {
  	use Exporter qw( import );
@@ -250,6 +251,7 @@ sub url_decode
 #----------------------------------------
 # XML
 #----------------------------------------
+my $dbg_xml = 1;
 
 sub parseXML
 	# shows debugging at $dbg
@@ -259,55 +261,47 @@ sub parseXML
 	my ($data,$params) = @_;
 	$params ||= {};
 
-	my $what        = $params->{what} || 'xml';
-	my $show_hdr  	= $params->{show_hdr} || 0;
-	my $show_dump   = $params->{show_dump} || 0;
-	my $addl_level  = $params->{addl_level} || 0;
-	my $dump 		= $params->{dump} || 0;
+	display_hash($dbg_xml,0,"parseXML(params)",$params);
 
+	my $dbg 		= $params->{dbg} || 0;
+	my $dbg_name    = $params->{dbg_name} || 'parseXML';
+	my $dump_dir 	= $params->{dump_dir} || '';
 	my $decode_didl = $params->{decode_didl} || 0;
 	my $raw         = $params->{raw} || 0;
 	my $pretty      = $params->{pretty} || 0;
 	my $my_dump     = $params->{my_dump} || 0;
 	my $dumper	    = $params->{dumper} || 0;
 
-	my $dump_dir   = $params->{dump_dir} || $temp_dir;
-	mkdir $dump_dir if $dump && !(-d $dump_dir);
+	my $filename = "$dump_dir/$dbg_name";
+	display($dbg,0,"parseXML($dbg_name) bytes=".length($data),1);
 
-	my $filename = "$dump_dir/$what";
-	display(0,$addl_level,"parseXML($what) bytes=".length($data),1)
-		if $show_hdr;
-
-	display(0,$addl_level+1,"RAW($what)\n$data",1) if $raw && $show_dump;
-	printVarToFile(1,"$filename.raw.txt",$data,1) if $raw && $dump;
+	printVarToFile(1,"$filename.raw.txt",$data,1) if $raw && $dump_dir;
 
 	$data = decode_didl($data) if $decode_didl;
 
 	if ($pretty)
 	{
 		my $pretty = prettyXML($data,0);
-		display(0,$addl_level+1,"PRETTY($what)\n$pretty",1) if $show_dump;
-		printVarToFile(1,"$filename.pretty.txt",$pretty,1) if $dump;
+		printVarToFile(1,"$filename.pretty.txt",$pretty,1) if $dump_dir;
 	}
 
     my $xml;
     eval { $xml = $xmlsimple->XMLin($data) };
     if ($@)
     {
-        error("Unable to parse xml from $what:".$@);
+        $params->{error} = error("Unable to parse xml from $dbg_name:".$@);
         return;
     }
 	if (!$xml)
 	{
-		error("No parsed xml return for $what!!");
+		$params->{error} = error("Empty xml from $dbg_name!!");
 		return;
 	}
 
 	if ($my_dump)
 	{
 		my $mine = myDumper($xml,1);
-		display(0,$addl_level+1,"MY_DUMPER($what)\n$mine",1) if $show_dump;
-		printVarToFile(1,"$filename.my_dumper.txt",$mine,1) if $dump;
+		printVarToFile(1,"$filename.my_dumper.txt",$mine,1) if $dump_dir;
 	}
 
 	if ($dumper)
@@ -316,8 +310,7 @@ sub parseXML
 			"-------------------------------------------------\n".
 			Dumper($xml).
 			"-------------------------------------------------\n";
-		display(0,$addl_level+1,"DUMPER($what)\$ddd") if $show_dump;
-		printVarToFile(1,"$filename.dumper.txt",$ddd,1) if $dump;
+		printVarToFile(1,"$filename.dumper.txt",$ddd,1) if $dump_dir;
 	}
 
 	return $xml;

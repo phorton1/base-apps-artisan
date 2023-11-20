@@ -188,10 +188,10 @@ sub write_device_cache
 # process device XML
 #-------------------------------
 
-sub getXML
+sub get_xml
 {
 	my ($ua,$dbg_id,$location) = @_;
-	display($dbg_desc,0,"getXML() from $location");
+	display($dbg_desc,0,"get_xml() from $location");
 
     my $response = $ua->get($location);
     if (!$response->is_success())
@@ -200,14 +200,14 @@ sub getXML
         return;
     }
 
+	my $devices_dir = "$temp_dir/_devices";
+	mkdir $devices_dir if !-d $devices_dir;
+
     my $data = $response->content();
 	my $xml = parseXML($data, {
-		what => $dbg_id,
-		addl_level => 0,
-		show_hdr => $dbg_desc,
-		show_dump => $dbg_desc < -1,
-		dump => $DUMP_XML_FILES,
-		dump_dir => "$temp_dir/_devices",
+		dbg => $dbg_desc,
+		dbg_name => $dbg_id,
+		dump_dir => $DUMP_XML_FILES ? $devices_dir : '',
 		decode_didl => 0,
 		raw => 0,
 		pretty => 1,
@@ -238,7 +238,7 @@ sub getDeviceXML
 
 	my $ua = LWP::UserAgent->new();
 	my $dbg_id = "$deviceType.$uuid";
-	my $device_xml = getXML($ua,$dbg_id,$location);
+	my $device_xml = get_xml($ua,$dbg_id,$location);
 	return if !$device_xml;
 
 	my $xml_dev = $device_xml->{device};

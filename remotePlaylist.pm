@@ -161,24 +161,29 @@ sub initPlaylists
 	my $playlists_by_id = $all_playlists_by_id->{$library->{uuid}} = shared_clone({});
 
 	# Do the device request to search for all playlist containers
-	# This search always uses the cache didl ...
+	# We call didlRequest() directly as there are no records to insert in database
 
-	my $didl = $library->didlRequest(
-		'ContentDirectory',
-		'Search',[
-			ContainerID => 0,
-			SearchCriteria =>  'upnp:class derivedfrom "object.container.playlistContainer"',
-			Filter => '*',
-			StartingIndex => 0,
-			RequestedCount => 9999,
-			SortCriteria => '',
-		]);
+	my $dbg_name = 'Search(playlists)';
+	my $params = $library->getParseParams($dbg_rpl,$dbg_name);
+
+	$params->{service} = 'ContentDirectory';
+	$params->{action} = 'Search';
+	$params->{args} = [
+		ContainerID => 0,
+		SearchCriteria =>  'upnp:class derivedfrom "object.container.playlistContainer"',
+		Filter => '*',
+		StartingIndex => 0,
+		RequestedCount => 9999,
+		SortCriteria => '', ];
+
+	my $didl = $library->didlRequest($params);
 
 	if ($didl)
 	{
 		# The problem is that WMP returns the same playlist as a child of
 		# multiple different containers, with no way to tell they are the same,
-		# therefore WE WILL TAKE ONLY UNIQUE NAMES as given by container->{dc:title}
+		# therefore WE WILL TAKE ONLY UNIQUE NAMES as given by the first
+		# container->{dc:title}
 
 		my $first_by_title = {};
 		my $containers = $didl->{container};

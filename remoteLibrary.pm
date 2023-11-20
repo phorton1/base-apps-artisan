@@ -11,8 +11,31 @@
 #	getTrackMetadata
 #	getFolderMetadata
 #
-# Implemented in terms of xml POST requests to a remote
-# DLNA MediaServer ContentDirectory service
+# The main entry point from the webUI is getSubitems().
+# The cache/database scheme is built around this fact.
+# 'Tracks' and 'Folders' in the remoteLibrary are always
+# 'built' as the children of a folder (or playlist) via a
+# call to getSubitems() which subsequently calls
+# BrowseDirectChildren for some parent_id.
+#
+# The webUI may be asking for folders or tracks, but
+# the result may contain either, so getSubItems always
+# creates (sub) 'Folders' for 'containers' it finds, and
+# (non-unique) 'Tracks' for any 'items' it finds in the
+# returned result.
+#
+# getSubItems then returns the correct type of child things,
+# for example, returning 0 items when asked to find folders,
+# but finding a bunch of tracks (items).
+#
+# remotePlaylist separately caches the result of its
+# SEARCH for playlists, which takes a long time.
+#
+# The presence of a cachefile means that we have already
+# gotten the children of the given ID and the results
+# are in the database.  There is currently no 'updating'
+# of the database based on (event) UpdateID or partial
+# removal of cachefiles.  Remove them all, or none.
 
 
 package remoteLibrary;
@@ -31,23 +54,11 @@ use remotePlaylist;
 use base qw(Library);
 
 
-my $REINIT_REMOTE_DBS = 0;
-
-
 my $dbg_rlib = 0;
+	#  0 = main
+	# -1 == remoteFolders and Tracks
+	# -2 == remoteFolder selection criteria
 
-
-# my $folder_cache:shared = shared_clone({});
-# my $track_cache:shared = shared_clone({});
-
-
-sub dbPath
-{
-	my ($this) = @_;
-	my $cache_dir = $this->cacheDir();
-	my $db_path = "$cache_dir/_remote_library.db";
-	return $db_path;
-}
 
 
 sub new
@@ -58,14 +69,89 @@ sub new
 	my $this = $class->SUPER::new($params);
 	bless $this,$class;
 
-	# create or open the database
-
-	my $db_path = $this->dbPath();
-	unlink $db_path if $REINIT_REMOTE_DBS;
-	$this->{new_db} = -f $db_path ? 0 : 1;
-	db_initialize($db_path);
+	$this->startDatabase();
 
 	return $this;
+}
+
+
+
+
+sub startDatabase
+	# if the database doesn't exist, create it,
+	# and update it from any existing cache files.
+{
+	my ($this) = @_;
+	my $db_path = $this->dbPath();
+	if (!-f $db_path)
+	{
+		display($dbg_rlib,0,"Creating new database");
+		db_initialize($db_path);
+		my $dbh = db_connect($this->dbPath());
+		return if !$dbh;
+
+		my $cache_dir = $this->subDir('cache');
+		if (!opendir(DIR,$cache_dir))
+		{
+			error("Could not opendir $cache_dir");
+			return;
+		}
+		while (my $entry=readdir(DIR))
+		{
+			my $filename = "$cache_dir/$entry";
+			if ($entry =~ /^(.*)\.didl\.txt$/ && -f $filename)
+			{
+				my $dbg_name = $1;
+				my $params = $this->getParseParams($dbg_rlib,$dbg_name);
+				$params->{dbh} = $dbh;
+
+				# by virtue of the fact that the cachefile exists,
+				# the underlying didlRequest() will use the cachefile,
+				# not call the serviceRequest, and hence does not
+				# need 'service', 'action', or 'args' parameters.
+
+				last if !$this->getAndParseDidl($params);
+			}
+		}
+		db_disconnect($dbh);
+		closedir DIR;
+	}
+}
+
+
+sub dbPath
+{
+	my ($this) = @_;
+	my $device_dir = $this->deviceDir();
+	my $db_path = "$device_dir/remote_library.db";
+	return $db_path;
+}
+
+
+sub subDir
+{
+	my ($this,$what) = @_;
+	my $device_dir = $this->deviceDir();
+	my $subdir = "$device_dir/$what";
+	mkdir $subdir if !-f $subdir;
+	return $subdir;
+}
+
+
+sub getParseParams
+{
+	my ($this,$dbg,$dbg_name,) = @_;
+	my $cache_dir = $this->subDir('cache');
+	my $parse_params = {
+		dbg => $dbg_rlib,
+		dbg_name => "$dbg_name",
+		cache_file => "$cache_dir/$dbg_name.didl.txt",
+		dump_dir => $this->subDir('dump'),
+		raw => 0,
+		pretty => 1,
+		my_dump => 0,
+		dumper => 1, };
+	return $parse_params;
 }
 
 
@@ -106,51 +192,40 @@ sub getFolder
 
 
 sub getSubitems
-	# Called by DLNA and webUI to return the list
-	# of items in a folder given by ID.  If the
-	# folder type is an 'album', $table will be
-	# TRACKS, to get the tracks in an album.
-	# An album may not contain subfolders.
+	# Called by DLNA and webUI to return the list of items in a
+	# folder given by ID.  If $table is 'folders', we return only
+	# Folders, and if table is 'tracks' we return only Tracks.
 	#
-	# Otherwise, the $table will be FOLDERS and
-	# we are finding the children folders of the
-	# given ID (which is also a leaf "class" or "genre).
-	# We sort the list so that subfolders (sub-genres)
-	# show up first in the list.
+	# If the cache_file is present, we return results from the databae,
+	# otherwise, we make the request, parse the results for both
+	# both containers (Folders) and items (Tracks), adding them
+	# to the database, and then return only the specified things.
+	#
+	# I currently always ask for everything, and this method does
+	# not return partial results.
 {
 	my ($this,$table,$id,$start,$count) = @_;
     $start ||= 0;
     $count ||= 999999;
     display($dbg_rlib,0,"get_subitems($table,$id,$start,$count)");
 
-	my $didl = $this->didlRequest(
-		'ContentDirectory',
-		'Browse',[
-			ObjectID => $id,
-			BrowseFlag => 'BrowseDirectChildren',
-			Filter => '*',
-			StartingIndex => 0,
-			RequestedCount => $count,
-			SortCriteria => '', ]);
-		# WMP Media Server is fucking sensitive to the
-		# order of arguments!  I was struggling just to
-		# get it working ... and this order, from
-		# DLNA Browser' made it go ...
-
 	my $rslt = shared_clone([]);
-	return $rslt if !$didl;
-
 	my $dbh = db_connect($this->dbPath());
 	return $rslt if !$dbh;
 
-	# I currently always use 0 and 99999 ...
-	# may need to change this a bit in the future
-	# to use $start and $count
+	# by convention, didlRequest will add '.didl.txt' to the filenames,
+	# and deviceRequest() will add '.txt'
 
-	my $from_cache = $didl->{from_cache};
-	display($dbg_rlib,1,"get_subitems() from_cache=$from_cache");;
-	if ($from_cache && !$REINIT_REMOTE_DBS)
+	my $from_database = 0;
+	my $dbg_name = "Browse($id)";
+	my $cache_dir = $this->subDir('cache');
+	my $cache_file = "$cache_dir/$dbg_name.didl.txt";
+
+	# if the cache_file exists, get records from the database
+
+	if (-f $cache_file)
 	{
+		$from_database = 1;
 		my $order_field = $table eq 'tracks' ? 'position' : 'path';
 		my $recs = get_records_db($dbh,"SELECT * FROM $table WHERE parent_id = '$id' ORDER BY $order_field");
 		if ($recs && @$recs)
@@ -163,37 +238,29 @@ sub getSubitems
 			}
 		}
 	}
-
-	# Regardless of the $table requested, we scan the result
-	# for any folders or tracks, but only return the type of
-	# thing requested.
-
 	else
 	{
-		my $position = 1;
-		my $items = $didl->{item} || [];
-		for my $item (@$items)
-		{
-			my $remote_track = $this->remoteTrack($dbh,\$position,$item);
-			push @$rslt,$remote_track
-				if $remote_track && $table eq 'tracks';
-		}
+		my $params = $this->getParseParams($dbg_rlib,$dbg_name);
 
-		my $containers = $didl->{container} || [];
-		for my $container (@$containers)
-		{
-			my $remote_folder = $this->remoteFolder($dbh,$container);
-			push @$rslt,$remote_folder
-				if $remote_folder && $table eq 'folders';
-		}
+		$params->{dbh} = $dbh;
+		$params->{service} = 'ContentDirectory';
+		$params->{action} = 'Browse';
+		$params->{args} = [
+			ObjectID => $id,
+			BrowseFlag => 'BrowseDirectChildren',
+			Filter => '*',
+			StartingIndex => 0,
+			RequestedCount => $count,
+			SortCriteria => '', ];
+
+		$rslt = $this->getAndParseDidl($params,$table);
 	}
 
 	db_disconnect($dbh);
-	display($dbg_rlib,0,"get_subitems() returning ".scalar(@$rslt)." $table recs ".($from_cache?'from cache':''));
+	display($dbg_rlib,0,"get_subitems() returning ".scalar(@$rslt)." $table recs ".($from_database?'from database':''));
 	return $rslt;
 
 }   # get_subitems
-
 
 
 
@@ -240,15 +307,50 @@ sub getTrackMetadata
 }
 
 
-
-
-
-
-
-
 #--------------------------------------------------------
 # Implementation
 #--------------------------------------------------------
+
+sub getAndParseDidl
+{
+	my ($this,$params,$table) = @_;
+	$table ||= '';
+
+	my $dbh = $params->{dbh};
+	my $dbg = $params->{dbg};
+	my $dbg_name = $params->{dbg_name};
+    display($dbg,0,"getAndParseDidl($dbg_name) table($table)");
+
+	my $rslt = shared_clone([]);
+	my $didl = $this->didlRequest($params);
+	return $rslt if !$didl;
+
+	# Regardless of the $table requested, we scan the result
+	# for any folders or tracks, but only return the type of
+	# thing requested.
+
+	my $position = 1;
+	my $items = $didl->{item} || [];
+	for my $item (@$items)
+	{
+		my $remote_track = $this->remoteTrack($dbh,\$position,$item);
+		push @$rslt,$remote_track
+			if $remote_track && (!$table || $table eq 'tracks');
+	}
+
+	my $containers = $didl->{container} || [];
+	for my $container (@$containers)
+	{
+		my $remote_folder = $this->remoteFolder($dbh,$container);
+		push @$rslt,$remote_folder
+			if $remote_folder && (!$table || $table eq 'folders');
+	}
+
+	display($dbg_rlib,0,"getAndParseDidl() returning ".scalar(@$rslt)." $table recs ");
+	return $rslt;
+}
+
+
 
 sub remoteFolder
 {
@@ -258,7 +360,7 @@ sub remoteFolder
 	my $title = $container->{'dc:title'} || '';
 	my $num_elements = $container->{childCount} || 0;
 
-	display($dbg_rlib,0,"remoteFolder($id,$class_name) $title $num_elements");
+	display($dbg_rlib+1,0,"remoteFolder($id,$class_name) $title $num_elements");
 
 	# we will only accept containers that contain music stuff
 
@@ -279,14 +381,14 @@ sub remoteFolder
 			0
 		)
 		{
-			display($dbg_rlib,1,"accepting container($id) based on class($content)");
+			display($dbg_rlib+2,1,"accepting container($id) based on class($content)");
 			$accept = 1;
 			last;
 		}
 	}
 	if (!$accept)
 	{
-		display($dbg_rlib,1,"skipping container($id)");
+		display($dbg_rlib+2,1,"skipping container($id)");
 		return;
 	}
 
@@ -368,7 +470,7 @@ sub remoteTrack
 	my $id = $item->{id};
 	my $title = $item->{'dc:title'};
 
-	display($dbg_rlib,0,"remoteTrack($id) $title");
+	display($dbg_rlib+1,0,"remoteTrack($id) $title");
 
 	my $path = '';
 	my $size = 0;

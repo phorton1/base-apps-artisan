@@ -56,8 +56,9 @@ sub new
 sub getTrack
 	# never called with $dbh, but API implemented for consistency
 {
-    my ($this,$id,$dbh) = @_;
-	display($dbg_llib,0,"getTrack($id)");
+    my ($this,$id,$dbh,$dbg) = @_;
+	$dbg = $dbg_llib if !defined($dbg);
+	display($dbg,0,"getTrack($id)");
 	my $connected = 0;
 	if (!$dbh)
 	{
@@ -75,8 +76,9 @@ sub getFolder
 	# called once with $dbh, from HTTPServer::search_directory()
 	# as part of the DLNA ContentServer:1 browse functionality
 {
-    my ($this,$id,$dbh) = @_;
-	display($dbg_llib,0,"getFolder($id) dbh="._def($dbh));
+    my ($this,$id,$dbh,$dbg) = @_;
+	$dbg = $dbg_llib if !defined($dbg);
+	display($dbg,0,"getFolder($id) dbh="._def($dbh));
 
 	# if 0, return a fake record
 
@@ -93,7 +95,7 @@ sub getFolder
 	}
 	elsif ($playlist)
 	{
-		$folder = virtualPlaylistFolder($id);
+		$folder = virtualPlaylistFolder($playlist);
 	}
 	else
 	{
@@ -141,7 +143,7 @@ sub getSubitems
 		my $playlists = localPlaylist::getPlaylists();
 		display($dbg_subitems,1,"found ".scalar(@$playlists)." playlists");
 		my $max = $start+$count-1;
-		$max = @$playlists-1 if $max > @$$playlists-1;
+		$max = @$playlists-1 if $max > @$playlists-1;
 		for my $i ($start .. $max)
 		{
 			my $folder = virtualPlaylistFolder($playlist);
