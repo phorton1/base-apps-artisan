@@ -30,9 +30,6 @@ use sigtrap 'handler', \&onSignal, 'normal-signals';
 my $dbg_main = 0;
 
 
-$HTTPServer::SINGLE_THREAD=1;
-
-
 sub onSignal
 {
     my ($sig) = @_;
@@ -135,14 +132,14 @@ AFTER_EXCEPTION:
 				if ($char == 3)        # char = 0x03
 				{
 					display($dbg_main,0,"exiting Artisan on CTRL-C");
-					if (1)
+					if (0)
 					{
 						$quitting = 1;
 						my $http_running = HTTPServer::running();
 						my $ssdp_running = $ssdp ? $ssdp->running() : 0;
 						my $lr_running = $local_renderer ? $local_renderer->running() : 0;
 						my $start = time();
-						while (time() < $start+3 && $http_running || $ssdp_running || $lr_running )
+						while (time()<$start+3 && $http_running || $ssdp_running || $lr_running )
 						{
 							display($dbg_main,1,"stopping http($http_running) ssdp($ssdp_running) lr($lr_running)");
 							$http_running = HTTPServer::running();

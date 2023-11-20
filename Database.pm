@@ -80,11 +80,11 @@ our %artisan_field_defs = (
 
     tracks => [
 
-		# 'position 		INTEGER',
-		# 	# the position within the playlist
-		# 	# or in a fresh library scan. Need
-		# 	# a query that returns MAX at the
-		# 	# beginning of the scan ...
+		'position 		INTEGER',
+			# the position within the playlist
+			# or in a fresh library scan. Need
+			# a query that returns MAX at the
+			# beginning of the scan ...
 
 		'is_local       INTEGER',
 			# indicates whether this is a file
@@ -223,16 +223,19 @@ our %artisan_field_defs = (
 
 sub db_initialize
 {
-    LOG(0,"db_initialize($db_name)");
+	my ($use_name) = @_;
+	$use_name ||= $db_name;
+
+    LOG(0,"db_initialize($use_name)");
 
     # my @tables = select_db_tables($dbh);
     # if (!grep(/^METADATA$/, @tables))
 
-    if (!(-f $db_name))
+    if (!(-f $use_name))
     {
         LOG(1,"creating new database");
 
-	   	my $dbh = db_connect();
+	   	my $dbh = db_connect($use_name);
 
 		$dbh->do('CREATE TABLE tracks ('.
             join(',',@{$artisan_field_defs{tracks}}).')');
@@ -248,8 +251,12 @@ sub db_initialize
 
 sub db_connect
 {
-    display($dbg_db,0,"db_connect");
-	my $dbh = sqlite_connect($db_name,'artisan','');
+	my ($use_name) = @_;
+	$use_name ||= $db_name;
+
+    display($dbg_db,0,"db_connect($use_name)");
+	my $dbh = sqlite_connect($use_name,'artisan','');
+	error("Could not connect to database($use_name)") if !$dbh;
 	return $dbh;
 }
 

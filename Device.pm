@@ -67,10 +67,6 @@ my $dbg_dlna = 0;
 my $dbg_response = 0;
 
 
-my $remote_cache_dir = "$mp3_dir/_data/remote_cache";
-mkdir $remote_cache_dir if !(-d $remote_cache_dir);
-
-
 sub new
 {
 	my ($class, $params) = @_;
@@ -91,7 +87,45 @@ sub new
 
 
 
-sub getDbgName
+
+sub cacheDir
+{
+	my ($this) = @_;
+	my $cache_dir = "$temp_dir/$this->{uuid}";
+	mkdir $cache_dir if !(-d $cache_dir);
+	return $cache_dir;
+}
+
+
+sub cacheName
+{
+	my ($this,$service_name,$action,$args) = @_;
+	my $cache_name = "$service_name.$action";
+	if ($args)
+	{
+		my $num = @$args / 2;
+		for (my $i=0; $i<$num; $i++)
+		{
+			my $l = $args->[$i*2];
+			my $r = $args->[$i*2 + 1];
+			$r =~ s/:|"|\*/~/g;
+			$cache_name .= ".$l=$r";
+		}
+	}
+
+	my $cache_dir = $this->cacheDir();
+	return "$cache_dir/$cache_name.txt";
+}
+
+
+
+sub dumpDir
+{
+	my ($this) = @_;
+	return $this->cacheDir()."/dumps";
+}
+
+sub dbgName
 {
 	my ($this,$action,$args) = @_;
 	my $dbg_main_arg = $args->[1];
@@ -102,13 +136,15 @@ sub getDbgName
 }
 
 
+
+
 sub didlRequest
 	# method expects a <Result> containing DIDL text
 	# and is used for content requests.
 {
     my ($this,$service_name,$action,$args) = @_;
 
-	my $dbg_name = $this->getDbgName($action,$args);
+	my $dbg_name = $this->dbgName($action,$args);
 	display($dbg_dlna,0,"DIDL($service_name) Request($dbg_name)");
 
 	my $aresponse = $this->serviceRequest($service_name,$action,$args);
@@ -120,7 +156,8 @@ sub didlRequest
 		error("Could not get <Result> from $dbg_name");
 		return;
 	}
-
+	my $from_cache = $aresponse->{from_cache};
+	display($dbg_dlna,1,"DIDL($service_name) from_cache") if $from_cache;
 	my $content = $result ? $result->{content} : '';
 	if (!$content)
 	{
@@ -133,7 +170,8 @@ sub didlRequest
 		show_hdr  => 1,
 		show_dump => 0,
 		addl_level => 0,
-		dump => !$result->{from_cache},
+		dump => !$from_cache,
+		dump_dir => $this->dumpDir(),
 		decode_didl => 0,
 		raw => 0,
 		pretty => 1,
@@ -141,29 +179,10 @@ sub didlRequest
 		dumper => 1, });
 
 	return if !$didl;
+	$didl->{from_cache} = $from_cache;
 	return $didl;
 }
 
-
-
-sub cacheName
-{
-	my ($this,$service_name,$action,$args) = @_;
-	my $cache_name = "$this->{uuid}.$service_name.$action";
-	if ($args)
-	{
-
-		my $num = @$args / 2;
-		for (my $i=0; $i<$num; $i++)
-		{
-			my $l = $args->[$i*2];
-			my $r = $args->[$i*2 + 1];
-			$r =~ s/:|"|\*/~/g;
-			$cache_name .= ".$l=$r";
-		}
-	}
-	return "$remote_cache_dir/$cache_name.txt";
-}
 
 
 sub serviceRequest
@@ -174,9 +193,7 @@ sub serviceRequest
 	# that expects a <Result> containing DIDL in it.
 {
     my ($this,$service_name,$action,$args) = @_;
-
-
-	my $dbg_name = $this->getDbgName($action,$args);
+	my $dbg_name = $this->dbgName($action,$args);
 	display($dbg_dlna,0,"service($service_name) Request($dbg_name)");
 
     my $data;
@@ -184,13 +201,12 @@ sub serviceRequest
 	my $cache_name = $this->cacheName($service_name,$action,$args);
 	if (-f $cache_name)
 	{
-		display($dbg_dlna,1,"found cachefile");
+		display($dbg_dlna,1,"serviceRequest() found cachefile");
 		$data = getTextFile($cache_name,1);
 		$from_cache = 1;
 	}
 	else
-		{
-
+	{
 		my $service = $this->{services}->{$service_name};
 		if (!$service)
 		{
@@ -336,6 +352,7 @@ sub serviceRequest
 		show_dump => $dbg_response < 0,
 		addl_level => 0,
 		dump => !$from_cache,
+		dump_dir => $this->dumpDir(),
 		decode_didl => 0,
 		raw => 0,
 		pretty => 1,

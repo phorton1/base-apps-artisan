@@ -138,13 +138,13 @@ sub getSubitems
 
 	if ($table eq 'folders' && $id eq $ID_PLAYLISTS)
 	{
-		my $names = localPlaylist->getPlaylistNames();
-		display($dbg_subitems,1,"found ".scalar(@$names)." playlists");
+		my $playlists = localPlaylist::getPlaylists();
+		display($dbg_subitems,1,"found ".scalar(@$playlists)." playlists");
 		my $max = $start+$count-1;
-		$max = @$names-1 if $max > @$names-1;
+		$max = @$playlists-1 if $max > @$$playlists-1;
 		for my $i ($start .. $max)
 		{
-			my $folder = virtualPlaylistFolder($names->[$i]);
+			my $folder = virtualPlaylistFolder($playlist);
 			if ($folder)
 			{
 				push @retval,$folder;
@@ -385,14 +385,12 @@ sub virtualPlaylistsFolder
 
 sub virtualPlaylistFolder
 {
-	my ($name) = @_;		# the id is the name of the playlist
-	display($dbg_virt,0,"virtualPlaylistsFolder($name)");
-	my $playlist = localPlaylist::getPlaylist($name);
-	return !error("Could not find localPlalist($name)")
-		if !$playlist;
+	my ($playlist) = @_;		# the id is the name of the playlist
+	my $name = $playlist->{name};
+	display($dbg_virt,0,"virtualPlaylistFolder($name)");
 
 	return Folder->newFromHash({
-		id => $name,
+		id => $playlist->{id},
 		parent_id => $ID_PLAYLISTS,
 		title => $name,
 		dirtype => 'playlist',

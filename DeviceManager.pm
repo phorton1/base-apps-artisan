@@ -105,7 +105,8 @@ sub read_device_cache
 {
 	display($dbg_cache,0,"read_device_cache()");
 
-	my $device;
+	my $devs = [];
+	my $dev;
 	my $service;
 	my @lines = getTextLines($device_cache_file);
 	for my $line (@lines)
@@ -116,28 +117,40 @@ sub read_device_cache
 		if ($lval eq 'device')
 		{
 			display($dbg_cache+1,1,"cache_device($rval)");
-			$device = shared_clone({ services => shared_clone({})});
-			bless $device,"remote$rval";
-			push @$device_list,$device;
-			$device->{metadata} = shared_clone({})
+			$dev = shared_clone({
+				deviceType => $rval,
+				services => shared_clone({}) });
+			$dev->{metadata} = shared_clone({})
 				if $rval eq $DEVICE_TYPE_RENDERER;
+			push @$devs,$dev;
 			$service = '';
 		}
 		elsif ($lval eq 'service')
 		{
 			display($dbg_cache+1,2,"service($rval)");
 			$service= shared_clone({});
-			$device->{services}->{$rval} = $service;
+			$dev->{services}->{$rval} = $service;
 		}
 		else
 		{
 			display($dbg_cache+1,2+($service?1:0),"$lval='$rval'");
 			$service ?
 				$service->{$lval} = $rval :
-				$device->{$lval} = $rval;
+				$dev->{$lval} = $rval;
 		}
 	}
+
+	# call proper ctors
+
+	for $dev (@$devs)
+	{
+		my $device = $dev->{deviceType} eq $DEVICE_TYPE_LIBRARY ?
+			remoteLibrary->new($dev) :
+			remoteRenderer->new($dev);
+			push @$device_list,$device;
+	}
 }
+
 
 
 sub write_device_cache
@@ -194,6 +207,7 @@ sub getXML
 		show_hdr => $dbg_desc,
 		show_dump => $dbg_desc < -1,
 		dump => $DUMP_XML_FILES,
+		dump_dir => "$temp_dir/_devices",
 		decode_didl => 0,
 		raw => 0,
 		pretty => 1,

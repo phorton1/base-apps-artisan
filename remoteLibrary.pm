@@ -24,15 +24,30 @@ use IO::Socket::INET;
 use XML::Simple;
 use artisanUtils;
 use Library;
+use Database;
+use Track;
+use Folder;
 use remotePlaylist;
 use base qw(Library);
+
+
+my $REINIT_REMOTE_DBS = 0;
 
 
 my $dbg_rlib = 0;
 
 
-my $folder_cache:shared = shared_clone({});
-my $track_cache:shared = shared_clone({});
+# my $folder_cache:shared = shared_clone({});
+# my $track_cache:shared = shared_clone({});
+
+
+sub dbPath
+{
+	my ($this) = @_;
+	my $cache_dir = $this->cacheDir();
+	my $db_path = "$cache_dir/_remote_library.db";
+	return $db_path;
+}
 
 
 sub new
@@ -42,6 +57,14 @@ sub new
 	display($dbg_rlib,0,"remoteLibrary::new()");
 	my $this = $class->SUPER::new($params);
 	bless $this,$class;
+
+	# create or open the database
+
+	my $db_path = $this->dbPath();
+	unlink $db_path if $REINIT_REMOTE_DBS;
+	$this->{new_db} = -f $db_path ? 0 : 1;
+	db_initialize($db_path);
+
 	return $this;
 }
 
@@ -54,12 +77,14 @@ sub getTrack
 {
     my ($this,$id) = @_;
 	display($dbg_rlib,0,"getTrack($id)");
-	my $tcache = $track_cache->{$this->{uuid}};
-	my $track = $tcache ? $tcache->{$id} : '';
 
-	# currently only works if we drilled down to it
+	my $dbh = db_connect($this->dbPath());
+	return if !$dbh;
+	my $rec = get_record_db($dbh,"SELECT * FROM tracks WHERE id='$id'");
+	db_disconnect($dbh);
 
-	error("could not getTrack($id)") if !$track;
+	return !error("Could not find track($id)") if !$rec;
+	my $track = Track->newFromHash($rec);
 	return $track;
 }
 
@@ -68,9 +93,14 @@ sub getFolder
 {
     my ($this,$id) = @_;
 	display($dbg_rlib,0,"getFolder($id)");
-	my $fcache = $folder_cache->{$this->{uuid}};
-	my $folder = $fcache ? $fcache->{$id} : '';
-	error("could not getFolder($id)") if !$folder;
+
+	my $dbh = db_connect($this->dbPath());
+	return if !$dbh;
+	my $rec = get_record_db($dbh,"SELECT * FROM folders WHERE id='$id'");
+	db_disconnect($dbh);
+
+	return !error("Could not find track($id)") if !$rec;
+	my $folder = Folder->newFromHash($rec);
 	return $folder;
 }
 
@@ -100,7 +130,7 @@ sub getSubitems
 			BrowseFlag => 'BrowseDirectChildren',
 			Filter => '*',
 			StartingIndex => 0,
-			RequestedCount => 100,
+			RequestedCount => $count,
 			SortCriteria => '', ]);
 		# WMP Media Server is fucking sensitive to the
 		# order of arguments!  I was struggling just to
@@ -110,34 +140,61 @@ sub getSubitems
 	my $rslt = shared_clone([]);
 	return $rslt if !$didl;
 
-	# we only get tracks from folders of type 'album',
-	# and only get folders from 'sections' (and 'root').
-	# Artisan does not support music albums that contain
-	# subfolders, indeed, the presence of a track in a folder
-	# DEFINES an an album.
+	my $dbh = db_connect($this->dbPath());
+	return $rslt if !$dbh;
 
-	if ($table eq 'tracks')
+	# I currently always use 0 and 99999 ...
+	# may need to change this a bit in the future
+	# to use $start and $count
+
+	my $from_cache = $didl->{from_cache};
+	display($dbg_rlib,1,"get_subitems() from_cache=$from_cache");;
+	if ($from_cache && !$REINIT_REMOTE_DBS)
 	{
-		my $items = $didl->{item};
+		my $order_field = $table eq 'tracks' ? 'position' : 'path';
+		my $recs = get_records_db($dbh,"SELECT * FROM $table WHERE parent_id = '$id' ORDER BY $order_field");
+		if ($recs && @$recs)
+		{
+			for my $rec (@$recs)
+			{
+				push @$rslt, $table eq 'tracks' ?
+					Track->newFromHash($rec) :
+					Folder->newFromHash($rec);
+			}
+		}
+	}
+
+	# Regardless of the $table requested, we scan the result
+	# for any folders or tracks, but only return the type of
+	# thing requested.
+
+	else
+	{
+		my $position = 1;
+		my $items = $didl->{item} || [];
 		for my $item (@$items)
 		{
-			my $remote_track = $this->remoteTrack($item);
-			push @$rslt,$remote_track if $remote_track;
+			my $remote_track = $this->remoteTrack($dbh,\$position,$item);
+			push @$rslt,$remote_track
+				if $remote_track && $table eq 'tracks';
 		}
-	}
-	else	# table eq 'folders'
-	{
-		my $containers = $didl->{container};
+
+		my $containers = $didl->{container} || [];
 		for my $container (@$containers)
 		{
-			my $remote_folder = $this->remoteFolder($container);
-			push @$rslt,$remote_folder if $remote_folder;
+			my $remote_folder = $this->remoteFolder($dbh,$container);
+			push @$rslt,$remote_folder
+				if $remote_folder && $table eq 'folders';
 		}
 	}
 
+	db_disconnect($dbh);
+	display($dbg_rlib,0,"get_subitems() returning ".scalar(@$rslt)." $table recs ".($from_cache?'from cache':''));
 	return $rslt;
 
 }   # get_subitems
+
+
 
 
 sub getPlaylist
@@ -195,7 +252,7 @@ sub getTrackMetadata
 
 sub remoteFolder
 {
-	my ($this,$container) = @_;
+	my ($this,$dbh,$container) = @_;
 	my $id = $container->{id};
 	my $class_name = $container->{'upnp:class'}->{content} || '';
 	my $title = $container->{'dc:title'} || '';
@@ -233,9 +290,9 @@ sub remoteFolder
 		return;
 	}
 
-	my $fcache = $folder_cache->{$this->{uuid}};
-	$fcache = $folder_cache->{$this->{uuid}} = shared_clone({})
-		if !$fcache;
+	# my $fcache = $folder_cache->{$this->{uuid}};
+	# $fcache = $folder_cache->{$this->{uuid}} = shared_clone({})
+	# 	if !$fcache;
 
 
 	my $dir_type =
@@ -257,14 +314,17 @@ sub remoteFolder
 			last;
 		}
 	}
+
 	if (!$path)
 	{
 		my @parts = ($title);
-		my $parent = $fcache->{$container->{parentID}};
+		my $parent_id = $container->{parentID};
+		my $parent = get_record_db($dbh,"SELECT * FROM folders WHERE id = '$parent_id'");
 		while ($parent)
 		{
 			push @parts,$parent->{title};
-			$parent = $fcache->{$parent->{parent_id}};
+			$parent_id = $parent->{parent_id};
+			$parent = get_record_db($dbh,"SELECT * FROM folders WHERE id = '$parent_id'");
 		}
 		$path = "/" . join("/",reverse @parts);
 	}
@@ -295,9 +355,8 @@ sub remoteFolder
 	});
 
 	$folder->{has_art} = 1 if $folder->{art_uri};
-
-
-	$fcache->{$id} = $folder;
+	return !error("Could not insert folder($id) in database")
+		if !insert_record_db($dbh,'folders',$folder);
 
 	return $folder;
 }
@@ -305,7 +364,7 @@ sub remoteFolder
 
 sub remoteTrack
 {
-	my ($this,$item) = @_;
+	my ($this,$dbh,$position,$item) = @_;
 	my $id = $item->{id};
 	my $title = $item->{'dc:title'};
 
@@ -338,10 +397,10 @@ sub remoteTrack
 	my $year_str = $date =~ /^(\d\d\d\d)/ ? $1 : $date;
 
 	my $track = shared_clone({
-		position 		=> 0, 		# unused playlist position
+		position 		=> $$position++,
 		# 0 is not a false value in js !  is_local       	=> 0,
 		id             	=> $id,
-		parent_id    	=> $item->{parent_id},
+		parent_id    	=> $item->{parentID},
 		has_art        	=> 0,
 		path			=> $path,
 		art_uri			=> getArtUri($item),
@@ -362,14 +421,8 @@ sub remoteTrack
 	});
 
 	$track->{has_art} = 1 if $track->{art_uri};
-
-
-	# cache it
-	my $tcache = $track_cache->{$this->{uuid}};
-	$tcache = $track_cache->{$this->{uuid}} = shared_clone({})
-		if !$tcache;
-	$tcache->{$id} = $track;
-
+	return !error("Could not insert track($id) in database")
+		if !insert_record_db($dbh,'tracks',$track);
 	return $track;
 }
 

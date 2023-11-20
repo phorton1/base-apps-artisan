@@ -20,8 +20,17 @@ use base qw(Renderer);
 my $dbg_lren = 0;
 my $dbg_mp = 0;
 
+Win32::OLE::prhSetThreadNum(1);
+	# I found this old fix in my own build, under
+	# /src/wx/Win32_OLE.  You call this from the
+	# main program and OLE will short return from
+	# it's AtExit() method, not deleting anything.
+	# Presumably everytinng is deleted when the
+	# main Perl interpreter realy exits.
+	#
+	# I *may* not have needed to enclose $mp in a loop!
 
-# field that get moved from a track to the renderer
+# fields that get moved from a track to the renderer
 # art_uri will be gotten from parent if not available
 # pretty_size is built for each request
 
@@ -177,8 +186,11 @@ sub new
 		playlist => '',
 	}));
 
-	my $thread = threads->create(\&mpThread);
-	$thread->detach();
+	if (1)
+	{
+		my $thread = threads->create(\&mpThread);
+		$thread->detach();
+	}
 
 	return $this;
 }

@@ -43,6 +43,37 @@ and function with our "Shuffle" and other controls.
 
 
 
+# remoteLibrary caching
+
+RemoteLibraries will utilize the following cache scheme.
+
+The first level is to cache the actual XML requests
+	to the device before parsing them into a local database.
+
+Only certain interesting requests are cached (Brows & Search).
+We don't (make or) cache device capability requests.
+
+	We *should* keep track of the library's UPDATE_ID
+	and wipe evertying out if it changes, sheesh.
+
+Then, there are two 'modes' of operation in Artisan based on
+	$REINIT_REMOTE_DBS (default 0)
+
+if !$REINIT_REMOTE_DBS and a cachefile is found, this means
+	it is already in the database and we then return the
+	records from the database, but don't reparese the xml.
+
+if $REINIT_REMOTE_DBS we will wipe out the remote libray's database
+	and, in that case, we take any xml, cached or not.
+
+
+
+
+
+
+
+
+
 ## Truly Local WebUI Renderer
 
 TBD

@@ -40,19 +40,19 @@ my $dbg_bye = 0;
 my $dbg_listener = 0; # 0;
 	#  0 == quitting notice and warnings for empty messages
 	# -1 == wait loop
-my $dbg_msearch = 1;  # 0;
+my $dbg_msearch = 0;  # 0;
 	#  0 == M-SEARCH messages received
 	# -1 == M-SEARCH messages skipped
-my $dbg_responses = 1;
+my $dbg_responses = 0;
 	#  0 == general response header
 	# -1 == individual responses that are sent
 
 # SSDPSearch
 
-my $dbg_search = 1;	# 0;
+my $dbg_search = 0;	# 0;
 	#  0 == (cyan) header when starting search
 	# -1 == creating socket and sending message notifications
-my $show_search_dbg = 0x000;	# 0x110;
+my $show_search_dbg = 0x110;	# 0x110;
 	# bitwise, high order nibble is New Devices,
 	# middle is Known Devices, and last is all msgs.
 	# 0=off, 1=line, 2=hash
@@ -252,12 +252,12 @@ sub SSDPListener
 		{
 			# receive next packet
 
-			my $sel = IO::Select->new($sock);
+			my $sel = IO::Select->new($this->{recv_socket});
 			if ($sel->can_read(0.05))
 			{
 				my $data = '';
 				display($dbg_listener+1,0,"waiting for data...");
-				my $peer_addr = $sock->recv($data,1024);
+				my $peer_addr = $this->{recv_socket}->recv($data,1024);
 				if (!$peer_addr)
 				{
 					error("received empty peer_addr".$!);

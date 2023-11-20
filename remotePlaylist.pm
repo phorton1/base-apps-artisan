@@ -161,7 +161,7 @@ sub initPlaylists
 	my $playlists_by_id = $all_playlists_by_id->{$library->{uuid}} = shared_clone({});
 
 	# Do the device request to search for all playlist containers
-	# THIS SEARCH TAKES A LONG TIME!
+	# This search always uses the cache didl ...
 
 	my $didl = $library->didlRequest(
 		'ContentDirectory',

@@ -176,7 +176,7 @@ be easily implemented.
 
 ### PLSource Methods
 
-- **getPlaylistNames** - returns a list of the names of the
+- **getPlaylists** - returns a list of the names of the
   playlists within the PLSource, which is all that's generally
   required for the UI.
 - **getPlaylistJson(name)** - returns a subset of the members

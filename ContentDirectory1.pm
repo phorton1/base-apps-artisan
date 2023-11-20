@@ -70,6 +70,7 @@ sub handle_request
 		show_dump => $dbg_input < 0,
 		addl_level => 0,
 		dump => 0,
+		dump_dir => "$temp_dir/_CD1_dumps",
 		decode_didl => 0,
 		raw => 0,
 		pretty => 1,
@@ -147,6 +148,7 @@ sub handle_request
 			show_dump => $dbg_output < 0,
 			addl_level => 1,
 			dump => 0,
+			dump_dir => "$temp_dir/_CD1_dumps",
 			decode_didl => 0,
 			raw => 0,
 			pretty => 1,
@@ -286,16 +288,16 @@ sub search_directory
 	my $didl = didl_header();
 	if ($what eq 'playlistContainer')
 	{
-		my $names = localPlaylist::getPlaylistNames();
-		$total = @$names;
+		my $playlists = localPlaylist::getPlaylists();
+		$total = @$playlists;
 		display($dbg_search,2,"found $total playlists");
 
 		my $max = $start+$count-1;
-		$max = @$names-1 if $max > @$names-1;
+		$max = @$playlists-1 if $max > @$playlists-1;
 		for my $i ($start .. $max)
 		{
-			my $name = $names->[$i];
-			my $folder = localLibrary::virtualPlaylistFolder($name);
+			my $playlist = $playlists->[$i];
+			my $folder = localLibrary::virtualPlaylistFolder($playlist);
 			if ($folder)
 			{
 				$num++;
@@ -355,6 +357,7 @@ sub search_directory
 		show_dump => $dbg_search < 0,
 		addl_level => 1,
 		dump => 0,
+		dump_dir => "$temp_dir/_CD1_dumps",
 		decode_didl => 1,
 		raw => 1,
 		pretty => 1,
@@ -367,6 +370,7 @@ sub search_directory
 		show_dump => $dbg_search < 0,
 		addl_level => 1,
 		dump => 0,
+		dump_dir => "$temp_dir/_CD1_dumps",
 		decode_didl => 0,
 		raw => 1,
 		pretty => 1,
@@ -545,6 +549,7 @@ sub browse_directory
 			show_dump => $dbg_browse < 0,
 			addl_level => 1,
 			dump => 0,
+			dump_dir => "$temp_dir/_CD1_dumps",
 			decode_didl => 1,
 			raw => 1,
 			pretty => 1,
@@ -557,6 +562,7 @@ sub browse_directory
 			show_dump => $dbg_browse < 0,
 			addl_level => 1,
 			dump => 0,
+			dump_dir => "$temp_dir/_CD1_dumps",
 			decode_didl => 0,
 			raw => 1,
 			pretty => 1,

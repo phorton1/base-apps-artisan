@@ -271,7 +271,10 @@ sub parseXML
 	my $my_dump     = $params->{my_dump} || 0;
 	my $dumper	    = $params->{dumper} || 0;
 
-	my $filename = "$temp_dir/$what";
+	my $dump_dir   = $params->{dump_dir} || $temp_dir;
+	mkdir $dump_dir if $dump && !(-d $dump_dir);
+
+	my $filename = "$dump_dir/$what";
 	display(0,$addl_level,"parseXML($what) bytes=".length($data),1)
 		if $show_hdr;
 

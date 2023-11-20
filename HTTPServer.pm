@@ -67,7 +67,8 @@ my $dbg_response = 0;			# show the first line
 # Single thread set directly in artisan.pm
 
 our $SINGLE_THREAD = 0;
-	# SET TO 1 in ARTISAN_WIN.PM !!!
+	# 0 required the use of Win32::OLE::prhSetThreadNum(1) in localRenderer.pm.
+	# used to be set to 1 in artisanWin.pm and artisan.pm
 my $http_running:shared = 0;
 
 sub running
