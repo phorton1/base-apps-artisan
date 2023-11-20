@@ -146,6 +146,7 @@ sub getSubitems
 		$max = @$playlists-1 if $max > @$playlists-1;
 		for my $i ($start .. $max)
 		{
+			my $playlist = $playlists->[$i];
 			my $folder = virtualPlaylistFolder($playlist);
 			if ($folder)
 			{
