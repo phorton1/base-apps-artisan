@@ -76,17 +76,20 @@ function init_page_explorer()
 		source:
 		{
 			url: "/webui/library/" + current_library['uuid'] + "/dir",
-			data: {mode:explorer_mode},
+			data: {mode:explorer_mode, source:'main'},
 			cache: false,
 		},
 
 		lazyLoad: function(event, data)
 		{
 			var node = data.node;
+			var use_id = node.key;
+			// if (use_id == undefined)
+			// 	use_id = 0
 			data.result =
 			{
 				url: "/webui/library/" + current_library['uuid'] + "/dir",
-				data: {id: node.key, mode:explorer_mode},
+				data: {id: use_id, mode:explorer_mode, source:'lazyLoad'},
 				cache: true
 			};
 		},
@@ -452,13 +455,19 @@ function update_explorer_album_info(title,rec)
 		display(dbg_explorer,1,"could not find #explorer_tracklist");
 	}
 
-	// clear out old track details, if any
+	// replace track details if an id exists or clear them
 
-	explorer_details.reload({
-		url:'/webui/library/'+current_library['uuid'] + '/folder_metadata?id=' + rec.id,
-		cache: true});
+	if (rec.id == undefined)
+	{
+		explorer_details.getRootNode().removeChildren();
+	}
+	else
+	{
+		explorer_details.reload({
+			url:'/webui/library/'+current_library['uuid'] + '/folder_metadata?id=' + rec.id,
+			cache: true});
+	}
 
-	// explorer_details.getRootNode().removeChildren();
 
 
 }	// update_explorer_album_info()

@@ -61,7 +61,8 @@ function init_page_home()
 	onload_device_list('renderers',true);
 	onload_device_list('libraries',true);
 
-	init_playlists();
+	// init_playlists();
+	init_playlist_info();
 	init_renderer_pane();
 
 	$("#home_menu").accordion({ heightStyle: "fill" });
@@ -147,7 +148,10 @@ function selectDevice(singular,uuid)	// handler
 			// current_page indicates the app has really started
 
 			if (singular == 'library')
+			{
 				$('.artisan_menu_library_name').html(result.name);
+				init_playlists();
+			}
 
 			if (current_page)
 			{
@@ -176,7 +180,6 @@ function init_playlists()
 		{
 			$('#playlists').html(result);
 			onload_playlists();
-			init_playlist_info();
 		}
 	});
 }
@@ -230,7 +233,7 @@ function create_numeric_pref(min,med,max,var_name,spinner_id)
 				var tree = $('#explorer_tree').fancytree('getTree');
 				tree.reload({
 					url: "/webui/library/" + current_library['uuid'] + "/dir",
-					data: {mode:explorer_mode},
+					data: {mode:explorer_mode, source:'numeric_pref'},
 					cache: false,
 				});
 			}
