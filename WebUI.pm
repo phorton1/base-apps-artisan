@@ -223,6 +223,18 @@ sub getDevicesHTML
 	display($dbg_webui,0,"getDevicesHTML($type)");
 
 	my $text = '';
+
+	if ($plural eq 'renderers')		# add the 'Local' renderer for the webUI
+	{
+		display($dbg_webui,1,"$single webUI Local renderer");
+
+		$text .= "<input type=\"radio\" ";
+		$text .= "id=\"$single-html_renderer\" ";
+		$text .= "onclick=\"javascript:selectDevice('$single','html_renderer');\" ";
+		$text .= "name=\"$plural\">";
+		$text .= "<label for=\"$single-html_renderer\">Local</label><br>\n";
+	}
+
 	for my $device (@$devices)
 	{
 		display($dbg_webui,1,"$single $device->{name}");

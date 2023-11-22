@@ -99,6 +99,14 @@ sub library_request
 	{
 		return library_tracklist($library,$params);
 	}
+	elsif ($path eq 'get_track')
+	{
+		my $id = $params->{id} || '';
+		my $track = $library->getTrack($id);
+		return json_error("could not find track '$id'") if !$track;
+		my $json = json($track);
+		return json_header().$json;
+	}
 
 	# following two currently require a previously
 	# cached remoteTrack/Folder in remoteLibrary
@@ -145,7 +153,7 @@ sub library_request
 	# Playlists
 	#-----------------------------
 
-	if ($path eq 'get_playlists')
+	elsif ($path eq 'get_playlists')
 	{
 		my $playlists = $library->getPlaylists();
 		my $html = html_header();
@@ -155,6 +163,14 @@ sub library_request
 		}
 		# display(0,0,"get_playlists returning $html");
 		return $html;
+	}
+	elsif ($path eq 'get_playlist')
+	{
+		my $id = $params->{id} || 0;
+		my $playlist = $library->getPlaylist($id);
+		return json_error("could not find playlist '$id'") if !$playlist;
+		my $json = json($playlist);
+		return json_header().$json;
 	}
 
 	#-----------------------------

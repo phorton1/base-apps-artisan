@@ -98,8 +98,8 @@ sub new
 sub deviceDir
 {
 	my ($this) = @_;
-	my $dir = "$temp_dir/$this->{uuid}";
-	mkdir $dir if !(-d $dir);
+	my $dir = "$temp_dir/$this->{deviceType}/$this->{uuid}";
+	my_mkdir($dir) if !(-d $dir);
 	return $dir;
 }
 

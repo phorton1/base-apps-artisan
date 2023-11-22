@@ -51,7 +51,8 @@ var html_renderer = {
 
 function init_html_renderer(state)
 {
-	html_renderer_state = state;
+	html_renderer.state = state;
+	html_renderer.path = '';
 	html_renderer.position = 0,
 	html_renderer.duration = 0,
 	html_renderer.metadata = {
@@ -78,8 +79,14 @@ function audio_command(command,args)
 {
 	if (command == 'stop')
 	{
-		audio.stop();
+		// method does not exist
+		// audio.stop();
+
+		if (html_renderer.state == RENDERER_STATE_PLAYING)
+			audio.pause();
 		init_html_renderer(RENDERER_STATE_STOPPED);
+		$('#audio_player_title').html(html_renderer.metadata.title);
+		$('#explorer_album_image').attr('src',html_renderer.metadata.art_uri);
 	}
 	else if (command == 'play_pause')
 	{
@@ -122,7 +129,7 @@ function audio_command(command,args)
 	{
 		var library_uuid = args['library_uuid'];
 		var track_id = args['track_id'];
-		audio_command('stop');
+		// audio_command('stop');
 		play_song_local(library_uuid,track_id);
 	}
 

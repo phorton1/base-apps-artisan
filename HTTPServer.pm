@@ -66,7 +66,7 @@ my $dbg_response = 1;			# show the first line
 # Then I get "Free to wrong pool during global destruction" error message
 # Single thread set directly in artisan.pm
 
-our $SINGLE_THREAD = 0;
+our $SINGLE_THREAD = 1;
 	# 0 required the use of Win32::OLE::prhSetThreadNum(1) in localRenderer.pm.
 	# used to be set to 1 in artisanWin.pm and artisan.pm
 my $http_running:shared = 0;
