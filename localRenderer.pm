@@ -354,7 +354,6 @@ sub doCommand
 			if !$library;
 
 		$this->{playlist} = $library->getPlaylist($this->{uuid},$playlist_id);
-		$this->{playlist}->{library_name} = $library->{name};
 		$error = $this->playlist_song($PLAYLIST_RELATIVE,0);
 	}
 
@@ -463,8 +462,8 @@ sub playlist_song
 		$this->{playlist} = '';
 		return error('empty playlist($name)!');
 	}
-	my $track_id = $playlist->getTrackId($this->{uuid},$mode,$index);
-	return error("Could not get getTrackId($mode,$index) from playlist($name)")
+	my $track_id = $playlist->getPlaylistTrack($this->{uuid},$mode,$index);
+	return error("Could not get getPlaylistTrack($mode,$index) from playlist($name)")
 		if !$track_id;
 
 	$this->play_track($playlist->{uuid},$track_id);

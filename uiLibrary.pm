@@ -182,6 +182,25 @@ sub library_request
 		my $json = json($playlist);
 		return json_header().$json;
 	}
+	elsif ($path eq 'get_playlist_track')
+	{
+		my $renderer_uuid = $params->{renderer_uuid} || '';
+		my $playlist_id = $params->{id} || '';
+		my $mode = $params->{mode} || 0;
+		my $index = $params->{index} || 0;
+;
+		return json_error("no playlist id in get_playiist")
+			if !$playlist_id;
+		return json_error("no renderer_uuid in get_playiist")
+			if !$renderer_uuid;
+
+		my $playlist = $library->getPlaylistTrack($renderer_uuid,$playlist_id,$mode,$index);
+		return json_error("no playlist returned by library->getTrackId($renderer_uuid,$playlist_id,$mode,$index)")
+			if !$playlist;
+
+		my $json = json($playlist);
+		return json_header().$json;
+	}
 
 	#-----------------------------
 	# unknown

@@ -3,6 +3,8 @@
 
 var audio;
 
+const PLAYLIST_ABSOLUTE = 0;
+const PLAYLIST_RELATIVE = 1;
 
 
 const RENDERER_STATE_NONE 		= 'NONE';
@@ -72,6 +74,8 @@ function init_audio()
 {
 	audio = document.getElementById('audio_player');
 	init_html_renderer(RENDERER_STATE_NONE);
+	audio.addEventListener("ended", (event) =>
+		{ onMediaEnded(event); } );
 }
 
 
@@ -107,6 +111,7 @@ function audio_command(command,args)
 			html_renderer.state == RENDERER_STATE_PAUSED)
 		{
 			var position = args['position'];
+			html_renderer.position = position;
 			audio.currentTime = position / 1000;
 		}
 	}
@@ -141,14 +146,16 @@ function audio_command(command,args)
 	}
 	else if (command == 'next')
 	{
+		playlist_local(PLAYLIST_RELATIVE,1);
 	}
 	else if (command == 'prev')
 	{
+		playlist_local(PLAYLIST_RELATIVE,-1);
 	}
 	else if (command == 'playlist_song')
 	{
 		var index = args['index'];
-
+		playlist_local(PLAYLIST_ABSOLUTE,index);
 	}
 }
 
@@ -225,13 +232,79 @@ function set_local_playlist(library_uuid,playlist_id)
 		else
 		{
 			html_renderer.playlist = result;
-			playlist_local(0);
+			playlist_local(PLAYLIST_RELATIVE,0);
 		}
 	});
 }
 
 
-function playlist_local(inc)
+function playlist_local(mode,inc)
 {
+	var playlist = html_renderer.playlist;
+	if (!playlist)
+		return;
 
+	library_uuid = playlist.uuid;
+	playlist_id = playlist.id;
+
+	$.get('/webui/library/'+ library_uuid + '/get_playlist_track' +
+	  '?renderer_uuid=' + html_renderer.uuid +
+	  '&id=' + playlist_id +
+	  '&mode=' + mode +
+	  '&index=' + inc,
+
+	function(result)
+	{
+		if (result.error)
+		{
+			rerror('Error in set_local_playlist(' + library_uuid + ',' + playlist_id + '): ' + result.error);
+		}
+		else
+		{
+			html_renderer.playlist = result;
+			var track_id = result.track_id;
+			if (track_id == undefined ||
+				!track_id)
+			{
+				rerror("No track_id(" + track_id + ") in playlist local(" + mode + "," + index + ")");
+			}
+			else
+			{
+				play_song_local(library_uuid,track_id);
+			}
+		}
+	});
 }
+
+
+function onMediaEnded(event)
+{
+	if (html_renderer.playlist &&
+		html_renderer.state == RENDERER_STATE_PLAYING)
+	{
+		playlist_local(PLAYLIST_RELATIVE,1);
+	}
+}
+
+
+// It is interesting that the audio appears to cache the audio data.
+// Playing the same song twice does not get it twice from me.
+//
+// However, there are several problems.
+//
+//      The HTTP Server is currently single threaded.
+//			the audio player can wait to read the bytes of a long song
+//          so things like 'next' might not work correctly.
+//		Partial buffering ... I have seen cases where the audio
+//			on a re-play starts in the middle of the song, and
+//          the audio.currentTime starts at 0 ... hmmm ...
+//      I think I need a way to really clear the audio cache
+//			and reget it on every replay, and to do something
+//			about the threading of the HTTPServer
+
+
+
+
+
+
+// end of audio.js

@@ -277,6 +277,7 @@ sub getPlaylist
 	}
 
 	my $playlist = $playlists_by_id->{$id} || '';
+	$playlist->{library_name} = $library->{name} if $playlist;
 
 	display($dbg_pl,0,"getPlaylist() returning ".($playlist?
 		"playlist($playlist->{name},$playlist->{num_tracks},$playlist->{track_index})":
@@ -287,10 +288,10 @@ sub getPlaylist
 
 
 
-sub getTrackId
+sub getPlaylistTrack
 {
     my ($this,$renderer_uuid,$mode,$orig_index) = @_;
-    display($dbg_pl,0,"getTrackId($this->{name},$mode,$orig_index) num($this->{num_tracks} cur($this->{track_index})");
+    display($dbg_pl,0,"getPlaylistTrack($this->{name},$mode,$orig_index) num($this->{num_tracks} cur($this->{track_index})");
     display($dbg_pl,1,"library($this->{uuid}) renderer($renderer_uuid)");
 
 	# if tracks are not in memory, call sortPlaylist to get them.
@@ -322,7 +323,7 @@ sub getTrackId
 	$this->saveToPlaylists($renderer_uuid) if $this->{needs_write};
 
 	my $track_id = $index ? $this->{tracks}->[$index-1]->{id} : '';
-    display($dbg_pl,0,"getTrackId($mode,$orig_index) returning track($index)=$track_id");
+    display($dbg_pl,0,"getPlaylistTrack($mode,$orig_index) returning track($index)=$track_id");
 	return $track_id;
 }
 
