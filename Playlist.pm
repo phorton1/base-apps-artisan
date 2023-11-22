@@ -65,15 +65,13 @@
 #	Derived classes do whatever they need to do during startup (or on
 #   first access, to build the master playlist.db and named.db files.
 #
-#		$library->masterPlaylistDir()
-#
+#		$library->dataDir()
 #			implemented in derived classes, this returns
 #           the master directory from which the playlist.db
 #           will be copied.
+#		$library->playlistDir()
+#			usually $library->dataDir()/playlists
 #
-#			For remoteLibraries, this will also build the
-#           playlists.db and named.db files if they don't
-#           exist yet.
 #
 # API to Library
 #
@@ -145,7 +143,6 @@ use warnings;
 use threads;
 use threads::shared;
 use File::Copy;
-use SQLite;
 use Database;
 use artisanUtils;
 use DeviceManager;
@@ -200,7 +197,7 @@ sub getPlaylists
 	my ($playlists,$playlists_by_id) = playlistMem($library,$renderer_uuid);
 
 	my $library_uuid = $library->{uuid};
-	my $play_dir = "$temp_dir/Renderers/$renderer_uuid";
+	my $play_dir = "$temp_dir/Renderers/$renderer_uuid/$library_uuid";
 	my $play_db_name = "$play_dir/playlists.db";
 	my_mkdir($play_dir) if !-f $play_dir;
 
@@ -209,14 +206,14 @@ sub getPlaylists
 
 	my $play_ts = getTimestamp($play_db_name);
 	my $master_ts = getTimestamp($master_db_name);
-	display($dbg_pl,0,"master_ts($master_ts) play_ts($play_ts)");
+	display($dbg_pl,1,"master_ts($master_ts) play_ts($play_ts)");
 
 	if ($master_ts gt $play_ts)
 	{
 		unlink $play_db_name;
 		my $master_dir = $library->dataDir();
 		my $master_db_name = "$master_dir/playlists.db";
-		display($dbg_pl,0,"Copying playlists.db from $master_dir to $play_db_name");
+		display($dbg_pl,1,"Copying playlists.db from $master_dir to $play_db_name");
 		if (!File::Copy::copy($master_db_name,$play_db_name))
 		{
 			error("Could not copy from '$master_db_name' to '$play_db_name' : $!");
@@ -224,10 +221,13 @@ sub getPlaylists
 		}
 	}
 
+
+	display($dbg_pl,1,"getting records from $play_db_name");
 	my $dbh = db_connect($play_db_name);
 	return [] if !$dbh;
 	my $recs = get_records_db($dbh,"SELECT * FROM playlists ORDER BY id") || [];
 	db_disconnect($dbh);
+	display($dbg_pl,1,"found ".scalar(@$recs)." records");
 
 	# create the cache
 
@@ -236,8 +236,13 @@ sub getPlaylists
 		my $playlist = shared_clone($rec);
 		bless $playlist,'Playlist';
 		$playlist->{needs_write} = 0;
-		push @$playlists,$playlist;
-		$playlists_by_id->{$playlist->{id}} = $playlist;
+
+		my $exists = $playlists_by_id->{$playlist->{id}};
+		if (!$exists)
+		{
+			push @$playlists,$playlist;
+			$playlists_by_id->{$playlist->{id}} = $playlist;
+		}
 	}
 
 	display($dbg_pl,0,"getPlaylists() returning ".scalar(@$playlists)." playlists");
@@ -353,8 +358,8 @@ sub sortPlaylist
 			error("Could not find library $library_uuid");
 			return 0;
 		}
-		my $master_dir = $library->playlistDir();
-		my $db_name = "$master_dir/$this->{name}.db";
+		my $playlist_dir = $library->playlistDir();
+		my $db_name = "$playlist_dir/$this->{name}.db";
 
 		# connect to the named.db file
 		# and get the records
@@ -472,7 +477,7 @@ sub saveToPlaylists
 	display($dbg_pl,0,"saveToPlaylists($this->{id}) $this->{name}");
 
 	my $library_uuid = $this->{uuid};
-	my $play_dir = "$temp_dir/Renderers/$renderer_uuid";
+	my $play_dir = "$temp_dir/Renderers/$renderer_uuid/$library_uuid";
 	my $play_db_name = "$play_dir/playlists.db";
 
 	my $dbh = db_connect($play_db_name);

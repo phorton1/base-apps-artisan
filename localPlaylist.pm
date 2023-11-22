@@ -12,7 +12,6 @@ use strict;
 use warnings;
 use threads;
 use threads::shared;
-use SQLite;
 use Database;
 use artisanUtils;
 use Playlist;

@@ -59,8 +59,50 @@ my $dbg_rlib = 0;
 	#  0 = main
 	# -1 == remoteFolders and Tracks
 	# -2 == remoteFolder selection criteria
+my $dbg_insert = 1;
 
 
+
+#-----------------------------------------------
+# paths
+#-----------------------------------------------
+
+sub dataDir
+{
+	my ($this) = @_;
+	my $dir = "$temp_dir/$this->{deviceType}/$this->{uuid}";
+	my_mkdir($dir) if !(-d $dir);
+	return $dir;
+}
+
+sub playlistDir
+{
+	my ($this) = @_;
+	return $this->dataDir()."/playlists";
+}
+
+sub dbPath
+{
+	my ($this) = @_;
+	my $device_dir = $this->dataDir();
+	my $db_path = "$device_dir/remote_library.db";
+	return $db_path;
+}
+
+sub subDir
+{
+	my ($this,$what) = @_;
+	my $device_dir = $this->dataDir();
+	my $subdir = "$device_dir/$what";
+	mkdir $subdir if !-f $subdir;
+	return $subdir;
+}
+
+
+
+#-----------------------------------------------
+# ctor
+#-----------------------------------------------
 
 sub new
 	# receives a $dev containing ip,port,services, etc
@@ -70,11 +112,20 @@ sub new
 	my $this = $class->SUPER::new($params);
 	bless $this,$class;
 
-	$this->startDatabase();
-	remotePlaylist::initPlaylists($this);
-
+	$this->{started} = 0;
 	return $this;
 }
+
+
+sub start
+{
+	my ($this) = @_;
+	return if $this->{started};
+	$this->{started} = 1;
+	$this->startDatabase();
+	remotePlaylist::initPlaylists($this);
+}
+
 
 
 
@@ -121,23 +172,6 @@ sub startDatabase
 }
 
 
-sub dbPath
-{
-	my ($this) = @_;
-	my $device_dir = $this->deviceDir();
-	my $db_path = "$device_dir/remote_library.db";
-	return $db_path;
-}
-
-
-sub subDir
-{
-	my ($this,$what) = @_;
-	my $device_dir = $this->deviceDir();
-	my $subdir = "$device_dir/$what";
-	mkdir $subdir if !-f $subdir;
-	return $subdir;
-}
 
 
 sub getParseParams
@@ -165,6 +199,7 @@ sub getTrack
 {
     my ($this,$id) = @_;
 	display($dbg_rlib,0,"getTrack($id)");
+	$this->start();
 
 	my $dbh = db_connect($this->dbPath());
 	return if !$dbh;
@@ -181,6 +216,7 @@ sub getFolder
 {
     my ($this,$id) = @_;
 	display($dbg_rlib,0,"getFolder($id)");
+	$this->start();
 
 	my $dbh = db_connect($this->dbPath());
 	return if !$dbh;
@@ -210,6 +246,7 @@ sub getSubitems
     $start ||= 0;
     $count ||= 999999;
     display($dbg_rlib,0,"get_subitems($table,$id,$start,$count)");
+	$this->start();
 
 	my $rslt = shared_clone([]);
 	my $dbh = db_connect($this->dbPath());
@@ -270,6 +307,7 @@ sub getPlaylist
 	# pass thru
 {
 	my ($this,$renderer_uuid,$id) = @_;
+	$this->start();
 	return Playlist::getPlaylist($this,$renderer_uuid,$id);
 }
 
@@ -277,6 +315,7 @@ sub getPlaylists
 	# pass through
 {
 	my ($this,$renderer_uuid) = @_;
+	$this->start();
 	return Playlist::getPlaylists($this,$renderer_uuid);
 }
 
@@ -285,6 +324,8 @@ sub getFolderMetadata
 {
 	my ($this,$id) = @_;
 	display($dbg_rlib,0,"getFolderMetadata($id)");
+	$this->start();
+
 	my $folder = $this->getFolder($id);
 	return [] if !$folder;
 
@@ -299,6 +340,8 @@ sub getTrackMetadata
 {
 	my ($this,$id) = @_;
 	display($dbg_rlib,0,"getTrackMetadata($id)");
+	$this->start();
+
 	my $track = $this->getTrack($id);
 	return [] if !$track;
 
@@ -315,13 +358,14 @@ sub getTrackMetadata
 
 sub getAndParseDidl
 {
-	my ($this,$params,$table) = @_;
+	my ($this,$params,$table,$callback,$cb_param) = @_;
 	$table ||= '';
 
 	my $dbh = $params->{dbh};
 	my $dbg = $params->{dbg};
 	my $dbg_name = $params->{dbg_name};
     display($dbg,0,"getAndParseDidl($dbg_name) table($table)");
+	$this->start();
 
 	my $rslt = shared_clone([]);
 	my $didl = $this->didlRequest($params);
@@ -335,21 +379,69 @@ sub getAndParseDidl
 	my $items = $didl->{item} || [];
 	for my $item (@$items)
 	{
-		my $remote_track = $this->remoteTrack($dbh,\$position,$item);
-		push @$rslt,$remote_track
-			if $remote_track && (!$table || $table eq 'tracks');
+		my $remote_track = $this->remoteTrack($position,$item);
+		if ($remote_track)
+		{
+			my $ok = $callback ? &$callback($cb_param,$remote_track) : 1;
+			if ($ok)
+			{
+				$ok = insertOrUpdate($dbh,'tracks',$remote_track);
+				if ($ok)
+				{
+					$position++;
+					push @$rslt,$remote_track
+						if !$table || $table eq 'tracks';
+				}
+				else
+				{
+					error("Could not insert track($remote_track->{id},$remote_track->{title}) in database");
+				}
+			}
+		}
 	}
 
 	my $containers = $didl->{container} || [];
 	for my $container (@$containers)
 	{
 		my $remote_folder = $this->remoteFolder($dbh,$container);
-		push @$rslt,$remote_folder
-			if $remote_folder && (!$table || $table eq 'folders');
+		if ($remote_folder)
+		{
+			my $ok = $callback ? &$callback($cb_param,$remote_folder) : 1;
+			if ($ok)
+			{
+				$ok = insertOrUpdate($dbh,'folders',$remote_folder);
+				if ($ok)
+				{
+					push @$rslt,$remote_folder
+						if !$table || $table eq 'folders';
+				}
+				else
+				{
+					error("Could not insert folder($remote_folder->{id},$remote_folder->{title}) in database");
+				}
+			}
+		}
 	}
 
 	display($dbg_rlib,0,"getAndParseDidl() returning ".scalar(@$rslt)." $table recs ");
 	return $rslt;
+}
+
+
+sub insertOrUpdate
+{
+	my ($dbh,$table,$rec) = @_;
+	my $exists = get_record_db($dbh,"SELECT id FROM $table WHERE id='$rec->{id}'");
+	if ($exists)
+	{
+		display($dbg_insert,2,"UPDATE($table) $rec->{id} $rec->{title}");
+		return update_record_db($dbh,$table,$rec,'id')
+	}
+	else
+	{
+		display($dbg_insert,2,"INSERT($table) $rec->{id} $rec->{title}");
+		insert_record_db($dbh,$table,$rec);
+	}
 }
 
 
@@ -397,7 +489,6 @@ sub remoteFolder
 	# my $fcache = $folder_cache->{$this->{uuid}};
 	# $fcache = $folder_cache->{$this->{uuid}} = shared_clone({})
 	# 	if !$fcache;
-
 
 	my $dir_type =
 		($class_name eq 'object.container.album.musicAlbum') ? 'album' :
@@ -459,8 +550,6 @@ sub remoteFolder
 	});
 
 	$folder->{has_art} = 1 if $folder->{art_uri};
-	return !error("Could not insert folder($id) in database")
-		if !insert_record_db($dbh,'folders',$folder);
 
 	return $folder;
 }
@@ -468,7 +557,7 @@ sub remoteFolder
 
 sub remoteTrack
 {
-	my ($this,$dbh,$position,$item) = @_;
+	my ($this,$position,$item) = @_;
 	my $id = $item->{id};
 	my $title = $item->{'dc:title'};
 
@@ -501,9 +590,9 @@ sub remoteTrack
 	my $year_str = $date =~ /^(\d\d\d\d)/ ? $1 : $date;
 
 	my $track = shared_clone({
-		position 		=> $$position++,
 		# 0 is not a false value in js !  is_local       	=> 0,
 		id             	=> $id,
+		position		=> $position,
 		parent_id    	=> $item->{parentID},
 		has_art        	=> 0,
 		path			=> $path,
@@ -525,8 +614,6 @@ sub remoteTrack
 	});
 
 	$track->{has_art} = 1 if $track->{art_uri};
-	return !error("Could not insert track($id) in database")
-		if !insert_record_db($dbh,'tracks',$track);
 	return $track;
 }
 
@@ -585,14 +672,6 @@ sub getArtist
 
 	return $album ? $album_artist : $performer;
 }
-
-
-
-
-#-------------------------------------------------------
-# metadata - for displaying in the details section
-#-------------------------------------------------------
-
 
 
 

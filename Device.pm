@@ -94,16 +94,6 @@ sub new
 
 
 
-
-sub deviceDir
-{
-	my ($this) = @_;
-	my $dir = "$temp_dir/$this->{deviceType}/$this->{uuid}";
-	my_mkdir($dir) if !(-d $dir);
-	return $dir;
-}
-
-
 # Encoding Weirdness
 #
 # Even though didl $content parsed correctly from request,

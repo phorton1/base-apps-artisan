@@ -10,209 +10,201 @@ use warnings;
 use threads;
 use threads::shared;
 use artisanUtils;
+use Database;
+use Track;
+use Folder;
+use artisanUtils;
+use Playlist;
 
 
 my $dbg_rpl = 0;
 
 
-my $all_playlists:shared = shared_clone({});
-my $all_playlists_by_id:shared = shared_clone({});
-
-
-
-#------------------------------------------
-# Constructors
-#------------------------------------------
-
-# sub new
-# {
-# 	my ($class,$params) = @_;
-# 	display($dbg_rpl,0,"remotePlaylist::new($params->{uuid},$params->{id}) $params->{name}");
-#
-# 	my $this = shared_clone({
-# 		id => '',
-# 		uuid => '',
-# 		name => '',
-# 		query => '',
-# 		shuffle => 0,
-# 		num_tracks => 0,
-# 		track_index => 0,
-# 	});
-# 	bless $this,$class;
-# 	mergeHash($this,$params);
-#
-# 	my $uuid = $this->{uuid};
-# 	my $playlists = $all_playlists->{$uuid};
-# 	my $playlists_by_id = $all_playlists_by_id->{$uuid};
-# 	$playlists = $all_playlists->{$uuid} = shared_clone([]) if !$playlists;
-# 	$playlists_by_id = $all_playlists_by_id->{$uuid} = shared_clone({}) if !$playlists_by_id;
-#
-# 	push @$playlists,$this;
-# 	$playlists_by_id->{$this->{id}} = $this;
-# 	return $this;
-# }
-
-
-#------------------------------------
-# API to Renderers
-#------------------------------------
-
-sub getTrackId
-{
-    my ($this,$mode,$orig_index) = @_;
-    display($dbg_rpl,0,"getTrackId($this->{name},$mode,$orig_index)");
-	my $index = $orig_index;
-
-	if ($mode == $PLAYLIST_RELATIVE)
-	{
-		$index = $this->{track_index} + $index;
-		$index = 1 if $index > $this->{num_tracks};
-    	$index = $this->{num_tracks} if $index < 1;
-	}
-
-	$index = 1 if $index < 1;
-	$index = $this->{num_tracks} if $index>$this->{num_tracks};
-	$index = 0 if !$this->{num_tracks};
-
-    $this->{track_index} = $index;
-
-	my $track_id = $index ? $this->{tracks}->[$index-1]->{id} : '';
-    display($dbg_rpl,0,"getTrackId($mode,$orig_index) returning track($index)=$track_id");
-}
-
-
-sub sortPlaylist
-{
-	my ($this) = @_;
-	my $name = $this->{name};
-	display($dbg_rpl,0,"sortPlaylist($name)");
-}
-
-
-
-#------------------------------------
-# pass thru API to remoteLibrary
-#------------------------------------
-
-sub getPlaylist
-{
-	my ($library,$id) = @_;
-	display($dbg_rpl,0,"getPlaylist($library->{name},$id)");
-	my $playlists_by_id = $all_playlists_by_id->{$library->{uuid}};
-	if (!$playlists_by_id)
-	{
-		error("getPlaylist($library->{uuid}) accessed before getPlaylists()!");
-		return '';
-	}
-	my $playlist = $playlists_by_id->{$id} || '';
-	if (!$playlist)
-	{
-		error("playist($library->{name},$id) not found!");
-	}
-	else
-	{
-		display($dbg_rpl,1,"getPlaylist($library->{name},$id) returning pl with $playlist->{num_tracks} tracks");
-	}
-
-	# initialize the tracks in the playlist
-	# unlike the localLibrary, we're gonna cache the entire tracks records
-
-	if (!$playlist->{tracks})
-	{
-		display($dbg_rpl,1,"initializing playlist tracks ($library->{name},$id)");
-		$playlist->{tracks} = $library->getSubitems('tracks',$playlist->{id});
-		display($dbg_rpl,1,"initializing playlist found ".scalar(@{$playlist->{tracks}})." tracks");
-	}
-
-	return $playlist;
-}
-
-
-sub getPlaylists
+sub playlistDbName
 {
 	my ($library) = @_;
-	display($dbg_rpl,0,"getPlaylists($library->{name})");
-	my $playlists = $all_playlists->{$library->{uuid}};
+	return $library->dataDir()."/playlists.db";
+}
 
-	$playlists = initPlaylists($library) if !$playlists;
-
-	my $num = @$playlists;
-	display($dbg_rpl,0,"getPlaylists($library->{name}) returning $num playlists");
-	return $playlists;
+sub onlyFirstByTitle
+{
+	my ($first_by_title,$rec) = @_;
+	my $title = $rec->{title};
+	my $exists = $first_by_title->{$title} ? 1 : 0;
+	$first_by_title->{$title} = 1;
+	display($dbg_rpl,0,"onlyFirstByTitle($title) exists=$exists");
+	return !$exists;
 }
 
 
 sub initPlaylists
 {
 	my ($library) = @_;
+	my $pldb_name = playlistDbName($library);
 	display($dbg_rpl,0,"initPlaylists($library->{name})");
+	display($dbg_rpl,1,"pldb_name = $pldb_name");
 
-	# initialize the in-memory cache
-	# to prevent retrying on errors
+	# if the playlists.db file does not exists
+	# create it from the database or a didl request
 
-	my $playlists = $all_playlists->{$library->{uuid}} = shared_clone([]);
-	my $playlists_by_id = $all_playlists_by_id->{$library->{uuid}} = shared_clone({});
-
-	# Do the device request to search for all playlist containers
-	# We call didlRequest() directly as there are no records to insert in database
-
-	my $dbg_name = 'Search(playlists)';
-	my $params = $library->getParseParams($dbg_rpl,$dbg_name);
-
-	$params->{service} = 'ContentDirectory';
-	$params->{action} = 'Search';
-	$params->{args} = [
-		ContainerID => 0,
-		SearchCriteria =>  'upnp:class derivedfrom "object.container.playlistContainer"',
-		Filter => '*',
-		StartingIndex => 0,
-		RequestedCount => 9999,
-		SortCriteria => '', ];
-
-	my $didl = $library->didlRequest($params);
-
-	if ($didl)
+	my $playlists;
+	if (!-f $pldb_name)
 	{
-		# The problem is that WMP returns the same playlist as a child of
-		# multiple different containers, with no way to tell they are the same,
-		# therefore WE WILL TAKE ONLY UNIQUE NAMES as given by the first
-		# container->{dc:title}
+		$playlists = createPlaylistsDB($library,$pldb_name);
+		return if !$playlists;
+		display($dbg_rpl,1,"got ".scalar(@$playlists)." playlists from new playlists.db");
+	}
+	else
+	{
+		my $dbh = db_connect($pldb_name);
+		return if !$dbh;
+
+		$playlists = get_records_db($dbh,"SELECT * FROM playlists ORDER BY id");
+		display($dbg_rpl,1,"got ".scalar(@$playlists)." playlists from existing playlists.db");
+
+		db_disconnect($dbh);
+	}
+
+	# create the named.db files in the playlists subfolder
+	# wiping out the old one if the playlists.db is newer than the named.db,
+	# which will usually be all-or-none (unlsess a named_db file is deleted)
+
+	display($dbg_rpl,1,"updating ".scalar(@$playlists)." named.db files");
+
+	my $pldb_ts = getTimestamp($pldb_name);
+	display($dbg_rpl,2,"ts=$pldb_ts for PLAYLISTS.DB");
+	my $playlist_dir = $library->playlistDir();
+	my_mkdir $playlist_dir if !-d $playlist_dir;
+
+	for my $playlist (@$playlists)
+	{
+		my $name = $playlist->{name};
+		my $db_name = "$playlist_dir/$name.db";
+		my $pl_ts = getTimestamp($db_name);
+		display($dbg_rpl,2,"ts=$pl_ts for $name");
+		if ($pldb_ts gt $pl_ts)
+		{
+			display($dbg_rpl,2,"creating new $name.db");
+			unlink $db_name;
+			my $tracks = $library->getSubitems('tracks',$playlist->{id});
+			display($dbg_rpl,3,"found ".scalar(@$tracks)." tracks");
+
+			my $dbh = db_connect($db_name);
+			return if !$dbh;
+			create_table($dbh,"pl_tracks");
+
+			my $position = 1;
+
+			# At this time there is not a meaningful album_id on
+			# remoteTracks.  The path is an arbitrary http;// for the media,
+			# and the only 'parent' of the track is the playlist.
+			# It is not even clear if this could be accomplished.
+			# For WMP it could *perhaps* be accomplished by relating the
+			# final -xxxxx part of the id back into the 'folders' tree.
+			# for now, the sort by albums is meaningless.
+			# I'll have another look at the 'dumps' and see if anything
+			# good comes to mind
+
+			for my $track (sort {$a->{position} <=> $b->{position}} @$tracks)
+			{
+				my $pl_track = {
+					id => $track->{id},
+					album_id => $track->{parent_id},
+					position => $position++ };
+				return !error("Could not insert pl_track($track->{title},$track->{id} in $db_name")
+					if !insert_record_db($dbh,'pl_tracks',$pl_track);
+			}
+		}
+	}
+
+	display($dbg_rpl,0,"initPlaylists($library->{name}) finished");
+}
+
+
+
+sub createPlaylistsDB
+{
+	my ($library,$pldb_name) = @_;
+	display($dbg_rpl,0,"createPlaylistsDB($pldb_name)");
+
+	my $dbh = db_connect($library->dbPath());
+	return if !$dbh;
+
+	my $folders = [];
+	my $from_database = 0;
+	my $dbg_name = 'Search(playlists)';
+	my $cache_dir = $library->subDir('cache');
+	my $cache_file = "$cache_dir/$dbg_name.didl.txt";
+
+	# if the cache_file exists, get records from the database
+
+	if (-f $cache_file)
+	{
+		$from_database = 1;
+		my $recs = get_records_db($dbh,"SELECT * FROM folders WHERE dirtype = 'playlist'");
+		if ($recs && @$recs)
+		{
+			for my $rec (@$recs)
+			{
+				push @$folders, Folder->newFromHash($rec);
+			}
+		}
+	}
+	else
+	{
+		my $params = $library->getParseParams($dbg_rpl,$dbg_name);
+		$params->{dbh} = $dbh;
+		$params->{dbg} = $dbg_rpl;
+		$params->{service} = 'ContentDirectory';
+		$params->{action} = 'Search';
+		$params->{args} = [
+			ContainerID => 0,
+			SearchCriteria =>  'upnp:class derivedfrom "object.container.playlistContainer"',
+			Filter => '*',
+			StartingIndex => 0,
+			RequestedCount => 9999,
+			SortCriteria => '', ];
 
 		my $first_by_title = {};
-		my $containers = $didl->{container};
-		for my $container (@$containers)
-		{
-			my $id = $container->{id};
-			my $title = $container->{'dc:title'};
-			my $exists = $first_by_title->{$title};
-			if ($exists)
-			{
-				display($dbg_rpl,1,"skiping duplicate title($id,$title) from previous($exists->{id})");
-				next;
-			}
+		$folders = $library->getAndParseDidl($params,'folders',\&onlyFirstByTitle,$first_by_title);
+	}
 
-			display($dbg_rpl,1,"adding playlist($id,$title)");
-			my $playlist = shared_clone({
-				id => $id,
-				uuid => $library->{uuid},
-				name => $title,
-				num_tracks => $container->{childCount},
-				shuffle => 0,
-				track_index => 1, });
-			bless $playlist,'remotePlaylist';
+	db_disconnect($dbh);
+	display($dbg_rpl,1,"createPlaylistsDB() found ".scalar(@$folders)." playlist 'folders' ".($from_database?'from database':''));
 
-			$first_by_title->{$title} = $playlist;
-			push @$playlists,$playlist;
-			$playlists_by_id->{$id} = $playlist;
+	# create the new playlist.db
 
-		}	# for each container
-	}	# got didl
+	unlink $pldb_name;
+	my $pl_dbh = db_connect($pldb_name);
+	return if !$pl_dbh;
+	create_table($pl_dbh,"playlists");
 
-	my $num = @$playlists;
-	display($dbg_rpl,0,"initPlaylists($library->{name}) returning $num playlists");
+	my $playlists = [];
+	for my $folder (@$folders)
+	{
+		display($dbg_rpl,2,"adding playlist($folder->{id},$folder->{title})");
+		my $playlist = {
+			id => $folder->{id},
+			uuid => $library->{uuid},
+			name => $folder->{title},
+			query => '',
+			num_tracks => $folder->{num_elements},
+			shuffle => 0,
+			track_index => 1, };
+
+		$playlist->{track_index} = 0 if !$playlist->{num_tracks};
+		$playlist->{track_index} = 1 if !$playlist->{track_index} && $playlist->{num_tracks};
+
+		return !error("Could not insert playlist($playlist->{id},$playlist->{name}) in $pldb_name")
+			if !insert_record_db($pl_dbh,'playlists',$playlist);
+
+		push @$playlists,$playlist;
+	}
+
+	db_disconnect($pl_dbh);
+	display($dbg_rpl,0,"createPlaylistsDB() returning ".scalar(@$playlists)." playlists");
 	return $playlists;
-
-}	# initPlaylists
+}
 
 
 
