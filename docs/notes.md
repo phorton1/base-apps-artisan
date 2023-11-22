@@ -1,3 +1,38 @@
+
+
+# Other IP Addresses / Configurations
+
+# if (0)
+# {
+# 	my $ANDROID = !$HOME_MACHINE;
+# 	my $temp_storage = $ENV{EXTERNAL_STORAGE} || '';
+# 	my $HOST_ID = $HOME_MACHINE ? "win" :
+#      $temp_storage =~ /^\/mnt\/sdcard$/ ? "arm" :
+#     "x86";
+#
+# 	if ($HOST_ID eq "arm")   # Ubuntu on Car Stero
+# 	{
+# 		# car stereo MAC address =
+# 		$program_name = 'Artisan Android 1.1v';
+# 		$uuid = '56657273-696f-6e34-4d41-afacadefeed3';
+# 		$artisan_perl_dir = "/external_sd2/artisan";
+# 		$mp3_dir = "/usb_storage2/mp3s";
+# 		$mp3_dir_RE = '\/usb_storage2\/mp3s';
+# 		$server_ip = '192.168.0.103';
+# 	}
+# 	else	# Ubuntu Virtual Box (x86)
+# 	{
+# 		$program_name = 'Artisan x86 1.1v';
+# 		$uuid = '56657273-696f-6e34-4d41-afacadefeed4';
+# 		$artisan_perl_dir = "/media/sf_base/apps/artisan";
+# 		$mp3_dir = "/media/sf_ccc/mp3s";
+# 		$mp3_dir_RE = '\/media\/sf_ccc\/mp3s';
+# 		# $server_ip = '192.168.100.103';
+# 	}
+# }
+
+
+
 #
 # Good news!
 #

@@ -64,15 +64,25 @@ my $db_name = "$data_dir/artisan.db";
 
 our %artisan_field_defs = (
 
+	# The ID fields VARCHARS need to be large enough to accept
+	# ANY library's IDs (i.e. WMP)
+
 	playlists => [
-		'id		 	 VARCHAR(60)',
-		'uuid        VARCHAR(60)',
-		'name		 VARCHAR(60)',
+		'id		 	 VARCHAR(128)',
+		'uuid        VARCHAR(128)',
+		'name		 VARCHAR(128)',
 		'num_tracks  INTEGER',
 		'track_index INTEGER',
 		'shuffle	 INTEGER',
 		'query		 VARCHAR(2048)'
 	],
+
+	pl_tracks => [
+		'id		 	 VARCHAR(128)',
+		'album_id    VARCHAR(128)',
+		'position    INTEGER',
+	],
+
 
     #------------------------------------
     # TRACKS
@@ -98,10 +108,10 @@ our %artisan_field_defs = (
 			# these items, and it can be ASSUMED in
 			# some code (i.e. the perl Library scan)
 
-		'id             VARCHAR(40)',
+		'id             VARCHAR(128)',
 			# stream_md5 from fpcalc
 
-		'parent_id    	VARCHAR(40)',		#
+		'parent_id    	VARCHAR(128)',		#
 			# id of parent folder
 
 		'has_art        INTEGER',
@@ -171,10 +181,10 @@ our %artisan_field_defs = (
 			# these items, and it can be ASSUMED in
 			# some code (i.e. the perl Library scan)
 
-        'id			 	VARCHAR(40)',
+        'id			 	VARCHAR(128)',
 			# md5 checksum of the path
 
-		'parent_id      VARCHAR(40)',
+		'parent_id      VARCHAR(128)',
         'dirtype	 	VARCHAR(16)',
 		    # album, root, section, class, virtual, etc
         'has_art     	INTEGER',

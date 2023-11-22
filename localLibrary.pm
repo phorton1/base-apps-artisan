@@ -24,7 +24,7 @@ use Database;
 use Folder;
 use Track;
 use Library;
-use localPlaylist;
+use Playlist;
 use base qw(Library);
 
 my $dbg_llib = -2;
@@ -47,6 +47,16 @@ sub new
 	return $this;
 }
 
+
+sub dataDir
+{
+	return $data_dir;
+}
+
+sub playlistDir
+{
+	return localPlaylist::playlistDir();
+}
 
 
 #----------------------------------------------------------
@@ -83,19 +93,19 @@ sub getFolder
 	# if 0, return a fake record
 
 	my $folder;
-	my $playlist = localPlaylist::getPlaylist($id);
+	my $playlist = Playlist::getPlaylist($this,'default',$id);
 
 	if ($id eq '0')
 	{
-		$folder = virtualRootFolder();
+		$folder = $this->virtualRootFolder();
 	}
 	elsif ($id eq $ID_PLAYLISTS)
 	{
-		$folder = virtualPlaylistsFolder();
+		$folder = $this->virtualPlaylistsFolder();
 	}
 	elsif ($playlist)
 	{
-		$folder = virtualPlaylistFolder($playlist);
+		$folder = $this->virtualPlaylistFolder($playlist);
 	}
 	else
 	{
@@ -133,21 +143,24 @@ sub getSubitems
 
 	my $num = 0;
 	my @retval;
-	my $playlist = localPlaylist::getPlaylist($id);
+
+
+	my $playlist = Playlist::getPlaylist($this,'default',$id);
 
 	# return virtual folders for playlists
-	# table must be 'folders'
+	# table must be 'folders', and as usual
+	# getPlaylists must be called before getPlaylist
 
 	if ($table eq 'folders' && $id eq $ID_PLAYLISTS)
 	{
-		my $playlists = localPlaylist::getPlaylists();
+		my $playlists = Playlist::getPlaylists($this,'default');
 		display($dbg_subitems,1,"found ".scalar(@$playlists)." playlists");
 		my $max = $start+$count-1;
 		$max = @$playlists-1 if $max > @$playlists-1;
 		for my $i ($start .. $max)
 		{
 			my $playlist = $playlists->[$i];
-			my $folder = virtualPlaylistFolder($playlist);
+			my $folder = $this->virtualPlaylistFolder($playlist);
 			if ($folder)
 			{
 				push @retval,$folder;
@@ -161,7 +174,9 @@ sub getSubitems
 
 	elsif ($table eq 'tracks' && $playlist)
 	{
-		my $recs = $playlist->getTracks();
+		my $recs = $this->getPlaylistTracks($playlist);
+			# I'm not sure where this goes.
+
 		display($dbg_subitems,1,"found ".scalar(@$recs)." playlist tracks");
 		my $max = $start+$count-1;
 		$max = @$recs-1 if $max > @$recs-1;
@@ -226,7 +241,8 @@ sub getSubitems
 		if ($id eq '0' && $num < $count)
 		{
 			$num++;
-			push @retval,virtualPlaylistsFolder();
+			my $folder = $this->virtualPlaylistsFolder();
+			push @retval,$folder if $folder;
 		}
 	}
 
@@ -236,19 +252,27 @@ sub getSubitems
 }   # get_subitems
 
 
-sub getPlaylist
-	# pass thru
-{
-	my ($this,$id) = @_;
-	return localPlaylist::getPlaylist($id);
-}
+
 
 sub getPlaylists
 	# pass through
 {
-	my ($this) = @_;
-	return localPlaylist::getPlaylists();
+	my ($this,$renderer_uuid) = @_;
+	return Playlist::getPlaylists($this,$renderer_uuid);
 }
+
+
+
+sub getPlaylist
+	# pass thru
+{
+	my ($this,$renderer_uuid,$id) = @_;
+	return Playlist::getPlaylist($this,$renderer_uuid,$id);
+}
+
+
+
+
 
 
 sub getFolderMetadata
@@ -357,6 +381,7 @@ sub getTrackMetadata
 
 sub virtualRootFolder
 {
+	my ($this) = @_;
 	display($dbg_virt,0,"virtualRootFolder()");
 	return Folder->newFromHash({
 		id => 0,
@@ -372,13 +397,17 @@ sub virtualRootFolder
 
 sub virtualPlaylistsFolder
 {
+	my ($this) = @_;
 	display($dbg_virt,0,"virtualPlaylistsFolder()");
+	my $playlists = Playlist::getPlaylists($this,'default');
+	return if !$playlists;
+
 	return Folder->newFromHash({
 		id => $ID_PLAYLISTS,
 		parent_id => 0,
 		title => 'playlists',
 		dirtype => 'section',
-		num_elements => scalar(@{localPlaylist::getPlaylists()}),
+		num_elements => scalar(@{$playlists}),
 		artist => '',
 		genre => '',
 		path => '\playlists',
@@ -388,7 +417,7 @@ sub virtualPlaylistsFolder
 
 sub virtualPlaylistFolder
 {
-	my ($playlist) = @_;		# the id is the name of the playlist
+	my ($this,$playlist) = @_;		# the id is the name of the playlist
 	my $name = $playlist->{name};
 	display($dbg_virt,0,"virtualPlaylistFolder($name)");
 
@@ -405,11 +434,48 @@ sub virtualPlaylistFolder
 }
 
 
-#------------------------------------------------------
-# Track MetaData
-#------------------------------------------------------
+#------------------------------------
+# ContentDirectory1 API
+#------------------------------------
 
+sub getPlaylistTracks
+	# Called only by localLibrary::getSubitems() by ContentDirectory1
+	# for Artisan BEING a MediaServer.  Returns a list of pl_tracks
+	# which the localLibrary then turns into a list of real Tracks.
+	#
+	# As far as the rest of the world is concerned, the playlist is
+	# sorted our way, and it is upto them to shuffle it if they want.
+	#
+	# There is still the requirement that getPlaylists() is called
+	# before this method.
+	#
+	# Initial implementation is probably very slow, working a record at
+	# a time with no caching whatsoever. It can probably be made faster
+	# with a JOIN somehow.
+{
+	my ($this,$playlist) = @_;
+	display($dbg_llib,0,"getPlaylistTracks($playlist->{name})");
 
+	if (!$playlist->{tracks})
+	{
+		my $ok = $playlist->sortPlaylist('default');
+		return if !$ok;
+	}
+
+	my $dbh = db_connect();
+	return if !$dbh;
+
+	my $tracks = [];
+	for my $pl_track (@{$playlist->{tracks}})
+	{
+		my $track = get_record_db($dbh,"SELECT * FROM tracks WHERE id='$pl_track->{id}'");
+		push @$tracks,$track if $track;
+	}
+
+	db_disconnect($dbh);
+	display($dbg_llib,0,"getPlaylistTracks got ".scalar(@$tracks)." tracks from ".scalar(@{$playlist->{tracks}})." pl_tracks");
+	return $tracks;
+}
 
 
 

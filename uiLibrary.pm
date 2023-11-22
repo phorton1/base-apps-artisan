@@ -155,7 +155,11 @@ sub library_request
 
 	elsif ($path eq 'get_playlists')
 	{
-		my $playlists = $library->getPlaylists();
+		my $renderer_uuid = $params->{renderer_uuid} || '';
+		return json_error("no renderer_uuid in get_playiists")
+			if !$renderer_uuid;
+
+		my $playlists = $library->getPlaylists($renderer_uuid);
 		my $html = html_header();
 		for my $playlist (@$playlists)
 		{
@@ -166,8 +170,14 @@ sub library_request
 	}
 	elsif ($path eq 'get_playlist')
 	{
-		my $id = $params->{id} || 0;
-		my $playlist = $library->getPlaylist($id);
+		my $id = $params->{id} || '';
+		return json_error("no playlist id in get_playiist")
+			if !$id;
+		my $renderer_uuid = $params->{renderer_uuid} || '';
+		return json_error("no renderer_uuid in get_playiist")
+			if !$renderer_uuid;
+
+		my $playlist = $library->getPlaylist($renderer_uuid,$id);
 		return json_error("could not find playlist '$id'") if !$playlist;
 		my $json = json($playlist);
 		return json_header().$json;

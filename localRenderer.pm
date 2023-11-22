@@ -326,14 +326,16 @@ sub doCommand
 
 	elsif ($command eq 'next')
 	{
-		$error = $this->playlist_song(1);
+		$error = $this->playlist_song($PLAYLIST_RELATIVE,1);
 	}
 	elsif ($command eq 'prev')
 	{
-		$error = $this->playlist_song(-1);
+		$error = $this->playlist_song($PLAYLIST_RELATIVE,-1);
 	}
 
 	# start a playlist on the current index of the playlist
+	# this command will trigger the creation of the
+	# base_data/temp/Renderer/renderer_id/library_id/playlists.db file
 
 	elsif ($command eq 'set_playlist')
 	{
@@ -347,9 +349,9 @@ sub doCommand
 		return error("Could not find library($library_uuid)")
 			if !$library;
 
-		$this->{playlist} = $library->getPlaylist($playlist_id);
+		$this->{playlist} = $library->getPlaylist($this->{uuid},$playlist_id);
 		$this->{playlist}->{library_name} = $library->{name};
-		$error = $this->playlist_song(0);
+		$error = $this->playlist_song($PLAYLIST_RELATIVE,0);
 	}
 
 	# play a song by index within the current playlist
@@ -363,31 +365,30 @@ sub doCommand
 		return error("no playlist in doCommand($command)")
 			if !$playlist;
 
-		return error("doCommand($command) index($index) out of range 1..$playlist->{num_tracks}")
-			if $index<1 || $index > $playlist->{num_tracks};
-
-		# intimate knowledge of playlists!!!
-
-		$playlist->{track_index} = $index;
-		$error = $this->playlist_song(0);
+		$error = $this->playlist_song($PLAYLIST_ABSOLUTE,$index);
 	}
 
 	# sort/shuffle the playlist
 
 	elsif ($command eq 'shuffle_playlist')
 	{
-		my $value = checkParam(\$error,$command,$params,'value');
-		return $error if !defined($value);
+		my $mode = checkParam(\$error,$command,$params,'mode');
+		return $error if !defined($mode);
 
 		my $playlist = $this->{playlist};
 		return error("no playlist in doCommand($command)")
 			if !$playlist;
 
-		$playlist->{shuffle} = $value;
-		$playlist->sortPlaylist();
-		$error = $this->playlist_song(0);
-	}
+		if (!$playlist->sortPlaylist($this->{uuid},$mode))
+		{
+			$error = "Could not sort playlist $playlist->{name}";
+		}
+		else
+		{
+			$error = $this->playlist_song($PLAYLIST_ABSOLUTE,1);
+		}
 
+	}
 	else
 	{
 		return error("unknown doCommand($command)");
@@ -447,7 +448,7 @@ sub play_track
 sub playlist_song
 	# starts a playlist on a particular index
 {
-	my ($this,$inc) = @_;
+	my ($this,$mode,$index) = @_;
 	my $playlist = $this->{playlist};
 	return error("no playlist!")
 		if !$playlist;
@@ -458,25 +459,12 @@ sub playlist_song
 		$this->{playlist} = '';
 		return error('empty playlist($name)!');
 	}
-	my $track_id = $playlist->getTrackId($inc);
-	return error("Could not get getTrackId($inc) from playlist($name)")
+	my $track_id = $playlist->getTrackId($this->{uuid},$mode,$index);
+	return error("Could not get getTrackId($mode,$index) from playlist($name)")
 		if !$track_id;
 
 	$this->play_track($playlist->{uuid},$track_id);
 	return '';
-
-	# # temporary startup code
-    #
-	# my $library = findDevice($DEVICE_TYPE_LIBRARY,$playlist->{uuid});
-	# return error("Could not get library($playlist->{uuid}) for playlist($name)")
-	# 	if !$library;
-    #
-	# my $track = $library->getTrack($track_id);
-	# return error("Could not get track($track_id} from library($playlist->{uuid}) for index($playlist->{track_index}) from playlist($name)")
-	# 	if !$track;
-    #
-	# $this->play_track($track);
-	# return '';
 }
 
 
@@ -511,7 +499,7 @@ sub update
 			if ($this->{playlist})
 			{
 				display($dbg_lren,2,"update() playing next playlist song ...");
-				my $error = $this->playlist_song(1);
+				my $error = $this->playlist_song($PLAYLIST_RELATIVE,1);
 				return $error if $error;
 			}
 		}

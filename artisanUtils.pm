@@ -13,16 +13,23 @@ use Socket;
 use Sys::Hostname;
 use Pub::Utils qw(!:win_only);
 
-# set critical My::Utils constants
 
-# My::Utils::init_AS_SERVICE(); # set_alt_output(1);
-	# should not need other calls
-	# on a per-thread basis.
+our $DEVICE_TYPE_LIBRARY  = 'Library';
+our $DEVICE_TYPE_RENDERER = 'Renderer';
 
+our $PLAYLIST_ABSOLUTE  = 0;
+our $PLAYLIST_RELATIVE  = 1;
 
-#-------------------------
-# debugging constants
-#-------------------------
+our $SHUFFLE_NONE = 0;
+our $SHUFFLE_TRACKS = 1;
+our $SHUFFLE_ALBUMS = 2;
+
+our ($ERROR_NONE,					# 0 = grey = NONE = informational message
+	 $ERROR_INFO,					# 1 = green = INFO = informational message of note
+     $ERROR_LOW,					# 2 = blue = LOW = lowest level issue of concern
+     $ERROR_MEDIUM,					# 3 = purple = MEDIUM = level issue of concern
+     $ERROR_HIGH,					# 4 = yellow = HIGH = level issue of concern
+     $ERROR_HARD ) = (0..5);		# 5 = red = EXTREME = highest level concern
 
 
 BEGIN
@@ -33,16 +40,11 @@ BEGIN
 
 	our @EXPORT = qw (
 
-        $program_name
-        $this_uuid
-
-        $artisan_perl_dir
-
-		$mp3_dir
-		$mp3_dir_RE
-
 		$DEVICE_TYPE_LIBRARY
 		$DEVICE_TYPE_RENDERER
+
+		$PLAYLIST_ABSOLUTE
+		$PLAYLIST_RELATIVE
 
 		$SHUFFLE_NONE
 		$SHUFFLE_TRACKS
@@ -55,9 +57,17 @@ BEGIN
         $ERROR_HIGH
         $ERROR_HARD
 
+		%stats
+		$quitting
+
+		$program_name
+        $this_uuid
+        $artisan_perl_dir
+		$mp3_dir
+		$mp3_dir_RE
+
         $server_ip
         $server_port
-		$quitting
 
 		myMimeType
 		pathMimeType
@@ -67,7 +77,7 @@ BEGIN
 		highest_severity
 		error_code_str
 
-		%stats
+
         bump_stat
         init_stats
         dump_stats
@@ -98,35 +108,50 @@ BEGIN
 
 	push @EXPORT, @Pub::Utils::EXPORT;
 
-
 };
 
 
+#--------------------------
+# globals
+#--------------------------
 
-our $DEVICE_TYPE_LIBRARY  = 'Library';
-our $DEVICE_TYPE_RENDERER = 'Renderer';
+our %stats;
+our $quitting:shared = 0;
 
-our $SHUFFLE_NONE = 0;
-our $SHUFFLE_TRACKS = 1;
-our $SHUFFLE_ALBUMS = 2;
+our $program_name = 'Artisan Perl';
+our $this_uuid = '56657273-696f-6e34-4d41-20231112feed';
+our $artisan_perl_dir = "/base/apps/artisan";
+	# the directory of the pure-perl artisan, which includes
+	# the bin, images, webui, and xml subdirectories
+	# These will later be moved to /res for Cava Packaging
+our $mp3_dir = "/mp3s";
+our $mp3_dir_RE = '\/mp3s';
+
+$data_dir = "$mp3_dir/_data";
+$temp_dir = "/base_data/temp/artisan";
+mkdir $temp_dir if !-d $temp_dir;
 
 
-#---------------------------------------
-# error severity level constants
-#---------------------------------------
-# 0 = grey = NONE = informational message
-# 1 = green = INFO = informational message of note
-# 2 = blue = LOW = lowest level issue of concern
-# 3 = purple = MEDIUM = level issue of concern
-# 4 = yellow = HIGH = level issue of concern
-# 5 = red = EXTREME = highest level concern
+# WINDOWS SPECIFIC CODE
+# determine ip address by parsing ipconfig /all
+# for first IPv4 Address ... : 192.168.0.100
 
-our ($ERROR_NONE,
-	 $ERROR_INFO,
-     $ERROR_LOW,
-     $ERROR_MEDIUM,
-     $ERROR_HIGH,
-     $ERROR_HARD ) = (0..5);
+our $server_port = '8091';
+our $server_ip = '';
+
+my $ip_text = `ipconfig /all`;
+if ($ip_text !~ /^.*?IPv4 Address.*?:\s*(.*)$/im)
+{
+	error("Could not determine IP Address!")
+}
+else
+{
+	$server_ip = $1;
+	$server_ip =~ s/\(.*\)//;	# remove (Preferred)
+	$server_ip =~ s/\s//g;
+	LOG(0,"Server IP Address=$server_ip:$server_port");
+}
+
 
 # Scanning files/albums can result in numerous
 # conditions that we might want to know about.
@@ -243,92 +268,6 @@ my %error_mappings = (
 	'vc' => [ $ERROR_HIGH,		'unexpected id length after decoding'],
 
 );
-
-
-#-----------------------------------------------
-# Settings for Pure Perl Artisan Server
-#-----------------------------------------------
-# May be overriden by UI
-# Keeping interesting defaults for other stuff
-
-our $program_name = 'Artisan Perl';
-our $this_uuid = '56657273-696f-6e34-4d41-20231112feed';
-our $artisan_perl_dir = "/base/apps/artisan";
-	# the directory of the pure-perl artisan, which includes
-	# the bin, images, webui, and xml subdirectories
-	# These will later be moved to /res for Cava Packaging
-
-our $mp3_dir = "/mp3s";
-our $mp3_dir_RE = '\/mp3s';
-our $server_port = '8091';
-
-
-
-our $server_ip = '';
-	# typical home machine: 192.168.0.101';
-	# lenovo mac address = AC-7B-A1-54-13-7A
-
-# determine ip address by parsing ipconfig /all
-# for first IPv4 Address ... : 192.168.0.100
-
-# WINDOWS SPECIFIC CODE
-
-my $ip_text = `ipconfig /all`;
-if ($ip_text !~ /^.*?IPv4 Address.*?:\s*(.*)$/im)
-{
-	error("Could not determine IP Address!")
-}
-else
-{
-	$server_ip = $1;
-	$server_ip =~ s/\(.*\)//;	# remove (Preferred)
-	$server_ip =~ s/\s//g;
-	LOG(0,"Server IP Address=$server_ip:$server_port");
-}
-
-
-# Other IP Addresses / Configurations
-
-# if (0)
-# {
-# 	my $ANDROID = !$HOME_MACHINE;
-# 	my $temp_storage = $ENV{EXTERNAL_STORAGE} || '';
-# 	my $HOST_ID = $HOME_MACHINE ? "win" :
-#      $temp_storage =~ /^\/mnt\/sdcard$/ ? "arm" :
-#     "x86";
-#
-# 	if ($HOST_ID eq "arm")   # Ubuntu on Car Stero
-# 	{
-# 		# car stereo MAC address =
-# 		$program_name = 'Artisan Android 1.1v';
-# 		$uuid = '56657273-696f-6e34-4d41-afacadefeed3';
-# 		$artisan_perl_dir = "/external_sd2/artisan";
-# 		$mp3_dir = "/usb_storage2/mp3s";
-# 		$mp3_dir_RE = '\/usb_storage2\/mp3s';
-# 		$server_ip = '192.168.0.103';
-# 	}
-# 	else	# Ubuntu Virtual Box (x86)
-# 	{
-# 		$program_name = 'Artisan x86 1.1v';
-# 		$uuid = '56657273-696f-6e34-4d41-afacadefeed4';
-# 		$artisan_perl_dir = "/media/sf_base/apps/artisan";
-# 		$mp3_dir = "/media/sf_ccc/mp3s";
-# 		$mp3_dir_RE = '\/media\/sf_ccc\/mp3s';
-# 		# $server_ip = '192.168.100.103';
-# 	}
-# }
-
-
-$data_dir = "$mp3_dir/_data";
-$temp_dir = "/base_data/temp/artisan";
-mkdir $temp_dir if !-d $temp_dir;
-
-
-
-our $quitting:shared = 0;
-
-our %stats;
-#share(%stats);
 
 
 

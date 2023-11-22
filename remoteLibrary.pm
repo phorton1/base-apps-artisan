@@ -50,6 +50,7 @@ use Library;
 use Database;
 use Track;
 use Folder;
+use Playlist;
 use remotePlaylist;
 use base qw(Library);
 
@@ -70,6 +71,7 @@ sub new
 	bless $this,$class;
 
 	$this->startDatabase();
+	remotePlaylist::initPlaylists($this);
 
 	return $this;
 }
@@ -267,15 +269,15 @@ sub getSubitems
 sub getPlaylist
 	# pass thru
 {
-	my ($this,$id) = @_;
-	return remotePlaylist::getPlaylist($this,$id);
+	my ($this,$renderer_uuid,$id) = @_;
+	return Playlist::getPlaylist($this,$renderer_uuid,$id);
 }
 
 sub getPlaylists
 	# pass through
 {
-	my ($this) = @_;
-	return remotePlaylist::getPlaylists($this);
+	my ($this,$renderer_uuid) = @_;
+	return Playlist::getPlaylists($this,$renderer_uuid);
 }
 
 

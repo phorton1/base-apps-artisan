@@ -55,13 +55,11 @@ page_layouts['home'] = {
 function init_page_home()
 {
 	last_song = '';
-
 	display(dbg_home,0,"init_page_home()");
 
 	onload_device_list('renderers',true);
 	onload_device_list('libraries',true);
 
-	// init_playlists();
 	init_playlist_info();
 	init_renderer_pane();
 
@@ -142,7 +140,6 @@ function selectDevice(singular,uuid)	// handler
 		{
 			onSelectDevice(singular,uuid,result);
 
-
 			var cur_name = 'current_' + singular;
 			var cur = window[cur_name];
 			if (cur && cur.uuid != uuid)
@@ -157,10 +154,9 @@ function selectDevice(singular,uuid)	// handler
 			// current_page indicates the app has really started
 
 			if (singular == 'library')
-			{
 				$('.artisan_menu_library_name').html(result.name);
-				init_playlists();
-			}
+			init_playlists();
+				// will only do something if both are set.
 
 			if (current_page)
 			{
@@ -193,8 +189,9 @@ function onSelectDevice(singular,uuid,result)
 	if (singular == 'library')
 	{
 		$('.artisan_menu_library_name').html(result.name);
-		init_playlists();
 	}
+
+	init_playlists();
 
 	if (current_page)
 	{
@@ -210,13 +207,21 @@ function onSelectDevice(singular,uuid,result)
 //------------- Init Playlists
 
 function init_playlists()
+	// only works if both current_library and current_renderer are set
 {
-	var uuid = current_library['uuid'];
-	$.get('/webui/library/' + uuid + '/get_playlists', function(result)
+	if (!current_library || !current_renderer)
+		return;
+
+	var library_uuid = current_library.uuid;
+	var renderer_uuid = current_renderer.uuid;
+
+	$.get('/webui/library/' + library_uuid +
+		  '/get_playlists?renderer_uuid=' + renderer_uuid,
+	function(result)
 	{
 		if (result.error)
 		{
-			rerror('Error in init_playlists(' + uuid + '): ' + result.error);
+			rerror('Error in init_playlists(' + library_uuid + ',' + renderer_uuid + '): ' + result.error);
 		}
 		else
 		{
@@ -226,12 +231,14 @@ function init_playlists()
 	});
 }
 
+
 function onload_playlists()
 {
 	display(dbg_pl,0,"onload_playlists()");
     $('#playlists').buttonset();
 
 }
+
 
 //------------- Init Renderer
 

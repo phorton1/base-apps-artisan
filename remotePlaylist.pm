@@ -2,27 +2,7 @@
 #---------------------------------------
 # remotePlaylist.pm
 #---------------------------------------
-# A remotePlaylist has the following members:
-#
-#	id				- playlist id within the library
-#   uuid			- uuid of the library
-# 	name			- playlist title
-# 	shuffle			- shuffle mode
-#   num_tracks		- number of tracks in the playlist
-#   track_index		- current track index within the playlist
-#	[tracks]		- added if the playlist is 'gotten'
-#
-# track_index and shuffle members are accessed directly from Renderers.
-# which also call the API
-#
-#	getTrackEntry()
-#	sortPlaylist
-#
-# Whereas the other API are generally pass-thrus via the Library
-#
-#	getPlaylist
-#   getPlaylists
-
+# Builds the master playlists.db for a remote library
 
 package remotePlaylist;
 use strict;
@@ -79,12 +59,25 @@ my $all_playlists_by_id:shared = shared_clone({});
 
 sub getTrackId
 {
-    my ($this,$inc) = @_;
-    display($dbg_rpl,0,"getTrackId($this->{name},$this->{track_index}) inc=$inc");
-    $this->{track_index} += $inc;
-    $this->{track_index} = 1 if $this->{track_index} > $this->{num_tracks};
-    $this->{track_index} = $this->{num_tracks} if $this->{track_index} < 1;
-	return $this->{tracks}->[$this->{track_index}]->{id};
+    my ($this,$mode,$orig_index) = @_;
+    display($dbg_rpl,0,"getTrackId($this->{name},$mode,$orig_index)");
+	my $index = $orig_index;
+
+	if ($mode == $PLAYLIST_RELATIVE)
+	{
+		$index = $this->{track_index} + $index;
+		$index = 1 if $index > $this->{num_tracks};
+    	$index = $this->{num_tracks} if $index < 1;
+	}
+
+	$index = 1 if $index < 1;
+	$index = $this->{num_tracks} if $index>$this->{num_tracks};
+	$index = 0 if !$this->{num_tracks};
+
+    $this->{track_index} = $index;
+
+	my $track_id = $index ? $this->{tracks}->[$index-1]->{id} : '';
+    display($dbg_rpl,0,"getTrackId($mode,$orig_index) returning track($index)=$track_id");
 }
 
 

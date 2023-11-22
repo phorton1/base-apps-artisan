@@ -212,13 +212,15 @@ function track_to_html_renderer(track)
 function set_local_playlist(library_uuid,playlist_id)
 {
 	init_html_renderer(RENDERER_STATE_TRANSIT);
-	$.get('/webui/library/'+library_uuid +
-		  '/get_playlist?id=' + playlist_id,
+	$.get('/webui/library/'+ library_uuid + '/get_playlist' +
+		  '?renderer_uuid=' + html_renderer.uuid +
+		  '&id=' + playlist_id,
+
 	function(result)
 	{
 		if (result.error)
 		{
-			rerror('Error in play_song_local(): ' + result.error);
+			rerror('Error in set_local_playlist(' + library_uuid + ',' + playlist_id + '): ' + result.error);
 		}
 		else
 		{

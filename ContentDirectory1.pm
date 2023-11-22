@@ -291,7 +291,7 @@ sub search_directory
 		for my $i ($start .. $max)
 		{
 			my $playlist = $playlists->[$i];
-			my $folder = localLibrary::virtualPlaylistFolder($playlist);
+			my $folder = $local_library->virtualPlaylistFolder($playlist);
 			if ($folder)
 			{
 				$num++;
