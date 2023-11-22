@@ -129,10 +129,14 @@ sub mpThread
 			}
 			else
 			{
-				$mp_state = $mp->{playState} || 0;
-				$mp_position = $controls->{currentPosition} * 1000 || 0;
 				my $media = $mp->{currentMedia};
-				$mp_duration = $media ? $media->{duration} * 1000 : 0;
+				$mp_state = $mp->{playState} || 0;
+				my $position = $controls->{currentPosition};
+				my $duration = $media ? $media->{duration} : 0;
+				$position ||= 0;
+				$duration ||= 0;
+				$mp_position = $position * 1000;
+				$mp_duration = $duration * 1000;
 			}
 			sleep(0.1);
 		}
