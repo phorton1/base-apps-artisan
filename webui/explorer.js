@@ -231,9 +231,9 @@ function init_page_explorer()
 
 			else
 			{
-				renderer_command('play_song' +
-					'?library_uuid=' + current_library['uuid'] +
-					'&track_id=' +node.data.id );
+				renderer_command('play_song',{
+					library_uuid: current_library['uuid'],
+					track_id: node.data.id });
 			}
 
 			// we could return false to prevent default handling,
@@ -292,9 +292,9 @@ function init_page_explorer()
 
 			if (ui.cmd == 'play_renderer')
 			{
-				renderer_command('play_song?' +
-					'library_uuid=' + current_library['uuid'] +
-					'&id=' + node.data.id );
+				renderer_command('play_song',{
+					library_uuid: current_library['uuid'],
+					track_id: +node.data.id });
 			}
 
 			else if (ui.cmd == 'play_local')
@@ -446,9 +446,16 @@ function update_explorer_album_info(title,rec)
 	if (explorer_tracklist)
 	{
 		display(dbg_explorer,1,"loading tracks for  " + rec.TITLE);
-		explorer_tracklist.reload({
-			url:'/webui/library/' + current_library['uuid'] + '/tracklist?id=' + rec.id,
-			cache: true});
+		if (rec.id != undefined)
+		{
+			explorer_tracklist.reload({
+				url:'/webui/library/' + current_library['uuid'] + '/tracklist?id=' + rec.id,
+				cache: true});
+		}
+		else
+		{
+			explorer_tracklist.getRootNode().removeChildren();
+		}
 	}
 	else
 	{

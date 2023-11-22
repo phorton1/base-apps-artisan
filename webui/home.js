@@ -126,6 +126,12 @@ function onload_device_list(plural,init)
 
 function selectDevice(singular,uuid)	// handler
 {
+	if (singular == 'renderer' && uuid == 'html_renderer')
+	{
+		onSelectDevice(singular,uuid,html_renderer);
+		return;
+	}
+
 	$.get('/webui/getDevice/' + singular + "-" + uuid, function(result)
 	{
 		if (result.error)
@@ -134,6 +140,9 @@ function selectDevice(singular,uuid)	// handler
 		}
 		else
 		{
+			onSelectDevice(singular,uuid,result);
+
+
 			var cur_name = 'current_' + singular;
 			var cur = window[cur_name];
 			if (cur && cur.uuid != uuid)
@@ -163,6 +172,39 @@ function selectDevice(singular,uuid)	// handler
 		}
 	});
 }
+
+
+
+function onSelectDevice(singular,uuid,result)
+{
+	var cur_name = 'current_' + singular;
+	var cur = window[cur_name];
+	if (cur && cur.uuid != uuid)
+	{
+		$( "#" + singular + '-' + cur.uuid).prop('checked', false).button('refresh');
+	}
+
+	window[cur_name] = result;
+	$('#' + singular +  '-' + uuid).prop('checked', true).button('refresh');
+	setCookie('last_'+singular,uuid,180);
+
+	// current_page indicates the app has really started
+
+	if (singular == 'library')
+	{
+		$('.artisan_menu_library_name').html(result.name);
+		init_playlists();
+	}
+
+	if (current_page)
+	{
+		if (singular == 'renderer')
+			update_renderer_ui();
+		if (singular == 'library')
+			update_explorer();
+	}
+}
+
 
 
 //------------- Init Playlists
@@ -250,15 +292,33 @@ function create_numeric_pref(min,med,max,var_name,spinner_id)
 // Handlers
 //========================================================
 
-function renderer_command(command)
+function renderer_command(command,args)
 {
 	if (!current_renderer)
 	{
 		rerror("No current_renderer in renderer_command: " + what);
-		return false;
+		return;
 	}
 
-	$.get('/webui/renderer/' + current_renderer['uuid'] + '/' + command,
+	if (current_renderer['uuid'] == 'html_renderer')
+	{
+		audio_command(command,args);
+		in_slider=false;
+		update_renderer_ui();
+		return;
+	}
+
+	var cmd_args = '';
+	if (args != undefined)
+	{
+		for (key in args)
+		{
+			cmd_args += (cmd_args ? '&' : '?');
+			cmd_args += key + '=' + args[key];
+		}
+	}
+
+	$.get('/webui/renderer/' + current_renderer['uuid'] + '/' + command + cmd_args,
 
 		function(result)
 		{
@@ -285,7 +345,7 @@ function on_slider_complete(event,ui)
 	in_slider=false;
 	var millis = parseInt(ui.value * current_renderer.duration/100);
 	display(dbg_slider,0,"on_slider_complete(" + millis + ")");
-	renderer_command('seek?position=' + millis);
+	renderer_command('seek',{position:millis});
 	return true;
 }
 
@@ -299,9 +359,9 @@ function set_playlist(uuid,id)
 {
 	display(dbg_home,0,"set_playlist("+name+")");
 	hide_layout_panes();
-	renderer_command('set_playlist' +
-		'?library_uuid=' + uuid +
-		'&id=' + id);
+	renderer_command('set_playlist',{
+		library_uuid:uuid,
+		id: id});
 }
 
 

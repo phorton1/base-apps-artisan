@@ -59,7 +59,7 @@ function init_playlist_info()
 function playlist_song()
 {
 	var index = $('#playlist_info_track_num').spinner('value');
-	renderer_command('playlist_song?index='+index);
+	renderer_command('playlist_song',{index: index});
 	return true;		// I'm not sure return value is needed
 }
 

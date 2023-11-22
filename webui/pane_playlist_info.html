@@ -29,7 +29,7 @@
             class='playlist_info_shuffle_button'
             name="playlist_info_shuffle"
             disabled
-            onclick="javascript:renderer_command('shuffle_playlist?value=0')"/>
+            onclick="javascript:renderer_command('shuffle_playlist',{mode:0})"/>
         <label
             class='info_shuffle_button'
             for="playlist_info_shuffle_off">Shuffle Off</label><br>
@@ -40,7 +40,7 @@
             class='playlist_info_shuffle_button'
             name="playlist_info_shuffle"
             disabled
-            onclick="javascript:renderer_command('shuffle_playlist?value=1')"/>
+            onclick="javascript:renderer_command('shuffle_playlist',{mode:1})"/>
         <label
             class='playlist_info_shuffle_button'
             for="playlist_info_shuffle_tracks">Shuffle Tracks</label><br>
@@ -51,7 +51,7 @@
             class='playlist_info_shuffle_button'
             name="playlist_info_shuffle"
             disabled
-            onclick="javascript:renderer_command('shuffle_playlist?value=2')"/>
+            onclick="javascript:renderer_command('shuffle_playlist',{mode:2})"/>
         <label
             class='playlist_info_shuffle_button'
             for="playlist_info_shuffle_albums">Shuffle Albums</label><br>

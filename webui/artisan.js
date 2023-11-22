@@ -53,10 +53,12 @@ $(function()
 {
 	display(dbg_load,0,"START LOADING ARTISAN");
 
+	init_audio();
+
 	explorer_mode = getCookie('explorer_mode') || 0;
 	autoclose_timeout = parseInt(getCookie('autoclose_timeout') || 0);
 	autofull_timeout = parseInt(getCookie('autofull_timeout') || 0);
-	default_renderer_name = getCookie('default_renderer_name')
+	default_renderer_name = getCookie('default_renderer_name');
 
 	$('.artisan_menu_table').buttonset();
 	$('#context_menu_div').buttonset();
