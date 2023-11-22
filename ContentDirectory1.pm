@@ -4,6 +4,7 @@
 #---------------------------------------
 # handle requests to /upnp/control/ContentDirectory1,
 # which is Artisan BEING a DLNA MediaServer
+# WMP cache is at C:\Users\Patrick\AppData\Local\Microsoft\Media Player
 
 package ContentDirectory1;
 use strict;
@@ -282,7 +283,7 @@ sub search_directory
 	my $didl = didl_header();
 	if ($what eq 'playlistContainer')
 	{
-		my $playlists = localPlaylist::getPlaylists();
+		my $playlists = $local_library->getPlaylists('default');
 		$total = @$playlists;
 		display($dbg_search+1,2,"found $total playlists");
 
@@ -535,7 +536,7 @@ sub browse_directory
 			raw => 1,
 			pretty => 1,
 			my_dump => 1,
-			dumper => 1 }) if $PARSE_RESULTS;
+			dumper => 1 }) if 1; # $PARSE_RESULTS;
 
 		parseXML($content,{
 			dbg => $dbg_browse,
