@@ -1,7 +1,12 @@
 #---------------------------------------
 # DeviceManager.pm
 #---------------------------------------
-# We will need a monitoring thread to support max-age
+# TODO: support for 'online' versus 'offline' remoteDevices
+#     starting here with a monitoring thread to that works
+#     across invocations, going all the way up to the UI
+#     which should not use, or connect to, a device that
+#     is not online.
+# TODO: ContentDirectory1 SUBSCRIPTION caching/timeout
 
 
 package DeviceManager;
