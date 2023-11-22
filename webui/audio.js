@@ -1,6 +1,8 @@
 // https://css-tricks.com/lets-create-a-custom-audio-player/
 // https://developer.mozilla.org/en-US/docs/Web/HTML/Element/audio
 
+// TODO:  WMA Files don't work on HTML renderer.  Need a good way to skip em (esp in playlists)
+
 var audio;
 
 const PLAYLIST_ABSOLUTE = 0;
@@ -157,6 +159,11 @@ function audio_command(command,args)
 		var index = args['index'];
 		playlist_local(PLAYLIST_ABSOLUTE,index);
 	}
+	else if (command == 'shuffle_playlist')
+	{
+		var shuffle = args.shuffle;
+		playlist_shuffe(shuffle);
+	}
 }
 
 
@@ -277,6 +284,40 @@ function playlist_local(mode,inc)
 }
 
 
+
+function playlist_shuffe(shuffle)
+{
+	var playlist = html_renderer.playlist;
+	if (!playlist)
+		return;
+
+	library_uuid = playlist.uuid;
+	playlist_id = playlist.id;
+
+	$.get('/webui/library/'+ library_uuid + '/shuffle_playlist' +
+	  '?renderer_uuid=' + html_renderer.uuid +
+	  '&id=' + playlist_id +
+	  '&shuffle=' + shuffle,
+
+	function(result)
+	{
+		if (result.error)
+		{
+			rerror('Error in set_local_playlist(' + library_uuid + ',' + playlist_id + '): ' + result.error);
+		}
+		else
+		{
+			html_renderer.playlist = result;
+			playlist_local(PLAYLIST_RELATIVE,0);
+		}
+	});
+}
+
+
+
+
+
+
 function onMediaEnded(event)
 {
 	if (html_renderer.playlist &&
@@ -290,17 +331,29 @@ function onMediaEnded(event)
 // It is interesting that the audio appears to cache the audio data.
 // Playing the same song twice does not get it twice from me.
 //
+//  Trying ---> SET HTTPServer::$SINGLE_THREAD to 0!!
+//
+//      If the HTTP Server is single threaded.
+//		the audio player can wait to read the bytes of a long song
+//      so any ui that involves a web hit stop working
+//
 // However, there are several problems.
 //
-//      The HTTP Server is currently single threaded.
-//			the audio player can wait to read the bytes of a long song
-//          so things like 'next' might not work correctly.
-//		Partial buffering ... I have seen cases where the audio
+//	Partial buffering ...
+//
+//      The slider fails miserably if you move it past the amount
+//      that is buffered ... jumps to the next song.
+//
+//		Bad Starting Position
+//
+//			I have seen cases where the audio
 //			on a re-play starts in the middle of the song, and
-//          the audio.currentTime starts at 0 ... hmmm ...
-//      I think I need a way to really clear the audio cache
-//			and reget it on every replay, and to do something
-//			about the threading of the HTTPServer
+//      	the audio.currentTime starts at 0 ... hmmm ...
+//
+//  Solutions:
+//
+//  	I think I need a way to really clear the audio cache
+//		and reget it on every replay.
 
 
 

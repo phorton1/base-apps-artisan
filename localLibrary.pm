@@ -480,22 +480,6 @@ sub getPlaylistTracks
 
 
 
-sub getPlaylistTrack
-	# Suitable for base class, but I'm denormalizing it in local and remoteLibrary for now
-	# returns a playlist with a track_id member
-{
-	my ($this,$renderer_uuid,$playlist_id,$mode,$index) = @_;
-	display($dbg_llib,0,"getPlaylistTrack($renderer_uuid,$playlist_id,$mode,$index)");
-	my $playlist = Playlist::getPlaylist($this,$renderer_uuid,$playlist_id);
-	return !error("Library($this->{name}) could not get playlist($renderer_uuid,$playlist_id)")
-		if !$playlist;
-	my $track_id = $playlist->getPlaylistTrack($renderer_uuid,$mode,$index);
-	return !error("Library($this->{name}) could not getPlaylistTrack($renderer_uuid,$mode,$index)")
-		if !$track_id;
-	$playlist->{track_id} = $track_id;
-	return $playlist;
-}
-
 
 
 1;

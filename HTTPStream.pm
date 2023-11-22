@@ -96,7 +96,8 @@ sub stream_media
 		my $to_byte = 0;
 		my $is_ranged = 0;
 		my $from_byte = 0;
-		my $content_len = $track->{size};
+		my $size = $track->{size};
+		my $content_len = $size;
 		my $statuscode = 200;
 
 		if (defined($headers->{RANGE}) &&
@@ -205,10 +206,11 @@ sub stream_media
 		}
 		if ($from_byte)
 		{
-			display(2,1,"Seeking from_position=$from_byte");
+			display($dbg_stream+1,1,"Seeking to $from_byte");
 			sysseek(ITEM, $from_byte, 0);
 		}
-		display($dbg_stream+1,1,"Loop to send $content_len actual bytes of content");
+
+		display($dbg_stream+1,1,"Sending $from_byte-".($from_byte+$content_len-1)."/$size  content_len($content_len) bytes");
 
 		my $at = 0;
 		my $rslt = 1;
@@ -232,7 +234,8 @@ sub stream_media
 			    $rslt = 0;
 				last;
 			}
-			display($dbg_stream,2,"Sending $bytes bytes at=$at of=$content_len remain=$bytes_left");
+			# display($dbg_stream,2,"Sending $bytes bytes at=$at of=$content_len remain=$bytes_left");
+			display($dbg_stream,2,"---> send ".($from_byte+$at)."-".($from_byte+$at+$bytes-1)."/$size  content($at:$bytes bytes of $content_len)");
 
 			if ($quitting)
 			{

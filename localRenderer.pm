@@ -375,14 +375,14 @@ sub doCommand
 
 	elsif ($command eq 'shuffle_playlist')
 	{
-		my $mode = checkParam(\$error,$command,$params,'mode');
-		return $error if !defined($mode);
+		my $shuffle = checkParam(\$error,$command,$params,'shuffle');
+		return $error if !defined($shuffle);
 
 		my $playlist = $this->{playlist};
 		return error("no playlist in doCommand($command)")
 			if !$playlist;
 
-		if (!$playlist->sortPlaylist($this->{uuid},$mode))
+		if (!$playlist->sortPlaylist($this->{uuid},$shuffle))
 		{
 			$error = "Could not sort playlist $playlist->{name}";
 		}

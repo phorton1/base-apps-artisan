@@ -56,21 +56,25 @@ my $dbg_response = 1;			# show the first line
 	# -2 = show the actual body, if any
 
 
-# !!! MULTI-THREAD NOT WORKING in old artisanWin !!!
-# Crashes when I try to "set the renderer" from the webUI
-# at least in the old Wx artisanWin app ..
-# The last thing appears to be the close($FH) at the end of handle_connection(),
-# which is a thread created, and detached in start_webserver, below.
-# Does not appear to make any difference if I detach, $FH, or init
-# artisanWin from the main thread, or not.
-# Then I get "Free to wrong pool during global destruction" error message
-# Single thread set directly in artisan.pm
+# THERE WAS SOME REASON THAT MULTI-THREADING WAS NOT WORKING,
+# but i don't remember what it was this time.
 
-our $SINGLE_THREAD = 1;
+our $SINGLE_THREAD = 0;
 	# 0 required the use of Win32::OLE::prhSetThreadNum(1) in localRenderer.pm.
 	# used to be set to 1 in artisanWin.pm and artisan.pm
-my $http_running:shared = 0;
 
+	# !!! MULTI-THREAD NOT WORKING in old artisanWin !!!
+	# Crashes when I try to "set the renderer" from the webUI
+	# at least in the old Wx artisanWin app ..
+	# The last thing appears to be the close($FH) at the end of handle_connection(),
+	# which is a thread created, and detached in start_webserver, below.
+	# Does not appear to make any difference if I detach, $FH, or init
+	# artisanWin from the main thread, or not.
+	# Then I get "Free to wrong pool during global destruction" error message
+	# Single thread set directly in artisan.pm
+
+
+my $http_running:shared = 0;
 sub running
 {
 	return $http_running;
