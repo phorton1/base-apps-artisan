@@ -228,8 +228,9 @@ sub getDidl
         'object.container.album.musicAlbum' :
 		'object.container';
 
-	my $art_uri = !$this->{has_art} ? '' :
-		"http://$server_ip:$server_port/get_art/$this->{id}/folder.jpg";
+	my $art_uri = $this->{art_uri};
+	$art_uri = "http://$server_ip:$server_port/get_art/$this->{id}/folder.jpg"
+		if !$art_uri && $this->{has_art};
 
 	my $didl = "<container ";
     $didl .= "id=\"$this->{id}\" ";

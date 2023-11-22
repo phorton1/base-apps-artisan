@@ -207,10 +207,12 @@ sub getDidl
 
 	my $dlna_stuff = $this->dlna_content_features();
 	my $pretty_duration = millis_to_duration($this->{duration},1);
-	my $art_uri = $this->{has_art} & 1 ?
-		"http://$server_ip:$server_port/get_art/$this->{parent_id}/folder.jpg" : "";
 	my $mime_type = myMimeType($this->{type});
 	my $url = "http://$server_ip:$server_port/media/$this->{id}.$this->{type}";
+
+	my $art_uri = $this->{art_uri};
+	$art_uri =  "http://$server_ip:$server_port/get_art/$this->{parent_id}/folder.jpg"
+		if !$art_uri && ($this->{has_art} & $HAS_FOLDER_ART);
 
 	# WMP returns top three lines, then RES, then everything else
 
