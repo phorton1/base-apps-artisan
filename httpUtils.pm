@@ -94,6 +94,11 @@ sub http_header
 	push(@response, "Date: ".gmtime()." GMT");
     # push(@response, "Last-Modified: "gmtime()." GMT"));
 
+	push @response,"Access-Control-Allow-Origin: http://$server_ip:$server_port";
+	push @response,"Access-Control-Allow-Methods: GET";	# POST, GET, OPTIONS
+		# allow cross-origin requests to iPad browsers
+		# which would not call /get_art/ to get our album art URIs otherwise
+
 	if (defined($params->{'addl_headers'}))
 	{
 		for my $header (@{$params->{'addl_headers'}})
