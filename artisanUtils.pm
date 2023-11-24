@@ -118,12 +118,14 @@ BEGIN
 our %stats;
 our $quitting:shared = 0;
 
+our $artisan_perl_dir = $0;
+$artisan_perl_dir =~ s/^.*://;
+$artisan_perl_dir =~ s/\\/\//g;
+$artisan_perl_dir = pathOf($artisan_perl_dir);
+display(0,0,"artisan_perl_dir=$artisan_perl_dir");
+
 our $program_name = 'Artisan Perl';
 our $this_uuid = '56657273-696f-6e34-4d41-20231112feed';
-our $artisan_perl_dir = "/base/apps/artisan";
-	# the directory of the pure-perl artisan, which includes
-	# the bin, images, webui, and xml subdirectories
-	# These will later be moved to /res for Cava Packaging
 our $mp3_dir = "/mp3s";
 our $mp3_dir_RE = '\/mp3s';
 
