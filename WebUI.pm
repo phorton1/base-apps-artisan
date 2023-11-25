@@ -58,6 +58,8 @@ my $dbg_webui = 1;
 sub web_ui
 {
 	my ($path_with_query) = @_;  # ,$headers,$post_xml) = @_;
+	$path_with_query ||= 'artisan.html';
+
 	if ($path_with_query !~ /update/)
 	{
 		display($dbg_webui,0,"--> web_ui($path_with_query) called");
@@ -82,7 +84,7 @@ sub web_ui
     # deliver static files
 
 	my $response = undef;
-	if ($path =~ /^((.*\.)(js|css|gif|png|html))$/)		# |json
+	if ($path =~ /^((.*\.)(js|css|gif|png|html|json))$/)
 	{
 		my $filename = $1;
 		my $type = $3;
@@ -107,7 +109,7 @@ sub web_ui
 				$type eq 'gif' ? 'image/gif' :
 				$type eq 'png' ? 'image/png' :
 				$type eq 'html' ? 'text/html' :
-				# $type eq 'json' ? 'application/json' :
+				$type eq 'json' ? 'application/json' :
 				'text/plain';
 
 			$response = http_header({ content_type => $content_type });
