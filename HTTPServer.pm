@@ -473,7 +473,7 @@ sub ServerDesc
         <modelDescription>a simple media server</modelDescription>
         <modelNumber>2.0</modelNumber>
         <modelURL>https://github.com/phorton1/base-apps-artisan</modelURL>
-        <presentationURL>http://$server_ip:$server_port/webui/artisan.html</presentationURL>
+        <presentationURL>http://$server_ip:$server_port/webui</presentationURL>
         <serialNumber>ap-12345678</serialNumber>
 		<dlna:X_DLNADOC xmlns:dlna="urn:schemas-dlna-org:device-1-0">DMS-1.50</dlna:X_DLNADOC>
         <iconList>
