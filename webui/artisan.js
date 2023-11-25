@@ -14,8 +14,6 @@
 jQuery.ajaxSetup({async:false});
 
 
-var debug_level = 0;
-
 var dbg_load 	 = 0;
 var dbg_layout 	 = 0;
 var dbg_popup 	 = 1;
@@ -512,106 +510,9 @@ function open_pane(pane)
 
 
 
-//--------------------------------------
-// DOM utilities
-//--------------------------------------
-
-function unused_ele_set_display(id,value)
-{
-	var ele = document.getElementById(id);
-	if (ele)
-	{
-		ele.style.display = value;
-	}
-}
-
-
-function ele_set_inner_html(id,html)	// used a lot
-{
-	var ele = document.getElementById(id);
-	if (ele)
-	{
-		ele.innerHTML = html;
-	}
-}
-
-
-function ele_set_value(id,value)	// used once
-{
-	var ele = document.getElementById(id);
-	if (ele)
-	{
-		ele.value = value;
-	}
-}
-
-function ele_set_src(id,src)	//  used twice
-{
-	var ele = document.getElementById(id);
-	if (ele)
-	{
-		ele.src = src;
-	}
-}
-
-function ele_get_src(id)	//  used twice
-{
-	var src = '';
-	var ele = document.getElementById(id);
-	if (ele)
-	{
-		src = ele.src;
-	}
-	return src;
-}
-
-
-function unused_ele_set_class(id,className)
-{
-	var ele = document.getElementById(id);
-	if (ele)
-	{
-		ele.className = className;
-	}
-}
-
-
 //---------------------------------------------
-// display utilities
+// unused utilities
 //---------------------------------------------
-
-function rerror(msg)
-{
-	alert(msg);
-}
-
-
-function display(level,indent,msg)
-{
-	if (level <= debug_level)
-	{
-		var stack = (new Error).stack.split("\n");
-		var callers = stack[1].split("\/");
-		var caller = callers[callers.length-1];
-		while (caller.length<20) {caller += ' '; }
-
-		var indent_txt = '';
-		while (indent--) { indent_txt += '    '; }
-		console.debug(caller + ' ' + indent_txt + msg);
-	}
-}
-
-
-function decode_ampersands(encoded)
-	// convert strings with double escaped ampersands
-	// into the actual display string. This *should*
-	// be safe to call multiple times ...
-{
-	var div = document.createElement('div');
-	div.innerHTML = encoded;
-	return div.firstChild.nodeValue;
-}
-
 
 
 function unused_loadCSS(href)
@@ -629,29 +530,6 @@ function unused_loadCSS(href)
 }
 
 
-//----------------------------------------
-// cookie utilities
-//----------------------------------------
-
-function setCookie(cname, cvalue, exdays)
-{
-    var d = new Date();
-    d.setTime(d.getTime() + (exdays*24*60*60*1000));
-    var expires = "expires="+d.toUTCString() + ";";
-    document.cookie = cname + "=" + cvalue + ";" + expires + "SameSite=Strict;";
-}
-
-function getCookie(cname)
-{
-    var name = cname + "=";
-    var ca = document.cookie.split(';');
-    for(var i=0; i<ca.length; i++) {
-        var c = ca[i];
-        while (c.charAt(0)==' ') c = c.substring(1);
-        if (c.indexOf(name) != -1) return c.substring(name.length, c.length);
-    }
-    return "";
-}
 
 
 
