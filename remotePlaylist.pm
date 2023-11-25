@@ -109,7 +109,7 @@ sub initPlaylists
 			{
 				my $pl_track = {
 					id => $track->{id},
-					album_id => $track->{parent_id},
+					album_id => $track->{album_title},
 					position => $position++ };
 				return !error("Could not insert pl_track($track->{title},$track->{id} in $db_name")
 					if !insert_record_db($dbh,'pl_tracks',$pl_track);
