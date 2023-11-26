@@ -367,7 +367,7 @@ function set_playlist(uuid,id)
 	// confuse the server.
 {
 	display(dbg_home,0,"set_playlist("+name+")");
-	hide_layout_panes();
+	// hide_layout_panes();
 	renderer_command('set_playlist',{
 		library_uuid:uuid,
 		id: id});

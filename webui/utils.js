@@ -91,7 +91,12 @@ function display(level,indent,msg,call_level)
 	{
 		var indent_txt = '';
 		while (indent--) { indent_txt += '    '; }
-		console.debug(caller(call_level) + ' ' + indent_txt + msg);
+		var out_msg = caller(call_level) + ' ' + indent_txt + msg;
+
+		console.debug(out_msg);
+		// if (WITH_SWIPE)
+			$('#temp_console_output').append(out_msg + "<br>");
+
 	}
 }
 

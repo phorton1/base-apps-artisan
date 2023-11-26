@@ -5,23 +5,29 @@
 // window.innerHeight and innerWidth.  Another clue is
 // navigator.userAgent (containing 'Mobile' or 'Android'
 // is a good clue)
+//
+// Another issue is debugging on iPads/phones.  There is no debugger.
+// Temporarily adding a temp_console_output <div> to the Renderer pane.
+// so that I can see debugging on the iPad.
 
-jQuery.ajaxSetup({async:false});
-	// to be used from utils.js
 
 var dbg_load 	 = 0;
 var dbg_layout 	 = 0;
 var dbg_popup 	 = 1;
 var dbg_loop     = 1;
+var dbg_swipe    = 0;
+
 
 var current_renderer = false;
 var current_library = false;
 
 var WITH_SWIPE = false;
-	// this is currently set to false.
 	// If it is true, then no handles will show for closed windows,
 	// and a swipe event handler will be added to the element specified
 	// in the layout_def that will close or open the relevant pane.
+	// We also take this as being synonymous with the browser NOT
+	// having a debugger, and populate the #console_output div if so
+
 var REFRESH_TIME = 600;
 
 var default_page = 'home';
@@ -41,6 +47,13 @@ var idle_count = 0;
 display(dbg_load,0,"artisan.js loaded");
 
 
+function is_touch_enabled() {
+    return ( 'ontouchstart' in window ) ||
+           ( navigator.maxTouchPoints > 0 ) ||
+           ( navigator.msMaxTouchPoints > 0 );
+}
+
+
 
 //========================================================
 // Main
@@ -49,6 +62,20 @@ display(dbg_load,0,"artisan.js loaded");
 $(function()
 {
 	display(dbg_load,0,"START LOADING ARTISAN");
+
+	WITH_SWIPE =
+		( 'ontouchstart' in window ) ||
+	    ( navigator.maxTouchPoints > 0 ) ||
+	    ( navigator.msMaxTouchPoints > 0 );
+	WITH_SWIPE = true;
+
+	display(dbg_load,0,
+		"screen(" + screen.width + "," + screen.height + ") " +
+		"iwindow(" + window.innerWidth + "," + window.innerHeight + ") " +
+		"owindow(" + window.outerWidth + "," + window.outerHeight + ") " +
+		"body(" + $('body').width() + "," + $('body').height() + ") " +
+		"WITH_SWIPE=" + WITH_SWIPE);
+
 
 	// explorer_mode = getCookie('explorer_mode') || 0;
 	// autoclose_timeout = parseInt(getCookie('autoclose_timeout') || 0);
@@ -67,6 +94,7 @@ $(function()
 
 	setTimeout(idle_loop, REFRESH_TIME);
 	set_page(default_page);
+	resize_layout(current_page);
 
 	display(dbg_load,0,"FINISHED LOADING ARTISAN");
 });
@@ -92,10 +120,10 @@ function idle_loop()
 		display(dbg_loop,1,"idle_loop() back from renderer_pane_onidle()");
 	}
 
-	if (false)	// crashes
-	{
-		check_timeouts();
-	}
+	// if (false)	// crashes
+	// {
+	// 	check_timeouts();
+	// }
 
 
 	display(dbg_loop,1,"idle_loop() settingTimeout");
@@ -130,7 +158,7 @@ function toggleFullScreen()
 		cancelFullScreen.call(doc);
 	}
 
-	hide_layout_panes();
+	// hide_layout_panes();
 }
 
 
@@ -156,7 +184,7 @@ function set_page(page_id)	// ,context)
 	// 	window[context_fxn](context);
 	// }
 
-	reset_timeouts();
+	// reset_timeouts();
 	resize_layout(current_page);
 	display(dbg_load,0,"set_page(" + page_id + ") returning");
 }
@@ -170,9 +198,7 @@ function set_page(page_id)	// ,context)
 
 function create_layout(page_id)
 {
-	var width = window.innerWidth;
-	var height = window.innerHeight;
-	display(dbg_layout,0,'create_layout(' + page_id + ',' + width + ',' + height + ')');
+	display(dbg_layout,0,'create_layout(' + page_id + ')');
 
 	var layout_def = layout_defs[page_id];
 	var params = layout_def.default_params;
@@ -187,10 +213,13 @@ function create_layout(page_id)
 	if (WITH_SWIPE)
 	{
 		$(layout_def.swipe_element).swipe({
+			// these options gotten directly from reading jquery.touchSwipe.js,
+			// which is apparently an old version and does not match google 'jquery swipe options'
+
 			allowPageScroll:"vertical",
-			swipe:onswipe_page,
+			swipe:onswipe,
 			maxTimeThreshold:1500});
-		$(layout_def.swipe_element).on('click',hide_layout_panes);
+		// $(layout_def.swipe_element).on('click',hide_layout_panes);
 	}
 }
 
@@ -257,7 +286,10 @@ function resize_layout_pane(layout,layout_def,value,pane)
 				display(dbg_layout,2,'sizing pane ' + pane + ' as closed');
 
 				layout.options[pane].slide = true;
-				layout.options[pane].spacing_closed = 6;	// (WITH_SWIPE ? 0 : 6);
+				layout.options[pane].spacing_closed = 6;
+					// was: WITH_SWIPE ? 0 : 6;
+					// but I prefer a reminder that there is a pane that can be opened.
+					// as it is not always the case
 				layout.close(pane);
 
 				// element_id = pane_def.element_id;
@@ -302,135 +334,217 @@ function resize_layout_pane(layout,layout_def,value,pane)
 //------------------------------------------------------------------------
 // auto-closing windows
 
-function reset_timeouts()
-{
-	display(dbg_layout,0,"reset_timeouts()");
-	update_autofull(false);
-	autoclose_count = 0;
-	autofull_count = 0;
-}
-
-function check_timeouts()
-{
-	if (autoclose_timeout > 0)
-	{
-		autoclose_count++;
-		if (autoclose_count == autoclose_timeout)
-		{
-			hide_context_menu();
-			hide_layout_panes();
-		}
-	}
-	if (autofull_timeout > 0)
-	{
-		autofull_count++;
-		if (autofull_count == autofull_timeout)
-		{
-			update_autofull(true);
-		}
-	}
-}
+// function reset_timeouts()
+// {
+// 	display(dbg_layout,0,"reset_timeouts()");
+// 	update_autofull(false);
+// 	autoclose_count = 0;
+// 	autofull_count = 0;
+// }
+//
+// function check_timeouts()
+// {
+// 	if (autoclose_timeout > 0)
+// 	{
+// 		autoclose_count++;
+// 		if (autoclose_count == autoclose_timeout)
+// 		{
+// 			hide_context_menu();
+// 			hide_layout_panes();
+// 		}
+// 	}
+// 	if (autofull_timeout > 0)
+// 	{
+// 		autofull_count++;
+// 		if (autofull_count == autofull_timeout)
+// 		{
+// 			update_autofull(true);
+// 		}
+// 	}
+// }
 
 
 // autofull
+//
+// function update_autofull(value)
+// {
+// 	if (autofull != value)
+// 	{
+// 		autofull = value;
+// 		if (current_page == 'renderer')
+// 		{
+// 			on_renderer_autofull_changed();
+// 		}
+// 	}
+// }
 
-function update_autofull(value)
+
+// function hide_layout_panes()
+// 	// close it if it is showing and has slide option set
+// {
+// 	return;
+// 		// crashing
+//
+// 	onchange_popup_numeric();
+//
+// 	var layout = $('#' + current_page + '_page').layout();
+// 	hide_layout_pane(layout,'west');
+// 	hide_layout_pane(layout,'north');
+// 	hide_layout_pane(layout,'east');
+// 	hide_layout_pane(layout,'south');
+// }
+//
+// function hide_layout_pane(layout,pane)
+// {
+// 	if (!layout.state[pane].isClosed &&
+// 		layout.options[pane].slide)
+// 	{
+// 		layout.options[pane].closable = true;
+// 		layout.slideClose(pane);
+// 	}
+// }
+
+
+//-------------------------------------------
+// Swiping
+//-------------------------------------------
+// Generally speaking, we set the swipe handler on the 'center' pane,
+// and allow it to open or close the other four panes.  Where the
+// swipe begins, and it's direction determine the possible actions.
+// For example, with left-right for horizontal swipes.
+//
+//      +--------+--------+---------+
+//      |        |        |         |
+//      |        |        |         |
+//      |        |        |         |
+//      |        |        |         |
+//      |        |        |         |
+//      +--------+--------+---------+
+//
+//   Starting
+//   Region       Direction    	Function
+//     left         left       	close west pane
+//     center       left		close west pane
+//     right        left		open east pane
+//
+//     right        right       close east pane
+//     center       right	   	close east pane
+//     left         right	   	open west pane
+
+function onswipe(event, direction, distance, duration, fingerCount, fingerData)
 {
-	if (autofull != value)
+	var layout = $('#' + current_page + '_page').layout();
+	var state = layout.center.state;
+	var pane = '';
+	var action = '';
+
+	// these vars are just for debugging
+
+	var start_x = fingerData[0].start.x;
+	var start_y = fingerData[0].start.y;
+	var left = state.offsetLeft;
+	var top = state.offsetTop;
+	var width = state.innerWidth;
+	var height = state.innerHeight;
+	display(dbg_swipe,0,
+		"onswipe(" + direction + ") " +
+		"start(" + start_x + "," + start_y + ") " +
+		"center_ltwh(" + left + "," + top + "," + width + "," + height + ")");
+
+
+	if (direction == 'left' || direction == 'right')
 	{
-		autofull = value;
-		if (current_page == 'renderer')
+		var start = fingerData[0].start.x;
+		var rel_pos = start - state.offsetLeft;
+		var third_size = state.innerWidth / 3;
+		var region = Math.floor(rel_pos / third_size);
+
+		if (direction == 'left')
 		{
-			on_renderer_autofull_changed();
+			if (region == 2)
+			{
+				pane = 'east';
+				action = 'open';
+			}
+			else
+			{
+				pane = 'west';
+				action = 'close';
+			}
+		}
+
+		// direction == 'right'
+
+		else if (region == 0)
+		{
+			pane = 'west';
+			action = 'open';
+		}
+		else
+		{
+			pane = 'east';
+			action = 'close';
+		}
+	}
+
+	else if (direction == 'up' || direction == 'down')
+	{
+		var start = fingerData[0].start.y;
+		var rel_pos = start - state.offsetTop;
+		var third_size = state.innerHeight / 3;
+		var region = Math.floor(rel_pos / third_size);
+
+		if (direction == 'up')
+		{
+			if (region == 2)
+			{
+				pane = 'south';
+				action = 'open';
+			}
+			else
+			{
+				pane = 'north';
+				action = 'close';
+			}
+		}
+
+		// direction == 'down'
+
+		else if (region == 0)
+		{
+			pane = 'north';
+			action = 'open';
+		}
+		else
+		{
+			pane = 'south';
+			action = 'close';
+		}
+	}
+
+	display(dbg_swipe,1,"swipe pane(" + pane + ") action(" + action + ")");
+
+	// for now they are pure 'open' or 'closes', but there is
+	// also the option of sliding OVER the center pane ...
+
+	if (pane && layout[pane])
+	{
+		if (action == 'open')
+		{
+			layout.options[pane].slide = false;
+			layout.options[pane].spacing_closed = 6;
+			layout.open(pane);
+		}
+		else // action == 'close'
+		{
+			layout.options[pane].slide = true;
+			layout.options[pane].spacing_closed = 6;
+			layout.close(pane);
 		}
 	}
 }
 
 
-// swiping
-
-function hide_layout_panes()
-	// close it if it is showing and has slide option set
-{
-	return;
-		// crashing
-
-	onchange_popup_numeric();
-
-	var layout = $('#' + current_page + '_page').layout();
-	hide_layout_pane(layout,'west');
-	hide_layout_pane(layout,'north');
-	hide_layout_pane(layout,'east');
-	hide_layout_pane(layout,'south');
-}
-
-function hide_layout_pane(layout,pane)
-{
-	if (!layout.state[pane].isClosed &&
-		layout.options[pane].slide)
-	{
-		layout.options[pane].closable = true;
-		layout.slideClose(pane);
-	}
-}
-
-function onswipe_page(event,direction)
-{
-	var layout = $('#' + current_page + '_page').layout();
-	onswipe_open_pane(direction,'right',layout,'west');
-	onswipe_open_pane(direction,'left',layout,'east');
-	onswipe_open_pane(direction,'down',layout,'north');
-	onswipe_open_pane(direction,'up',layout,'south');
-}
-
-function onswipe_open_pane(direction,cmp_direction,layout,pane)
-{
-	reset_timeouts();
-	if (direction == cmp_direction)
-	{
-		open_pane(pane);
-	}
-	else if (layout.options[pane].slide)
-	{
-		layout.options[pane].closable = true;
-		layout.slideClose(pane);
-	}
-}
-
-function open_pane(pane)
-{
-	var layout = $('#' + current_page + '_page').layout();
-	if (layout.options[pane].slide)
-	{
-		layout.slideOpen(pane);
-		layout.options[pane].closable = false;
-	}
-	else if (layout.state[pane].isClosed)
-	{
-		layout.open(pane);
-	}
-}
-
-
-
-//---------------------------------------------
-// unused utilities
-//---------------------------------------------
-
-
-function unused_loadCSS(href)
-	// Usage:
-	// loadCSS("/css/file.css");
-{
-	var cssLink = $("<link>");
-	$("head").append(cssLink); //IE hack: append before setting href
-
-	cssLink.attr({
-		rel:  "stylesheet",
-		type: "text/css",
-		href: href
-	});
-}
 
 
 

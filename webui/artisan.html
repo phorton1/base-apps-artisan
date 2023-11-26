@@ -1,25 +1,29 @@
 <html>
 <head>
 	<title>Artisan UI</title>
-    <!--meta name="mobile-web-app-capable" content="yes"-->
     <link rel="manifest" href="/webui/artisan_manifest.json">
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="viewport" content="width=device-width, height=device-height, user-scalable=no, initial-scale=1, maximum-scale=1">
+		<!-- width=device-width, -->
 
-	<!-- CSS loaded before JAVASCRIPT -->
+	<!-- CSS MUST BE loaded before JAVASCRIPT !!! -->
     <!-- the order of the css is important -->
 
     <link rel="stylesheet" type="text/css" href="/webui/jquery/jquery-ui-1.11.2.structure.css"/>
     <link rel="stylesheet" type="text/css" href="/webui/themes/artisan_jquery_black.css" />
     <link rel="stylesheet" type="text/css" href="/webui/themes/artisan_fancytree/ui.fancytree.css"/>
+		<!-- I have my own code in webUI.pm to scale fancy tree.css if there's a param ?scale=blah -->
 
 	<link rel="stylesheet" type="text/css" href="/webui/themes/artisan.css">
 	<link rel="stylesheet" type="text/css" href="/webui/themes/home.css">
 	<link rel="stylesheet" type="text/css" href="/webui/themes/explorer.css">
     <link rel="stylesheet" type="text/css" href="/webui/themes/artisan_black.css" />
+
     <!-- link rel="stylesheet" type="text/css" href="/webui/themes/artisan_touch.css"
         media="(max-width:599px),(max-device-width:1599px)"/ -->
+		<!-- I havn't gotten around to revisiting changing display sizes via css and 'media queries' -->
 
-	<!-- JAVASCRIPT loaded after CSS -->
+	<!-- JAVASCRIPT MUST BE loaded after CSS !!! -->
 
     <script type="text/javascript" src="/webui/jquery/jquery-1.11.1.js"></script>
     <script type="text/javascript" src="/webui/jquery/jquery-ui-1.11.2.js"></script>

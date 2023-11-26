@@ -131,7 +131,7 @@ function init_page_explorer()
 			display(dbg_explorer,0,"calling update_explore_album_info() " + node.title);
 			update_explorer_album_info(node.title,rec);
 			display(dbg_explorer,0,"back from update_explore_album_info()");
-			hide_layout_panes();
+			// hide_layout_panes();
 
 		}
 	});

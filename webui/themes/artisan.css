@@ -2,6 +2,15 @@
  artisan.css
 ********************************************/
 
+body
+{
+	overflow:hidden !important;
+		/* this prevents the iPad from 'bouncing' when you
+		   swipe up or down. It could also be overflow_y or
+		   whatever. */
+}
+
+
 /* HTML ELEMENT DEFAULTS */
 
 html, div, body, h1, h2, h3, li, p, td
