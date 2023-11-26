@@ -38,8 +38,14 @@ my $dbg_webui = 1;
 	# -2 = show fancytree scaling pct
 
 
-# reminder of the user agents from various devices
+my $SEND_MINIFIED_JS_AND_CSS = 1;
+	# I spent over an hour trying to figure out how JS was getting minified
+	# when I am loading the unminified versions ins artisan.html, only to discover
+	# that I myself am loading the min files if they exist, sheesh.
 
+
+# old reminder of the user agents from various devices
+#
 # my $ua1 = 'Mozilla/5.0 (Windows NT 6.3; WOW64; rv:24.0) Gecko/20100101 Firefox/24.0';
 	# firefox on laptop  1600x900
 # my $ua2 = 'Mozilla/5.0 (iPad; CPU OS 5_1 like Mac OS X) AppleWebKit/534.46 (KHTML, like Gecko ) Version/5.1 Mobile/9B176 Safari/7534.48.3';
@@ -114,7 +120,7 @@ sub web_ui
 
 			$response = http_header({ content_type => $content_type });
 
-			if ($type eq 'js' || $type eq 'css')
+			if ($SEND_MINIFIED_JS_AND_CSS && ($type eq 'js' || $type eq 'css'))
 			{
 				my $filename2 = $filename;
 				$filename2 =~ s/$type$/min.$type/;
