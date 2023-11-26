@@ -45,8 +45,6 @@
                             </table>
                         </div>
                     </div>
-
-
                 </td>
 
             </tr>
@@ -54,21 +52,10 @@
 
         <!-- TRANSPORT CONTROLS -->
 
-
         <table class="renderer_table" align='center'>
             <tr>
 
 				<!-- this to become the volume control, disabled if max_vol == 0 -->
-
-                <td class="play_button" align="left">
-                    <input type="button"
-                        id="renderer_button_unused1"
-                        class='renderer_big_button'
-                        value="unused1"
-                        disabled>
-                </td>
-
-
 
                 <td class="play_button" align="center">
                     <input type="button"
@@ -98,24 +85,14 @@
                         disabled
                         onclick = "javascript:renderer_command('next')">
                 </td>
-                <td class="play_button" align="right">
-                    <input type="button"
-                        id="renderer_button_shuffle"
-                        class='renderer_big_button'
-                        value="shuffle"
-                        disabled>
-                </td>
             </tr>
         </table>
 
 
-        <!-- TRANSPORT CONTROLS -->
+        <!-- OTHER CONTROLS -->
 
-        <table class="renderer_table" align='center'>
+        <!-- table class="renderer_table" align='center'>
             <tr>
-
-				<!-- this to become the balance control, disabled if max_vol == 0 -->
-
                 <td class="play_button" align="left">
                     <input type="button"
                         id="renderer_button_unused2"
@@ -173,10 +150,10 @@
                         disabled>
                 </td>
             </tr>
-        </table>
+        </table -->
 
-	<div id='temp_console_output' style="height:300px; overflow-y:scroll;">
-	</div>
+		<div id='temp_console_output' style="height:300px; overflow-y:scroll;">
+		</div>
 
     </div>
 

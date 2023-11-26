@@ -3,7 +3,11 @@
 
 // TODO:  WMA Files don't work on HTML renderer.  Need a good way to skip em (esp in playlists)
 
+
+var $dbg_audio = 0;
+
 var audio;
+
 
 const PLAYLIST_ABSOLUTE = 0;
 const PLAYLIST_RELATIVE = 1;
@@ -74,7 +78,19 @@ function init_html_renderer(state)
 
 function init_audio()
 {
-	audio = document.getElementById('audio_player');
+	audio = document.createElement('audio');
+	audio.setAttribute('autoplay', true);
+
+	if (true)
+	{
+		// <! audio id='audio_player'
+		// 	style='padding-top:10px;'
+		// 	autoplay controls height='30px'/ >
+		audio.setAttribute('controls', true);
+		var div = document.getElementById('explorer_album_info_td');
+		div.appendChild(audio);
+	}
+
 	init_html_renderer(RENDERER_STATE_NONE);
 	audio.addEventListener("ended", (event) =>
 		{ onMediaEnded(event); } );
@@ -83,6 +99,8 @@ function init_audio()
 
 function audio_command(command,args)
 {
+	display($dbg_audio,0,"audio_command(" + command + ")");
+
 	if (command == 'stop')
 	{
 		// method does not exist
