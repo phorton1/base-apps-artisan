@@ -9,41 +9,35 @@ var dbg_slider = 0;
 var in_slider = false;
 var last_song = '';
 var renderer_slider;
-var NEW_WAY = false;
 
 
-page_layouts['home'] = {
+layout_defs['home'] = {
 	layout_id: '#home_page',
 	swipe_element: '#renderer_pane_div',
 
-	north: {
-		limit:400,
-		size:40,
-		size_touch:60,
-		element_id:'#renderer_page_header_right',
-		},
-	west: {
-		limit:600,
-		size:245,
-		element_id:'#renderer_page_header_left',
-		},
-	east: {
-		limit:900,
-		size:200,
-		element_id:'#renderer_button_shuffle',
-		element_is_button:true,
-		},
-	// south: {
-	// 	limit:600,
-	// 	size:135,
-	// 	size_touch:160,
-	// 	element_id:'#renderer_button_playlist_assign',
-	// 	element_is_button:true,
-	// 	},
-
-	defaults: {
+	default_params: {
+		applyDemoStyles: true,
+		resizable: false,
 		west__onresize:  $.layout.callbacks.resizePaneAccordions,
 	},
+
+	north: {
+		size:40,
+		limit:400,
+		element_id:'#renderer_page_header_right',
+	},
+	west: {
+		size:245,
+		limit:600,
+		element_id:'#renderer_page_header_left',
+	},
+	east: {
+		size:200,
+		limit:900,
+		element_id:'#renderer_button_shuffle',
+		element_is_button:true,
+	},
+
 };
 
 
@@ -57,8 +51,8 @@ function init_page_home()
 	last_song = '';
 	display(dbg_home,0,"init_page_home()");
 
-	onload_device_list('renderers',true);
-	onload_device_list('libraries',true);
+	load_device_list('renderers');
+	load_device_list('libraries');
 
 	init_playlist_info();
 	init_renderer_pane();
@@ -88,37 +82,45 @@ function makePlural(singular)
 	return '';
 }
 
-function onload_device_list(plural,init)
+function load_device_list(plural)
 	// if singular, it's being called from init_page_home()
 	// and we check the last_singular cookie,
 {
-	if (init == undefined) init = false;
 	var singular = makeSingular(plural);
-	display(dbg_home,0,"onload_renderer_list(" + plural + "," + init + ")");
+	display(dbg_home,0,"onload_renderer_list(" + plural + ")");
 
-	var last_cookie = 'last_' + singular;
-	var last_uuid = singular ? getCookie("last_" + singular) : '';
-	var found = $( "#" + plural ).buttonset().length;
-	if (found)
-	{
-		found = false;
-		var ele = last_uuid ? $("#" + singular + "-" + last_uuid) : false;
-		if (ele && ele.length)
+	$.get('/webui/getDevicesHTML/' + plural,
+
+		function(result)
 		{
-			found = true;
-			selectDevice(singular,last_uuid);
+			$( "#" + plural ).html(result);
+			$( "#" + plural ).buttonset();
+
+			var last_cookie = 'last_' + singular;
+			var last_uuid = singular ? getCookie("last_" + singular) : '';
+			var found = $( "#" + plural ).buttonset().length;
+			if (found)
+			{
+				found = false;
+				var ele = last_uuid ? $("#" + singular + "-" + last_uuid) : false;
+				if (ele && ele.length)
+				{
+					found = true;
+					selectDevice(singular,last_uuid);
+				}
+				if (!found)
+				{
+					found = true;
+					var first = $("#" + plural + " input").first();
+					var first_uuid = first.attr('id');
+					first_uuid = first_uuid.replace(singular + "-","");
+					selectDevice(singular,first_uuid);
+				}
+			}
+			if (!found)
+				setCookie(last_cookie,'',-1);
 		}
-		if (!found)
-		{
-			found = true;
-			var first = $("#" + plural + " input").first();
-			var first_uuid = first.attr('id');
-			first_uuid = first_uuid.replace(singular + "-","");
-			selectDevice(singular,first_uuid);
-		}
-	}
-	if (!found)
-		setCookie(last_cookie,'',-1);
+	);
 }
 
 
@@ -554,18 +556,10 @@ function update_renderer_ui()
 
 		if (!in_slider)
 		{
-			if (NEW_WAY)	// new way
-			{
-				disable_button('renderer_slider',disable_slider);
-			}
-			else
-			{
-				display(dbg_loop,0,"renderer.update_renderer_ui(a)");
-				renderer_slider.slider( disable_slider?'disable':'enable');
-				display(dbg_loop,0,"renderer.update_renderer_ui(b) play_pct=" + play_pct);
-				$('#renderer_slider').slider('value',play_pct);
-				display(dbg_loop,0,"renderer.update_renderer_ui(c)");
-			}
+			display(dbg_loop,0,"renderer.update_renderer_ui(a)");
+
+			renderer_slider.slider( disable_slider?'disable':'enable');
+			$('#renderer_slider').slider('value',play_pct);
 		}
 
 		ele_set_inner_html('renderer_position',position_str);
@@ -627,23 +621,7 @@ function disable_button(id,disabled)
 
 	if ($(use_id))	 // .length)
 	{
-		//	display(0,0,"disable_button(" + id + ")");
-		//	display(0,1,"class=" + $(use_id).attr('class'));
-		//	display(0,1,"disabled=" + $(use_id).prop('disabled'));
-		//	var desired = disabled?'disable':'enable';
-		//  if ($(use_id).prop('disabled') != desired)
-
-		if (NEW_WAY)	// new way
-		{
-			if (disabled)
-				$(use_id).attr('disabled', true).addClass( 'ui-state-disabled' );
-			else
-				$(use_id).attr('disabled', false).removeClass( 'ui-state-disabled' );
-		}
-		else	// old way
-		{
-			$(use_id).button(disabled?'disable':'enable');
-		}
+		$(use_id).button(disabled?'disable':'enable');
 	}
 	display(dbg_loop,0,"disable_button(" + id + ") finished");
 }

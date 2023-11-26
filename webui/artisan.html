@@ -5,6 +5,22 @@
     <link rel="manifest" href="/webui/artisan_manifest.json">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
 
+	<!-- CSS loaded before JAVASCRIPT -->
+    <!-- the order of the css is important -->
+
+    <link rel="stylesheet" type="text/css" href="/webui/jquery/jquery-ui-1.11.2.structure.css"/>
+    <link rel="stylesheet" type="text/css" href="/webui/themes/artisan_jquery_black.css" />
+    <link rel="stylesheet" type="text/css" href="/webui/themes/artisan_fancytree/ui.fancytree.css"/>
+
+	<link rel="stylesheet" type="text/css" href="/webui/themes/artisan.css">
+	<link rel="stylesheet" type="text/css" href="/webui/themes/home.css">
+	<link rel="stylesheet" type="text/css" href="/webui/themes/explorer.css">
+    <link rel="stylesheet" type="text/css" href="/webui/themes/artisan_black.css" />
+    <!-- link rel="stylesheet" type="text/css" href="/webui/themes/artisan_touch.css"
+        media="(max-width:599px),(max-device-width:1599px)"/ -->
+
+	<!-- JAVASCRIPT loaded after CSS -->
+
     <script type="text/javascript" src="/webui/jquery/jquery-1.11.1.js"></script>
     <script type="text/javascript" src="/webui/jquery/jquery-ui-1.11.2.js"></script>
     <script type="text/javascript" src="/webui/jquery/layout-1.4.3/jquery.layout.js"></script>
@@ -13,30 +29,13 @@
     <script type="text/javascript" src="/webui/jquery/jquery.ui.touch-punch.js"></script>
     <script type="text/javascript" src="/webui/jquery/jquery.touchSwipe.js"></script-->
     <script type="text/javascript" src="/webui/jquery/prh-jquery.ui-contextmenu.js"></script>
+
     <script type="text/javascript" src="/webui/utils.js"></script>
     <script type="text/javascript" src="/webui/artisan.js"></script>
     <script type="text/javascript" src="/webui/home.js"></script>
     <script type="text/javascript" src="/webui/explorer.js"></script>
     <script type="text/javascript" src="/webui/playlist.js"></script>
 	<script type="text/javascript" src="/webui/audio.js"></script>
-
-    <!-- the order of the css is important -->
-    <!-- touch_enabled == media="(max-width:599px),(max-device-width:1599px)"-->
-    <!-- intended to have bigger buttons, etc, on everything except the laptop -->
-    <!-- and the laptop can see the big buttons under 600 in width -->
-
-    <link rel="stylesheet" type="text/css" href="/webui/jquery/jquery-ui-1.11.2.structure.css"/>
-    <link rel="stylesheet" type="text/css" href="/webui/themes/artisan_jquery_black.css" />
-    <link rel="stylesheet" type="text/css" href="/webui/themes/artisan_fancytree/ui.fancytree.css"/>
-    <link rel="stylesheet" href="/webui/themes/artisan_fancytree/ui.fancytree.css?scale=32"
-        media="(max-width:599px),(max-device-width:1599px)"/>
-
-	<link rel="stylesheet" type="text/css" href="/webui/themes/artisan.css">
-	<link rel="stylesheet" type="text/css" href="/webui/themes/home.css">
-	<link rel="stylesheet" type="text/css" href="/webui/themes/explorer.css">
-    <link rel="stylesheet" type="text/css" href="/webui/themes/artisan_black.css" />
-    <link rel="stylesheet" type="text/css" href="/webui/themes/artisan_touch.css"
-        media="(max-width:599px),(max-device-width:1599px)"/>
 
 </head>
 

@@ -9,29 +9,33 @@ var explorer_tracklist;
 var explorer_details;
 
 
-page_layouts['explorer'] = {
+
+layout_defs['explorer'] = {
 	layout_id: '#explorer_page',
 	swipe_element: '#explorer_center_div',
 
-	north: {
-		limit:400,
-		size:40,
-		size_touch:60,
-		element_id:'#explorer_page_header_right',
-		},
-	west: {
-		limit:600,
-		size:280,
-		size_touch:380,
-		element_id:'#explorer_page_header_left',
-		},
-	east: {
-		limit:800,
-		size:320,
-		},
-
-	defaults: {
+	default_params: {
+		applyDemoStyles: true,
+		resizable: false,
 	},
+
+	north: {
+		size:40,
+		limit:400,
+		element_id:'#explorer_page_header_right',
+	},
+	west: {
+		size:280,
+		limit:600,
+		resizable: true,
+		element_id:'#explorer_page_header_left',
+	},
+	east: {
+		size:320,
+		limit:800,
+		resizable: true,
+	},
+
 };
 
 

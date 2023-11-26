@@ -1,18 +1,13 @@
 // artisan.js
 //
-// media queries height=window.innerHeight, and mq device-height==screen.height
-// document.body.clientWidth == window.innerWidth == screen.width on tablets
-// same is not true on desktop clientWidth<innerWidth<=screen.width
-// window.innerHeight < or = screen.height in general
-//
-// tablet 600 x 1024
-// desktop 1600 x 900
-// car_stereo 534 x 320
-//
-// navigator.userAgent containing 'Mobile' or 'Android' is a good clue
+// We will need to modify the layout based on the device.
+// That can be inferred from screen.width and height and
+// window.innerHeight and innerWidth.  Another clue is
+// navigator.userAgent (containing 'Mobile' or 'Android'
+// is a good clue)
 
 jQuery.ajaxSetup({async:false});
-
+	// to be used from utils.js
 
 var dbg_load 	 = 0;
 var dbg_layout 	 = 0;
@@ -22,12 +17,16 @@ var dbg_loop     = 1;
 var current_renderer = false;
 var current_library = false;
 
-var WITH_SWIPE = true;
+var WITH_SWIPE = false;
+	// this is currently set to false.
+	// If it is true, then no handles will show for closed windows,
+	// and a swipe event handler will be added to the element specified
+	// in the layout_def that will close or open the relevant pane.
 var REFRESH_TIME = 600;
 
 var default_page = 'home';
 var current_page = ''
-var page_layouts = {};
+var layout_defs = {};
 
 
 var explorer_mode = 0;
@@ -51,18 +50,20 @@ $(function()
 {
 	display(dbg_load,0,"START LOADING ARTISAN");
 
+	// explorer_mode = getCookie('explorer_mode') || 0;
+	// autoclose_timeout = parseInt(getCookie('autoclose_timeout') || 0);
+	// autofull_timeout = parseInt(getCookie('autofull_timeout') || 0);
+
 	init_audio();
 
-	explorer_mode = getCookie('explorer_mode') || 0;
-	autoclose_timeout = parseInt(getCookie('autoclose_timeout') || 0);
-	autofull_timeout = parseInt(getCookie('autofull_timeout') || 0);
-	default_renderer_name = getCookie('default_renderer_name');
+	create_layout('home');
+	create_layout('explorer');
+
+	init_page_home();
+	init_page_explorer();
 
 	$('.artisan_menu_table').buttonset();
 	$('#context_menu_div').buttonset();
-
-	load_page("home");
-	load_page("explorer");
 
 	setTimeout(idle_loop, REFRESH_TIME);
 	set_page(default_page);
@@ -163,126 +164,47 @@ function set_page(page_id)	// ,context)
 
 
 //========================================================
-// Page Loading and Resizing
+// Layout
 //========================================================
-// loadRecursive() is called on each page loaded
-// into the artisan_body element by loadPage().
-//
-// data-load="url" attribute
-//
-//    Within a page, any element may specify a
-//    data=load attribute, in which case it's innerHTML
-//    will be automagically loaded from the url.
-//
-// data-onload='javascript:function' attribute
-//
-//    If an element specifies an url, then it may also
-//    specify a javascript function that will be executed
-//    when that innerHTML has been loaded
-
-function load_page(page_id)
-{
-	display(dbg_load,0,"load_page(" + page_id + ")");
-
-	loadRecursive($('#' + page_id + '_page'));
-	create_layout(page_id);
-
-	var init_fxn = 'init_page_' + page_id;
-	display(dbg_load,0,"init_fxn=" + init_fxn);
-
-	if (window[init_fxn])
-	{
-		window[init_fxn]();
-		display(dbg_load,0,"back from " + init_fxn + "()");
-	}
-	else
-	{
-		display(dbg_load,0,"INIT FXN NOT FOUND: " + init_fxn);
-	}
-
-	display(dbg_load,0,"load_page(" + page_id + ") returning");
-
-}
-
-
-function loadRecursive(context,level)
-{
-	if (!level) level = 0;
-	display(dbg_load,level,'loadRecursive(' + context.attr('id') + ')');
-
-    context.find('[data-load]').each(function() {
-		var url = $(this).attr('data-load');
-		var onload_fxn = $(this).attr('data-onload');
-
-		display(dbg_load,level,'--> onload url='+url);
-		display(dbg_load,level,'    onload fxn='+onload_fxn);
-
-		$(this).load( url, function()
-		{
-			loadRecursive($(this),level+1);
-			if (onload_fxn && onload_fxn != '' && window[onload_fxn])
-			{
-			    display(dbg_load,level,'    calling onload fxn='+onload_fxn);
-				window[onload_fxn]();
-			}
-		});
-    });
-}
-
 
 
 function create_layout(page_id)
 {
 	var width = window.innerWidth;
 	var height = window.innerHeight;
-	var page_layout = page_layouts[page_id];
-	var params = $.extend({
-		applyDemoStyles: true,
-		}, page_layout.defaults);
-
-	var width = window.innerWidth;
-	var height = window.innerHeight;
-	page_layout.width = width;
-	page_layout.height = height;
-	page_layout.touch_enabled = width<600 || screen.width != 1600 ? true : false;
-
 	display(dbg_layout,0,'create_layout(' + page_id + ',' + width + ',' + height + ')');
 
-	create_layout_pane(page_layout,params,height,'north');
-	create_layout_pane(page_layout,params,width,'west');
-	create_layout_pane(page_layout,params,width,'east');
-	create_layout_pane(page_layout,params,height,'south');
+	var layout_def = layout_defs[page_id];
+	var params = layout_def.default_params;
 
-	var layout = $(page_layout.layout_id).layout(params);
+	add_pane_params(layout_def,params,'north');
+	add_pane_params(layout_def,params,'west');
+	add_pane_params(layout_def,params,'east');
+	add_pane_params(layout_def,params,'south');
+
+	var layout = $(layout_def.layout_id).layout(params);
 
 	if (WITH_SWIPE)
 	{
-		$(page_layout.swipe_element).swipe({
+		$(layout_def.swipe_element).swipe({
 			allowPageScroll:"vertical",
 			swipe:onswipe_page,
 			maxTimeThreshold:1500});
-		$(page_layout.swipe_element).on('click',hide_layout_panes);
+		$(layout_def.swipe_element).on('click',hide_layout_panes);
 	}
-
-	// page_layout.loaded = true;
-
 }
 
 
-function create_layout_pane(page_layout,params,value,pane)
+function add_pane_params(layout_def,params,pane)
 {
-	var pane_layout = page_layout[pane];
-	if (pane_layout)
+	var pane_def = layout_def[pane];
+	if (pane_def)
 	{
-		var size =  pane_layout.size;
-		if (page_layout.touch_enabled && pane_layout.size_touch > 0)
-		{
-			size = pane_layout.size_touch;
-		}
-		display(dbg_layout,1,'create_layout_pane(' + pane + ') size=' + size);
+		var size =  pane_def.size;
+		var resizable = pane_def.resizable || false;
+		display(dbg_layout,1,'add_pane_params(' + pane + ') size=' + size + " resizable=" + resizable);
 		params[pane + '__size'] = size;
-
-		// not needed if we call resize() anyways
+		params[pane + '__resizable'] = resizable;
 
 		if (false)
 		{
@@ -304,93 +226,74 @@ function resize_layout(page_id)
 	var height = window.innerHeight;
 	display(dbg_layout,0,"resize_layout(" + width + ',' + height + ')');
 
-	var page_layout = page_layouts[page_id];
+	var layout_def = layout_defs[page_id];
 
-	// page_layout.loaded *might* be needed if the browser is resized
-	// before it the pages have loaded ...
+	var layout = $('#' + page_id + '_page').layout();
 
-	if (page_layout) // && page_layout.loaded)
-	{
-		page_layout.width = width;
-		page_layout.height = height;
-		page_layout.touch_enabled = width<600 || screen.width != 1600 ? true : false;
-		var layout = $('#' + page_id + '_page').layout();
-
-		display(dbg_layout,0,"resizing layout(" + width + ',' + height + ')');
-
-		resize_layout_pane(layout,page_layout,height,'north');
-		resize_layout_pane(layout,page_layout,width,'west');
-		resize_layout_pane(layout,page_layout,width,'east');
-		resize_layout_pane(layout,page_layout,height,'south');
-
-		display(dbg_layout+1,0,"calling layout.resizeAll()");
-
-		layout.resizeAll();
-	}
-	display(dbg_load,0,"resizing layout(" + width + ',' + height + ') returning');
+	resize_layout_pane(layout,layout_def,height,'north');
+	resize_layout_pane(layout,layout_def,width,'west');
+	resize_layout_pane(layout,layout_def,width,'east');
+	resize_layout_pane(layout,layout_def,height,'south');
+	layout.resizeAll();
 }
 
 
-
-function resize_layout_pane(layout,page_layout,value,pane)
+function resize_layout_pane(layout,layout_def,value,pane)
 {
-	var pane_layout = page_layout[pane];
-	if (pane_layout)
+	var pane_def = layout_def[pane];
+	if (pane_def)
 	{
-		var size =  pane_layout.size;
-		if (page_layout.touch_enabled && pane_layout.size_touch > 0)
+		// var size =  pane_def.size;
+		// layout.sizePane(pane,size);
+
+		var state = layout.state;
+		if (pane_def.limit && state && state[pane])
 		{
-			size = pane_layout.size_touch;
-		}
-		display(dbg_layout,1,'resize_layout_pane(' + pane + ') size=' + size);
-		layout.sizePane(pane,size);
-		display(dbg_layout,2,'back from initial sizePane()');
+			var is_closed = state[pane].isClosed ? true : false;
+			display(dbg_layout,2,'pane(' + pane + ') is_closed=' + is_closed + ' value=' + value + ' limit=' + pane_def.limit);
 
-		element_id = pane_layout.element_id;
-		if (value <= pane_layout.limit)
-		{
-			display(dbg_layout,2,'sizing pane as closed');
-
-			// don't see the button to re-open it if Swiping
-
-			layout.options[pane].slide = true;
-			layout.options[pane].spacing_closed = (WITH_SWIPE ? 0 : 6);
-			layout.close(pane);
-			if (element_id)
+			if (!is_closed && value <= pane_def.limit)
 			{
-				$(element_id).css( 'cursor', 'pointer' );
-				$(element_id).on('click',function(event)
-				{
-					open_pane(pane);
-				});
-				if (pane_layout.element_is_button)
-				{
-					$(element_id).button('enable');
-				}
+				display(dbg_layout,2,'sizing pane ' + pane + ' as closed');
+
+				layout.options[pane].slide = true;
+				layout.options[pane].spacing_closed = 6;	// (WITH_SWIPE ? 0 : 6);
+				layout.close(pane);
+
+				// element_id = pane_def.element_id;
+				// if (element_id)
+				// {
+				// 	$(element_id).css( 'cursor', 'pointer' );
+				// 	$(element_id).on('click',function(event)
+				// 	{
+				// 		open_pane(pane);
+				// 	});
+				// 	if (pane_def.element_is_button)
+				// 	{
+				// 		$(element_id).button('enable');
+				// 	}
+				// }
+			}
+			else if (is_closed && value > pane_def.limit)
+			{
+				display(dbg_layout,2,'sizing pane ' + pane + ' as open');
+				layout.options[pane].slide = false;
+				layout.options[pane].spacing_closed = 6;
+				layout.open(pane);
+				// layout.panes[pane].off('click');
+				// if (element_id)
+				// {
+				// 	$(element_id).css( 'cursor', 'auto' );
+				// 	$(element_id).off('click');
+				// 	if (pane_def.element_is_button)
+				// 	{
+				// 		$(element_id).button('disable');
+				// 	}
+				// }
 			}
 		}
-		else
-		{
-			display(dbg_layout,2,'sizing pane as open');
-			layout.options[pane].slide = false;
-			layout.options[pane].spacing_closed = 6;
-			layout.open(pane);
-			layout.panes[pane].off('click');
-			if (element_id)
-			{
-				$(element_id).css( 'cursor', 'auto' );
-				$(element_id).off('click');
-				if (pane_layout.element_is_button)
-				{
-					$(element_id).button('disable');
-				}
-			}
-		}
-		display(dbg_layout,2,'resize_layout_pane(' + pane + ') returning');
-
-	}	// if pane_layout
+	}
 }
-
 
 
 
