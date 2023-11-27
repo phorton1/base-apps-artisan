@@ -75,11 +75,6 @@ sub dataDir
 	return $dir;
 }
 
-sub playlistDir
-{
-	my ($this) = @_;
-	return $this->dataDir()."/playlists";
-}
 
 sub dbPath
 {
@@ -306,17 +301,17 @@ sub getSubitems
 sub getPlaylist
 	# pass thru
 {
-	my ($this,$renderer_uuid,$id) = @_;
+	my ($this,$id) = @_;
 	$this->start();
-	return Playlist::getPlaylist($this,$renderer_uuid,$id);
+	return Playlist::getPlaylist($this,$id);
 }
 
 sub getPlaylists
 	# pass through
 {
-	my ($this,$renderer_uuid) = @_;
+	my ($this) = @_;
 	$this->start();
-	return Playlist::getPlaylists($this,$renderer_uuid);
+	return Playlist::getPlaylists($this);
 }
 
 

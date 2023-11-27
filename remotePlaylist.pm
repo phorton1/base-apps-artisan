@@ -73,7 +73,7 @@ sub initPlaylists
 
 	my $pldb_ts = getTimestamp($pldb_name);
 	display($dbg_rpl,2,"ts=$pldb_ts for PLAYLISTS.DB");
-	my $playlist_dir = $library->playlistDir();
+	my $playlist_dir = $library->dataDir()."/playlists";
 	my_mkdir $playlist_dir if !-d $playlist_dir;
 
 	for my $playlist (@$playlists)
@@ -110,7 +110,9 @@ sub initPlaylists
 				my $pl_track = {
 					id => $track->{id},
 					album_id => $track->{album_title},
-					position => $position++ };
+					position => $position,
+					idx => $position };
+				$position++;
 				return !error("Could not insert pl_track($track->{title},$track->{id} in $db_name")
 					if !insert_record_db($dbh,'pl_tracks',$pl_track);
 			}

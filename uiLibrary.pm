@@ -155,11 +155,7 @@ sub library_request
 
 	elsif ($path eq 'get_playlists')
 	{
-		my $renderer_uuid = $params->{renderer_uuid} || '';
-		return json_error("no renderer_uuid in get_playiists")
-			if !$renderer_uuid;
-
-		my $playlists = $library->getPlaylists($renderer_uuid);
+		my $playlists = $library->getPlaylists();
 		my $html = html_header();
 		for my $playlist (@$playlists)
 		{
@@ -176,27 +172,24 @@ sub library_request
 		my $id = $params->{id} || '';
 		return json_error("no playlist id in get_playiist")
 			if !$id;
-		my $renderer_uuid = $params->{renderer_uuid} || '';
-		return json_error("no renderer_uuid in get_playiist")
-			if !$renderer_uuid;
 
-		my $playlist = $library->getPlaylist($renderer_uuid,$id);
+		my $playlist = $library->getPlaylist($id);
 		return json_error("could not find playlist '$id'") if !$playlist;
 
 		if ($path eq 'get_playlist_track')
 		{
 			my $mode = $params->{mode} || 0;
 			my $index = $params->{index} || 0;
-			my $track_id = $playlist->getPlaylistTrack($renderer_uuid,$mode,$index);
-			return json_error("uiLibrary($library->{name}) could not getPlaylistTrack($renderer_uuid,$mode,$index)")
+			my $track_id = $playlist->getPlaylistTrack($mode,$index);
+			return json_error("uiLibrary($library->{name}) could not getPlaylistTrack($mode,$index)")
 				if !$track_id;
 			$playlist->{track_id} = $track_id;
 		}
 		elsif ($path eq 'shuffle_playlist')
 		{
 			my $shuffle = $params->{shuffle} || 0;
-			my $ok = $playlist->sortPlaylist($renderer_uuid,$shuffle);
-			return json_error("uiLibrary($library->{name}) could not sortPlaylist($renderer_uuid,$shuffle)")
+			my $ok = $playlist->sortPlaylist($shuffle);
+			return json_error("uiLibrary($library->{name}) could not sortPlaylist($shuffle)")
 				if !$ok;
 		}
 

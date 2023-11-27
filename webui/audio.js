@@ -247,8 +247,7 @@ function set_local_playlist(library_uuid,playlist_id)
 {
 	init_html_renderer(RENDERER_STATE_TRANSIT);
 	$.get('/webui/library/'+ library_uuid + '/get_playlist' +
-		  '?renderer_uuid=' + html_renderer.uuid +
-		  '&id=' + playlist_id,
+		  '?id=' + playlist_id,
 
 	function(result)
 	{
@@ -275,8 +274,7 @@ function playlist_local(mode,inc)
 	playlist_id = playlist.id;
 
 	$.get('/webui/library/'+ library_uuid + '/get_playlist_track' +
-	  '?renderer_uuid=' + html_renderer.uuid +
-	  '&id=' + playlist_id +
+	  '?id=' + playlist_id +
 	  '&mode=' + mode +
 	  '&index=' + inc,
 
@@ -315,8 +313,7 @@ function playlist_shuffe(shuffle)
 	playlist_id = playlist.id;
 
 	$.get('/webui/library/'+ library_uuid + '/shuffle_playlist' +
-	  '?renderer_uuid=' + html_renderer.uuid +
-	  '&id=' + playlist_id +
+	  '?id=' + playlist_id +
 	  '&shuffle=' + shuffle,
 
 	function(result)

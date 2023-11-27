@@ -81,6 +81,7 @@ our %artisan_field_defs = (
 		'id		 	 VARCHAR(128)',
 		'album_id    VARCHAR(128)',
 		'position    INTEGER',
+		'idx		 INTEGER',
 	],
 
 

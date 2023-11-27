@@ -32,8 +32,6 @@ sub doCommand
 	#
 	#   update
 	#	stop
-	#   play
-	#	pause
 	#   play_pause
 	#   next
 	#   prev
@@ -50,17 +48,17 @@ sub doCommand
 	#   seek
 	#		position => ms
 	#
-	#   play_song =>    currently only supports local library
+	#   play_song =>
 	#		library_uuid => uuid
-	#		id => id
+	#		track_id => id
 	#
 	#   set_playlist
-	#		plsource_uuid => uuid
-	#       name => name
+	#		library_uuid => uuid
+	#       id => playlist_id
 	#	playlist_song
 	#		index => index to use
 	#	shuffle_playlist
-	#		value => 0,1,2
+	#		shuffle => 0,1,2
 {
 	my ($this,$command,$params) = @_;
 	return "not supported";

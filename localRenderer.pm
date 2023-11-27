@@ -218,8 +218,6 @@ sub doCommand
 	#
 	#   update
 	#	stop
-	#   play
-	#	pause
 	#   play_pause
 	#   next
 	#   prev
@@ -236,17 +234,17 @@ sub doCommand
 	#   seek
 	#		position => ms
 	#
-	#   play_song =>    currently only supports local library
+	#   play_song =>
 	#		library_uuid => uuid
-	#		id => id
+	#		track_id => id
 	#
 	#   set_playlist
-	#		plsource_uuid => uuid
-	#       name => name
+	#		library_uuid => uuid
+	#       id => playlist_id
 	#	playlist_song
 	#		index => index to use
 	#	shuffle_playlist
-	#		value => 0,1,2
+	#		shuffle => 0,1,2
 {
 	my ($this,$command,$params) = @_;
 
@@ -353,7 +351,7 @@ sub doCommand
 		return error("Could not find library($library_uuid)")
 			if !$library;
 
-		$this->{playlist} = $library->getPlaylist($this->{uuid},$playlist_id);
+		$this->{playlist} = $library->getPlaylist($playlist_id);
 		$error = $this->playlist_song($PLAYLIST_RELATIVE,0);
 	}
 
@@ -382,7 +380,7 @@ sub doCommand
 		return error("no playlist in doCommand($command)")
 			if !$playlist;
 
-		if (!$playlist->sortPlaylist($this->{uuid},$shuffle))
+		if (!$playlist->sortPlaylist($shuffle))
 		{
 			$error = "Could not sort playlist $playlist->{name}";
 		}
@@ -462,7 +460,7 @@ sub playlist_song
 		$this->{playlist} = '';
 		return error('empty playlist($name)!');
 	}
-	my $track_id = $playlist->getPlaylistTrack($this->{uuid},$mode,$index);
+	my $track_id = $playlist->getPlaylistTrack($mode,$index);
 	return error("Could not get getPlaylistTrack($mode,$index) from playlist($name)")
 		if !$track_id;
 

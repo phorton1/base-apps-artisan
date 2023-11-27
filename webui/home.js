@@ -217,8 +217,7 @@ function init_playlists()
 	var library_uuid = current_library.uuid;
 	var renderer_uuid = current_renderer.uuid;
 
-	$.get('/webui/library/' + library_uuid +
-		  '/get_playlists?renderer_uuid=' + renderer_uuid,
+	$.get('/webui/library/' + library_uuid + '/get_playlists',
 	function(result)
 	{
 		if (result.error)

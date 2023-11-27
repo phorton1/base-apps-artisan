@@ -41,7 +41,7 @@ BEGIN
 
 sub new
 {
-	my ($class,$params) = @_; # $is_local,$uuid,$friendlyName) = @_;
+	my ($class,$params) = @_;
 	$params->{deviceType} ||= $DEVICE_TYPE_RENDERER;
 	display($dbg_ren,0,"Renderer::new()");
 	my $this = $class->SUPER::new($params);
@@ -73,8 +73,6 @@ sub new
 
 		position 	=> 0,
 		duration 	=> 0,
-
-		# currently only localLibrary in localRenderer
 
 		playlist	=> '',
 		metadata    => shared_clone({

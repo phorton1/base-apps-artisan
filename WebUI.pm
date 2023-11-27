@@ -153,11 +153,11 @@ sub web_ui
 
 	# device requests
 
-	elsif ($path =~ /^getDevicesHTML\/(renderers|libraries|plsources)$/)
+	elsif ($path =~ /^getDevicesHTML\/(renderers|libraries)$/)
 	{
 		return getDevicesHTML($1);
 	}
-	elsif ($path =~ /^getDevice\/(renderer|library|plsource)-(.*)$/)
+	elsif ($path =~ /^getDevice\/(renderer|library)-(.*)$/)
 	{
 		my ($singular,$uuid) = ($1,$2);
 		return getDeviceJson($singular,$uuid);

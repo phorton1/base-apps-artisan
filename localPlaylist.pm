@@ -28,16 +28,6 @@ my $playlist_dir = "$data_dir/playlists";
 mkdir $playlist_dir if (!(-d $playlist_dir));
 
 
-#----------------------------------
-# support for base Playlist
-#----------------------------------
-
-sub playlistDir
-{
-	return $playlist_dir;
-}
-
-
 #---------------------------
 # DEFAULT PLAYLISTS
 #---------------------------
@@ -300,7 +290,10 @@ sub create_tracks_from_query
 		my $pl_track = {
 			id => $track->{id},
 			album_id => $track->{parent_id},
-			position => $position++ };
+			position => $position,
+			idx => $position };
+		$position++;
+
 		if (!insert_record_db($dbh,'pl_tracks',$pl_track))
 		{
 			error("Could not insert pl_track($track->{id}==$track->{title}) into $rec->{name}.db database");

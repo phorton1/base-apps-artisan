@@ -53,11 +53,6 @@ sub dataDir
 	return $data_dir;
 }
 
-sub playlistDir
-{
-	return localPlaylist::playlistDir();
-}
-
 
 #----------------------------------------------------------
 # API
@@ -257,8 +252,8 @@ sub getSubitems
 sub getPlaylists
 	# pass through
 {
-	my ($this,$renderer_uuid) = @_;
-	return Playlist::getPlaylists($this,$renderer_uuid);
+	my ($this) = @_;
+	return Playlist::getPlaylists($this);
 }
 
 
@@ -266,8 +261,8 @@ sub getPlaylists
 sub getPlaylist
 	# pass thru
 {
-	my ($this,$renderer_uuid,$id) = @_;
-	return Playlist::getPlaylist($this,$renderer_uuid,$id);
+	my ($this,$id) = @_;
+	return Playlist::getPlaylist($this,$id);
 }
 
 

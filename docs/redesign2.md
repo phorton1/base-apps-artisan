@@ -1,9 +1,33 @@
-# Redesign1
+# Redesign2
 
 I would like to
 
 - factor the Perl and webUI code better
 - introduce Tracklist, from which Queue and existing Playlist is derived.
+
+## TODO
+
+
+- Volume-Mute/Balance/Fade Controls
+- Really finalize Playlist/Queue concepts
+- skipping WMA's on HTML Renderers
+
+NO ABILITY TO BUILD PLAYLISTS WITH UI
+QUEUE IS NOT A PLAYLIST
+
+Even if I have a UI to create a playlist, I then create
+problems in cases like wiping out the database and starting
+over.   I would have to have the notion of 'user playlists',
+which, for me, would persist in the /mp3s (data) directory.
+
+Right now I have this weird denormalization of a library's
+playlists to the Renderer temp dire, under subfolders by
+the library uuid.
+
+
+
+
+
 
 ## Functional Issues and Changes
 
@@ -23,10 +47,10 @@ And I was thinking about making that happen by adding a Queue thing
 - Ability to save a Queue as a new Playlist for a given library
 
 This implies a whole 'Playlist Management UI.  Playlists with Queries
-(can be generated from my explorer approach) but Playlists with Items
+can be generated from Explorer if I want, but Playlists with Items
 are all we get from remoteLibraries (WMP).  So you kind of have this
 query-vs-list based differentiation of playists.  Then you need all
-this functionality for Playlist Managment
+this functionality for Playlist Management
 
 - Save Queue as Playlist
 - Edit Playlist
@@ -81,8 +105,8 @@ set of tracks.
 
 ## Continuing
 
-I don't think a Renderer Queue should be persistent from invocation to invocation.
-When you invoke a renderer, basically you START playing things from it.
+Is a Renderer Queue persistent from invocation to invocation?
+When you invoke a renderer, you START playing things from it.
 
 What does 'invoke' mean?    If you 'attach' to a Renderer that is playing
 stuff, you should see it's current state.  Remember that Renderers can
