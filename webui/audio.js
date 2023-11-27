@@ -4,7 +4,7 @@
 // TODO:  WMA Files don't work on HTML renderer.  Need a good way to skip em (esp in playlists)
 
 
-var $dbg_audio = 0;
+var dbg_audio = 0;
 
 var audio;
 
@@ -99,7 +99,9 @@ function init_audio()
 
 function audio_command(command,args)
 {
-	display($dbg_audio,0,"audio_command(" + command + ")");
+	var use_dbg = dbg_audio;
+	if (command == 'update') use_dbg += 1;
+	display(use_dbg,0,"audio_command(" + command + ")");
 
 	if (command == 'stop')
 	{

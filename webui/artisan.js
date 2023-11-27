@@ -15,7 +15,7 @@ var dbg_load 	 = 0;
 var dbg_layout 	 = 0;
 var dbg_popup 	 = 1;
 var dbg_loop     = 1;
-var dbg_swipe    = 0;
+var dbg_swipe    = 1;
 
 
 var current_renderer = false;

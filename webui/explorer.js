@@ -42,13 +42,12 @@ layout_defs['explorer'] = {
 
 function update_explorer()
 	// called when library changes,
-	// we need to update urls
-	// and call loadpage
+	// we need to update urls and re-load the page
 {
 	display(dbg_explorer,0,"update_explorer()");
 	explorer_tree.options.source.url = "/webui/library/" + current_library['uuid'] + "/dir";
 	update_explorer_album_info('',{})
-	load_page('explorer');
+	init_page_explorer();
 }
 
 
