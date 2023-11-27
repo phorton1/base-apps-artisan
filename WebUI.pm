@@ -118,7 +118,20 @@ sub web_ui
 				$type eq 'json' ? 'application/json' :
 				'text/plain';
 
-			$response = http_header({ content_type => $content_type });
+			# add CORS cross-origin headers to the main HTML file
+			# allow cross-origin requests to iPad browsers
+			# which would not call /get_art/ to get our album art URIs otherwise
+
+			my $addl_headers = [];
+			if ($type eq 'html')
+			{
+				push @$addl_headers,"Access-Control-Allow-Origin: http://$server_ip:$server_port";
+				push @$addl_headers,"Access-Control-Allow-Methods: GET";	# POST, GET, OPTIONS
+			}
+
+			$response = http_header({
+				content_type => $content_type,
+				addl_headers => $addl_headers });
 
 			if ($SEND_MINIFIED_JS_AND_CSS && ($type eq 'js' || $type eq 'css'))
 			{
