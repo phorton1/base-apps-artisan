@@ -4,8 +4,6 @@
 
 NOT ContentDirectory1 which will remain unchanged.
 
-
-
 handled by HTTPServer.pm
 
 - /media/MY_TRACK_ID.MY_TYPE
@@ -68,86 +66,67 @@ corresponding to above calls from uiLibrary
   - *$playlist->sortPlaylist($renderer_uuid,$shuffle)*
 
 
-I think this backwards revision starts with removing the $renderer_uuid from the library playlist calls
-and (?) versioning the playlists.   Renderer::update() would then re-get the playlist on every request,
-(and/or keep a version number of their own) and know to 're-start' the playlist if anyone else changed it.
-
-So, effectively, for example, playing a playlist in the HTML Renderer on one machine and the localRenderer
-simultaneously, if either one switched sorted, it makes sense to have them both change.  But the notion
-that Renderers advance tracks is tricky.     Youve got two Renderers playing the same thing with a race
-condition ... either one could advance the track_index, or be in the process of doing so.  So either/both
-might get a version increment, and possibly two advances.
-
-So, the renderers pass the Version they are using, and only one of them gets to advance it. An
-advance with the wrong Version would be ignored (?) and the result would be that renderer would
-get a changed version.  I almost have to implement this just to see how it would work.
-
-
 ## Changes
+
+This backwards revision starts with removing the $renderer_uuid from the library playlist calls.
 
 - eliminate the whole 'copy playlists' scheme from databases
 - remove the renderer_uuid from the playlist call chain
 - sort the records into the named_db files
 
-- add the Version to the playlist call chain
+
+## Synchronization of Playlist across multiple Renderers
+
+As long as I use different Renderers sequentially (not at the same time) on a Playlist,
+it would work as expected.  However, when Renderers are responsible for advancing the
+Track, the situation occurs where, with two Renderers playing Track N.
+
+- At the end of Track N - Renderer A advances to Track N+1
+- At the end of Track N - Renderer B advances to Track N+2
+
+The solution is to Version the Playlists, and allow only one Renderer to
+advance the track.
+
+*getPlaylistTrack($version,$PLAYLIST_RELATIVE,0)*
+
+So, when both Renderer's start, they get the same Version 'V1'
+
+- Renderer A Playing Track N on Verion V1
+- Renderer B Playing Track N on Verion V1
+
+- Renderer A ends first and requests getPlayListTrack(V1,RELATIVE,1)
+  This advances the playlist version to V2 and returns Track N+1
+
+- When Renderer B gets to the point where it wants to advance the index,
+  it calls getPlaylistTrack(), but since it does not own the current
+  version, the existing playlist, with no changes, is returned
+  so it starts playing V2 Track N+1
 
 
-FUCKING GO FOR IT.
+## Implementation
 
+- We keep the current trackId in the playlists.db as well as the version number,
+  starting with creation, and updated when sorting.  It may be a blank.
 
+- sortPlaylist() always bumps the Version number, resets the track
+  index to 1, and sets the initial trackId.
 
+- getPlaylistTrack() will take a Version as a parameter.  It will
+  not do anything if the version does not match the database, but
+  merely will return the current Versioned playlist at its current
+  index with its current trackId.
 
+- sortPlaylist() and getPlaylistTrack() now return full playlists
+  incuding the track_id and version. call, so that should just work.
 
+This causes the Renderers to synchronize on the Playlist at each
+transition where it gets a new song to play.
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-## BLAH
-
-- Playlists are per Library
-- Playlists can be sorted and shuffled and have a persistent track_index
-- Any device that plays a Playlist advances the index and/or changes the sort order at it's will
-- Any other devices currently playing that same Playlist will get notified of the changes
-- The named.db file gets the sorted records for persistency across devices.
-
-
-- A Renderer has (may have) a Playlist from a particular library
-- The playlist state may change out from under the Renderer by another Renderer
-- Therefore they must be versioned.
-
-This goes to the notion of the UI accepting generalized JSON and acting accordingly.
-
-It also goes to the notion of knowing whether or not a library is 'alive'.
-
-This change should be initially do-able without changing the webUI API.
-
-It's a big change (again).
-
-How does another renderer know when we have seeked within a song within a playlist.
-
-That's a characteristic of a Renderer, not a Library.
-
-
-ARGHHH
+I had initially thought that I would make update() re-get the playlist
+each second, and notice when the version changed, and try to make them
+simultaneously react to sorts and index changes, but it seems like completely
+reasonable behavior for the the 2nd renderer to just kind of 'catch' up
+to the first one.  It works ok in practice.
 
 
 

@@ -27,7 +27,7 @@ use Library;
 use Playlist;
 use base qw(Library);
 
-my $dbg_llib = -2;
+my $dbg_llib = 0;
 my $dbg_virt = 1;
 my $dbg_subitems = 0;
 
@@ -88,7 +88,7 @@ sub getFolder
 	# if 0, return a fake record
 
 	my $folder;
-	my $playlist = Playlist::getPlaylist($this,'default',$id);
+	my $playlist = Playlist::getPlaylist($this,$id);
 
 	if ($id eq '0')
 	{
@@ -140,7 +140,7 @@ sub getSubitems
 	my @retval;
 
 
-	my $playlist = Playlist::getPlaylist($this,'default',$id);
+	my $playlist = Playlist::getPlaylist($this,$id);
 
 	# return virtual folders for playlists
 	# table must be 'folders', and as usual
@@ -148,7 +148,7 @@ sub getSubitems
 
 	if ($table eq 'folders' && $id eq $ID_PLAYLISTS)
 	{
-		my $playlists = Playlist::getPlaylists($this,'default');
+		my $playlists = Playlist::getPlaylists($this);
 		display($dbg_subitems,1,"found ".scalar(@$playlists)." playlists");
 		my $max = $start+$count-1;
 		$max = @$playlists-1 if $max > @$playlists-1;
@@ -394,7 +394,7 @@ sub virtualPlaylistsFolder
 {
 	my ($this) = @_;
 	display($dbg_virt,0,"virtualPlaylistsFolder()");
-	my $playlists = Playlist::getPlaylists($this,'default');
+	my $playlists = Playlist::getPlaylists($this);
 	return if !$playlists;
 
 	return Folder->newFromHash({
@@ -450,25 +450,21 @@ sub getPlaylistTracks
 {
 	my ($this,$playlist) = @_;
 	display($dbg_llib,0,"getPlaylistTracks($playlist->{name})");
-
-	if (!$playlist->{tracks})
-	{
-		my $ok = $playlist->sortPlaylist('default');
-		return if !$ok;
-	}
+	my $pl_tracks = localPlaylist::getPlaylistTracks($playlist->{name});
+	return if !$pl_tracks;
 
 	my $dbh = db_connect();
 	return if !$dbh;
 
 	my $tracks = [];
-	for my $pl_track (@{$playlist->{tracks}})
+	for my $pl_track (@$pl_tracks)
 	{
 		my $track = get_record_db($dbh,"SELECT * FROM tracks WHERE id='$pl_track->{id}'");
 		push @$tracks,$track if $track;
 	}
 
 	db_disconnect($dbh);
-	display($dbg_llib,0,"getPlaylistTracks got ".scalar(@$tracks)." tracks from ".scalar(@{$playlist->{tracks}})." pl_tracks");
+	display($dbg_llib,0,"getPlaylistTracks got ".scalar(@$tracks)." tracks from ".scalar(@$pl_tracks)." pl_tracks");
 	return $tracks;
 }
 

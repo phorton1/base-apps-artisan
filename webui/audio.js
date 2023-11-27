@@ -168,16 +168,16 @@ function audio_command(command,args)
 	}
 	else if (command == 'next')
 	{
-		playlist_local(PLAYLIST_RELATIVE,1);
+		playlist_song(PLAYLIST_RELATIVE,1);
 	}
 	else if (command == 'prev')
 	{
-		playlist_local(PLAYLIST_RELATIVE,-1);
+		playlist_song(PLAYLIST_RELATIVE,-1);
 	}
 	else if (command == 'playlist_song')
 	{
 		var index = args['index'];
-		playlist_local(PLAYLIST_ABSOLUTE,index);
+		playlist_song(PLAYLIST_ABSOLUTE,index);
 	}
 	else if (command == 'shuffle_playlist')
 	{
@@ -258,13 +258,21 @@ function set_local_playlist(library_uuid,playlist_id)
 		else
 		{
 			html_renderer.playlist = result;
-			playlist_local(PLAYLIST_RELATIVE,0);
+			var track_id = result.track_id;
+			if (track_id == undefined || !track_id)
+			{
+				rerror("No track_id(" + track_id + ") in set_local_playlist(" + library_uuid + ',' + playlist_id + ")");
+			}
+			else
+			{
+				play_song_local(library_uuid,track_id);
+			}
 		}
 	});
 }
 
 
-function playlist_local(mode,inc)
+function playlist_song(mode,inc)
 {
 	var playlist = html_renderer.playlist;
 	if (!playlist)
@@ -274,7 +282,8 @@ function playlist_local(mode,inc)
 	playlist_id = playlist.id;
 
 	$.get('/webui/library/'+ library_uuid + '/get_playlist_track' +
-	  '?id=' + playlist_id +
+	  '?version=' + playlist.version +
+	  '&id=' + playlist_id +
 	  '&mode=' + mode +
 	  '&index=' + inc,
 
@@ -282,7 +291,7 @@ function playlist_local(mode,inc)
 	{
 		if (result.error)
 		{
-			rerror('Error in set_local_playlist(' + library_uuid + ',' + playlist_id + '): ' + result.error);
+			rerror('Error in playlist_song(' + mode + ',' + inc + '): ' + result.error);
 		}
 		else
 		{
@@ -291,7 +300,7 @@ function playlist_local(mode,inc)
 			if (track_id == undefined ||
 				!track_id)
 			{
-				rerror("No track_id(" + track_id + ") in playlist local(" + mode + "," + index + ")");
+				rerror("No track_id(" + track_id + ") in playlist_song local(" + mode + "," + inc + ")");
 			}
 			else
 			{
@@ -320,12 +329,20 @@ function playlist_shuffe(shuffle)
 	{
 		if (result.error)
 		{
-			rerror('Error in set_local_playlist(' + library_uuid + ',' + playlist_id + '): ' + result.error);
+			rerror('Error in playlist_shuffe(' + shuffle + '): ' + result.error);
 		}
 		else
 		{
 			html_renderer.playlist = result;
-			playlist_local(PLAYLIST_RELATIVE,0);
+			var track_id = result.track_id;
+			if (track_id == undefined || !track_id)
+			{
+				rerror("No track_id(" + track_id + ") in playlist_shuffe(" + shuffle + ")");
+			}
+			else
+			{
+				play_song_local(library_uuid,track_id);
+			}
 		}
 	});
 }
@@ -340,7 +357,7 @@ function onMediaEnded(event)
 	if (html_renderer.playlist &&
 		html_renderer.state == RENDERER_STATE_PLAYING)
 	{
-		playlist_local(PLAYLIST_RELATIVE,1);
+		playlist_song(PLAYLIST_RELATIVE,1);
 	}
 }
 

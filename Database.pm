@@ -72,9 +72,11 @@ our %artisan_field_defs = (
 		'uuid        VARCHAR(128)',
 		'name		 VARCHAR(128)',
 		'num_tracks  INTEGER',
-		'track_index INTEGER',
 		'shuffle	 INTEGER',
-		'query		 VARCHAR(2048)'
+		'track_index INTEGER',
+		'track_id	 VARCHAR(128)',
+		'version	 INTEGER',
+		'query		 VARCHAR(2048)'		# removed by json web replies
 	],
 
 	pl_tracks => [

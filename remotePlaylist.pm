@@ -40,29 +40,29 @@ sub onlyFirstByTitle
 sub initPlaylists
 {
 	my ($library) = @_;
-	my $pldb_name = playlistDbName($library);
+	my $playlist_db = playlistDbName($library);
 	display($dbg_rpl,0,"initPlaylists($library->{name})");
-	display($dbg_rpl,1,"pldb_name = $pldb_name");
+	display($dbg_rpl,1,"playlist_db = $playlist_db");
 
 	# if the playlists.db file does not exists
 	# create it from the database or a didl request
 
 	my $playlists;
-	if (!-f $pldb_name)
+	if (!-f $playlist_db)
 	{
-		$playlists = createPlaylistsDB($library,$pldb_name);
+		$playlists = createPlaylistsDB($library,$playlist_db);
 		return if !$playlists;
 		display($dbg_rpl,1,"got ".scalar(@$playlists)." playlists from new playlists.db");
 	}
 	else
 	{
-		my $dbh = db_connect($pldb_name);
-		return if !$dbh;
+		my $playlist_dbh = db_connect($playlist_db);
+		return if !$playlist_dbh;
 
-		$playlists = get_records_db($dbh,"SELECT * FROM playlists ORDER BY id");
+		$playlists = get_records_db($playlist_dbh,"SELECT * FROM playlists ORDER BY id");
 		display($dbg_rpl,1,"got ".scalar(@$playlists)." playlists from existing playlists.db");
 
-		db_disconnect($dbh);
+		db_disconnect($playlist_dbh);
 	}
 
 	# create the named.db files in the playlists subfolder
@@ -71,53 +71,68 @@ sub initPlaylists
 
 	display($dbg_rpl,1,"updating ".scalar(@$playlists)." named.db files");
 
-	my $pldb_ts = getTimestamp($pldb_name);
-	display($dbg_rpl,2,"ts=$pldb_ts for PLAYLISTS.DB");
+	my $playlist_ts = getTimestamp($playlist_db);
+	display($dbg_rpl,2,"ts=$playlist_db for PLAYLISTS.DB");
 	my $playlist_dir = $library->dataDir()."/playlists";
 	my_mkdir $playlist_dir if !-d $playlist_dir;
+
+	# Could bump version number of playlists here
+	# again if they changed relative to the master
+	# but right now it's all or nothing ...
+
+	# re-open the $playlist_dbh for writing 1st track_id and index==1
+
+	my $playlist_dbh = db_connect($playlist_db);
+	return if !$playlist_dbh;
 
 	for my $playlist (@$playlists)
 	{
 		my $name = $playlist->{name};
-		my $db_name = "$playlist_dir/$name.db";
-		my $pl_ts = getTimestamp($db_name);
-		display($dbg_rpl,2,"ts=$pl_ts for $name");
-		if ($pldb_ts gt $pl_ts)
+		my $named_db = "$playlist_dir/$name.db";
+		my $named_ts = getTimestamp($named_db);
+		display($dbg_rpl,2,"ts=$named_ts for $name");
+		if ($playlist_ts gt $named_ts)
 		{
 			display($dbg_rpl,2,"creating new $name.db");
-			unlink $db_name;
+			unlink $named_db;
 			my $tracks = $library->getSubitems('tracks',$playlist->{id});
 			display($dbg_rpl,3,"found ".scalar(@$tracks)." tracks");
 
-			my $dbh = db_connect($db_name);
-			return if !$dbh;
-			create_table($dbh,"pl_tracks");
+			my $named_dbh = db_connect($named_db);
+			return if !$named_dbh;
+			create_table($named_dbh,"pl_tracks");
 
 			my $position = 1;
-
-			# At this time there is not a meaningful album_id on
-			# remoteTracks.  The path is an arbitrary http;// for the media,
-			# and the only 'parent' of the track is the playlist.
-			# It is not even clear if this could be accomplished.
-			# For WMP it could *perhaps* be accomplished by relating the
-			# final -xxxxx part of the id back into the 'folders' tree.
-			# for now, the sort by albums is meaningless.
-			# I'll have another look at the 'dumps' and see if anything
-			# good comes to mind
-
+			my $first_track_id = '';
 			for my $track (sort {$a->{position} <=> $b->{position}} @$tracks)
 			{
+				$first_track_id = $track->{id} if $position == 1;
 				my $pl_track = {
 					id => $track->{id},
 					album_id => $track->{album_title},
 					position => $position,
 					idx => $position };
 				$position++;
-				return !error("Could not insert pl_track($track->{title},$track->{id} in $db_name")
-					if !insert_record_db($dbh,'pl_tracks',$pl_track);
+				return !error("Could not insert pl_track($track->{title},$track->{id} in $named_db")
+					if !insert_record_db($named_dbh,'pl_tracks',$pl_track);
 			}
+
+			db_disconnect($named_dbh);
+
+			# reset the initial track_index and track_id
+
+			if (@$tracks)
+			{
+				$playlist->{track_index} = 1;
+				$playlist->{track_id} = $first_track_id;
+			}
+
+			return !error("Could not update playlist($playlist->{id},$playlist->{name}) in $playlist_db")
+				if !update_record_db($playlist_dbh,'playlists',$playlist,'id');
 		}
 	}
+
+	db_disconnect($playlist_dbh);
 
 	display($dbg_rpl,0,"initPlaylists($library->{name}) finished");
 }
@@ -126,8 +141,8 @@ sub initPlaylists
 
 sub createPlaylistsDB
 {
-	my ($library,$pldb_name) = @_;
-	display($dbg_rpl,0,"createPlaylistsDB($pldb_name)");
+	my ($library,$playlist_db) = @_;
+	display($dbg_rpl,0,"createPlaylistsDB($playlist_db)");
 
 	my $dbh = db_connect($library->dbPath());
 	return if !$dbh;
@@ -176,10 +191,10 @@ sub createPlaylistsDB
 
 	# create the new playlist.db
 
-	unlink $pldb_name;
-	my $pl_dbh = db_connect($pldb_name);
-	return if !$pl_dbh;
-	create_table($pl_dbh,"playlists");
+	unlink $playlist_db;
+	my $playlist_dbh = db_connect($playlist_db);
+	return if !$playlist_dbh;
+	create_table($playlist_dbh,"playlists");
 
 	my $playlists = [];
 	for my $folder (@$folders)
@@ -192,18 +207,17 @@ sub createPlaylistsDB
 			query => '',
 			num_tracks => $folder->{num_elements},
 			shuffle => 0,
-			track_index => 1, };
+			track_index => 0,
+			track_id => '',
+			version => 0 };
 
-		$playlist->{track_index} = 0 if !$playlist->{num_tracks};
-		$playlist->{track_index} = 1 if !$playlist->{track_index} && $playlist->{num_tracks};
-
-		return !error("Could not insert playlist($playlist->{id},$playlist->{name}) in $pldb_name")
-			if !insert_record_db($pl_dbh,'playlists',$playlist);
+		return !error("Could not insert playlist($playlist->{id},$playlist->{name}) in $playlist_db")
+			if !insert_record_db($playlist_dbh,'playlists',$playlist);
 
 		push @$playlists,$playlist;
 	}
 
-	db_disconnect($pl_dbh);
+	db_disconnect($playlist_dbh);
 	display($dbg_rpl,0,"createPlaylistsDB() returning ".scalar(@$playlists)." playlists");
 	return $playlists;
 }

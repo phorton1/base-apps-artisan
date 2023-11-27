@@ -159,7 +159,7 @@ sub library_request
 		my $html = html_header();
 		for my $playlist (@$playlists)
 		{
-			$html .= getPlaylistMenuHTML($playlist);
+			$html .= getPlaylistMenuHTML($playlist)
 		}
 		# display(0,0,"get_playlists returning $html");
 		return $html;
@@ -178,20 +178,22 @@ sub library_request
 
 		if ($path eq 'get_playlist_track')
 		{
+			my $version = $params->{version} || 0;
 			my $mode = $params->{mode} || 0;
 			my $index = $params->{index} || 0;
-			my $track_id = $playlist->getPlaylistTrack($mode,$index);
+			$playlist = $playlist->getPlaylistTrack($version,$mode,$index);
 			return json_error("uiLibrary($library->{name}) could not getPlaylistTrack($mode,$index)")
-				if !$track_id;
-			$playlist->{track_id} = $track_id;
+				if !$playlist;
 		}
 		elsif ($path eq 'shuffle_playlist')
 		{
 			my $shuffle = $params->{shuffle} || 0;
-			my $ok = $playlist->sortPlaylist($shuffle);
+			$playlist = $playlist->sortPlaylist($shuffle);
 			return json_error("uiLibrary($library->{name}) could not sortPlaylist($shuffle)")
-				if !$ok;
+				if !$playlist;
 		}
+
+		# don't send the playlist query to the UI
 
 		my $json = json($playlist);
 		return json_header().$json;

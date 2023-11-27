@@ -380,6 +380,9 @@ sub doCommand
 		return error("no playlist in doCommand($command)")
 			if !$playlist;
 
+		display($dbg_lren,0,"calling sortPlaylist($shuffle) ".
+			"on playlist($playlist->{name},$playlist->{track_index},$playlist->{num_tracks}) shuffle=$playlist->{shuffle}");
+
 		if (!$playlist->sortPlaylist($shuffle))
 		{
 			$error = "Could not sort playlist $playlist->{name}";
@@ -454,17 +457,25 @@ sub playlist_song
 	return error("no playlist!")
 		if !$playlist;
 
-	my $name = $playlist->{name};
-	if (!$playlist->{num_tracks})
-	{
-		$this->{playlist} = '';
-		return error('empty playlist($name)!');
-	}
-	my $track_id = $playlist->getPlaylistTrack($mode,$index);
-	return error("Could not get getPlaylistTrack($mode,$index) from playlist($name)")
-		if !$track_id;
+	display($dbg_lren,0,"playlist_song($mode,$index)) ".
+			"on playlist($playlist->{name},$playlist->{track_index},$playlist->{num_tracks}) shuffle=$playlist->{shuffle}");
 
-	$this->play_track($playlist->{uuid},$track_id);
+	my $new_playlist = $playlist->getPlaylistTrack($playlist->{version},$mode,$index);
+
+	display($dbg_lren,0,"new_playlist(new_playlist->{name},new_playlist->{track_index},new_playlist->{num_tracks}) shuffle=new_playlist->{shuffle}");
+
+	$this->{playlist} = $new_playlist;
+	if ($new_playlist && $new_playlist->{track_id})
+	{
+		$this->play_track($playlist->{uuid},$new_playlist->{track_id});
+	}
+	else
+	{
+		return error("Could not get getPlaylistTrack($mode,$index) from playlist($playlist->{name}) ".
+			"new_playlist="._def($new_playlist)." ".
+			"track_id=".($new_playlist ? _def($new_playlist->{track_id}) : 'nada') )
+	}
+
 	return '';
 }
 

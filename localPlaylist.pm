@@ -17,6 +17,7 @@ use artisanUtils;
 use Playlist;
 
 
+my $dbg_lpl = 0;
 my $dbg_pl_create = 0;
 	#  0 == show init_playlists header
 	# -1 == show playlist creation
@@ -26,6 +27,25 @@ my $dbg_pl_create = 0;
 
 my $playlist_dir = "$data_dir/playlists";
 mkdir $playlist_dir if (!(-d $playlist_dir));
+
+#-----------------------------
+# support for localLibrary
+#-----------------------------
+# return them in their native original order
+
+sub getPlaylistTracks
+{
+	my ($name) = @_;
+	my $named_db = "$playlist_dir/$name.db";
+	my $named_dbh = db_connect($named_db);
+	return !error("Could not connect to local namedb $named_db")
+		if !$named_dbh;
+	my $tracks = get_records_db($named_dbh,"SELECT * FROM pl_tracks ORDER BY position");
+	db_disconnect($named_dbh);
+	display($dbg_lpl,0,"getPlaylistTracks($name) returning ".scalar(@$tracks)." pl_track records");
+	return $tracks;
+}
+
 
 
 #---------------------------
@@ -164,10 +184,10 @@ sub updateFromRecQuery
 	# the record already exists, and we need to create the
 	# table from the query ...
 {
-	my ($rec) = @_;
-	display($dbg_pl_create+2,1,"updateFromRecQuery($rec->{id}) $rec->{name}");
-	return if !create_tracks_from_query($rec);
-	display($dbg_pl_create+2,1,"updateFromRecQuery($rec->{id}) finished");
+	my ($playlist) = @_;
+	display($dbg_pl_create+2,1,"updateFromRecQuery($playlist->{id}) $playlist->{name}");
+	return if !create_tracks_from_query($playlist);
+	display($dbg_pl_create+2,1,"updateFromRecQuery($playlist->{id}) finished");
 	return 1;
 }
 
@@ -181,7 +201,7 @@ sub newFromDefault
 	my ($id,$desc) = @_;
 	display($dbg_pl_create+2,1,"newFromDefault($id) $desc->{name}");
 
-	my $rec = {
+	my $playlist = {
 		id => '',
 		uuid => $this_uuid,
 		name => '',
@@ -189,15 +209,17 @@ sub newFromDefault
 		shuffle => 0,
 		num_tracks => 0,
 		track_index => 0,
+		track_id => '',
+		version => 0,
 	};
 
-	mergeHash($rec,$desc);
-	$rec->{id} = $id;
+	mergeHash($playlist,$desc);
+	$playlist->{id} = $id;
 
-	return if !create_tracks_from_query($rec);
+	return if !create_tracks_from_query($playlist);
 
 	display($dbg_pl_create+2,1,"newFromDefault($desc->{name}) finished");
-	return $rec;
+	return $playlist;
 }
 
 
@@ -223,15 +245,15 @@ sub create_tracks_from_query
 	# Wipes out the tracks.db file if it exists,
 	# which it should not in my initial usage.
 {
-    my ($rec) = @_;
-	my $name = $rec->{name};
-	my $query = $rec->{query};
+    my ($playlist) = @_;
+	my $name = $playlist->{name};
+	my $query = $playlist->{query};
 
 	display($dbg_pl_create+2,1,"create_tracks_from_query($name) ...");
 	display($dbg_pl_create+2,2,"query=$query");
 
-	$rec->{num_tracks} = 0;
-	$rec->{track_index} = 0;
+	$playlist->{num_tracks} = 0;
+	$playlist->{track_index} = 0;
 
 	# connect to the local Artisan (Library) database
 
@@ -240,7 +262,7 @@ sub create_tracks_from_query
 	# get the records by path
 
 	my $tracks = [];
-	my @paths = split("\t",$rec->{query});
+	my @paths = split("\t",$playlist->{query});
     for my $path (@paths)
     {
 		display($dbg_pl_create+2,1,"path=$path");
@@ -258,7 +280,7 @@ sub create_tracks_from_query
 			# "genre,album_artist,album_title,tracknum,title";
 		my $recs = get_records_db($artisan_dbh,$query,$args);
 		display($dbg_pl_create+2,3,"found ".scalar(@$recs)." tracks from query path=$path");
-		$rec->{num_tracks} += @$recs;
+		$playlist->{num_tracks} += @$recs;
 		push @$tracks,@$recs;
 	}
 
@@ -266,27 +288,24 @@ sub create_tracks_from_query
 
     db_disconnect($artisan_dbh);
 
-	# fix the track_index
-
-	$rec->{track_index} = 0 if !$rec->{num_tracks};
-	$rec->{track_index} = 1 if !$rec->{track_index} && $rec->{num_tracks};
-
 	# wipe out and recreate the tracks.db database
 
-	display($dbg_pl_create+2,1,"inserting ".scalar(@$tracks)." items in new Playlist($rec->{name})");
+	display($dbg_pl_create+2,1,"inserting ".scalar(@$tracks)." items in new Playlist($playlist->{name})");
 
 	# create new table
 
-	my $db_name = "$playlist_dir/$name.db";
-	unlink $db_name;
-	my $dbh = db_connect($db_name);
-	return if !$dbh;
+	my $named_db = "$playlist_dir/$name.db";
+	unlink $named_db;
+	my $named_dbh = db_connect($named_db);
+	return if !$named_dbh;
 
-	create_table($dbh,"pl_tracks");
+	create_table($named_dbh,"pl_tracks");
 
 	my $position = 1;
+	my $first_track_id = '';
 	for my $track (sort {default_sort($a,$b)} @$tracks)
 	{
+		$first_track_id = $track->{id} if $position == 1;
 		my $pl_track = {
 			id => $track->{id},
 			album_id => $track->{parent_id},
@@ -294,16 +313,26 @@ sub create_tracks_from_query
 			idx => $position };
 		$position++;
 
-		if (!insert_record_db($dbh,'pl_tracks',$pl_track))
+		if (!insert_record_db($named_dbh,'pl_tracks',$pl_track))
 		{
-			error("Could not insert pl_track($track->{id}==$track->{title}) into $rec->{name}.db database");
+			error("Could not insert pl_track($track->{id}==$track->{title}) into $playlist->{name}.db database");
 			return;
 		}
 	}
-	db_disconnect($dbh);
+	db_disconnect($named_dbh);
 
-	warning(0,0,"CREATED EMPTY TRACKLIST($rec->{name}) FROM QUERY!!")
-		if !@$tracks;
+
+	# fix the track_index
+
+	if (@$tracks)
+	{
+		$playlist->{track_index} = 1;
+		$playlist->{track_id} = $first_track_id;
+	}
+	else
+	{
+		warning(0,0,"CREATED EMPTY TRACKLIST($playlist->{name}) FROM QUERY!!");
+	}
 
 	display($dbg_pl_create+2,1,"create_tracks_from_query($name) finished");
 	return 1;
@@ -320,10 +349,10 @@ sub initPlaylists
 {
 	display($dbg_pl_create,0,"initPlaylists() started ...");
 
-	my $main_db_name = "$data_dir/playlists.db";
-	my $new_database = !-f $main_db_name;
-	my $dbh = db_connect($main_db_name);
-	create_table($dbh,"playlists") if $new_database;
+	my $playlist_db = "$data_dir/playlists.db";
+	my $new_database = !-f $playlist_db;
+	my $playlist_dbh = db_connect($playlist_db);
+	create_table($playlist_dbh,"playlists") if $new_database;
 
 	# create any missing default playlists
 	# or update the track databases if not found
@@ -335,20 +364,20 @@ sub initPlaylists
 		my $name = $desc->{name};
 
 		my $exists = -f "$playlist_dir/$name.db" ? 1 : 0;
-		my $rec = get_record_db($dbh, "SELECT * FROM playlists WHERE id='$id'");
+		my $playlist = get_record_db($playlist_dbh, "SELECT * FROM playlists WHERE id='$id'");
 
-		display($dbg_pl_create+2,1,"got($name) exists=$exists rec="._def($rec));
+		display($dbg_pl_create+2,1,"got($name) exists=$exists rec="._def($playlist));
 
 		# if record does not exist, we recreate the playlist from scratch
 		# if the table doesn't exist, then we create it from the query
 		# otherwise, we assume it is correct and do nothing
 
-		if (!$rec)
+		if (!$playlist)
 		{
 			display($dbg_pl_create+1,2,"creating new playlist($name) from default");
-			$rec = newFromDefault($id,$desc);
-			next if !$rec;
-			if (!insert_record_db($dbh,'playlists',$rec))
+			$playlist = newFromDefault($id,$desc);
+			next if !$playlist;
+			if (!insert_record_db($playlist_dbh,'playlists',$playlist))
 			{
 				error("Could not insert playlist($name) into database");
 				next;
@@ -357,8 +386,8 @@ sub initPlaylists
 		elsif (!$exists)
 		{
 			display($dbg_pl_create+1,2,"updating playlist($name) from rec's query");
-			next if !updateFromRecQuery($rec);
-			if (!update_record_db($dbh,'playlists',$rec,'id'))
+			next if !updateFromRecQuery($playlist);
+			if (!update_record_db($playlist_dbh,'playlists',$playlist,'id'))
 			{
 				error("Could not update playlist.db database");
 				return;
@@ -370,6 +399,7 @@ sub initPlaylists
 
 	display($dbg_pl_create,0,"initPlaylists() finished");
 }
+
 
 
 

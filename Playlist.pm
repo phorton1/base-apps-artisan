@@ -10,9 +10,9 @@
 # 	name			- playlist title
 # 	shuffle			- shuffle mode
 #   num_tracks		- number of tracks in the playlist
-#   track_index		- current track index within the playlist
-#	(version)		- to be added
-#   {tracks}		- the 'tracks' in the playlist may be loaded into memory
+#   track_index		- current track index within the playlist or 0 if no tracks
+#   track_id		- track_id corresponding to the track_index or '' if no tracks
+#	version		    - version number is bumped on every sort and getPlaylistTrack index change.
 #
 # The Tracks in a playlist (pl_tracks) are contained in database file called
 # "name.db" in a 'playlists' subdirectory relative to the playlists.db file.
@@ -41,7 +41,7 @@
 #
 #	getPlaylists($library)
 #	getPlaylist($library,$playlist_id)
-#	$playlist->getPlaylistTrack($mode,$index)
+#	$playlist->getPlaylistTrack($version,$mode,$index)
 #   $playlist->sortPlaylist($shuffle)
 #
 # To provide orthogonal access to the library databases, each library
@@ -50,6 +50,10 @@
 # /playists under that.
 #
 #    	$library->dataDir()
+
+
+		$playlist->{track_index} = 0 if !$playlist->{num_tracks};
+		$playlist->{track_index} = 1 if !$playlist->{track_index} && $playlist->{num_tracks};
 
 package Playlist;
 use strict;
@@ -102,8 +106,8 @@ sub getPlaylists
 
 sub getPlaylist
 {
-	my ($library,$id) = @_;		# ,$renderer_uuid,$id) = @_;
-	display($dbg_pl,0,"getPlaylist($library->{name},$id)");		# $renderer_uuid,$id)");
+	my ($library,$id) = @_;
+	display($dbg_pl,0,"getPlaylist($library->{name},$id)");
 
 	my $master_dir = $library->dataDir();
 	my $master_db_name = "$master_dir/playlists.db";
@@ -127,7 +131,7 @@ sub getPlaylist
 	}
 
 	display($dbg_pl,0,"getPlaylist() returning ".($playlist?
-		"playlist($playlist->{name},$playlist->{num_tracks},$playlist->{track_index})":
+		"playlist($playlist->{name},V_$playlist->{version},$playlist->{num_tracks},$playlist->{track_index}) shuffle=$playlist->{shuffle} track_id=$playlist->{track_id}":
 		'undef'));
 	return $playlist;
 }
@@ -147,46 +151,59 @@ sub getLibraryPlaylistsDir
 
 sub getPlaylistTrack
 {
-    my ($this,$mode,$orig_index) = @_;   # $renderer_uuid
-    display($dbg_pl,0,"getPlaylistTrack($this->{name},$mode,$orig_index) num($this->{num_tracks} cur($this->{track_index})");
+    my ($this,$version,$mode,$orig_index) = @_;   # $renderer_uuid
+    display($dbg_pl,0,"getPlaylistTrack($this->{name},V_$version,MODE_$mode,$orig_index) cur V_$this->{version} idx($this->{track_index}) num($this->{num_tracks})");
     display($dbg_pl,1,"library($this->{uuid})");	# renderer($renderer_uuid)");
 	my $playlists_dir = getLibraryPlaylistsDir($this->{uuid});
 	return if !$playlists_dir;
 
-	# determine the new index
+	# only the version holder can change the track number
 
-	my $index = $orig_index;
-	if ($mode == $PLAYLIST_RELATIVE)
+	if ($version == $this->{version})
 	{
-		$index = $this->{track_index} + $index;
-		$index = 1 if $index > $this->{num_tracks};
-    	$index = $this->{num_tracks} if $index < 1;
+		# determine the new index
+
+		my $index = $orig_index;
+		if ($mode == $PLAYLIST_RELATIVE)
+		{
+			$index = $this->{track_index} + $index;
+			$index = 1 if $index > $this->{num_tracks};
+			$index = $this->{num_tracks} if $index < 1;
+		}
+
+		$index = 1 if $index < 1;
+		$index = $this->{num_tracks} if $index>$this->{num_tracks};
+		$index = 0 if !$this->{num_tracks};
+
+		if ($this->{track_index} != $index)
+		{
+			my $named_db = "$playlists_dir/$this->{name}.db";
+			display($dbg_pl,1,"getting index($index) from $named_db");
+			my $dbh = db_connect($named_db);
+			return if !$dbh;
+
+			my $rec = get_record_db($dbh,"SELECT * FROM pl_tracks WHERE idx='$index'");
+			db_disconnect($dbh);
+			display($dbg_pl,1,"found rec="._def($rec));
+
+			$this->{track_index} = $index;
+			$this->{track_id} = $rec ? $rec->{id} : '';
+			$this->{version}++;
+
+			$this->saveToPlaylists();
+
+			display($dbg_pl,0,"getPlaylistTrack(V_$version,MODE_$mode,$orig_index) returning V_$this->{version} track($this->{track_index})=$this->{track_id}");
+		}
+		else
+		{
+			display($dbg_pl,0,"getPlaylistTrack(V_$version,MODE_$mode,$orig_index) no_change! V_$this->{version} track($this->{track_index})=$this->{track_id}");
+		}
 	}
-
-	$index = 1 if $index < 1;
-	$index = $this->{num_tracks} if $index>$this->{num_tracks};
-	$index = 0 if !$this->{num_tracks};
-
-	if ($this->{track_index} != $index)
+	else
 	{
-		$this->{needs_write} = 1;
-		$this->{track_index} = $index;
+		warning($dbg_pl,0,"getPlaylistTrack(V_$version,MODE_$mode,$orig_index) SKIPPING REQUEST FROM V_$this->{version} track($this->{track_index})=$this->{track_id}");
 	}
-
-	my $named_db = "$playlists_dir/$this->{name}.db";
-	display($dbg_pl,1,"getting index($index) from $named_db");
-	my $dbh = db_connect($named_db);
-	return if !$dbh;
-
-	my $rec = get_record_db($dbh,"SELECT * FROM pl_tracks WHERE idx='$index'");
-	db_disconnect($dbh);
-	display($dbg_pl,1,"found rec="._def($rec));
-
-	my $track_id = $rec ? $rec->{id} : '';
-	$this->saveToPlaylists() if $this->{needs_write};
-
-    display($dbg_pl,0,"getPlaylistTrack($mode,$orig_index) returning track($index)=$track_id");
-	return $track_id;
+	return $this;
 }
 
 
@@ -198,7 +215,7 @@ sub sortPlaylist
 
 {
 	my ($this,$shuffle) = @_;				# $renderer_uuid
-	display($dbg_pl,0,"sortPlaylist($this->{name},"._def($shuffle).") cur=$this->{shuffle}");
+	display($dbg_pl,0,"sortPlaylist($this->{name},V_$this->{version},"._def($shuffle).") cur=$this->{shuffle}");
 	my $playlists_dir = getLibraryPlaylistsDir($this->{uuid});
 	return if !$playlists_dir;
 
@@ -211,6 +228,9 @@ sub sortPlaylist
 	return 0 if !$dbh;
 	my $recs = get_records_db($dbh,"SELECT * FROM pl_tracks ORDER BY position");
 
+	$this->{shuffle} = $shuffle;
+
+	my $first_track_id = '';
 	if ($recs)
 	{
 		# sort em
@@ -225,6 +245,8 @@ sub sortPlaylist
 			my $index = 1;
 			for my $rec (@$new_recs)
 			{
+				$first_track_id = $rec->{id} if $index == 1;
+
 				$rec->{idx} = $index++;
 				if (!insert_record_db($dbh,'pl_tracks',$rec))
 				{
@@ -236,16 +258,18 @@ sub sortPlaylist
 		}
 	}
 
-
 	db_disconnect($dbh);
 
 	# write the new shuff and index
 
-	$this->{index} = @$recs ? 1 : 0;
-	$this->{shuffle} = $shuffle;
+	$this->{track_index} = @$recs ? 1 : 0;
+	$this->{track_id} = $first_track_id;
+	$this->{version}++;
+
+	display($dbg_pl,0,"sortPlaylist() returning($this->{name},V_$this->{version},$this->{track_index},$this->{num_tracks}) track_id=$this->{track_id}");
 
 	$this->saveToPlaylists();
-	return 1;
+	return $this;
 }
 
 

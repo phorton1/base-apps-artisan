@@ -283,7 +283,7 @@ sub search_directory
 	my $didl = didl_header();
 	if ($what eq 'playlistContainer')
 	{
-		my $playlists = $local_library->getPlaylists('default');
+		my $playlists = $local_library->getPlaylists();
 		$total = @$playlists;
 		display($dbg_search+1,2,"found $total playlists");
 
