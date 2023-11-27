@@ -39,7 +39,7 @@ sub stream_media
 	{
 		error("Unknown Streaming HTTP Method: $method");
 		print $FH http_header({
-			'statuscode' => 501,
+			'status_code' => 501,
 			'content_type' => 'text/plain',
 			'log' => 'httpstream' });
 		return;
@@ -59,7 +59,7 @@ sub stream_media
         if (!$track)
         {
 			print $FH http_header({
-				'statuscode' => 404,
+				'status_code' => 404,
 				'content_type' => 'text/plain',
 				'log' => 'httpstream' });
 			return;
@@ -72,7 +72,7 @@ sub stream_media
 		{
 			error("Content($id) has no path");
 			print $FH http_header({
-				'statuscode' => 404,
+				'status_code' => 404,
 				'content_type' => 'text/plain',
 				'log' => 'httpstream' });
 			return;
@@ -82,7 +82,7 @@ sub stream_media
 		{
 			error("Content($id) file not found: $filename");
 			print $FH http_header({
-				'statuscode' => 404,
+				'status_code' => 404,
 				'content_type' => 'text/plain',
 				'log' => 'httpstream' });
 			return;
@@ -98,22 +98,26 @@ sub stream_media
 		my $from_byte = 0;
 		my $size = $track->{size};
 		my $content_len = $size;
-		my $statuscode = 200;
+		my $status_code = 200;
 
 		if (defined($headers->{RANGE}) &&
 			$headers->{RANGE} =~ /^bytes=(\d+)-(\d*)$/)
 		{
 			$is_ranged = 1;
-			$statuscode = 206;
+			$status_code = 206;
 			$from_byte = int($1) || 0;
 			$to_byte = $2 ? int($2) : '';
 
 			display($dbg_stream+1,1,"Range Request from $from_byte/$content_len to $to_byte");
 
-			$to_byte ||= $content_len - 1;
-			$to_byte = $content_len-1 if $to_byte >= $content_len - 1;
+			if (!$to_byte)
+			{
+				$to_byte = $from_byte + $BUF_SIZE - 1;
+				$to_byte = $size-1 if $to_byte >= $size - 1;
+			}
+
 			$content_len = $to_byte - $from_byte + 1;
-			display($dbg_stream+1,1,"Doing Range request from $from_byte to $to_byte = $content_len bytes");
+			display($dbg_stream,1,"Doing Range request from $from_byte to $to_byte = $content_len bytes");
 		}
 
 
@@ -169,7 +173,7 @@ sub stream_media
 		#-------------------------------------
 
 		my $http_header = http_header({
-			statuscode => $statuscode,
+			status_code => $status_code,
 			content_type => $track->mimeType(),
 			content_length => $content_len,
 			addl_headers => \@addl_headers });
@@ -273,7 +277,7 @@ sub stream_media
 		#	 {
 		#		error("Transfermode $$CGI{'TRANSFERMODE.DLNA.ORG'} not supported");
 		#		print $FH http_header({
-		#			'statuscode' => 501,
+		#			'status_code' => 501,
 		#			'content_type' => 'text/plain' });
 		#	 }
 		# }
@@ -281,7 +285,7 @@ sub stream_media
 		# {
 		#    error("No Transfermode for: $item->{path}");
 		#	 print $FH http_header({
-		#		'statuscode' => 200,
+		#		'status_code' => 200,
 		#		'additional_header' => \@additional_header,
 		#		'log' => 'httpstream' });
 		# }
@@ -290,7 +294,7 @@ sub stream_media
 	{
 		error("ContentID($content_id) not supported for Streaming Items");
 		print $FH http_header({
-			'statuscode' => 501,
+			'status_code' => 501,
 			'content_type' => 'text/plain',
 			'log' => 'httpstream'});
 	}
