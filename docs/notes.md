@@ -254,7 +254,7 @@ sub processExternalMessage
 #		get_metafield($data,$retval{metadata},'album_artist','upnp:albumArtist');
 #		get_metafield($data,$retval{metadata},'track_num','upnp:originalTrackNumber');
 #		$retval{metadata}->{size} = ($data =~ /size="(\d+)"/) ? $1 : 0;
-#		$retval{metadata}->{pretty_size} = bytesAsKMGT($retval{metadata}->{size});
+#		$retval{metadata}->{pretty_size} = prettyBytes($retval{metadata}->{size});
 #
 #		# Get a better version of the 'type' from the DLNA info
 #		# esp. since we ourselves sent the wrong file extension

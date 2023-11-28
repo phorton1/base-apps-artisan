@@ -402,7 +402,7 @@ sub dump_stats
         for my $k (sort(keys(%$pstats)))
         {
 			my $val = $$pstats{$k};
-			$val = bytesAsKMGT($val) if ($k =~ /bytes/);
+			$val = prettyBytes($val) if ($k =~ /bytes/);
             LOG(2,pad($val,8)." ".$k);
         }
     }
@@ -848,7 +848,7 @@ sub unused_dbg_mem
 		my $free = Sys::MemInfo::freemem();
 		my $used = $total - $free;
 
-		display($dbg_mem,-1,"MEMORY  ".bytesAsKMGT($used)." / ".bytesAsKMGT($total)." $msg",1);
+		display($dbg_mem,-1,"MEMORY  ".prettyBytes($used)." / ".prettyBytes($total)." $msg",1);
     }
 }
 

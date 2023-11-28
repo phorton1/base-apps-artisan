@@ -432,7 +432,7 @@ sub play_track
 	{
 		$this->{metadata}->{$field} = $track->{$field};
 	}
-	$this->{metadata}->{pretty_size} = bytesAsKMGT($track->{size});
+	$this->{metadata}->{pretty_size} = prettyBytes($track->{size});
 
 	# special handling for local library
 	# get the art from the parent folder
