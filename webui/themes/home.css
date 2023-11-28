@@ -171,7 +171,13 @@
 
 /* HOME-MENU LIST STYLES */
 
-/* this affects the buttons WITHIN a section */
+/* this affects the buttons WITHIN a section
+   by virtue of the sub-tag 'label'.  There
+   is no specific class for these, their id
+   is typically renderer_uuid or playlist_id,
+   and their 'name' is renderer_button,
+   playlist_button, etc.
+*/
 
 #playlist_menu label,
 #renderer_menu label,
@@ -185,6 +191,7 @@
 	margin-bottom:10px;
 }
 
+/* this affects the section itself */
 
 #playlist_menu,
 #renderer_menu,

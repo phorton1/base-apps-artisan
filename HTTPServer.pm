@@ -213,7 +213,7 @@ sub handle_connection
 	my $use_dbg_request = $dbg_request;
 	my $use_dbg_response = $dbg_response;
 
-	$use_dbg_request += 2  if $request_path =~ /^\/webui\/renderer\/(.*)\/update/; #|\/^ContentDirectory1\.xml|\/ServerDesc\.xml/;
+	$use_dbg_request += 2  if $request_path =~ /^\/webui\/renderer\/(.*)\/update|^\/webui\/debug_output\//; #|\/^ContentDirectory1\.xml|\/ServerDesc\.xml/;
 	# $use_dbg_request -= 2  if $request_method =~ /SUBSCRIBE/;
 	# $use_dbg_response -= 2  if $request_method =~ /SUBSCRIBE/;
 

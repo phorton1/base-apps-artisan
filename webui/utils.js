@@ -1,5 +1,16 @@
 // utils.js
 
+var DEBUG_REMOTE = true;
+	// This variable turns on certain output from mobile devices
+	// as I am trying to figure out scaling, rotation, etc.
+
+var DISPLAY_REMOTE = false;
+	// if this is set to true, all display() and error() calls
+	// will additionally GET /webui/debug_output/msg to display
+	// on the Perl Console.   It is very slow, and adds a lot
+	// of clutter, so should only be used when trying to find
+	// bugs on mobile devices.
+
 
 var debug_level = 0;
 var dbg_menu = 0;
@@ -9,6 +20,14 @@ var device_id = '';
 
 
 jQuery.ajaxSetup({async:false});
+
+
+window.onerror = function(message, source, lineNumber, colno, err)
+	// this will report 'unhandled exceptions' via my error() method
+{
+	error(source + ":" + lineNumber + ": " + message,1);
+};
+
 
 const DEVICE_TYPE_RENDERER = 'renderer';
 const DEVICE_TYPE_LIBRARY = 'library';
@@ -73,7 +92,10 @@ function error(msg,call_level)
 {
 	if (call_level == undefined)
 		call_level = 1;
-	console.error(caller(call_level) + " " + msg);
+	var call_part = caller(call_level);
+	console.error(call_part + " " + msg);
+	if (DISPLAY_REMOTE)
+		output_remote("ERROR: " + call_part + " " + msg);
 }
 
 function rerror(msg,call_level)
@@ -87,20 +109,52 @@ function rerror(msg,call_level)
 
 function display(level,indent,msg,call_level)
 {
+	if (level > debug_level)
+		return;
 	if (call_level == undefined)
 		call_level = 1;
-	if (level <= debug_level)
-	{
-		var indent_txt = '';
-		while (indent--) { indent_txt += '    '; }
-		var out_msg = caller(call_level) + ' ' + indent_txt + msg;
 
-		console.debug(out_msg);
+	var indent_txt = '';
+	while (indent--) { indent_txt += '    '; }
+	var out_msg = caller(call_level) + ' ' + indent_txt + msg;
 
-		// $('#temp_console_output').append(out_msg + "<br>");
-
-	}
+	console.debug(out_msg);
+	if (DISPLAY_REMOTE)
+		output_remote(out_msg);
 }
+
+
+function output_remote(msg)
+	// To help work with Browsers on mobile devices, where
+	// there is no javascript debugger, and it can be very
+	// difficult to tell whats wrong when all you get is a
+	// blank page, I added this routine which will make a
+	// call back to the server to display output.
+{
+	$.get('/webui/debug_output/' + msg);
+}
+
+
+function debug_remote(level,indent,msg,call_level)
+	// this is a bit of the opposite.
+	// if DEBUG_REMOTE is set, this will do a display()
+	// and output_remote().  It is used to ferret out
+	// specific issues on specific devices.
+{
+	if (level > debug_level)
+		return;
+	if (call_level == undefined)
+		call_level = 1;
+	display(level,indent,msg,call_level+1);
+	if (!DEBUG_REMOTE)
+		return;
+
+	var indent_txt = '';
+	while (indent--) { indent_txt += '    '; }
+	var out_msg = caller(call_level) + ' ' + indent_txt + msg;
+	output_remote(out_msg);
+}
+
 
 
 function caller(call_level)
@@ -126,6 +180,7 @@ function caller(call_level)
 	while (caller.length<20) {caller += ' '; }
 	return caller;
 }
+
 
 
 //--------------------------------------
@@ -339,7 +394,10 @@ function appendRadioButton(menu_name, name, id, fxn, param1, param2)
 	$('#' + menu_name + '_menu').append(
 		$('<input>').prop({
 			type: 	'radio',
-			name: 	menu_name,		// the name of the radio group
+			name: 	menu_name + "_button",
+				// this is what groups them into a radio group.
+				// we are calling them renderer_button, etc.
+				// which is different than the menu itself.
 			id: 	use_id,
 		})
 	).append(
@@ -373,7 +431,6 @@ function buildHomeMenu(array, menu_name, id_field, fxn, param1_field, param2_fie
 
 	$('#' + menu_name + '_menu').buttonset();
 }
-
 
 
 // end of utils.js

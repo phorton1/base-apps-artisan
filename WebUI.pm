@@ -151,6 +151,20 @@ sub web_ui
 		}
 	}
 
+	# debugging
+
+	elsif ($path =~ s/^debug_output\///)
+	{
+		my $color = $path =~ /^ERROR/ ?
+			$Pub::Utils::DISPLAY_COLOR_ERROR :
+			$Pub::Utils::win_color_light_green;
+
+		$Pub::Utils::CONSOLE->Attr($color);
+		print "REMOTE: ".url_decode($path)."\n";
+		$Pub::Utils::CONSOLE->Attr($Pub::Utils::DISPLAY_COLOR_NONE);
+		return html_header();
+	}
+
 	# device requests
 
 	elsif ($path =~ /^getDevices\/(renderer|library)$/)

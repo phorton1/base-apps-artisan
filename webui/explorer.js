@@ -61,19 +61,6 @@ function init_page_explorer()
 
 	display(dbg_explorer,0,"init_page_explorer()");
 
-	// CENTER DIV LAYOUT
-	// Note that the explorer_center_div has a nested layout!
-	// Here we set the 'north' (explorer_album_div) within it
-	// to 160 in height, leaving the resst for the 'center'
-	// (explorer_tracklist_div) which contains the 'explorer_tracklist'
-	// div
-
-	var center_layout = $('#explorer_center_div').layout({
-		applyDemoStyles: true,
-		north__size:160,
-	});
-
-
 	// EXPLORER TREE
 
 	display(dbg_explorer,1,"initializizing explorer tree");

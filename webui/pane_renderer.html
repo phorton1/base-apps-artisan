@@ -1,8 +1,11 @@
 <!-- pane_renderer.html -->
 
 <!-- HEADER -->
+<!-- NOTE THE NESTED LAYOUT -->
 
-<div id='renderer_pane'>
+<div
+	id='renderer_pane'
+    class="ui-layout-north">
 
     <!-- include section_header_bar.html id=renderer -->
 
@@ -88,77 +91,17 @@
             </tr>
         </table>
 
-
-        <!-- OTHER CONTROLS -->
-
-        <!-- table class="renderer_table" align='center'>
-            <tr>
-                <td class="play_button" align="left">
-                    <input type="button"
-                        id="renderer_button_unused2"
-                        class='renderer_big_button'
-                        value="unused2"
-                        disabled>
-                </td>
-                <td class="play_button" align="center">
-                    <input type="button"
-                        id="renderer_button_playlist_1"
-                        value="1"
-                        disabled
-                        onclick = "javascript:select_renderer_playlist(1)">
-                </td>
-                <td class="play_button" align="center">
-                    <input type="button"
-                        id="renderer_button_playlist_2"
-                        value="2"
-                        disabled
-                        onclick = "javascript:select_renderer_playlist(2)">
-                </td>
-                <td class="play_button" align="center">
-                    <input type="button"
-                        id="renderer_button_playlist_3"
-                        value="3"
-                        disabled
-                        onclick = "javascript:select_renderer_playlist(3)">
-                </td>
-                <td class="play_button" align="center">
-                    <input type="button"
-                        id="renderer_button_playlist_4"
-                        value="4"
-                        disabled
-                        onclick = "javascript:select_renderer_playlist(4)">
-                </td>
-                <td class="play_button" align="center">
-                    <input type="button"
-                        id="renderer_button_playlist_5"
-                        value="5"
-                        disabled
-                        onclick = "javascript:select_renderer_playlist(5)">
-                </td>
-                <td class="play_button" align="center">
-                    <input type="button"
-                        id="renderer_button_playlist_6"
-                        value="6"
-                        disabled
-                        onclick = "javascript:select_renderer_playlist(6)">
-                </td>
-                <td class="play_button" align="right">
-                    <input type="button"
-                        id="renderer_button_playlist_assign"
-                        class='renderer_big_button'
-                        value="assign"
-                        disabled>
-                </td>
-            </tr>
-        </table -->
-
-		<!-- div id='temp_console_output' style="height:300px; overflow-y:scroll;">
-		</div-->
-
-    </div>
+    </div>	<!-- why the extra div? -->
 
 </div>  <!-- renderer_pane -->
 
+
+<!-- new renderer tracklist div -->
+
+<div
+	id='renderer_tracklist'
+    class="ui-layout-center">
+</div>
 
 
 <!-- div

@@ -1,22 +1,10 @@
 // artisan.js
-//
-// We will need to modify the layout based on the device.
-// That can be inferred from screen.width and height and
-// window.innerHeight and innerWidth.  Another clue is
-// navigator.userAgent (containing 'Mobile' or 'Android'
-// is a good clue)
-//
-// Another issue is debugging on iPads/phones.  There is no debugger.
-// Temporarily adding a temp_console_output <div> to the Renderer pane.
-// so that I can see debugging on the iPad.
-
 
 var dbg_load 	 = 0;
 var dbg_layout 	 = 0;
 var dbg_popup 	 = 1;
 var dbg_loop     = 1;
 var dbg_swipe    = 1;
-
 
 var current_renderer = false;
 var current_library = false;
@@ -44,13 +32,24 @@ var autofull = false;
 var idle_timer = null;
 var idle_count = 0;
 
+
 display(dbg_load,0,"artisan.js loaded");
 
 
-function is_touch_enabled() {
-    return ( 'ontouchstart' in window ) ||
-           ( navigator.maxTouchPoints > 0 ) ||
-           ( navigator.msMaxTouchPoints > 0 );
+function debug_environment()
+{
+	debug_remote(0,0,
+		"orientation(" + screen.orientation.type + ")" +
+		"screen(" + screen.width + "," + screen.height + ") " +
+		"iwindow(" + window.innerWidth + "," + window.innerHeight + ") " +
+		"owindow(" + window.outerWidth + "," + window.outerHeight + ") " +
+		"body(" + $('body').width() + "," + $('body').height() + ")");
+
+	debug_remote(0,0,"navigator " +
+		"cookies(" + navigator.cookieEnabled + ") " +
+		"platform(" + navigator.platform + ") " +
+		"appVersion(" + navigator.appVersion + ") " +
+		"ua(" + navigator.userAgent + ") ");
 }
 
 
@@ -67,15 +66,8 @@ $(function()
 		( 'ontouchstart' in window ) ||
 	    ( navigator.maxTouchPoints > 0 ) ||
 	    ( navigator.msMaxTouchPoints > 0 );
-	WITH_SWIPE = true;
 
-	display(dbg_load,0,
-		"screen(" + screen.width + "," + screen.height + ") " +
-		"iwindow(" + window.innerWidth + "," + window.innerHeight + ") " +
-		"owindow(" + window.outerWidth + "," + window.outerHeight + ") " +
-		"body(" + $('body').width() + "," + $('body').height() + ") " +
-		"WITH_SWIPE=" + WITH_SWIPE);
-
+	debug_environment();
 
 	// explorer_mode = getCookie('explorer_mode') || 0;
 	// autoclose_timeout = parseInt(getCookie('autoclose_timeout') || 0);
@@ -83,14 +75,31 @@ $(function()
 
 	init_audio();
 
+	// STATIC LAYOUT
+
+	$('.artisan_menu_table').buttonset();
+	$('#context_menu_div').buttonset();
+
 	create_layout('home');
 	create_layout('explorer');
+
+	// NESTED LAYOUTS
+	// The explorer and home 'center' divs are themselves laid out here
+
+	$('#explorer_center_div').layout({
+		applyDemoStyles: true,
+		north__size:160, });
+
+	$('#renderer_pane_div').layout({
+		applyDemoStyles: true,
+		north__size:270, });
+
+	// Dynamic Initialization
 
 	init_page_home();
 	init_page_explorer();
 
-	$('.artisan_menu_table').buttonset();
-	$('#context_menu_div').buttonset();
+	// Startup
 
 	setTimeout(idle_loop, REFRESH_TIME);
 	set_page(default_page);

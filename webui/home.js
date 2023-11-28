@@ -59,6 +59,8 @@ function init_page_home()
 	create_numeric_pref(0,10,60,
 		'pref_error_mode',
 		'#pref_explorer_mode');
+
+	display(dbg_home,0,"init_page_home() done");
 }
 
 
@@ -84,11 +86,19 @@ function load_device_list(type)
 
 		var last_cookie = 'last_' + type;
 		var last_uuid = getCookie(last_cookie);
-		var found = $('#' + type + '_' + last_uuid );
-		if (found)
-			selectDevice(type,last_uuid);
-		else if (first)
-			setCookie(last_cookie,first);
+		var found = document.getElementById(type + '_' + last_uuid );
+		if (!found)
+		{
+			var buttons = document.getElementsByName(type + '_button');
+			found = buttons[0];
+		}
+
+		// this should never fail as there should ALWAYS be at least
+		// the Perl localLibrary and localRenderer (and HTML Renderer).
+		// We have to get the uuid back from the element's id
+
+		var found_uuid = found.id.replace(type + '_','');
+		selectDevice(type,found_uuid);
 	});
 }
 
