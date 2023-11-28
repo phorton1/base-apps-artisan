@@ -65,7 +65,7 @@ my $MP_STATE_RECONNECTING 	= 11; 	# Reconnecting to stream.
 
 
 my $mp_running:shared = 0;
-my $mp_command:shared = '';
+my $mp_command_queue:shared = shared_clone([]);
 	# stop
 	# pause
 	# play,optional_url
@@ -84,31 +84,31 @@ sub running
 sub doMPCommand
 {
 	my ($command) = @_;
-	display($dbg_mp+1,0,"doMPCommand($command) starting");
-	while ($mp_command)
-	{
-		sleep(0.01);
-	}
-	display($dbg_mp,0,"doMPCommand($command)");
-	$mp_command = $command;
+	push @$mp_command_queue,$command;
+	display($dbg_mp+1,0,"doMPCommand($command)");
 }
 
 
 sub mpThread
 {
+	my ($this) = @_;
 	my $mp = Win32::OLE->new('WMPlayer.OCX');
 	my $controls = $mp->{controls};
 	my $settings = $mp->{settings};
 	$settings->{autoStart} = 0;
 	display($dbg_mp,0,"mpThread() started");
 	$mp_running = 1;
+
+	my $last_update_time = time();
+
 	while (1)
 	{
 		if (!$quitting)
 		{
+			my $mp_command = shift @$mp_command_queue;
 			if ($mp_command)
 			{
-				display($dbg_mp+1,1,"doing command '$mp_command'");
+				display($dbg_mp,1,"doing command '$mp_command'");
 				$controls->stop() if $mp_command eq 'stop';
 				$controls->pause() if $mp_command eq 'pause';
 				$controls->play() if $mp_command eq 'play';
@@ -125,7 +125,6 @@ sub mpThread
 					$mp->{URL} = $url;
 					$controls->play();
 				}
-				$mp_command = '';
 			}
 			else
 			{
@@ -137,6 +136,15 @@ sub mpThread
 				$duration ||= 0;
 				$mp_position = $position * 1000;
 				$mp_duration = $duration * 1000;
+
+				# 'monitor thread' keeps playing playlists
+				# calling update() once per second.
+
+				if (time() > $last_update_time)
+				{
+					$last_update_time = time();
+					$this->update() if $this->{playlist};
+				}
 			}
 			sleep(0.1);
 		}
@@ -192,7 +200,7 @@ sub new
 
 	if (1)
 	{
-		my $thread = threads->create(\&mpThread);
+		my $thread = threads->create(\&mpThread,$this);
 		$thread->detach();
 	}
 
@@ -442,6 +450,7 @@ sub play_track
 	}
 
 	$this->{position} = 0;
+
 	doMPCommand('play,'.$path);
 	$this->{state} = $RENDERER_STATE_PLAYING;
 	return '';
@@ -457,12 +466,11 @@ sub playlist_song
 	return error("no playlist!")
 		if !$playlist;
 
-	display($dbg_lren,0,"playlist_song($mode,$index)) ".
-			"on playlist($playlist->{name},$playlist->{track_index},$playlist->{num_tracks}) shuffle=$playlist->{shuffle}");
+	display($dbg_lren,0,"playlist_song($mode,$index) on".$playlist->dbg_info(2));
 
 	my $new_playlist = $playlist->getPlaylistTrack($playlist->{version},$mode,$index);
 
-	display($dbg_lren,0,"new_playlist(new_playlist->{name},new_playlist->{track_index},new_playlist->{num_tracks}) shuffle=new_playlist->{shuffle}");
+	display($dbg_lren+1,0,"new_playlist".Playlist::dbg_info($new_playlist,2));
 
 	$this->{playlist} = $new_playlist;
 	if ($new_playlist && $new_playlist->{track_id})
@@ -471,11 +479,8 @@ sub playlist_song
 	}
 	else
 	{
-		return error("Could not get getPlaylistTrack($mode,$index) from playlist($playlist->{name}) ".
-			"new_playlist="._def($new_playlist)." ".
-			"track_id=".($new_playlist ? _def($new_playlist->{track_id}) : 'nada') )
+		return error("Could not get getPlaylistTrack($mode,$index) from playlist".Playlist::dbg_info($new_playlist,2));
 	}
-
 	return '';
 }
 
@@ -516,7 +521,6 @@ sub update
 			}
 		}
 	}
-
 	return '';
 }
 
