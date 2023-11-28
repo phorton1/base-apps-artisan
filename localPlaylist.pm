@@ -223,13 +223,33 @@ sub newFromDefault
 }
 
 
+sub normalizedPath
+	# Used to sort the original positions for tracks.
+	# Takes a local track's 'path', removes the filename portion,
+	# removes leading /albums and /singles and returns the result.
+	# This effectively groups my playlists by Genre - Artist - Album_Title
+	# to the degree that all child directories until a dirtype==album
+	# are the Genres and, apart from the dead, all the folder names
+	# are Artist - Album_Title.
+{
+	my ($path) = @_;
+	$path = pathOf($path);
+	$path =~ s/^(albums|singles)\///;
+	return $path;
+}
+
+
 sub default_sort
 	# proper DEFAULT SORT ORDER is to sort by 'album',
 	# as given by the pathOf($path) then, if a tracknum
 	# is provided, by that, and finally by the track title.
+	#
+	# I remove /albums and /singles from the path before comparing
+
+
 {
     my ($a,$b) = @_;
-    my $cmp = pathOf($a->{path}) cmp pathOf($b->{path});
+    my $cmp = normalizedPath($a->{path}) cmp normalizedPath($b->{path});
     return $cmp if $cmp;
     $cmp = ($a->{tracknum} || 0) <=> ($b->{tracknum} || 0);
     return $cmp if $cmp;
@@ -308,7 +328,7 @@ sub create_tracks_from_query
 		$first_track_id = $track->{id} if $position == 1;
 		my $pl_track = {
 			id => $track->{id},
-			album_id => $track->{parent_id},
+			album_id => pathOf($track->{path}),
 			position => $position,
 			idx => $position };
 		$position++;
