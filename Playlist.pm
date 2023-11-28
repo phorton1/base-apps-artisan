@@ -67,25 +67,30 @@ use DeviceManager;
 
 
 my $dbg_pl = 0;
+	#  0 = function heaaders
+	# -1 = big steps
+	# -2 = gruesome details
 my $dbg_sort = 0;
+	# display() calls currently commented out
+	# 0 == gruesome details
 
 
 sub getPlaylists
 {
-	my ($library) = @_;		# ,$renderer_uuid) = @_;
-	display($dbg_pl,0,"getPlaylists($library->{name})");	# ,$renderer_uuid)");
+	my ($library) = @_;
+	display($dbg_pl+1,0,"getPlaylists($library->{name})");
 
 	my $master_dir = $library->dataDir();
 	my $master_db_name = "$master_dir/playlists.db";
 
-	display($dbg_pl,1,"getting records from $master_db_name");
+	display($dbg_pl+2,1,"getting records from $master_db_name");
 
 	my $dbh = db_connect($master_db_name);
 	return [] if !$dbh;
 
 	my $recs = get_records_db($dbh,"SELECT * FROM playlists ORDER BY id") || [];
 	db_disconnect($dbh);
-	display($dbg_pl,1,"found ".scalar(@$recs)." records");
+	display($dbg_pl+1,1,"found ".scalar(@$recs)." records");
 
 	# create the list
 
@@ -103,22 +108,38 @@ sub getPlaylists
 }
 
 
+sub dbg_info
+{
+	my ($this,$extra_dbg) = @_;
+	$extra_dbg ||= 0;
+
+	return "("._def($this).")" if !$this;
+
+	my $name = "($this->{name}" ;
+	$name .= ",V_$this->{version},$this->{track_index},$this->{num_tracks}"
+		if $dbg_pl < $extra_dbg;
+	$name .= ",S_$this->{shuffle},$this->{track_id}"
+		if $dbg_pl < $extra_dbg-1;
+	$name .= ")";
+	return $name;
+}
+
 
 sub getPlaylist
 {
 	my ($library,$id) = @_;
-	display($dbg_pl,0,"getPlaylist($library->{name},$id)");
+	display($dbg_pl+1,0,"getPlaylist($library->{name},$id)");
 
 	my $master_dir = $library->dataDir();
-	my $master_db_name = "$master_dir/playlists.db";
-	display($dbg_pl,1,"getting $id from $master_db_name");
+	my $playlist_db = $library->dataDir() . "/playlists.db";
+	display($dbg_pl+1,1,"playlist_db=$playlist_db");
 
-	my $dbh = db_connect($master_db_name);
-	return if !$dbh;
+	my $playlist_dbh = db_connect($playlist_db);
+	return if !$playlist_dbh;
 
-	my $rec = get_record_db($dbh,"SELECT * FROM playlists WHERE id='$id'");
-	db_disconnect($dbh);
-	display($dbg_pl,1,"found rec="._def($rec));
+	my $rec = get_record_db($playlist_dbh,"SELECT * FROM playlists WHERE id='$id'");
+	db_disconnect($playlist_dbh);
+	display($dbg_pl+1,1,"found rec="._def($rec));
 
 	# clone the record and bless it
 
@@ -130,9 +151,7 @@ sub getPlaylist
 		$playlist->{library_name} = $library->{name};
 	}
 
-	display($dbg_pl,0,"getPlaylist() returning ".($playlist?
-		"playlist($playlist->{name},V_$playlist->{version},$playlist->{num_tracks},$playlist->{track_index}) shuffle=$playlist->{shuffle} track_id=$playlist->{track_id}":
-		'undef'));
+	display($dbg_pl,0,"getPlaylist() returning".dbg_info($playlist,2));
 	return $playlist;
 }
 
@@ -152,8 +171,10 @@ sub getLibraryPlaylistsDir
 sub getPlaylistTrack
 {
     my ($this,$version,$mode,$orig_index) = @_;   # $renderer_uuid
-    display($dbg_pl,0,"getPlaylistTrack($this->{name},V_$version,MODE_$mode,$orig_index) cur V_$this->{version} idx($this->{track_index}) num($this->{num_tracks})");
-    display($dbg_pl,1,"library($this->{uuid})");	# renderer($renderer_uuid)");
+
+	display($dbg_pl,0,"getPlaylistTrack($version,$mode,$orig_index) caled on".dbg_info($this));
+
+    display($dbg_pl+1,1,"library($this->{uuid})");	# renderer($renderer_uuid)");
 	my $playlists_dir = getLibraryPlaylistsDir($this->{uuid});
 	return if !$playlists_dir;
 
@@ -178,13 +199,13 @@ sub getPlaylistTrack
 		if ($this->{track_index} != $index)
 		{
 			my $named_db = "$playlists_dir/$this->{name}.db";
-			display($dbg_pl,1,"getting index($index) from $named_db");
+			display($dbg_pl+1,1,"getting index($index) from $named_db");
 			my $dbh = db_connect($named_db);
 			return if !$dbh;
 
 			my $rec = get_record_db($dbh,"SELECT * FROM pl_tracks WHERE idx='$index'");
 			db_disconnect($dbh);
-			display($dbg_pl,1,"found rec="._def($rec));
+			display($dbg_pl+1,1,"found rec="._def($rec));
 
 			$this->{track_index} = $index;
 			$this->{track_id} = $rec ? $rec->{id} : '';
@@ -192,16 +213,16 @@ sub getPlaylistTrack
 
 			$this->saveToPlaylists();
 
-			display($dbg_pl,0,"getPlaylistTrack(V_$version,MODE_$mode,$orig_index) returning V_$this->{version} track($this->{track_index})=$this->{track_id}");
+			display($dbg_pl,0,"getPlaylistTrack() returning".dbg_info($this,2));
 		}
 		else
 		{
-			display($dbg_pl,0,"getPlaylistTrack(V_$version,MODE_$mode,$orig_index) no_change! V_$this->{version} track($this->{track_index})=$this->{track_id}");
+			display($dbg_pl,0,"getPlaylistTrack() no_change".dbg_info($this,2));
 		}
 	}
 	else
 	{
-		warning($dbg_pl,0,"getPlaylistTrack(V_$version,MODE_$mode,$orig_index) SKIPPING REQUEST FROM V_$this->{version} track($this->{track_index})=$this->{track_id}");
+		warning($dbg_pl,0,"getPlaylistTrack() skipping request".dbg_info($this,2));
 	}
 	return $this;
 }
@@ -215,7 +236,7 @@ sub sortPlaylist
 
 {
 	my ($this,$shuffle) = @_;				# $renderer_uuid
-	display($dbg_pl,0,"sortPlaylist($this->{name},V_$this->{version},"._def($shuffle).") cur=$this->{shuffle}");
+	display($dbg_pl,0,"sortPlaylist($shuffle) on playlist".dbg_info($this));
 	my $playlists_dir = getLibraryPlaylistsDir($this->{uuid});
 	return if !$playlists_dir;
 
@@ -266,7 +287,7 @@ sub sortPlaylist
 	$this->{track_id} = $first_track_id;
 	$this->{version}++;
 
-	display($dbg_pl,0,"sortPlaylist() returning($this->{name},V_$this->{version},$this->{track_index},$this->{num_tracks}) track_id=$this->{track_id}");
+	display($dbg_pl,0,"sortPlaylist() returning".dbg_info($this,2));
 
 	$this->saveToPlaylists();
 	return $this;
@@ -353,7 +374,7 @@ sub sort_shuffle_tracks
 sub saveToPlaylists
 {
 	my ($this) = @_;
-	display($dbg_pl,0,"saveToPlaylists($this->{id}) $this->{name}");
+	display($dbg_pl,0,"saveToPlaylists".dbg_info($this));
 
 	my $library = findDevice($DEVICE_TYPE_LIBRARY,$this->{uuid});
 	return !error("Could not find Library($this->{uuid})") if !$library;
