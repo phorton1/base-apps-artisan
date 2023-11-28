@@ -35,7 +35,7 @@ sub new
 {
 	my ($class,$params) = @_;	# $is_local,$uuid,$friendlyName) = @_;
 	display($dbg_lib,0,"Library::new()");
-	$params->{deviceType} ||= $DEVICE_TYPE_LIBRARY;
+	$params->{type} ||= $DEVICE_TYPE_LIBRARY;
 	my $this = $class->SUPER::new($params);
 		# $is_local,
 		# $DEVICE_TYPE_LIBRARY,

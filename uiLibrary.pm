@@ -104,8 +104,7 @@ sub library_request
 		my $id = $params->{id} || '';
 		my $track = $library->getTrack($id);
 		return json_error("could not find track '$id'") if !$track;
-		my $json = json($track);
-		return json_header().$json;
+		return json_header().json($track);
 	}
 
 	# following two currently require a previously
@@ -116,16 +115,14 @@ sub library_request
 		my $id = $params->{id} || 0;
 		display($dbg_uilib,0,"library_track_metadata($id)");
 		my $metadata = $library->getTrackMetadata($id);
-		my $json = json($metadata);
-		return json_header().$json;
+		return json_header().json($metadata);
 	}
 	elsif ($path eq 'folder_metadata')
 	{
 		my $id = $params->{id} || 0;
 		display($dbg_uilib,0,"library_folder_metadata($id)");
 		my $metadata = $library->getFolderMetadata($id);
-		my $json = json($metadata);
-		return json_header().$json;
+		return json_header().json($metadata);
 	}
 
 	# following only used in webUI context menu
@@ -156,13 +153,15 @@ sub library_request
 	elsif ($path eq 'get_playlists')
 	{
 		my $playlists = $library->getPlaylists();
-		my $html = html_header();
+		my $result = [];
 		for my $playlist (@$playlists)
 		{
-			$html .= getPlaylistMenuHTML($playlist)
+			push @$result,{
+				id => $playlist->{id},
+				name => $playlist->{name},
+				uuid => $playlist->{uuid}, };
 		}
-		# display(0,0,"get_playlists returning $html");
-		return $html;
+		return json_header().json($result);
 	}
 
 	# command that need a playlist
@@ -193,10 +192,7 @@ sub library_request
 				if !$playlist;
 		}
 
-		# don't send the playlist query to the UI
-
-		my $json = json($playlist);
-		return json_header().$json;
+		return json_header().json($playlist);
 	}
 
 	#-----------------------------
@@ -321,7 +317,8 @@ sub library_tracklist
 		$rec->{key} = $rec->{id};
 		display($dbg_uilib+1,1,"rec->{title}=$rec->{title}");
 		$rec->{TITLE} = $rec->{title};
-			# lc title appears to conflict with jquery-ui
+		delete $rec->{title};
+			# lc title conflicts with jquery-ui fancyTree
 			# so we send upercase
 		$rec->{icon} = "/webui/icons/error_$rec->{highest_error}.png";
 
@@ -333,27 +330,6 @@ sub library_tracklist
 	return $response;
 }
 
-
-sub getPlaylistMenuHTML
-{
-	my ($playlist) = @_;
-
-	my $id = $playlist->{id};
-	my $uuid = $playlist->{uuid};
-	my $name = $playlist->{name};
-
-	my $text = '';
-	$text .= "<input type=\"radio\" ";
-	$text .= "id=\"playlist_button_$id\" ";
-	$text .= "class=\"playlist_button\" ";
-	$text .= "onclick=\"javascript:set_playlist('$uuid','$id');\" ";
-	$text .= "name=\"playlist_button_set\">";
-	$text .= "<label for=\"playlist_button_$id\">";
-	$text .= "$name</label>";
-	$text .= "<br>";
-	$text .= "\n";
-	return $text;
-}
 
 
 

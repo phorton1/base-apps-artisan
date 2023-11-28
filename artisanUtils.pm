@@ -14,8 +14,8 @@ use Sys::Hostname;
 use Pub::Utils qw(!:win_only);
 
 
-our $DEVICE_TYPE_LIBRARY  = 'Library';
-our $DEVICE_TYPE_RENDERER = 'Renderer';
+our $DEVICE_TYPE_LIBRARY  = 'library';
+our $DEVICE_TYPE_RENDERER = 'renderer';
 
 our $PLAYLIST_ABSOLUTE  = 0;
 our $PLAYLIST_RELATIVE  = 1;

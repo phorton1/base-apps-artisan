@@ -42,7 +42,7 @@ BEGIN
 sub new
 {
 	my ($class,$params) = @_;
-	$params->{deviceType} ||= $DEVICE_TYPE_RENDERER;
+	$params->{type} ||= $DEVICE_TYPE_RENDERER;
 	display($dbg_ren,0,"Renderer::new()");
 	my $this = $class->SUPER::new($params);
 		# $is_local,

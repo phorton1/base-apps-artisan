@@ -460,6 +460,8 @@ sub play_track
 
 sub playlist_song
 	# starts a playlist on a particular index
+	# note that the localRenderer keeps actual playlists, which
+	# contain queries and will be written to the database!!
 {
 	my ($this,$mode,$index) = @_;
 	my $playlist = $this->{playlist};

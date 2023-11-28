@@ -76,11 +76,11 @@ sub new
 	}
 	else
 	{
-		display($dbg_device,0,"Device::new($params->{deviceType} $params->{name}=$params->{uuid}"),
+		display($dbg_device,0,"Device::new($params->{type} $params->{name}=$params->{uuid}"),
 	}
 	my $this = shared_clone($params);
 		# local 		=> $is_local,
-		# deviceType 	=> $deviceType,
+		# type 	=> $type,
 		# uuid 			=> $uuid,
 		# name 			=> $friendlyName,
 		# ip			=> '',

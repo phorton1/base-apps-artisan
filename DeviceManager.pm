@@ -58,18 +58,18 @@ our $local_renderer;
 my $DEFAULT_MAX_AGE = 1800;
 
 my $device_list = shared_clone([]);
-my $device_cache_file = "$data_dir/device_cache.txt";
+my $device_cache_file = "$temp_dir/device_cache.txt";
 	# unlink $device_cache_file;
 
 
 sub addDevice
 {
 	my ($device) = @_;
-	display($dbg_devices,0,"DeviceManager::addDevice($device->{local},$device->{deviceType},$device->{name}) uuid=$device->{uuid}");
+	display($dbg_devices,0,"DeviceManager::addDevice($device->{local},$device->{type},$device->{name}) uuid=$device->{uuid}");
 	push @$device_list,$device;
 
-	$local_library = $device if $device->{local} && $device->{deviceType} eq $DEVICE_TYPE_LIBRARY;
-	$local_renderer = $device if $device->{local} && $device->{deviceType} eq $DEVICE_TYPE_RENDERER;
+	$local_library = $device if $device->{local} && $device->{type} eq $DEVICE_TYPE_LIBRARY;
+	$local_renderer = $device if $device->{local} && $device->{type} eq $DEVICE_TYPE_RENDERER;
 
 	return $device;
 }
@@ -77,12 +77,12 @@ sub addDevice
 
 sub findDevice
 {
-	my ($deviceType, $uuid) = @_;
+	my ($type, $uuid) = @_;
 	my $found = '';
 	for my $device (@$device_list)
 	{
 		return $device if
-			$device->{deviceType} eq $deviceType &&
+			$device->{type} eq $type &&
 			$device->{uuid} eq $uuid;
 	}
 	return '';
@@ -95,7 +95,7 @@ sub getDevicesByType
 	for my $device (@$device_list)
 	{
 		push @$devices,$device
-			if $device->{deviceType} eq $type;
+			if $device->{type} eq $type;
 	}
 	return $devices;
 }
@@ -123,7 +123,7 @@ sub read_device_cache
 		{
 			display($dbg_cache+1,1,"cache_device($rval)");
 			$dev = shared_clone({
-				deviceType => $rval,
+				type => $rval,
 				services => shared_clone({}) });
 			$dev->{metadata} = shared_clone({})
 				if $rval eq $DEVICE_TYPE_RENDERER;
@@ -149,7 +149,7 @@ sub read_device_cache
 
 	for $dev (@$devs)
 	{
-		my $device = $dev->{deviceType} eq $DEVICE_TYPE_LIBRARY ?
+		my $device = $dev->{type} eq $DEVICE_TYPE_LIBRARY ?
 			remoteLibrary->new($dev) :
 			remoteRenderer->new($dev);
 			push @$device_list,$device;
@@ -166,7 +166,7 @@ sub write_device_cache
 	for my $device (@$device_list)
 	{
 		next if $device->{local};
-		$text .= "device=$device->{deviceType}\n";
+		$text .= "device=$device->{type}\n";
 		for my $field (sort keys %$device)
 		{
 			next if $field =~ /metadata|playlist|services/;
@@ -226,32 +226,32 @@ sub get_xml
 
 sub getDeviceXML
 {
- 	my ($deviceType,$uuid,$location) = @_;
-	display($dbg_desc,0,"getDeviceXML($deviceType) from $location");
+ 	my ($type,$uuid,$location) = @_;
+	display($dbg_desc,0,"getDeviceXML($type) from $location");
 
-	return !error("$deviceType($uuid) could not get ip:port from '$location'")
+	return !error("$type($uuid) could not get ip:port from '$location'")
 		if $location !~ /^http:\/\/(\d+\.\d+\.\d+\.\d+):(\d+)\//;
 	my ($ip,$port) = ($1,$2);
 	display($dbg_desc,1,"ip:port = $ip:$port");
 
 	my $dev = shared_clone({
 		uuid => $uuid,
-		deviceType => $deviceType,
+		type => $type,
 		ip => $ip,
 		port => $port,
 		services => shared_clone({}), });
 
 	my $ua = LWP::UserAgent->new();
-	my $dbg_id = "$deviceType.$uuid";
+	my $dbg_id = "$type.$uuid";
 	my $device_xml = get_xml($ua,$dbg_id,$location);
 	return if !$device_xml;
 
 	my $xml_dev = $device_xml->{device};
-	return !error("$deviceType($uuid) No 'device' in device_xml")
+	return !error("$type($uuid) No 'device' in device_xml")
 		if !$xml_dev;
 
 	my $fname = $xml_dev->{friendlyName};
-	return !error("$deviceType($uuid) No 'friendlyName' in device_xml")
+	return !error("$type($uuid) No 'friendlyName' in device_xml")
 		if !$fname;
 	display($dbg_desc,1,"friendlyName=$fname");
 
@@ -265,16 +265,16 @@ sub getDeviceXML
 
 
 	my $service_list = $xml_dev->{serviceList};
-	return !error("$deviceType($uuid) No 'serviceList' in device_xml")
+	return !error("$type($uuid) No 'serviceList' in device_xml")
 		if !$service_list;
 	my $xml_services = $service_list->{service};
-	return !error("$deviceType($uuid) No 'serviceList->{service}' in device_xml")
+	return !error("$type($uuid) No 'serviceList->{service}' in device_xml")
 		if !$xml_services;
 
 	display($dbg_desc,1,"services=$xml_services ref=".ref($xml_services));
 	$xml_services = [$xml_services] if ref($xml_services) !~ /ARRAY/;
 
-	for my $req ($deviceType eq $DEVICE_TYPE_LIBRARY ?
+	for my $req ($type eq $DEVICE_TYPE_LIBRARY ?
 		qw(ContentDirectory) :
 		qw(RenderingControl AVTransport))
 	{
@@ -288,15 +288,15 @@ sub getDeviceXML
 			last;
 		}
 
-		return !error("$deviceType($uuid) couldn not find service($req)")
+		return !error("$type($uuid) couldn not find service($req)")
 			if !$xml_service;
 		display($dbg_desc+1,2,"found service $xml_service->{serviceType}");
 
-		return !error("$deviceType($uuid) $req could not find controlURL")
+		return !error("$type($uuid) $req could not find controlURL")
 			if !$xml_service->{controlURL};
-		# return !error("$deviceType($uuid) $req could not find eventSubURL")
+		# return !error("$type($uuid) $req could not find eventSubURL")
 		# 	if !$xml_service->{eventSubURL};
-		# return !error("$deviceType($uuid) $req could not find SCPDURL")
+		# return !error("$type($uuid) $req could not find SCPDURL")
 		# 	if !$xml_service->{SCPDURL};
 
 		$dev->{services}->{$req} = shared_clone({
@@ -307,7 +307,7 @@ sub getDeviceXML
 		});
 	}
 
-	display($dbg_desc+1,0,"getDeviceXML($deviceType) returning");
+	display($dbg_desc+1,0,"getDeviceXML($type) returning");
 	return $dev;
 }
 
@@ -326,23 +326,23 @@ sub notifyDevice
 
 sub updateDevice
 {
-	my ($deviceType,$uuid,$state,$message) = @_;
-	my $device = findDevice($deviceType,$uuid);
+	my ($type,$uuid,$state,$message) = @_;
+	my $device = findDevice($type,$uuid);
 
 	if (!$device)
 	{
-		display($dbg_devices,-1,"updateDevice(NEW) $deviceType $uuid $state");
+		display($dbg_devices,-1,"updateDevice(NEW) $type $uuid $state");
 		my $location = $message->{LOCATION} || '';
-		return error("No location for $deviceType($uuid) state($state)")
+		return error("No location for $type($uuid) state($state)")
 			if !$location;
 		display($dbg_devices+1,-2,"location=$location");
 
-		my $dev = getDeviceXML($deviceType,$uuid,$location);
+		my $dev = getDeviceXML($type,$uuid,$location);
 		return if !$dev;
 
 		$dev->{max_age} = $DEFAULT_MAX_AGE;
 
-		$device = $deviceType eq $DEVICE_TYPE_LIBRARY ?
+		$device = $type eq $DEVICE_TYPE_LIBRARY ?
 			remoteLibrary->new($dev) :
 			remoteRenderer->new($dev);
 
@@ -362,13 +362,13 @@ sub updateDevice
 		{
 			$device->{online} = '';
 			$device->{max_age} = 0;
-			display($dbg_devices+1,-1,"updateDevice STATE_CHG(byebye) $deviceType $device->{name}")
+			display($dbg_devices+1,-1,"updateDevice STATE_CHG(byebye) $type $device->{name}")
 		}
 		else
 		{
 			my $cache_ctrl = $message->{CACHE_CONTROL} || '';
 			my $max_age = $cache_ctrl =~ /max-age=(\d+)$/ ? $1 : $DEFAULT_MAX_AGE;
-			display($dbg_devices+1,-1,"updateDevice STATE_CHG(alive,$max_age) $deviceType $device->{name}")
+			display($dbg_devices+1,-1,"updateDevice STATE_CHG(alive,$max_age) $type $device->{name}")
 				if !$device->{online};
 			$device->{online} = time();
 			$device->{max_age} = $max_age;

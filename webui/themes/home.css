@@ -173,9 +173,9 @@
 
 /* this affects the buttons WITHIN a section */
 
-#playlists label,
-#renderers label,
-#libraries label
+#playlist_menu label,
+#renderer_menu label,
+#library_menu label
 {
 	width:200px;
 	font-size:16px;
@@ -186,13 +186,11 @@
 }
 
 
-#playlists,
-#renderers,
-#libraries
+#playlist_menu,
+#renderer_menu,
+#library_menu
 {
 	width:197px;
-
-
 	padding-left:10px;
 	white-space:nowrap;
 }

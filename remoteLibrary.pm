@@ -70,7 +70,7 @@ my $dbg_insert = 1;
 sub dataDir
 {
 	my ($this) = @_;
-	my $dir = "$temp_dir/$this->{deviceType}/$this->{uuid}";
+	my $dir = "$temp_dir/$this->{type}/$this->{uuid}";
 	my_mkdir($dir) if !(-d $dir);
 	return $dir;
 }

@@ -46,23 +46,33 @@ function update_explorer()
 {
 	display(dbg_explorer,0,"update_explorer()");
 	explorer_tree.options.source.url = "/webui/library/" + current_library['uuid'] + "/dir";
-	update_explorer_album_info('',{})
+	update_explorer_ui('',{})
 	init_page_explorer();
 }
 
 
 function init_page_explorer()
 {
+	// Generally speaking, in fancyTree event data has the node object
+	// The node object has a data member  which is any fields we returned via json.
+	// fancytree didn't know.  We have to be careful with name collisions,
+	// for example, fancyTree treats 'title' specially, so we raise it to
+	// TITLE in certain cases.  Another potential conflict is 'key'.
+
 	display(dbg_explorer,0,"init_page_explorer()");
 
 	// CENTER DIV LAYOUT
+	// Note that the explorer_center_div has a nested layout!
+	// Here we set the 'north' (explorer_album_div) within it
+	// to 160 in height, leaving the resst for the 'center'
+	// (explorer_tracklist_div) which contains the 'explorer_tracklist'
+	// div
 
 	var center_layout = $('#explorer_center_div').layout({
 		applyDemoStyles: true,
 		north__size:160,
 	});
 
-	display(dbg_explorer,1,"back from center_layout assignment");
 
 	// EXPLORER TREE
 
@@ -87,8 +97,7 @@ function init_page_explorer()
 		{
 			var node = data.node;
 			var use_id = node.key;
-			// if (use_id == undefined)
-			// 	use_id = 0
+			// if (use_id == undefined) use_id = 0
 			data.result =
 			{
 				url: "/webui/library/" + current_library['uuid'] + "/dir",
@@ -116,30 +125,22 @@ function init_page_explorer()
 
 		activate: function(event, data)
 		{
-			// The event data has the node object
-			// The node object has a data member
-			// which is any fields we returned by
-			// json that fancytree didn't know (i.e.
-			// key and title). Should use uppercase to
-			// distinguish and hopefully prevent
-			// namespace collisions.
-
 			var node = data.node;
 			var rec = node.data;
-
 			display(dbg_explorer,0,"calling update_explore_album_info() " + node.title);
-			update_explorer_album_info(node.title,rec);
+			update_explorer_ui(node.title,rec);
 			display(dbg_explorer,0,"back from update_explore_album_info()");
 			// hide_layout_panes();
 
 		}
-	});
-
-	// CACHE THE EXPLORER TREE
+	});		// explorer_tree
 
 	explorer_tree = $("#explorer_tree").fancytree("getTree");
+		// cache the explorer tree
+
 
 	// EXPLORER TRACKLIST
+	// TRACKLIST(S) TO BE REWORKED
 
 	display(dbg_explorer,1,"initializizing explorer tracklist");
 
@@ -159,13 +160,11 @@ function init_page_explorer()
 			var $tdList = $(node.tr).find(">td");
 
 			// TITLE in lowercase conflicts with jquery-ui,
-			// so we raise it to TITLE in uiExplorer.pm
+			// so we raise it to TITLE in uiLibrary.pm
 
-			// note that we use .html() for the title,
-			// which is required to work with Utils::escape_tag()
-			// which changes non-printable characters into their
-			// &#NNN; html equivilants.
-
+			// Note also that we used to use .text() for content,
+			// but now we use .html() as the content may contain
+			// encoded characters from Perl Utils::escape_tag()
 
 			$tdList.eq(0).addClass('explorer_tracklist_td0');
 			$tdList.eq(1).text(rec.tracknum).addClass('explorer_tracklist_td1');
@@ -186,17 +185,8 @@ function init_page_explorer()
 
 		activate: function(event, data)
 		{
-			// The event data has the node object
-			// The node object has a data member
-			// which is to any fields we returned by
-			// json that fancytree didn't know (i.e.
-			// key and title). We use uppercase to
-			// distinguish and hopefully prevent
-			// namespace collisions.
-
 			var node = data.node;
 			var rec = node.data;
-			// var details = $("#explorer_details").fancytree("getTree");
 			explorer_details.reload({
 				url:'/webui/library/'+current_library['uuid'] + '/track_metadata?id=' + rec.id,
 				cache: true});
@@ -206,54 +196,78 @@ function init_page_explorer()
 			var node = data.node;
 			var rec = node.data;
 
-			// use embeded audio player (soon to be webUI's own 'renderer')
-			// to play it as a stream (from my local library only at this time)
-
-			if (false)
-			{
-				var play_url;
-				if (rec.is_local)
-				{
-					play_url = "/media/" + node.data.id + '.' + node.data.type;
-				}
-				else if (rec.path)
-				{
-					play_url = rec.path;
-				}
-
-				if (play_url)
-				{
-					$('#audio_player').attr('src',play_url);
-					$('#audio_player_title').html(node.data.title);
-					$('#explorer_album_image').attr('src',rec.art_uri);
-				}
-			}
-
-			// tell the renderer to stream it from the library
-			// (from my local library only at this time)
-
-			else
-			{
-				renderer_command('play_song',{
-					library_uuid: current_library['uuid'],
-					track_id: node.data.id });
-			}
-
-			// we could return false to prevent default handling,
-			// i.e. generating subsequent activate, expand, or select events
+			renderer_command('play_song',{
+				library_uuid: current_library['uuid'],
+				track_id: node.data.id });
 
 			return true;
+				// we could return false to prevent default handling,
+				// i.e. generating subsequent activate, expand, or select events
 		},
-
-
-	});
-
-	// CACHE THE TRACKLIST TREE
+	});		// explorer_tracklist
 
 	explorer_tracklist = $("#explorer_tracklist").fancytree("getTree");
-	display(dbg_explorer,1,"got explorer_tracklist=" + explorer_tracklist);
+		// cache the tracklist
 
-	// CONTEXT MENU
+
+	// EXPLORER DETAILS
+
+	display(dbg_explorer,1,"initializizing explorer details");
+
+	$("#explorer_details").fancytree({
+
+		clickFolderMode:3,		// activateAndExpand
+		extensions: ["table"],
+
+		expand: function(event, data)  { saveExpanded(true,data.node); },
+		collapse: function(event, data) { saveExpanded(false,data.node); },
+			// save the expanded state when done by hand
+
+		renderColumns: function(event, data)
+		{
+			var node = data.node;
+			var rec = node.data;
+			var $tdList = $(node.tr).find(">td");
+
+			// note that we use .html() for the error icons,
+			// and Utils::escape_tag() which changes non-printable
+			// characters into their &#NNN; html equivilants.
+			//
+			// It is worth noting that non-displayable characters
+			// will show up as a white triangle, and we *may* want
+			// to consider that chr(13), and chr(0) are special
+			// cases in Utils::escape_tag()
+
+			$tdList.eq(0)					.addClass('explorer_details_td0');
+			$tdList.eq(1).html(rec.TITLE)	.addClass('explorer_details_td1');
+			$tdList.eq(2).html(rec.VALUE)	.addClass('explorer_details_td2');
+
+			if (!node.children)
+			{
+				var expander = $tdList.eq(0).find('.fancytree-expander');
+				expander.css('display','none');
+			}
+			else
+			{
+				if (explorer_details)	// use saved expanded state if available
+				{
+					var exp = explorer_details['expanded_' + rec.TITLE];
+					if (exp != undefined)
+						node.setExpanded(exp);
+				}
+
+				$tdList.eq(2).prop("colspan", 2);
+				$tdList.eq(1).addClass('explorer_details_section_label');
+			}
+ 		},
+
+	});		// explorer_details
+
+	explorer_details = $("#explorer_details").fancytree("getTree");
+		// cache the explorer_details
+
+
+	// TRACKLIST CONTEXT MENU
 	// Requires modified prh-jquery.ui-contextmenu.js
 
 	display(dbg_explorer,1,"initializizing explorer context menu");
@@ -317,70 +331,13 @@ function init_page_explorer()
 			}
 		}
 
-	});
+	});		// tracklist context menu
 
 
-	// EXPLORER DETAILS
-
-	display(dbg_explorer,1,"initializizing explorer details");
-
-	$("#explorer_details").fancytree({
-
-		clickFolderMode:3,		// activateAndExpand
-		extensions: ["table"],
-
-		expand: function(event, data)  { saveExpanded(true,data.node); },
-		collapse: function(event, data) { saveExpanded(false,data.node); },
-			// save the expanded state when done by hand
-
-		renderColumns: function(event, data)
-		{
-			var node = data.node;
-			var rec = node.data;
-			var $tdList = $(node.tr).find(">td");
-
-			// note that we use .html() for the error icons,
-			// and Utils::escape_tag() which changes non-printable
-			// characters into their &#NNN; html equivilants.
-			//
-			// It is worth noting that non-displayable characters
-			// will show up as a white triangle, and we *may* want
-			// to consider that chr(13), and chr(0) are special
-			// cases in Utils::escape_tag()
-
-			$tdList.eq(0)					.addClass('explorer_details_td0');
-			$tdList.eq(1).html(rec.TITLE)	.addClass('explorer_details_td1');
-			$tdList.eq(2).html(rec.VALUE)	.addClass('explorer_details_td2');
-
-			if (!node.children)
-			{
-				var expander = $tdList.eq(0).find('.fancytree-expander');
-				expander.css('display','none');
-			}
-			else
-			{
-				if (explorer_details)	// use saved expanded state if available
-				{
-					var exp = explorer_details['expanded_' + rec.TITLE];
-					if (exp != undefined)
-						node.setExpanded(exp);
-				}
-
-				$tdList.eq(2).prop("colspan", 2);
-				$tdList.eq(1).addClass('explorer_details_section_label');
-			}
- 		},
-
-	});
-
-	// CACHE THE EXPLORER_DETAILS so we can clear it when a new
-	// folder is selected.
-
-	explorer_details = $("#explorer_details").fancytree("getTree");
-	display(dbg_explorer,1,"got explorer_details=" + explorer_details);
 	display(dbg_explorer,1,"init_page_explorer() returning");
 
 }	// init_page_explorer()
+
 
 
 function saveExpanded(expanded,node)
@@ -393,19 +350,14 @@ function saveExpanded(expanded,node)
 
 
 //---------------------------------------------------------------
-// html version of a FOLDERS database record
+// update_explorer_ui
 //---------------------------------------------------------------
 
-function update_explorer_album_info(title,rec)
+function update_explorer_ui(title,rec)
 	// Update the album pane of the explorer which in turn clears
 	// the old details and loads the tracks if any
 {
-	display(dbg_explorer,1,"update_explorer_album_info() " + title);
-
-	// note that we use .html() for the title,
-	// which is required to work with Utils::escape_tag()
-	// which changes non-printable characters into their
-	// &#NNN; html equivilants.
+	display(dbg_explorer,1,"update_explorer_ui() " + title);
 
 	$("#explorer_header_left").html(title);
 	$('#explorer_album_image').attr('src',rec.art_uri);
@@ -438,7 +390,6 @@ function update_explorer_album_info(title,rec)
 	 );
 
 	$('#explorer_album_info4').html(rec.path);
-
 
 	$('#explorer_album_info5').html(
 		error_string ? error_string : ""
@@ -478,9 +429,7 @@ function update_explorer_album_info(title,rec)
 			cache: true});
 	}
 
-
-
-}	// update_explorer_album_info()
+}	// update_explorer_ui()
 
 
 

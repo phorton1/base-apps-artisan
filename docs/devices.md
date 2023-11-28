@@ -6,7 +6,7 @@ to effect the presentation, controlling, and playing of music.
 
 There is a deviceManager class that presents a list of all known
 devices in the system.  It can be asked to find a certain device
-by its uuid, or to return a list of devices of a given deviceType,
+by its uuid, or to return a list of devices of a given type,
 in a certain order.
 
 ## Devices
@@ -41,7 +41,7 @@ The Device API consists of the following members
 
 - uuid
 - name
-- deviceType
+- type
 - services (hash by serviceType)
 
 It provides the following methods:

@@ -113,23 +113,10 @@ function idle_loop()
 	display(dbg_loop,0,"idle_loop(" + current_page + ")");
 	idle_count++;
 
-	// if (current_page == 'home')
-	{
-		display(dbg_loop,1,"idle_loop() calling renderer_pane_onidle()");
-		update_renderer_onidle();
-		display(dbg_loop,1,"idle_loop() back from renderer_pane_onidle()");
-	}
+	renderer_onidle();
 
-	// if (false)	// crashes
-	// {
-	// 	check_timeouts();
-	// }
-
-
-	display(dbg_loop,1,"idle_loop() settingTimeout");
 	setTimeout("idle_loop();", REFRESH_TIME);
-
-}	// idle_loop
+}
 
 
 function toggleFullScreen()
@@ -195,7 +182,6 @@ function set_page(page_id)	// ,context)
 // Layout
 //========================================================
 
-
 function create_layout(page_id)
 {
 	display(dbg_layout,0,'create_layout(' + page_id + ')');
@@ -246,7 +232,6 @@ function add_pane_params(layout_def,params,pane)
 		}
 	}
 }
-
 
 
 function resize_layout(page_id)
@@ -327,82 +312,6 @@ function resize_layout_pane(layout,layout_def,value,pane)
 	}
 }
 
-
-
-//------------------------------------------------------------------------
-// currently untested and unused auto-close, swipe, and autofull
-//------------------------------------------------------------------------
-// auto-closing windows
-
-// function reset_timeouts()
-// {
-// 	display(dbg_layout,0,"reset_timeouts()");
-// 	update_autofull(false);
-// 	autoclose_count = 0;
-// 	autofull_count = 0;
-// }
-//
-// function check_timeouts()
-// {
-// 	if (autoclose_timeout > 0)
-// 	{
-// 		autoclose_count++;
-// 		if (autoclose_count == autoclose_timeout)
-// 		{
-// 			hide_context_menu();
-// 			hide_layout_panes();
-// 		}
-// 	}
-// 	if (autofull_timeout > 0)
-// 	{
-// 		autofull_count++;
-// 		if (autofull_count == autofull_timeout)
-// 		{
-// 			update_autofull(true);
-// 		}
-// 	}
-// }
-
-
-// autofull
-//
-// function update_autofull(value)
-// {
-// 	if (autofull != value)
-// 	{
-// 		autofull = value;
-// 		if (current_page == 'renderer')
-// 		{
-// 			on_renderer_autofull_changed();
-// 		}
-// 	}
-// }
-
-
-// function hide_layout_panes()
-// 	// close it if it is showing and has slide option set
-// {
-// 	return;
-// 		// crashing
-//
-// 	onchange_popup_numeric();
-//
-// 	var layout = $('#' + current_page + '_page').layout();
-// 	hide_layout_pane(layout,'west');
-// 	hide_layout_pane(layout,'north');
-// 	hide_layout_pane(layout,'east');
-// 	hide_layout_pane(layout,'south');
-// }
-//
-// function hide_layout_pane(layout,pane)
-// {
-// 	if (!layout.state[pane].isClosed &&
-// 		layout.options[pane].slide)
-// 	{
-// 		layout.options[pane].closable = true;
-// 		layout.slideClose(pane);
-// 	}
-// }
 
 
 //-------------------------------------------
@@ -547,6 +456,80 @@ function onswipe(event, direction, distance, duration, fingerCount, fingerData)
 
 
 
+//------------------------------------------------------------------------
+// currently untested and unused auto-close, swipe, and autofull
+//------------------------------------------------------------------------
+// auto-closing windows
+
+// function reset_timeouts()
+// {
+// 	display(dbg_layout,0,"reset_timeouts()");
+// 	update_autofull(false);
+// 	autoclose_count = 0;
+// 	autofull_count = 0;
+// }
+//
+// function check_timeouts()
+// {
+// 	if (autoclose_timeout > 0)
+// 	{
+// 		autoclose_count++;
+// 		if (autoclose_count == autoclose_timeout)
+// 		{
+// 			hide_context_menu();
+// 			hide_layout_panes();
+// 		}
+// 	}
+// 	if (autofull_timeout > 0)
+// 	{
+// 		autofull_count++;
+// 		if (autofull_count == autofull_timeout)
+// 		{
+// 			update_autofull(true);
+// 		}
+// 	}
+// }
+
+
+// autofull
+//
+// function update_autofull(value)
+// {
+// 	if (autofull != value)
+// 	{
+// 		autofull = value;
+// 		if (current_page == 'renderer')
+// 		{
+// 			on_renderer_autofull_changed();
+// 		}
+// 	}
+// }
+
+
+// function hide_layout_panes()
+// 	// close it if it is showing and has slide option set
+// {
+// 	return;
+// 		// crashing
+//
+// 	onchange_popup_numeric();
+//
+// 	var layout = $('#' + current_page + '_page').layout();
+// 	hide_layout_pane(layout,'west');
+// 	hide_layout_pane(layout,'north');
+// 	hide_layout_pane(layout,'east');
+// 	hide_layout_pane(layout,'south');
+// }
+//
+// function hide_layout_pane(layout,pane)
+// {
+// 	if (!layout.state[pane].isClosed &&
+// 		layout.options[pane].slide)
+// 	{
+// 		layout.options[pane].closable = true;
+// 		layout.slideClose(pane);
+// 	}
+// }
 
 
 

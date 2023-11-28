@@ -153,9 +153,9 @@ sub web_ui
 
 	# device requests
 
-	elsif ($path =~ /^getDevicesHTML\/(renderers|libraries)$/)
+	elsif ($path =~ /^getDevices\/(renderer|library)$/)
 	{
-		return getDevicesHTML($1);
+		return getDevicesJson($1);
 	}
 	elsif ($path =~ /^getDevice\/(renderer|library)-(.*)$/)
 	{
@@ -205,23 +205,20 @@ sub web_ui
 
 sub getDeviceJson
 {
-	my ($singular,$uuid) = @_;
-	my $type =
-		$singular eq 'renderer' ? $DEVICE_TYPE_RENDERER :
-		$singular eq 'library'  ? $DEVICE_TYPE_LIBRARY  : '';
+	my ($type,$uuid) = @_;
 
 	display($dbg_webui,0,"getDeviceJson($type,$uuid)");
 	my $device;
-	if ($uuid eq 'local')
-	{
-		$device = $local_library if $type eq $DEVICE_TYPE_LIBRARY;
-		$device = $local_renderer if $type eq $DEVICE_TYPE_RENDERER;
-	}
-	else
-	{
+	# if ($uuid eq 'local')
+	# {
+	# 	$device = $local_library if $type eq $DEVICE_TYPE_LIBRARY;
+	# 	$device = $local_renderer if $type eq $DEVICE_TYPE_RENDERER;
+	# }
+	# else
+	# {
 		$device = findDevice($type,$uuid);
-	}
-	return http_error("Could not get getDeviceJson($singular,$uuid)")
+	# }
+	return http_error("Could not get getDeviceJson($type,$uuid)")
 		if !$device;
 	my $response = json_header();
 	$response .= json($device);
@@ -229,51 +226,27 @@ sub getDeviceJson
 }
 
 
-
-sub getDevicesHTML
+sub getDevicesJson
 {
-	my ($plural) = @_;	# plural
-	my $type =
-		$plural eq 'renderers' ? $DEVICE_TYPE_RENDERER :
-		$plural eq 'libraries' ? $DEVICE_TYPE_LIBRARY  : '';
+	my ($type) = @_;
+
 	my $devices = getDevicesByType($type);
-	my $single = $plural;
-	$single =~ s/libraries/library/;
-	$single =~ s/s$//;	# singular
-
-	display($dbg_webui,0,"getDevicesHTML($type)");
-
-	my $text = '';
-
-	if ($plural eq 'renderers')		# add the 'Local' renderer for the webUI
-	{
-		display($dbg_webui,1,"$single webUI Local renderer");
-
-		$text .= "<input type=\"radio\" ";
-		$text .= "id=\"$single-html_renderer\" ";
-		$text .= "onclick=\"javascript:selectDevice('$single','html_renderer');\" ";
-		$text .= "name=\"$plural\">";
-		$text .= "<label for=\"$single-html_renderer\">Local</label><br>\n";
-	}
-
+	my $result = [];
 	for my $device (@$devices)
 	{
-		display($dbg_webui,1,"$single $device->{name}");
+		next if	$type eq $DEVICE_TYPE_RENDERER &&
+			!$device->{local};
+			# remote renderers not yet supported
 
-		$text .= "<input type=\"radio\" ";
-		$text .= "id=\"$single-$device->{uuid}\" ";
-		$text .= "onclick=\"javascript:selectDevice('$single','$device->{uuid}');\" ";
-		$text .= "name=\"$plural\">";
-		$text .= "<label for=\"$single-$device->{uuid}\">$device->{name}</label><br>\n";
+		push @$result,{
+			type => $device->{type},
+			uuid => $device->{uuid},
+			name => $device->{name} };
 	}
-	my $response = http_header({content_type => 'text/html' });
-	$response .= $text."\r\n";
+	my $response = json_header();
+	$response .= json($result);
 	return $response;
 }
-
-
-
-
 
 
 

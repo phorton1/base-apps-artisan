@@ -824,7 +824,7 @@ sub processExternalMessage
 	# and mildly interested in the alive state (alive | byebye)
 
 	my $uuid  = $usn =~ /uuid:(.*?)(:|$)/ ? $1 : '';
-	my $type  = $usn =~ /:device:(.*)$/   ? $1 : '';
+	my $utype = $usn =~ /:device:(.*)$/   ? $1 : '';
 	my $state = $nts =~ /^ssdp:(.*)$/     ? $1 : '';
 
 	# prettify for debugging
@@ -833,13 +833,13 @@ sub processExternalMessage
 	$usn =~ s/^urn://;
 	$usn =~ s/^schemas-upnp-org://;
 
-    my $deviceType =
-		$type eq 'MediaServer:1' ? $DEVICE_TYPE_LIBRARY :
-		$type eq 'MediaRenderer:1' ? $DEVICE_TYPE_RENDERER : '';
+    my $type =
+		$utype eq 'MediaServer:1' ? $DEVICE_TYPE_LIBRARY :
+		$utype eq 'MediaRenderer:1' ? $DEVICE_TYPE_RENDERER : '';
 
 	my $mask = 1;
-	$mask |= $deviceType ? 0x10 : 0;
-	$mask |= $deviceType && !findDevice($deviceType,$uuid) ? 0x100 : 0;
+	$mask |= $type ? 0x10 : 0;
+	$mask |= $type && !findDevice($type,$uuid) ? 0x100 : 0;
 
 	my $show_hash = ($mask << 1) & $show_search_dbg;
 	my $show_line = $show_hash || ($mask & $show_search_dbg);
@@ -853,8 +853,8 @@ sub processExternalMessage
 	display(0,-1,$dbg_msg) if $show_line;
 	display_hash(0,-1,$dbg_msg,$message) if $show_hash;
 
-	DeviceManager::updateDevice($deviceType,$uuid,$state,$message)
-		if ($deviceType)
+	DeviceManager::updateDevice($type,$uuid,$state,$message)
+		if ($type)
 }
 
 

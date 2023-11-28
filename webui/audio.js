@@ -25,6 +25,7 @@ const RENDERER_STATE_ERROR		= 'ERROR';
 var html_renderer = {
 		name		: 'HTML Audio',
 		uuid		: 'html_renderer',
+		type		: DEVICE_TYPE_RENDERER,
 		maxVol 		: 100,
 		canMute		: true,
 		canLoud		: false,

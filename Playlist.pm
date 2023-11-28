@@ -8,6 +8,7 @@
 #	id				- playlist id within library(uuid)
 #   uuid			- uuid of the library holding the playlist
 # 	name			- playlist title
+#   query			- my SQL query, blank for remotePlaylists
 # 	shuffle			- shuffle mode
 #   num_tracks		- number of tracks in the playlist
 #   track_index		- current track index within the playlist or 0 if no tracks

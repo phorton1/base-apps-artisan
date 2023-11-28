@@ -42,17 +42,13 @@ layout_defs['home'] = {
 
 
 
-//========================================================
-// Home Page initialization
-//========================================================
-
 function init_page_home()
 {
 	last_song = '';
 	display(dbg_home,0,"init_page_home()");
 
-	load_device_list('renderers');
-	load_device_list('libraries');
+	load_device_list(DEVICE_TYPE_RENDERER);
+	load_device_list(DEVICE_TYPE_LIBRARY);
 
 	init_playlist_info();
 	init_renderer_pane();
@@ -67,237 +63,135 @@ function init_page_home()
 
 
 
-//------------- Device Lists
 
-function makeSingular(plural)
+//-----------------------------------
+// Device Lists
+//-----------------------------------
+
+function load_device_list(type)
 {
-	if (plural == 'renderers') return 'renderer';
-	if (plural == 'libraries') return 'library';
-	return '';
-}
-function makePlural(singular)
-{
-	if (singular == 'renderer') return 'renderers';
-	if (singular == 'library')  return 'libraries';
-	return '';
-}
-
-function load_device_list(plural)
-	// if singular, it's being called from init_page_home()
-	// and we check the last_singular cookie,
-{
-	var singular = makeSingular(plural);
-	display(dbg_home,0,"onload_renderer_list(" + plural + ")");
-
-	$.get('/webui/getDevicesHTML/' + plural,
-
+	$.get('/webui/getDevices/' + type,
 		function(result)
-		{
-			$( "#" + plural ).html(result);
-			$( "#" + plural ).buttonset();
-
-			var last_cookie = 'last_' + singular;
-			var last_uuid = singular ? getCookie("last_" + singular) : '';
-			var found = $( "#" + plural ).buttonset().length;
-			if (found)
-			{
-				found = false;
-				var ele = last_uuid ? $("#" + singular + "-" + last_uuid) : false;
-				if (ele && ele.length)
-				{
-					found = true;
-					selectDevice(singular,last_uuid);
-				}
-				if (!found)
-				{
-					found = true;
-					var first = $("#" + plural + " input").first();
-					var first_uuid = first.attr('id');
-					first_uuid = first_uuid.replace(singular + "-","");
-					selectDevice(singular,first_uuid);
-				}
-			}
-			if (!found)
-				setCookie(last_cookie,'',-1);
-		}
-	);
-}
-
-
-function selectDevice(singular,uuid)	// handler
-{
-	if (singular == 'renderer' && uuid == 'html_renderer')
 	{
-		onSelectDevice(singular,uuid,html_renderer);
-		return;
-	}
+		// add the local html_renderer
+		if (type == DEVICE_TYPE_RENDERER)
+			result.unshift({
+				name: html_renderer.name,
+				uuid: html_renderer.uuid,
+				type: DEVICE_TYPE_RENDERER });
 
-	$.get('/webui/getDevice/' + singular + "-" + uuid, function(result)
-	{
-		if (result.error)
-		{
-			rerror('Error in getDevice(' + kind + ',' + uuid + '): ' + result.error);
-		}
-		else
-		{
-			onSelectDevice(singular,uuid,result);
+		buildHomeMenu(result,type,'uuid','selectDevice','type','uuid');
 
-			var cur_name = 'current_' + singular;
-			var cur = window[cur_name];
-			if (cur && cur.uuid != uuid)
-			{
-				$( "#" + singular + '-' + cur.uuid).prop('checked', false).button('refresh');
-			}
-
-			window[cur_name] = result;
-			$('#' + singular +  '-' + uuid).prop('checked', true).button('refresh');
-			setCookie('last_'+singular,uuid,180);
-
-			// current_page indicates the app has really started
-
-			if (singular == 'library')
-				$('.artisan_menu_library_name').html(result.name);
-			init_playlists();
-				// will only do something if both are set.
-
-			if (current_page)
-			{
-				if (singular == 'renderer')
-					update_renderer_ui();
-				if (singular == 'library')
-					update_explorer();
-			}
-		}
+		var last_cookie = 'last_' + type;
+		var last_uuid = getCookie(last_cookie);
+		var found = $('#' + type + '_' + last_uuid );
+		if (found)
+			selectDevice(type,last_uuid);
+		else if (first)
+			setCookie(last_cookie,first);
 	});
 }
 
 
-
-function onSelectDevice(singular,uuid,result)
+function selectDevice(type,uuid)	// handler
 {
-	var cur_name = 'current_' + singular;
+	if (type == DEVICE_TYPE_RENDERER && uuid == 'html_renderer')
+	{
+		onSelectDevice(type,uuid,html_renderer);
+		return;
+	}
+	$.get('/webui/getDevice/' + type + "-" + uuid,
+		function(result)
+	{
+		if (result.error)
+			rerror('Error in getDevice(' + type + ',' + uuid + '): ' + result.error);
+		else
+			onSelectDevice(type,uuid,result);
+	});
+}
+
+
+function onSelectDevice(type,uuid,result)
+{
+	var cur_name = 'current_' + type;
 	var cur = window[cur_name];
 	if (cur && cur.uuid != uuid)
 	{
-		$( "#" + singular + '-' + cur.uuid).prop('checked', false).button('refresh');
+		$( "#" + type + '_' + cur.uuid).prop('checked', false).button('refresh');
 	}
 
 	window[cur_name] = result;
-	$('#' + singular +  '-' + uuid).prop('checked', true).button('refresh');
-	setCookie('last_'+singular,uuid,180);
+	$('#' + type +  '_' + uuid).prop('checked', true).button('refresh');
+	setCookie('last_'+type,uuid,180);
+
+	if (type == DEVICE_TYPE_LIBRARY)
+	{
+		$('.artisan_menu_library_name').html(result.name);
+		init_playlists();
+	}
 
 	// current_page indicates the app has really started
 
-	if (singular == 'library')
-	{
-		$('.artisan_menu_library_name').html(result.name);
-	}
-
-	init_playlists();
-
 	if (current_page)
 	{
-		if (singular == 'renderer')
+		if (type == DEVICE_TYPE_RENDERER)
 			update_renderer_ui();
-		if (singular == 'library')
+		if (type == DEVICE_TYPE_LIBRARY)
 			update_explorer();
 	}
 }
 
 
 
-//------------- Init Playlists
+//----------------------------------
+// Playlists
+//----------------------------------
 
 function init_playlists()
 	// only works if both current_library and current_renderer are set
 {
 	if (!current_library || !current_renderer)
 		return;
-
 	var library_uuid = current_library.uuid;
-	var renderer_uuid = current_renderer.uuid;
 
 	$.get('/webui/library/' + library_uuid + '/get_playlists',
 	function(result)
 	{
 		if (result.error)
 		{
-			rerror('Error in init_playlists(' + library_uuid + ',' + renderer_uuid + '): ' + result.error);
+			rerror('Error in init_playlists(' + library_uuid + '): ' + result.error);
 		}
 		else
 		{
-			$('#playlists').html(result);
-			onload_playlists();
+			buildHomeMenu(result,'playlist','id','setPlaylist','uuid','id');
 		}
 	});
 }
 
 
-function onload_playlists()
+function setPlaylist(uuid,id)
+	// called by easy-ui event registration on the renderer_list
+	// when the user changes the current selection.
+	// Set the current renderer name and enable the buttons.
+	// We have to be careful about re-entrancy, so that we don't
+	// confuse the server.
 {
-	display(dbg_pl,0,"onload_playlists()");
-    $('#playlists').buttonset();
+	display(dbg_home,0,"setPlaylist("+name+")");
+	// the button is a radio button and I don't want it to be,
+	// so I have to explicitly uncheck it ... fix later
+	$('#playlist_' + id).prop('checked', false).button('refresh');
 
-}
 
-
-//------------- Init Renderer
-
-function init_renderer_pane()
-{
-	display(dbg_home,0,"init_renderer_pane()");
-
-	$( "#renderer_slider" ).slider({
-		disabled:true,
-		stop: function( event, ui ) {
-			on_slider_complete(event,ui);
-		},
-		start: function( event, ui ) {
-			in_slider = true;
-		},
-	});
-
-	renderer_slider = $('#renderer_slider');
-
-	$( "input[type=button]" ).button();
-
-}
-
-//------------- Init Preferences
-
-function create_numeric_pref(min,med,max,var_name,spinner_id)
-{
-	display(dbg_layout,0,"create_numeric_pref(" + min + ',' + med + ',' + max + ',' + var_name + ',' + spinner_id + ")");
-
-	$(spinner_id).spinner({
-		width:20,
-		min:min,
-		max:max,
-		change: function(event, ui)
-		{
-			var value = parseInt($(this).spinner('value'));
-			window[var_name] = value;
-			setCookie(var_name,value,180);
-			if (false && var_name == 'explorer_mode')
-			{
-				var tree = $('#explorer_tree').fancytree('getTree');
-				tree.reload({
-					url: "/webui/library/" + current_library['uuid'] + "/dir",
-					data: {mode:explorer_mode, source:'numeric_pref'},
-					cache: false,
-				});
-			}
-		},
-	});
-
-	var value = window[var_name];
-	$(spinner_id).spinner('value',value);
+	// hide_layout_panes();
+	renderer_command('set_playlist',{
+		library_uuid:uuid,
+		id: id});
 }
 
 
 
 //========================================================
-// Handlers
+// API - renderer_command() and update_renderer_onidle()
 //========================================================
 
 function renderer_command(command,args)
@@ -346,6 +240,43 @@ function renderer_command(command,args)
 }
 
 
+function renderer_onidle()
+{
+	display(dbg_loop,0,"renderer_onidle");
+	if (current_renderer && !in_slider)
+	{
+		renderer_command('update');
+	}
+}
+
+
+
+
+//========================================================
+// RENDERER PANE (init and update)
+//========================================================
+
+function init_renderer_pane()
+{
+	display(dbg_home,0,"init_renderer_pane()");
+
+	$( "#renderer_slider" ).slider({
+		disabled:true,
+		stop: function( event, ui ) {
+			on_slider_complete(event,ui);
+		},
+		start: function( event, ui ) {
+			in_slider = true;
+		},
+	});
+
+	renderer_slider = $('#renderer_slider');
+
+	$( "input[type=button]" ).button();
+
+}
+
+
 function on_slider_complete(event,ui)
 	// sliders are in pct
 	// command is in millieseconds
@@ -357,37 +288,6 @@ function on_slider_complete(event,ui)
 	return true;
 }
 
-
-function set_playlist(uuid,id)
-	// called by easy-ui event registration on the renderer_list
-	// when the user changes the current selection.
-	// Set the current renderer name and enable the buttons.
-	// We have to be careful about re-entrancy, so that we don't
-	// confuse the server.
-{
-	display(dbg_home,0,"set_playlist("+name+")");
-	// hide_layout_panes();
-	renderer_command('set_playlist',{
-		library_uuid:uuid,
-		id: id});
-}
-
-
-function update_renderer_onidle()
-{
-	display(dbg_loop,0,"update_renderer_onidle");
-	if (current_renderer && !in_slider)
-	{
-		renderer_command('update');
-	}
-}
-
-
-
-
-//========================================================
-// UI REFRESH
-//========================================================
 
 function update_renderer_ui()
 {
@@ -591,10 +491,10 @@ function update_renderer_ui()
 
 
 
-//--------------------------------------------
-// ui utilities
-//--------------------------------------------
 
+//--------------------------------------------
+// update_renderer_ui() utilities
+//--------------------------------------------
 
 function set_button_on(id,on)
 {
@@ -655,7 +555,6 @@ function remove_trailing_decimal(st)
 }
 
 
-
 function padZero(len,st0)
 {
 	var st = "" + st0;
@@ -696,28 +595,6 @@ function millis_to_duration(millis,precise)
 	return retval;
 }
 
-
-
-// This snippet of code overrides the buttonset refresh() method
-// to NOT do rounded-corners-on-first-and-last-buttons-only.
-// The body of the method is everything from buttonset::refresh()
-// in jquery-ui.js, EXCEPT the loop that does the corners.
-
-$.ui.buttonset.prototype.refresh = function()
-{
-	// code copied verbatim from jquery-ui.js
-
-	var rtl = this.element.css( "direction" ) === "rtl",
-		allButtons = this.element.find( this.options.items ),
-		existingButtons = allButtons.filter( ":ui-button" );
-
-	// Initialize new buttons
-	allButtons.not( ":ui-button" ).button();
-
-	// Refresh existing buttons
-	existingButtons.button( "refresh" );
-
-};
 
 
 //-------------------------------------
