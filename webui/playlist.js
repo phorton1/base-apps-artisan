@@ -29,7 +29,7 @@ function init_playlist_info()
 			in_playlist_slider = true;
 		},
 		stop: function( event, ui ) {
-			playlist_song();
+			playlist_song_event();
 		},
 	});
 
@@ -46,7 +46,7 @@ function init_playlist_info()
 			in_playlist_spinner	= true;
 		},
 		stop: function( event, ui ) {
-			playlist_song();
+			playlist_song_event();
 		},
 	});
 
@@ -56,7 +56,7 @@ function init_playlist_info()
 
 
 
-function playlist_song()
+function playlist_song_event()
 {
 	var index = $('#playlist_info_track_num').spinner('value');
 	renderer_command('playlist_song',{index: index});
