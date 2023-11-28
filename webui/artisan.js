@@ -113,7 +113,7 @@ function idle_loop()
 	display(dbg_loop,0,"idle_loop(" + current_page + ")");
 	idle_count++;
 
-	if (current_page == 'home')
+	// if (current_page == 'home')
 	{
 		display(dbg_loop,1,"idle_loop() calling renderer_pane_onidle()");
 		update_renderer_onidle();
