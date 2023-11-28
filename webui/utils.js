@@ -63,10 +63,6 @@ function random16Hex()
 // display utilities
 //---------------------------------------------
 
-function commaJoin(array) { return array.join(','); }
-	// to display parameter list in display() headers
-
-
 function my_alert(title,msg)
 {
 	var d = new dialog(title, msg);
@@ -162,8 +158,31 @@ dialog.prototype =
 
 
 //--------------------------------------
-// decode utilities
+// misc utilities
 //--------------------------------------
+
+
+function commaJoin(array) { return array.join(','); }
+	// to display parameter list in display() headers
+
+function prettyBytes(bytes)
+{
+    if (!bytes)  bytes = 0;
+
+	var ctr = 0;
+	var size = ['', 'K', 'M', 'G', 'T'];
+	for (ctr = 0; bytes > 1000; ctr++)
+	{
+		bytes = bytes / 1000;
+	}
+
+	var rslt = bytes;
+	if (ctr > 0)
+		rslt = bytes.toFixed(1) + size[ctr];
+    return rslt;
+}
+
+
 
 function decode_ampersands(encoded)
 	// convert strings with double escaped ampersands

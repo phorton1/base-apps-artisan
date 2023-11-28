@@ -228,7 +228,7 @@ function track_to_html_renderer(track)
 		type        : track['type'],
 		year_str    : track['year_str'],
 		art_uri     : track['art_uri'],
-		pretty_size : track['size'] };
+		pretty_size : prettyBytes(track['size']) };
 
 	// create the media path for our localLibrary
 
