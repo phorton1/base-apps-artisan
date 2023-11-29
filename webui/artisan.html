@@ -31,7 +31,7 @@
     <script type="text/javascript" src="/webui/jquery/jquery.layout.resizePaneAccordions.js"></script>
     <script type="text/javascript" src="/webui/jquery/jquery.fancytree-2.6.0-all.js"></script>
     <script type="text/javascript" src="/webui/jquery/jquery.ui.touch-punch.js"></script>
-    <script type="text/javascript" src="/webui/jquery/jquery.touchSwipe.js"></script-->
+    <script type="text/javascript" src="/webui/jquery/jquery.touchSwipe.js"></script>
     <script type="text/javascript" src="/webui/jquery/prh-jquery.ui-contextmenu.js"></script>
 
     <script type="text/javascript" src="/webui/utils.js"></script>
@@ -47,6 +47,27 @@
 
 	<!-- include page_home.html -->
 	<!-- include page_explorer.html -->
+
+	<div id='context_menu_div'>
+        <p>
+            Open in
+        </p>
+        <p>
+            <button
+                id='context_menu_renderer'
+                onclick="javascript:do_context_menu('stations')">
+                stations
+            </button>
+        </p>
+        <p>
+            <button
+                id='context_menu_renderer'
+                onclick="javascript:do_context_menu('explorer')">
+                explorer
+            </button>
+        </p>
+    </div>
+
 
 </body>
 
