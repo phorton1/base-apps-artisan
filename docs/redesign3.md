@@ -189,13 +189,15 @@ and a somewhat smaller on the iPad.
 
 Laptop (fixed with var sized window)
 
-- orientation(landscape-primary)	screen(1920,1080) iwindow(936,476) owindow(948,554) body(936,0)
+-ratio(1)
+-orientation(landscape-primary)	screen(1920,1080) iwindow(936,476) owindow(948,554) body(936,0)
 
 Note the body height of zero?!?
 
 
 Chrome on Android
 
+-ratio(2.8125)
 -orientation(landscape-primary)		screen(854,384) iwindow(779,304) owindow(779,304) body(779,304)
 -orientation(portrait-primary)		screen(384,854) iwindow(384,723) owindow(384,723) body(384,723)
 
@@ -203,18 +205,21 @@ definitely had an anomolous orientation(portrait-primary) screen(384,854) iwindo
 on the Android-Chrome
 
 
-Chrome on iPad
+Chrome on iPad (all are actually Safari)
 
+-ratio(2)
 -orientation(landscape-primary)		screen(834,1112) iwindow(1112,707) owindow(1112,706) body(1112,707)
 -orientation(portrait-primary)		screen(834,1112) iwindow(834,985)  owindow(834,984) body(834,985)
 
 Firefox on iPad
 
+-ratio(2)
 -orientation(landscape-primary)		screen(834,1112) iwindow(1112,695) owindow(1112,695) body(1112,695)
 -orientation(portrait-secondary)	screen(834,1112) iwindow(834,973)  owindow(834,973) body(834,973)
 
 Safari on iPad:
 
+-ratio(2)
 -orientation(landscape-primary)		screen(834,1112) iwindow(1112,753) owindow(1112,834) body(1112,753)
 -orientation(portrait-primary)		screen(834,1112) iwindow(834,1031) owindow(834,1112) body(834,1031)
 
@@ -313,7 +318,36 @@ track_index).   In the Queue the track_index/num_tracks
 should show, and there *may* be Sort buttons, slider, etc.
 
 
-## First steps, Context Menus
+## Fucking iPad
+
+Safari sucks.  Apple sucks.  IOS sucks.
+
+At least swipes seem to work.
+
+The contextmenu event is not supported.
+I looked into fixing it for 1/2 day.  It's a fucked idea.
+
+Double clicking zooms on element with no dbl click handler,
+which is realy awkward to get out of once it happens.
+
+The only really reliable gestures are single click and swipes.
+
+So, on IOS (Platform == MacIntel && ua contains 'Safari'),
+to the best of my ability to determine it, I'll have to
+have a completley different interaction.
+
+I'm thinking that double click on Playlist Buttons and
+Explorer Tree will bring up the context menu.
+
+There's already a different in the explorer tree between
+clicking on an expander and clicking on a album.
+
+
+For explorer folders, maybe buttons in the 'album pane?'
+that work on selected tracks if any
+
+Now I need to rethink the interactions, sheesh.
+As if the actual implementtion is not difficult.
 
 
 

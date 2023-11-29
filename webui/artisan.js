@@ -45,6 +45,8 @@ function debug_environment()
 		"owindow(" + window.outerWidth + "," + window.outerHeight + ") " +
 		"body(" + $('body').width() + "," + $('body').height() + ")");
 
+	debug_remote(0,0,"ratio(" + window.devicePixelRatio + ")");
+
 	debug_remote(0,0,"navigator " +
 		"cookies(" + navigator.cookieEnabled + ") " +
 		"platform(" + navigator.platform + ") " +

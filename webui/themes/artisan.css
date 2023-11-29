@@ -10,6 +10,12 @@ body
 		   whatever. */
 }
 
+ipad_body_styles_while_trying_to_get_context_menus_to_work
+{
+	-webkit-user-select: none !important;
+	-webkit-touch-callout: none  !important;
+}
+
 
 /* HTML ELEMENT DEFAULTS */
 

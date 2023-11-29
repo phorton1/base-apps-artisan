@@ -26,7 +26,22 @@ table.fancytree-ext-table tbody tr td
 #explorer_tree td
 {
     overflow:hidden;
-	font-size:12pt;
+	font-size:12pt;			/* pt? */
+}
+
+/* example of using a media query in the CSS to change one thing */
+
+@media (max-width: 1250px)
+{
+	#explorer_tracklist td,
+	#explorer_tree td
+	{
+		font-size:15pt;
+	}
+	#explorer_details td
+	{
+		font-size:13pt;
+	}
 }
 
 
@@ -102,18 +117,12 @@ table.fancytree-ext-table tbody tr td
 }
 
 
-/*
-	td0 is the expander and icons
-	td1 is the left side
-	td2 is the right side
 
-	so far these do absolutely nothing
-*/
 
-.explorer_details_td0  { width:16px; !important; font-size:30px; }
+
+.explorer_details_td0  { width:16px; !important;  }
 .explorer_details_td1  { width:45px; overflow:hidden; }
-.explorer_details_td2  { width:220px; padding-left:10px; }
-
+/* .explorer_details_td2  { width:220px; padding-left:10px; } */
 
 
 
@@ -123,4 +132,3 @@ table.fancytree-ext-table tbody tr td
 	font-weight: bold;
 	icon: auto;
 }
-

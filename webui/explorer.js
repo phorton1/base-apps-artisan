@@ -99,7 +99,7 @@ function init_page_explorer()
 			var rec = node.data;
 			var $tdList = $(node.tr).find(">td");
 
-			$tdList.eq(1).text(rec.NUM_ELEMENTS).addClass("explorer_tree_num");
+			// $tdList.eq(1).text(rec.num_elements).addClass("explorer_tree_num");
 				// add the "number of tracks/children folders"
 
 			// some other examples
@@ -207,6 +207,17 @@ function init_page_explorer()
 		expand: function(event, data)  { saveExpanded(true,data.node); },
 		collapse: function(event, data) { saveExpanded(false,data.node); },
 			// save the expanded state when done by hand
+
+		click: function(event, data)
+		{
+			var node = data.node;
+			if (node.children)
+			{
+				node.setExpanded(!node.isExpanded());
+			}
+			return false;	// no default event
+		},
+
 
 		renderColumns: function(event, data)
 		{
