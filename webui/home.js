@@ -17,13 +17,13 @@ layout_defs['home'] = {
 
 	default_params: {
 		applyDemoStyles: true,
-		resizable: false,
 		west__onresize:  $.layout.callbacks.resizePaneAccordions,
 	},
 
 	north: {
 		size:40,
 		limit:400,
+		resizable: false,
 		element_id:'#renderer_page_header_right',
 	},
 	west: {

@@ -162,7 +162,8 @@
 
 #home_menu
 {
-	width:243px;
+	/* width:243px; */
+	width:auto;
 	font-size:16px;
 	font-weight:bold;
 }
@@ -183,7 +184,8 @@
 #renderer_menu label,
 #library_menu label
 {
-	width:200px;
+	/* width:200px; */
+	width:95%;
 	font-size:16px;
 	font-weight:bold;
 	overflow:hidden;
@@ -197,8 +199,11 @@
 #renderer_menu,
 #library_menu
 {
-	width:197px;
-	padding-left:10px;
+	/* width:197px; */
+	width: 95%;
+
+	padding-left:5%;
+	/* padding-left:10px; */
 	white-space:nowrap;
 }
 

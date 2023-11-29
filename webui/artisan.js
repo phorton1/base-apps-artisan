@@ -69,6 +69,9 @@ $(function()
 
 	debug_environment();
 
+	WITH_SWIPE = true;
+		// turn WITH_SWIPE on for testing on laptop
+
 	// explorer_mode = getCookie('explorer_mode') || 0;
 	// autoclose_timeout = parseInt(getCookie('autoclose_timeout') || 0);
 	// autofull_timeout = parseInt(getCookie('autofull_timeout') || 0);
@@ -225,10 +228,11 @@ function add_pane_params(layout_def,params,pane)
 	if (pane_def)
 	{
 		var size =  pane_def.size;
-		var resizable = pane_def.resizable || false;
+		var resizable = pane_def.resizable;
 		display(dbg_layout,1,'add_pane_params(' + pane + ') size=' + size + " resizable=" + resizable);
 		params[pane + '__size'] = size;
-		params[pane + '__resizable'] = resizable;
+		if (resizable != undefined)
+			params[pane + '__resizable'] = resizable;
 
 		if (false)
 		{

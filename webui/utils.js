@@ -1,6 +1,6 @@
 // utils.js
 
-var DEBUG_REMOTE = true;
+var DEBUG_REMOTE = false;
 	// This variable turns on certain output from mobile devices
 	// as I am trying to figure out scaling, rotation, etc.
 
@@ -326,7 +326,7 @@ function setCookie(cname, cvalue, exdays)
     var d = new Date();
     d.setTime(d.getTime() + (exdays*24*60*60*1000));
     var expires = "expires="+d.toUTCString() + ";";
-    document.cookie = cname + "=" + cvalue + ";" + expires + "SameSite=Strict;";
+    document.cookie = cname + "=" + cvalue + ";" + expires + "path=/; SameSite=Strict;";
 }
 
 function getCookie(cname)

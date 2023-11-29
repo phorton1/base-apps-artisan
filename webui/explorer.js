@@ -16,24 +16,22 @@ layout_defs['explorer'] = {
 
 	default_params: {
 		applyDemoStyles: true,
-		resizable: false,
 	},
 
 	north: {
 		size:40,
 		limit:400,
+		resizable: false,
 		element_id:'#explorer_page_header_right',
 	},
 	west: {
 		size:280,
 		limit:600,
-		resizable: true,
 		element_id:'#explorer_page_header_left',
 	},
 	east: {
 		size:320,
 		limit:800,
-		resizable: true,
 	},
 
 };
