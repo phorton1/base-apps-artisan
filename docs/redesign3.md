@@ -231,4 +231,90 @@ Other Issues:
 - Infinite combinations. Lots of other phones could be tried.
 - I can only imagine how this is going to get back on the Car Stereo in the Android version.
 
+
+
+## Tracklist and Queue (finally)
+
+The Queue can have Tracks and Playlists in them.
+
+
+As far as the Queue is concerned, Playlists end when the last track
+ends and the Playlist track_indexs transits from num_tracks 1.
+
+Queues are persistent per Renderer, with support in Perl, like the
+current Playlists. Like a Playlist, they have num_tracks, current
+track_index and track_id, a shuffle mode, and a version number.
+
+Likewise, Queues are considered to end when the last item in the ends.
+And like Playlists, the Queue doesn't just go away.  It can be played
+again, or re-entered via the UI (scroll and single click).
+
+Looping is a characteristic of the Renderer, on the current Queue item.
+
+In some ways, within the Queue, a Playlist is treated like any other track.
+It is kept intact, as a single item, if the Queue is sorted. However,
+
+it shows in the UI as Line Header and can be expanded to show its tracks.
+
+In Explorer a double click still plays that track immediately, putting
+the Queue in a 'pending' state.  Explorer Tracks can be multiply selected
+and right-click "Played" by inserting in the Queue at the current position,
+adjusting all following position and idx members, pre-empting whatever
+happens to be playing. They can be right-click 'Added' to the queue at the
+end.
+
+In Explorer a single branch of the Tree can likewise be converted to
+Tracks and Played or Added to the queue.
+
+There needs to be a Clear Queue command.
+
+**Temptation** There is a huge temptation to add a "Save as Playlist" command,
+but then you have the problem of mulitiply nested Playlists, a Tree structure,
+to contend with. Likewise, it would be tempting to 'Add' a Playlist to a Queue
+in Terms of it's basic tracks, to modify it and re-save it.
+This goes to the old notion of 'stations' - playlists that keep indexes
+for long term play, verusus simple playlists which are a few tracks,
+and is to be considered later.
+
+
+A Renderer works by playing tracks as it now does for Playlists.
+The Renderer, per-se, no longer keeps a Playlist member.
+
+There is no more UI for accessing a track by index.  The visible
+Queue is scrolled and the item selected with a single click.
+
+The Queue is rebuilt when a Playlist in it is sorted.
+Notifying the UI is a bit of a challenge.
+
+
+
+
+## Implementation
+
+The Queue will be implemented in terms of the current Playlist,
+and will largey supplant it.
+
+A the pl_track database record expanded to include library_uuid
+and pl_version members allows the Queue to identify that the id
+is a playlist_id, and obtain the Playlist and it's tracks from
+the library. A second queue_version lets the queue know if the
+playlist has changed and needs to be updated.
+
+The Playlist record itself is also expanded to keep track of
+the number of virtual tracks, and the virtual track index,
+so that it can manage advances and seeks differently.
+The Queue itself 'ends' when the track_index > num_tracks.
+
+
+Right clicking on a Playlist button in the Home Menu
+or the Header in the Queue will bring up the UI for
+Sorting a Playlist (and sliding/spinning/typing the
+track_index).   In the Queue the track_index/num_tracks
+should show, and there *may* be Sort buttons, slider, etc.
+
+
+## First steps, Context Menus
+
+
+
 // End of redesign3.md

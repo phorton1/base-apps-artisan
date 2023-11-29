@@ -13,6 +13,8 @@
 #   num_tracks		- number of tracks in the playlist
 #   track_index		- current track index within the playlist or 0 if no tracks
 #   track_id		- track_id corresponding to the track_index or '' if no tracks
+#		v_num_tracks	- if a Queue, total number of tracks
+#		v_track_index   - if a Queue, absolute track_index and track_id
 #	version		    - version number is bumped on every sort and getPlaylistTrack index change.
 #
 # The Tracks in a playlist (pl_tracks) are contained in database file called
@@ -24,6 +26,9 @@
 #	album_id    - a useful ID for sorting the tracks in the playlist by random album
 #	position    - 1..num_tracks original position within the playlilst
 #   idx			- 1..num_tracks sorted position within the playist
+#   	library_uuid - if set, this is a playist and the id is the playlist id
+#   	p_version    - the playlist version for update calls
+#   	q_version    - the queue's playlist version
 #
 # Each library has a set of database files representing its playlists.
 # for the localLibrary, the playlists.db file is in the $data_directory (/mp3s/_data),
@@ -51,10 +56,6 @@
 # /playists under that.
 #
 #    	$library->dataDir()
-
-
-		$playlist->{track_index} = 0 if !$playlist->{num_tracks};
-		$playlist->{track_index} = 1 if !$playlist->{track_index} && $playlist->{num_tracks};
 
 package Playlist;
 use strict;
