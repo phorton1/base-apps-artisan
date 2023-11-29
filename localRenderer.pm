@@ -70,9 +70,7 @@ my $mp_command_queue:shared = shared_clone([]);
 	# pause
 	# play,optional_url
 	# set_position,millis
-my $mp_state:shared		= 0;		# out
-my $mp_position:shared	= '';		# out
-my $mp_duration:shared	= '';		# out
+
 
 sub running
 {
@@ -90,6 +88,7 @@ sub doMPCommand
 
 
 sub mpThread
+	# handles all state changes
 {
 	my ($this) = @_;
 	my $mp = Win32::OLE->new('WMPlayer.OCX');
@@ -109,44 +108,68 @@ sub mpThread
 			if ($mp_command)
 			{
 				display($dbg_mp,1,"doing command '$mp_command'");
-				$controls->stop() if $mp_command eq 'stop';
-				$controls->pause() if $mp_command eq 'pause';
-				$controls->play() if $mp_command eq 'play';
-				if ($mp_command =~ /^set_position,(.*)$/)
+
+				if ($mp_command eq 'stop')
+				{
+					$controls->stop();
+					$this->{state} = $RENDERER_STATE_STOPPED;
+				}
+				elsif ($mp_command eq 'pause')
+				{
+					$controls->pause();
+					$this->{state} = $RENDERER_STATE_PAUSED;
+				}
+				elsif ($mp_command eq 'play')
+				{
+					$controls->play();
+					$this->{state} = $RENDERER_STATE_PLAYING;
+				}
+				elsif ($mp_command =~ /^set_position,(.*)$/)
 				{
 					my $mp_position = $1;
 					display($dbg_mp+1,2,"doing set_position($mp_position)");
 					$controls->{currentPosition} = $mp_position/1000;
 				}
-				if ($mp_command =~ /^play,(.*)$/)
+				elsif ($mp_command =~ /^play,(.*)$/)
 				{
 					my $url = $1;
 					display($dbg_mp+1,2,"doing play($url)");
 					$mp->{URL} = $url;
 					$controls->play();
+					$this->{state} = $RENDERER_STATE_PLAYING;
 				}
 			}
 			else
 			{
-				my $media = $mp->{currentMedia};
-				$mp_state = $mp->{playState} || 0;
-				my $position = $controls->{currentPosition};
-				my $duration = $media ? $media->{duration} : 0;
-				$position ||= 0;
-				$duration ||= 0;
-				$mp_position = $position * 1000;
-				$mp_duration = $duration * 1000;
+				my $mp_state = $mp->{playState} || 0;
 
-				# 'monitor thread' keeps playing playlists
-				# calling update() once per second.
+				display($dbg_mp+1,0,"mp_state($mp_state) state($this->{state})  playlist($this->{playlist})");
 
-				if (time() > $last_update_time)
+				if ($this->{state} eq $RENDERER_STATE_PLAYING)
 				{
-					$last_update_time = time();
-					$this->update() if $this->{playlist};
+					my $media = $mp->{currentMedia};
+					my $position = $controls->{currentPosition};
+					my $duration = $media ? $media->{duration} : 0;
+					$position ||= 0;
+					$duration ||= 0;
+					$this->{position} = $position * 1000;
+					$this->{duration} = $duration * 1000;
+				}
+
+				if ($mp_state == $MP_STATE_STOPPED)
+				{
+					if ($this->{playlist} &&
+						$this->{state} eq $RENDERER_STATE_PLAYING)
+					{
+						$this->playlist_song($PLAYLIST_RELATIVE,1);
+					}
+					else
+					{
+						$this->{state} = $RENDERER_STATE_STOPPED
+					}
 				}
 			}
-			sleep(0.1);
+			sleep($dbg_mp < 0 ? 1 : 0.1);
 		}
 		elsif ($mp_running)
 		{
@@ -224,7 +247,7 @@ sub doCommand
 	#
 	# Supports the following commands and arguments
 	#
-	#   update
+	#   update			- does nothing in localRenderer
 	#	stop
 	#   play_pause
 	#   next
@@ -262,14 +285,15 @@ sub doCommand
 	my $error = '';
 	if ($command eq 'update')
 	{
-		$error = $this->update();
+		# Now a NOP in the localRenderer
+		# $error = $this->update();
 	}
 	elsif ($command eq 'stop')
 	{
-		doMPCommand('stop');	# $controls->stop();
 		warning(0,0,"doCommand(stop) in state $this->{state}")
 			if $this->{state} eq $RENDERER_STATE_INIT;
-		$this->{state} = $RENDERER_STATE_STOPPED;
+		$this->{playlist} = '';
+		doMPCommand('stop');	# $controls->stop();
 	}
 	elsif ($command eq 'pause')
 	{
@@ -288,18 +312,17 @@ sub doCommand
 		if ($this->{state} eq $RENDERER_STATE_PLAYING)
 		{
 			doMPCommand('pause');	# $controls->pause();
-			$this->{state} = $RENDERER_STATE_PAUSED;
 		}
 		elsif ($this->{state} eq $RENDERER_STATE_PAUSED)
 		{
 			doMPCommand('play');	# $controls->play();
-			$this->{state} = $RENDERER_STATE_PLAYING;
 		}
 		else
 		{
 			warning(0,0,"doCommand(play_pause) in state $this->{state}");
 		}
 	}
+
 	elsif ($command eq 'seek')
 	{
 		# convert seek in milliseconds to seconds
@@ -452,7 +475,6 @@ sub play_track
 	$this->{position} = 0;
 
 	doMPCommand('play,'.$path);
-	$this->{state} = $RENDERER_STATE_PLAYING;
 	return '';
 }
 
@@ -472,7 +494,7 @@ sub playlist_song
 
 	my $new_playlist = $playlist->getPlaylistTrack($playlist->{version},$mode,$index);
 
-	display($dbg_lren+1,0,"new_playlist".Playlist::dbg_info($new_playlist,2));
+	display($dbg_lren,0,"new_playlist".Playlist::dbg_info($new_playlist,2));
 
 	$this->{playlist} = $new_playlist;
 	if ($new_playlist && $new_playlist->{track_id})
@@ -488,43 +510,7 @@ sub playlist_song
 
 
 
-sub update
-    # update the status of the renderer
-	# and if playing, handle playlist transitions
 
-    # If it is playing, get the position and
-    # metainfo and do heuristics.
-{
-    my ($this) = @_;
-
-    display($dbg_lren+1,0,"update($this->{name})");
-
-	if ($this->{state} eq $RENDERER_STATE_PLAYING)
-	{
-		# my $media = $mp->{currentMedia};
-		$this->{position} = $mp_position;	# $controls->{currentPosition} * 1000 || 0;
-		$this->{duration} = $mp_duration;	# $media ? $media->{duration} * 1000 : 0;
-		display($dbg_lren+1,1,"position=$this->{position} duration=$this->{duration}");
-
-		# we stop the player and move to the next playlist song
-
-		my $play_state = $mp_state;		# $mp->{playState};
-		display($dbg_lren+1,0,"play_state=$play_state");
-
-		if ($play_state == $MP_STATE_STOPPED)
-		{
-			doMPCommand('stop');	# $controls->stop();
-			$this->{state} = $RENDERER_STATE_STOPPED;
-			if ($this->{playlist})
-			{
-				display($dbg_lren,2,"update() playing next playlist song ...");
-				my $error = $this->playlist_song($PLAYLIST_RELATIVE,1);
-				return $error if $error;
-			}
-		}
-	}
-	return '';
-}
 
 
 

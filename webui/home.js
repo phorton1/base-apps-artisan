@@ -243,7 +243,9 @@ function renderer_command(command,args)
 			{
 				current_renderer = result;
 			}
-			in_slider=false;
+			in_slider = false;
+			in_playlist_slider = false;
+			in_playlist_spinner = false;
 			update_renderer_ui();
 		}
 	);
@@ -349,7 +351,6 @@ function update_renderer_ui()
 			playlistName += '(' +
 				current_renderer.playlist.track_index + ',' +
 				current_renderer.playlist.num_tracks + ')';
-			shuffle_on = (current_renderer.playlist.shuffle>0) ? true : false;
 		}
 
 		// Display information about the Song in fields
@@ -477,7 +478,6 @@ function update_renderer_ui()
 
 		ele_set_value('renderer_button_play_pause',pause_button_label );
 		set_button_on('renderer_button_play_pause',pause_button_on);
-		set_button_on('renderer_button_shuffle',shuffle_on);
 
 		// Enable/disable the buttons
 
