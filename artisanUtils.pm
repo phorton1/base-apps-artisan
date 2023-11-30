@@ -114,15 +114,32 @@ BEGIN
 #--------------------------
 # globals
 #--------------------------
+# After changing this to use $AS_SERVICE and the new
+# Pub::Utils::initUtils(1) call, I typically debug by
+# cd /base/apps/artisan and executing
+#
+# 		 perl artisan.pm NO_SERVICE
+#
+# in that case, $0 returns 'artian.pm', and the
+# artisan_perl_directory was set to '/' causing the
+# program to not work correctly.
+#
+# Therefore, if the artisan_perl_directory is '/',
+# we change it to ./
 
 our %stats;
 our $quitting:shared = 0;
+
+print "0=$0\n";
+
 
 our $artisan_perl_dir = $0;
 $artisan_perl_dir =~ s/^.*://;
 $artisan_perl_dir =~ s/\\/\//g;
 $artisan_perl_dir = pathOf($artisan_perl_dir);
-display(0,0,"artisan_perl_dir=$artisan_perl_dir");
+$artisan_perl_dir = "./" if $artisan_perl_dir eq '/';
+
+print "perl_dir=$artisan_perl_dir\n";
 
 our $program_name = 'Artisan Perl';
 our $this_uuid = '56657273-696f-6e34-4d41-20231112feed';
@@ -131,7 +148,13 @@ our $mp3_dir_RE = '\/mp3s';
 
 $data_dir = "$mp3_dir/_data";
 $temp_dir = "/base_data/temp/artisan";
+$logfile = "$temp_dir/artisan.log";
 mkdir $temp_dir if !-d $temp_dir;
+
+
+display(0,0,"----------------------------------------------");
+display(0,0,"Artisan starting perl_dir=$artisan_perl_dir");
+display(0,0,"----------------------------------------------");
 
 
 # WINDOWS SPECIFIC CODE

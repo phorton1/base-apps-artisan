@@ -2,6 +2,31 @@
 #---------------------------------------
 # artisan.pm
 #---------------------------------------
+# Quite simply installed as a service by running
+#
+#	  nssm install _artisan
+#
+# And then edit the service in Services
+#
+#	 (a) set the 'path' to point to c:\Perl\bin\perl.exe
+#    (b) set the 'starting directory' to c:\base\apps\artisan
+#    (c) setting the 'arguments' to '/base/apps/artisan/artisan.pm'
+#
+# Can be modified and retarted with no build process
+# Can be stopped and run with 'perl artisan.pm NO_SERVICE' from dos box
+# Can be removed with 'nssm remove _artisan'
+#
+# SERVICE NOTES (and wTaskBar.pm) at Initial Check-in
+#
+#	In truth Artisan only wants to run when there is a network,
+#   and even then only on a specific network (for my bookmarks).
+#
+#	There is a chicken-and-egg situation with starting the service
+#   automatically.  I don't know how to build dependencies in, but
+#   from a fresh boot it currently doesn't work, probably due to network.
+#	Yet I can hit it the webUI from the wTaskBar?
+#   Something else is going on, but I'm doing a sanity checkin
+
 
 package artisan;
 use strict;
@@ -27,6 +52,8 @@ use Pub::Utils;
 use sigtrap 'handler', \&onSignal, 'normal-signals';
 
 
+Pub::Utils::initUtils(1);
+
 my $dbg_main = 0;
 
 
@@ -39,8 +66,15 @@ sub onSignal
     kill 6,$$;
 }
 
-my $CONSOLE_IN = Win32::Console->new(STD_INPUT_HANDLE);
-$CONSOLE_IN->Mode(ENABLE_MOUSE_INPUT | ENABLE_WINDOW_INPUT );
+
+my $CONSOLE_IN;
+
+if (!$AS_SERVICE)
+{
+	$CONSOLE_IN = Win32::Console->new(STD_INPUT_HANDLE);
+	$CONSOLE_IN->Mode(ENABLE_MOUSE_INPUT | ENABLE_WINDOW_INPUT );
+}
+
 
 
 #----------------------------------------
@@ -87,92 +121,96 @@ display($dbg_main,0,"Starting SSDP Server");
 my $ssdp = SSDP->new();
 display($dbg_main,0,"SSDP Server Started");
 
+if (0)
+{
+	my $taskbar_pm = "/base/apps/artisan/wxTaskBarIcon.pm";
+	$taskbar_pm =~ s/\//\\/g;
+	$taskbar_pm = "c:".$taskbar_pm;
+	display(0,0,"taskbar_pm=$taskbar_pm");
+	my $perl = "\\perl\\bin\\perl.exe";
+	Pub::Utils::execNoShell("wxTaskBarIcon.pm","\\base\\apps\\artisan");
+}
 
-# if (0)   # start the Renderer monitor thread
-# {
-# 	display(0,0,"Starting Renderer Monitor ...");
-# 	my $monitor_thread = threads->create('Renderer::auto_update_thread');
-# 	if (!$monitor_thread)
-# 	{
-# 		error("Could not create Renderer auto_update thread");
-# 	}
-# 	else
-# 	{
-# 		$monitor_thread->detach();
-# 		display(0,0,"Renderer Monitor Started");
-# 	}
-# }
-#
-# if (artisanPrefs::getPreference($PREF_USE_PREVIOUS_RENDERER) &&
-# 	(my $id = artisanPrefs::getPreference($PREF_PREVIOUS_RENDERER)))
-# {
-# 	display(0,0,"Selecting Startup Renderer: $id");
-# 	Renderer::selectRenderer($id);
-# }
+if (0)
+{
+	require wxTaskBarIcon;
+	taskBarIcon->new();
+}
+
 
 
 
 while (1)
 {
+	if ($CONSOLE_IN)
+	{
+
 AFTER_EXCEPTION:
 
-	try
-	{
-		display($dbg_main+1,0,"main loop");
-		# display_hash(0,0,"mp",$mp);
-
-		if ($CONSOLE_IN->GetEvents())
+		try
 		{
-			my @event = $CONSOLE_IN->Input();
-			if (@event &&
-				$event[0] &&
-				$event[0] == 1) # key event
+			display($dbg_main+1,0,"main loop");
+			# display_hash(0,0,"mp",$mp);
+
+			if ($CONSOLE_IN->GetEvents())
 			{
-				my $char = $event[5];
-				if ($char == 3)        # char = 0x03
+				my @event = $CONSOLE_IN->Input();
+				if (@event &&
+					$event[0] &&
+					$event[0] == 1) # key event
 				{
-					display($dbg_main,0,"exiting Artisan on CTRL-C");
-					if (0)
+					my $char = $event[5];
+					if ($char == 3)        # char = 0x03
 					{
-						$quitting = 1;
-						my $http_running = HTTPServer::running();
-						my $ssdp_running = $ssdp ? $ssdp->running() : 0;
-						my $lr_running = $local_renderer ? $local_renderer->running() : 0;
-						my $start = time();
-						while (time()<$start+3 && $http_running || $ssdp_running || $lr_running )
+						display($dbg_main,0,"exiting Artisan on CTRL-C");
+						if (0)
 						{
-							display($dbg_main,1,"stopping http($http_running) ssdp($ssdp_running) lr($lr_running)");
-							$http_running = HTTPServer::running();
-							$ssdp_running = $ssdp ? $ssdp->running() : 0;
-							$lr_running = $local_renderer ? $local_renderer->running() : 0;
-							sleep(0.2);
+							$quitting = 1;
+							my $http_running = HTTPServer::running();
+							my $ssdp_running = $ssdp ? $ssdp->running() : 0;
+							my $lr_running = $local_renderer ? $local_renderer->running() : 0;
+							my $start = time();
+							while (time()<$start+3 && $http_running || $ssdp_running || $lr_running )
+							{
+								display($dbg_main,1,"stopping http($http_running) ssdp($ssdp_running) lr($lr_running)");
+								$http_running = HTTPServer::running();
+								$ssdp_running = $ssdp ? $ssdp->running() : 0;
+								$lr_running = $local_renderer ? $local_renderer->running() : 0;
+								sleep(0.2);
+							}
+							display($dbg_main,1,"Artisan stopped");
 						}
-						display($dbg_main,1,"Artisan stopped");
+						exit(0);
 					}
-					exit(0);
-				}
-				elsif ($event[1] == 1)       # key down
-				{
-					if ($CONSOLE && $char == 4)            # CTRL-D
+					elsif ($event[1] == 1)       # key down
 					{
-						$CONSOLE->Cls();    # clear the screen
+						if ($CONSOLE && $char == 4)            # CTRL-D
+						{
+							$CONSOLE->Cls();    # clear the screen
+						}
 					}
 				}
 			}
-		}
 
-		sleep(0.2);
+			sleep(0.2);
+		}
+		catch Error with
+		{
+			my $ex = shift;   # the exception object
+			display($dbg_main,0,"exception: $ex");
+			error($ex);
+			my $msg = "!!! main() caught an exception !!!\n\n";
+			error($msg);
+			goto AFTER_EXCEPTION if (1);
+		};
 	}
-	catch Error with
+
+	else	# !$CONSOLE_IN
 	{
-		my $ex = shift;   # the exception object
-		display($dbg_main,0,"exception: $ex");
-		error($ex);
-		my $msg = "!!! main() caught an exception !!!\n\n";
-		error($msg);
-		goto AFTER_EXCEPTION if (1);
-	};
+		sleep(10);
+	}
 }
+
 
 display(0,0,"never gets here to end $program_name");
 
