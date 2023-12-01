@@ -456,6 +456,11 @@ sub get_art
 sub ServerDesc
 	# server description for the DLNA Server
 {
+
+	# my $use_friendly = $program_name;
+	my $use_friendly = "Artisan($ENV{COMPUTERNAME})";
+
+
 	my $xml = <<EOXML;
 <?xml version="1.0"?>
 <root xmlns="urn:schemas-upnp-org:device-1-0">
@@ -465,7 +470,7 @@ sub ServerDesc
     </specVersion>
     <device>
 		<UDN>uuid:$this_uuid</UDN>
-        <friendlyName>$program_name</friendlyName>
+        <friendlyName>$use_friendly</friendlyName>
         <deviceType>urn:schemas-upnp-org:device:MediaServer:1</deviceType>
         <manufacturer>phorton1</manufacturer>
         <manufacturerURL>https://github.com/phorton1</manufacturerURL>
