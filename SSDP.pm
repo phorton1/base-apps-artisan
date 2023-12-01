@@ -589,9 +589,14 @@ SSDP_SEARCH_MSG
     display($dbg_search+1,0,"ssdp_search() creating socket");
 
     my $sock = IO::Socket::INET->new(
+
+		# LocalPort => 8093,
         LocalAddr => $server_ip,
-        # LocalPort => 8679,
-        PeerPort  => $SSDP_PORT,
+        # LocalAddr => '127.0.0.1',
+		# LocalAddr => '0.0.0.0',
+		# LocalHost => '0.0.0.0',
+
+		PeerPort  => $SSDP_PORT,
         Proto     => 'udp',
         ReuseAddr => 1);
     if (!$sock)
@@ -600,7 +605,15 @@ SSDP_SEARCH_MSG
         return;
     }
 
-	my $dbg_port = $sock->sockport();
+if (0)
+{
+	my $ip_address = "127.0.0.1";
+	# my $packed_addr = pack_sockaddr_in(inet_aton($ip_address));
+	$sock->bind(inet_aton($ip_address));
+}
+
+
+	my $dbg_port = $sock->sockport() || 0;
     display($dbg_search,0,"ssdp_search() port=$dbg_port",0,$Pub::Utils::win_color_cyan);
 
     # add the socket to the correct IGMP multicast group
