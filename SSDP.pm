@@ -74,7 +74,7 @@ my $CACHE_MAX_AGE  = 1800;
 	# How long are our SSDP advertisements valid for?
 	# Spec says a minimum of 1800 seconds (30 minutes)
 	# but I have seen as low as 176.
-my $ALIVE_INTERVAL = 900;
+my $ALIVE_INTERVAL = 60;# 900;
 	# How often, do we send out 'alive' messages?
 	# Spec says we should send them out randomly
 	# at a rate of not less than 1/2 cache_max_age,
@@ -591,8 +591,8 @@ SSDP_SEARCH_MSG
     my $sock = IO::Socket::INET->new(
 
 		# LocalPort => 8093,
-        LocalAddr => $server_ip,
-        # LocalAddr => '127.0.0.1',
+        # LocalAddr => $server_ip,
+        LocalAddr => '127.0.0.1',
 		# LocalAddr => '0.0.0.0',
 		# LocalHost => '0.0.0.0',
 

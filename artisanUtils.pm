@@ -142,7 +142,7 @@ $artisan_perl_dir = "./" if $artisan_perl_dir eq '/';
 print "perl_dir=$artisan_perl_dir\n";
 
 our $program_name = 'Artisan Perl';
-our $this_uuid = '56657273-696f-6e34-4d41-20231112feed';
+our $this_uuid = '56657273-696f-6e34-4d41-' . $ENV{COMPUTERNAME};	# '20231112feed';
 our $mp3_dir = "/mp3s";
 our $mp3_dir_RE = '\/mp3s';
 
