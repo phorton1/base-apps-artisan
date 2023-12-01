@@ -7,6 +7,18 @@
 # visible (i.e. to Artisan Android) on the network.
 #
 # This is irregardless of whether we send out Alive messages or not
+#
+# !! ADD A WindowsDefender firewall rule called '_prh SSDP' to allow incoming
+# 	UDP port 1900 on all m achines.  This at least allows our (LENOVO3) alive
+#   messages to get through to the other instance (LENOVO2) 'listen' port.
+#
+# I am struggling with Search working correctly, and I think it is the same
+# issue for the HTTPServer.   With SSDP, in search, if I set LOCAL_ADDR = $server_ip
+# I never get anything.  If I set it to 127.0.0.1 I *finally* got something from
+# the local WMP Server.
+#
+# Perhaps I need to add outgoing rules as well?
+
 
 package SSDP;
 use strict;
@@ -591,8 +603,8 @@ SSDP_SEARCH_MSG
     my $sock = IO::Socket::INET->new(
 
 		# LocalPort => 8093,
-        # LocalAddr => $server_ip,
-        LocalAddr => '127.0.0.1',
+        LocalAddr => $server_ip,
+        # LocalAddr => '127.0.0.1',
 		# LocalAddr => '0.0.0.0',
 		# LocalHost => '0.0.0.0',
 
