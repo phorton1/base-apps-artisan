@@ -52,6 +52,9 @@ sub new
 	bless $this,$class;
 
 	mergeHash($this, shared_clone({
+
+		state => $RENDERER_STATE_NONE,
+
 		maxVol 		=> 0,
 		canMute		=> 0,
 		canLoud		=> 0,
@@ -60,9 +63,6 @@ sub new
 		maxBass		=> 0,
 		maxMid 		=> 0,
 		maxHigh		=> 0,
-
-		state 		=> $RENDERER_STATE_NONE,
-
 		muted       => 0,
 		volume      => 0,
 		balance     => 0,
@@ -71,25 +71,34 @@ sub new
 		midLevel    => 0,
 		highLevel   => 0,
 
-		position 	=> 0,
-		duration 	=> 0,
-
-		playlist	=> '',
-		metadata    => shared_clone({
-			artist      => '',
-			album_title => '',
-			genre       => '',
-			title       => '',
-			track_num   => '',
-			type        => '',
-			year_str    => '',
-			art_uri     => '',		# gotten from parent folder for webUI
-			pretty_size => '', 		# built in memory for webUI
-		}),
-
 	}));
 
+	$this->init_state_vars();
+
 	return $this;
+}
+
+
+
+sub init_state_vars
+{
+	my ($this) = @_;
+
+	delete $this->{playlist};
+
+	$this->{position} = 0;
+	$this->{duration} = 0;
+	$this->{playlist} = '';
+	$this->{metadata} = shared_clone({
+		artist      => '',
+		album_title => '',
+		genre       => '',
+		title       => '',
+		track_num   => '',
+		type        => '',
+		year_str    => '',
+		art_uri     => '',		# gotten from parent folder for webUI
+		pretty_size => '' }); 	# built in memory for webUI
 }
 
 

@@ -304,7 +304,7 @@ function on_slider_complete(event,ui)
 function update_renderer_ui()
 {
 	display(dbg_loop,0,"renderer.update_renderer_ui()");
-	var disable = true;
+	var disable_play_pause = true;
 	var disable_prevnext = true;
 	var stop_disabled = true;
 	var disable_slider = true;
@@ -338,7 +338,9 @@ function update_renderer_ui()
 
 	if (current_renderer)
 	{
-		disable = false;
+		disable_play_pause =
+			!current_renderer.duration ||
+			current_renderer.duration == '0';
 		state = current_renderer.state;
 
 		rendererName = current_renderer.name;
@@ -484,7 +486,7 @@ function update_renderer_ui()
 		display(dbg_loop,0,"renderer.update_renderer_ui(1)");
 
 		disable_button('renderer_button_prev',disable_prevnext);
-		disable_button('renderer_button_play_pause',disable);
+		disable_button('renderer_button_play_pause',disable_play_pause);
 		disable_button('renderer_button_stop',stop_disabled);
 		disable_button('renderer_button_next',disable_prevnext);
 

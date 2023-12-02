@@ -82,8 +82,8 @@ sub running
 sub doMPCommand
 {
 	my ($command) = @_;
-	push @$mp_command_queue,$command;
 	display($dbg_mp+1,0,"doMPCommand($command)");
+	push @$mp_command_queue,$command;
 }
 
 
@@ -109,9 +109,12 @@ sub mpThread
 			{
 				display($dbg_mp,1,"doing command '$mp_command'");
 
+				# there is no $controls->stop() method
+				# instead you 'close()' the current media file
+
 				if ($mp_command eq 'stop')
 				{
-					$controls->stop();
+					$mp->close();
 					$this->{state} = $RENDERER_STATE_STOPPED;
 				}
 				elsif ($mp_command eq 'pause')
@@ -169,6 +172,7 @@ sub mpThread
 					}
 				}
 			}
+
 			sleep($dbg_mp < 0 ? 1 : 0.1);
 		}
 		elsif ($mp_running)
@@ -278,7 +282,6 @@ sub doCommand
 	#		shuffle => 0,1,2
 {
 	my ($this,$command,$params) = @_;
-
 	my $extra_dbg = $command eq 'update' ? 1 : 0;
     display_hash($dbg_lren + $extra_dbg,0,"doCommand($command)",$params);
 
@@ -292,14 +295,14 @@ sub doCommand
 	{
 		warning(0,0,"doCommand(stop) in state $this->{state}")
 			if $this->{state} eq $RENDERER_STATE_INIT;
-		$this->{playlist} = '';
-		doMPCommand('stop');	# $controls->stop();
+		$this->init_state_vars();	 # in Renderer.pm
+		doMPCommand('stop');
 	}
 	elsif ($command eq 'pause')
 	{
 		if ($this->{state} eq $RENDERER_STATE_PLAYING)
 		{
-			doMPCommand('pause');	# $controls->pause();
+			doMPCommand('pause');
 			$this->{state} = $RENDERER_STATE_PAUSED;
 		}
 		else
@@ -311,11 +314,11 @@ sub doCommand
 	{
 		if ($this->{state} eq $RENDERER_STATE_PLAYING)
 		{
-			doMPCommand('pause');	# $controls->pause();
+			doMPCommand('pause');
 		}
 		elsif ($this->{state} eq $RENDERER_STATE_PAUSED)
 		{
-			doMPCommand('play');	# $controls->play();
+			doMPCommand('play');
 		}
 		else
 		{
@@ -333,7 +336,7 @@ sub doCommand
 			my $ms = checkParam(\$error,$command,$params,'position');
 			return $error if !defined($ms);
 			$this->{position} = $ms;
-			doMPCommand('set_position,'.$ms);	# $controls->{currentPosition} = $ms / 1000;
+			doMPCommand('set_position,'.$ms);
 		}
 		else
 		{
@@ -507,9 +510,6 @@ sub playlist_song
 	}
 	return '';
 }
-
-
-
 
 
 
