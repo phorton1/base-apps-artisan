@@ -21,7 +21,7 @@ use Device;
 
 
 
-my $dbg_devices = -1;
+my $dbg_devices = 0;
 	#  0 = show new and additions
 	# -1 = show status changes
 my $dbg_desc = -1;
@@ -29,8 +29,8 @@ my $dbg_desc = -1;
 	# -1 = show descriptor details
 	# -2 = show XML parsing
 my $dbg_cache = 0;
-	# 0 = headers
-	# -1 = read details
+	# 0 = read_headers
+	# -1 = write_header && read details
 
 my $DUMP_XML_FILES = 1;
 	# debugging
@@ -160,7 +160,7 @@ sub read_device_cache
 
 sub write_device_cache
 {
-	display($dbg_cache,0,"write_device_cache()");
+	display($dbg_cache+1,0,"write_device_cache()");
 
 	my $text = '';
 	for my $device (@$device_list)
@@ -319,16 +319,19 @@ sub getDeviceXML
 #-----------------------------------------------------------
 
 sub notifyDevice
-	# notify of new or online change
+	# notify of online change
 {
-	my ($device,$is_new) = @_;
+	my ($device) = @_;
+	display($dbg_devices,0,"$device->{name} ".($device->{online} ? "ONLINE" : "OFFLINE"));
 }
+
 
 sub updateDevice
 {
 	my ($type,$uuid,$state,$message) = @_;
 	my $device = findDevice($type,$uuid);
 
+	my $notify = 0;
 	if (!$device)
 	{
 		display($dbg_devices,-1,"updateDevice(NEW) $type $uuid $state");
@@ -340,6 +343,7 @@ sub updateDevice
 		my $dev = getDeviceXML($type,$uuid,$location);
 		return if !$dev;
 
+		$dev->{online} = time();
 		$dev->{max_age} = $DEFAULT_MAX_AGE;
 
 		$device = $type eq $DEVICE_TYPE_LIBRARY ?
@@ -353,28 +357,30 @@ sub updateDevice
 		}
 
 		push @$device_list,$device;
-		write_device_cache();
-		notifyDevice($device,1);
+		$notify = 1;
 	}
 	else
 	{
 		if ($state eq 'byebye')
 		{
+			$notify = $device->{online} ? 1 : 0;
 			$device->{online} = '';
 			$device->{max_age} = 0;
 			display($dbg_devices+1,-1,"updateDevice STATE_CHG(byebye) $type $device->{name}")
 		}
 		else
 		{
+			$notify = $device->{online} ? 0 : 1;
 			my $cache_ctrl = $message->{CACHE_CONTROL} || '';
 			my $max_age = $cache_ctrl =~ /max-age=(\d+)$/ ? $1 : $DEFAULT_MAX_AGE;
 			display($dbg_devices+1,-1,"updateDevice STATE_CHG(alive,$max_age) $type $device->{name}")
 				if !$device->{online};
 			$device->{online} = time();
 			$device->{max_age} = $max_age;
-			write_device_cache();
 		}
 	}
+	write_device_cache();
+	notifyDevice($device) if $notify;
 }
 
 

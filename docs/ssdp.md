@@ -105,19 +105,13 @@ ssdp:all, just like I found that I was over-filtering
 other messages at other times.  So the problem is solved.
 
 
-Turns out I was
-
-
 ## SSDP Sockets
 
-I currently use IO::Socket::Multicast for LISTEN and
-my own versions of _mcast_send() etc for SEARCH, creating
-two different threads with two different sets of SEND/LISTEN
-sockets with slightly differnent technologoies.
+I use my own custom MultiCast cocket. As far as I could figure
+out IO::Socket::Multicast does not provide for two way communications,
+which is required for M-SEARCH.
 
-I feel that there should only need to be one pair, and
-that the project shouild be do-able with the unmodified Perl
-IO::Socket::Multicast in a single loop (thread).
+With this change I was able to combine LISTEN and SEARCH into one function.
 
 
 ## my M-SEARCH finds WMP on OTHER machine, but not this one
@@ -131,20 +125,9 @@ On LENOVO3
 - If I use 127.0.0.1 I get LENOVO3 WMP but nothing at all
   from LENOVO2.
 
-
-Try regular IO::Socket::Multicast
-
-- I currently respond to my own M-SEARCH messages in Listen because
-  SEARCH and LISTEN have two different ports and I check $port.
-
-
-## TODO
-
-- 'Solve' the multiple technologies/threads issue
-- Incorporate SSDPTest back into Artisan
-- remove custom Win10 Defender Firewall rules
-- retore stricter Win10 'All Networks' configuration
-
+I finally 'solved' this by sending out two requests when
+I start a search.  One to $server_ip:1900 and one to
+127.0.0.1:1900.   Now, at least I see both WMP's.
 
 
 

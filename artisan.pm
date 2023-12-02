@@ -93,12 +93,20 @@ if (0)
 
 
 # (1) LIBRARY
+# not done if $DEBUG_SSDP_ALONE
 
-db_initialize();
-display($dbg_main,0,"Scanning Library ...");
-DatabaseMain::scanTree();
-display($dbg_main,0,"Finished Scanning Library");
-localPlaylist::initPlaylists();
+if ($DEBUG_SSDP_ALONE)
+{
+	display($dbg_main,0,"DEBUG_SSDP_ALONE - no library or local devices!");
+}
+else
+{
+	db_initialize();
+	display($dbg_main,0,"Scanning Library ...");
+	DatabaseMain::scanTree();
+	display($dbg_main,0,"Finished Scanning Library");
+	localPlaylist::initPlaylists();
+}
 
 # (2) Create Local Devices, and THEN read the device Cache
 # so that local devices come first
@@ -187,6 +195,16 @@ AFTER_EXCEPTION:
 						if ($CONSOLE && $char == 4)            # CTRL-D
 						{
 							$CONSOLE->Cls();    # clear the screen
+						}
+						elsif (chr($char) eq 'a')
+						{
+							display($dbg_main,0,"artisan.pm calling SSDP doAlive()");
+							SSDP::doAlive();
+						}
+						elsif (chr($char) eq 's')
+						{
+							display($dbg_main,0,"artisan.pm calling SSDP doSearch()");
+							SSDP::doSearch();
 						}
 					}
 				}
