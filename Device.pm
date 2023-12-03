@@ -210,7 +210,7 @@ sub serviceRequest
 		return;
 	}
 
-	display($dbg_dlna+1,0,"creating socket to $this->{ip}:$this->{port}");
+	display($dbg_dlna,0,"creating socket to $this->{ip}:$this->{port}");
 
 	my $sock = IO::Socket::INET->new(
 		PeerAddr => $this->{ip},
@@ -227,7 +227,7 @@ sub serviceRequest
 	# build the body
 
 	my $content = soap_header();
-	$content .= "<u:$action xmlns:u=\"urn:schemas-upnp-org:service:$service_name:1\">";
+	$content .= "<m:$action xmlns:m=\"urn:schemas-upnp-org:service:$service_name:1\">";
 
 	# add sevice specific xml request elements
 
@@ -242,7 +242,7 @@ sub serviceRequest
 		}
 	}
 
-	$content .= "</u:$action>";
+	$content .= "</m:$action>";
 	$content .= soap_footer();
 
 	# build the header and request

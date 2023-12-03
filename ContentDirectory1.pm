@@ -100,17 +100,17 @@ sub handle_request
 	elsif ($action eq 'GetSearchCapabilities')
 	{
 		$content = soap_header();
-		$content .= '<u:GetSearchCapabilitiesResponse xmlns:u="urn:schemas-upnp-org:service:ContentDirectory:1">';
+		$content .= '<m:GetSearchCapabilitiesResponse xmlns:m="urn:schemas-upnp-org:service:ContentDirectory:1">';
 		$content .= '<SearchCaps>*</SearchCaps>';
-		$content .= '</u:GetSearchCapabilitiesResponse>';
+		$content .= '</m:GetSearchCapabilitiesResponse>';
 		$content .= soap_footer();
 	}
 	elsif ($action eq 'GetSortCapabilities')
 	{
 		$content = soap_header();
-		$content .= '<u:GetSortCapabilitiesResponse xmlns:u="urn:schemas-upnp-org:service:ContentDirectory:1">';
+		$content .= '<m:GetSortCapabilitiesResponse xmlns:m="urn:schemas-upnp-org:service:ContentDirectory:1">';
 		$content .= '<SortCaps></SortCaps>';
-		$content .= '</u:GetSortCapabilitiesResponse>';
+		$content .= '</m:GetSortCapabilitiesResponse>';
 		$content .= soap_footer();
 	}
 	# elsif ($action eq 'GetSystemUpdateID')
@@ -144,7 +144,9 @@ sub handle_request
 	if (defined($content))
 	{
 		display($dbg_output,1,"returning ".length($content)." bytes xml content");
-		$response = http_header({ content_type => 'text/xml; charset=utf8' });
+		$response = http_header({
+			content_type => 'text/xml; charset=utf8',
+			content_length => length($content) });
 		$response .= $content;
 
 		parseXML($content,{
@@ -192,7 +194,6 @@ sub get_xml_params
     elsif (defined($xml->{'SOAP-ENV:Body'}->{"m:$what"}->{$field0}))
     {
         $object = $xml->{'SOAP-ENV:Body'}->{"m:$what"};
-        $use_content = 1;
     }
     else
     {
@@ -204,7 +205,7 @@ sub get_xml_params
     for my $field (@fields)
     {
         my $val = $object->{$field};
-        $val = $val->{content} if ($use_content);
+        $val = $val->{content} if ref($val) && defined($val->{content});
         display($dbg_params,1,"object($field) = '$val'");
         push @rslt,$val;
     }

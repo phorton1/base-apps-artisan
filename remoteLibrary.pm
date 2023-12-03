@@ -2,6 +2,21 @@
 #---------------------------------------
 # remoteLibrary.pm
 #---------------------------------------
+
+# I cannot presume that the ip address of the remote library will
+# remain consistent. Sheesh.  I need to check it all the time.
+
+# Building all of the playlists at first access can be VERY slow
+# (i.e. if Artisan(LENOVO3) is a 'remoteLibrary' as far as LENOVO2
+# is concerned).  May need to build playlists namedb files only
+# on demand ...
+
+# I'm not sure WHERE to optimize for my own libraries as 'remoteLibraries'.
+
+# uiLibrary.pm could "know" if it's a remote library and make a pass through
+# call to the remote Artisan.   In some cases (i.e. HTML Renderer), it might
+# even be feasable to have the webUI call the other server.
+
 # API
 #	getTrack
 #	getFolder
@@ -627,10 +642,21 @@ sub remoteTrack
 sub getArtUri
 	# takes the first uri found
 	# minus any comma delimited params
+
+	# With the idea that I'll first treat myself properly as a remote library:
+	#
+	# XML::Simple always turns upnp:albumArtURI into an array
+	# And from other servers the elements typically have {content} members.
+	# However, from my server, it's just a scalar.
 {
 	my ($item) = @_;
 	my $uris = $item->{'upnp:albumArtURI'};
-	my $art_uri = $uris && @$uris ? $uris->[0]->{content} : '';
+		# always an array per my config of XML::Simple
+	my $art_uri = $uris && @$uris ? $uris->[0] : '';
+		# maybe a scalar, maybe not ...
+	$art_uri = $art_uri->{content}
+		if ref($art_uri) =~ /HASH/ &&
+		   defined($art_uri->{content});
 	$art_uri =~ s/,*.$// if $art_uri =~ /,/;
 	return $art_uri;
 }
@@ -648,14 +674,23 @@ sub getArtist
 	my $album_artist = '';
 
 	my $entries = $cont->{'upnp:artist'};
+		# always an array, but may be a scalar from my own library
+
 	for my $entry (@$entries)
 	{
-		my $content = $entry->{content};
-		$content =~ s/\[Unknown.*\]//;
-		$author 	  ||= $entry->{role} =~ /Author/i         ? $content : '';
-		$composer 	  ||= $entry->{role} =~ /Composer/i       ? $content : '';
-		$performer 	  ||= $entry->{role} =~ /Performer/i      ? $content : '';
-		$album_artist ||= $entry->{role} =~ /'AlbumArtist'/i  ? $content : '';
+		if (ref($entry) =~ /HASH/)
+		{
+			my $content = $entry->{content};
+			$content =~ s/\[Unknown.*\]//;
+			$author 	  ||= $entry->{role} =~ /Author/i         ? $content : '';
+			$composer 	  ||= $entry->{role} =~ /Composer/i       ? $content : '';
+			$performer 	  ||= $entry->{role} =~ /Performer/i      ? $content : '';
+			$album_artist ||= $entry->{role} =~ /'AlbumArtist'/i  ? $content : '';
+		}
+		else
+		{
+			$performer ||= $entry;
+		}
 	}
 
 	$album_artist ||= $creator;
