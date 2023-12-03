@@ -3,6 +3,7 @@
 # remotePlaylist.pm
 #---------------------------------------
 # Builds the master playlists.db for a remote library
+# Playlists with version==0 have not yet been built.
 
 package remotePlaylist;
 use strict;
@@ -54,49 +55,44 @@ sub initPlaylists
 		return if !$playlists;
 		display($dbg_rpl,1,"got ".scalar(@$playlists)." playlists from new playlists.db");
 	}
-	else
-	{
-		my $playlist_dbh = db_connect($playlist_db);
-		return if !$playlist_dbh;
 
-		$playlists = get_records_db($playlist_dbh,"SELECT * FROM playlists ORDER BY id");
-		display($dbg_rpl,1,"got ".scalar(@$playlists)." playlists from existing playlists.db");
+	return 1;
+}
 
-		db_disconnect($playlist_dbh);
-	}
 
-	# create the named.db files in the playlists subfolder
-	# wiping out the old one if the playlists.db is newer than the named.db,
-	# which will usually be all-or-none (unlsess a named_db file is deleted)
-
-	display($dbg_rpl,1,"updating ".scalar(@$playlists)." named.db files");
-
-	my $playlist_ts = getTimestamp($playlist_db);
-	display($dbg_rpl,2,"ts=$playlist_db for PLAYLISTS.DB");
-	my $playlist_dir = $library->dataDir()."/playlists";
-	my_mkdir $playlist_dir if !-d $playlist_dir;
-
-	# Could bump version number of playlists here
-	# again if they changed relative to the master
-	# but right now it's all or nothing ...
-
-	# re-open the $playlist_dbh for writing 1st track_id and index==1
+sub initPlaylist
+{
+	my ($library,$id) = @_;
+	my $playlist_db = playlistDbName($library);
+	display($dbg_rpl,0,"initPlaylist($library->{name},$id)");
 
 	my $playlist_dbh = db_connect($playlist_db);
 	return if !$playlist_dbh;
 
-	for my $playlist (@$playlists)
+	my $playlist = get_record_db($playlist_dbh,"SELECT * FROM playlists WHERE id = '$id'");
+
+	my $retval = 0;
+	if ($playlist)
 	{
+		display($dbg_rpl,1,"got playlist($id) $playlist->{name}");
+
+		my $playlist_ts = getTimestamp($playlist_db);
+		my $playlist_dir = $library->dataDir()."/playlists";
+		my_mkdir $playlist_dir if !-d $playlist_dir;
+
 		my $name = $playlist->{name};
 		my $named_db = "$playlist_dir/$name.db";
 		my $named_ts = getTimestamp($named_db);
-		display($dbg_rpl,2,"ts=$named_ts for $name");
+
+		display($dbg_rpl,1,"Timestamps playlists.db($playlist_ts) $playlist->{name}($named_ts)");
+
 		if ($playlist_ts gt $named_ts)
 		{
-			display($dbg_rpl,2,"creating new $name.db");
+			display($dbg_rpl,1,"creating new $name.db");
 			unlink $named_db;
+
 			my $tracks = $library->getSubitems('tracks',$playlist->{id});
-			display($dbg_rpl,3,"found ".scalar(@$tracks)." tracks");
+			display($dbg_rpl,1,"found ".scalar(@$tracks)." tracks");
 
 			my $named_dbh = db_connect($named_db);
 			return if !$named_dbh;
@@ -113,8 +109,12 @@ sub initPlaylists
 					position => $position,
 					idx => $position };
 				$position++;
-				return !error("Could not insert pl_track($track->{title},$track->{id} in $named_db")
-					if !insert_record_db($named_dbh,'pl_tracks',$pl_track);
+
+				if (!insert_record_db($named_dbh,'pl_tracks',$pl_track))
+				{
+					error("Could not insert pl_track($track->{title},$track->{id} in $named_db");
+					return;
+				}
 			}
 
 			db_disconnect($named_dbh);
@@ -127,14 +127,30 @@ sub initPlaylists
 				$playlist->{track_id} = $first_track_id;
 			}
 
-			return !error("Could not update playlist($playlist->{id},$playlist->{name}) in $playlist_db")
-				if !update_record_db($playlist_dbh,'playlists',$playlist,'id');
+			if (update_record_db($playlist_dbh,'playlists',$playlist,'id'))
+			{
+				$retval = 1;
+			}
+			else
+			{
+				error("Could not update playlist($playlist->{id},$playlist->{name}) in $playlist_db");
+			}
+
 		}
+		else
+		{
+			display($dbg_rpl,1,"playlist($id) $playlist->{name} is up to date");
+			$retval = 1;
+		}
+	}
+	else
+	{
+		error("Could not get playlist($library->{name},$id)");
 	}
 
 	db_disconnect($playlist_dbh);
-
-	display($dbg_rpl,0,"initPlaylists($library->{name}) finished");
+	display($dbg_rpl,0,"initPlaylists($library->{name}) returning $retval");
+	return $retval;
 }
 
 

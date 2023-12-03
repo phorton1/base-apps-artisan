@@ -318,6 +318,7 @@ sub getPlaylist
 {
 	my ($this,$id) = @_;
 	$this->start();
+	return if !remotePlaylist::initPlaylist($this,$id);
 	return Playlist::getPlaylist($this,$id);
 }
 
