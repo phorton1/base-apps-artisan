@@ -44,7 +44,11 @@ my $dbg_msearch = 0;  # 0;
 my $dbg_responses = 0;
 	#  0 == general response header
 	# -1 == individual responses that are sent
-my $dbg_alive = 0;
+my $dbg_search = 1;
+	# 0 = show a header when search message sent
+my $dbg_alive = 1;
+	# 0 = show a header when alive messages sent
+	# -1 = show individual alive messages
 my $dbg_bye = 0;
 my $dbg_self = 1;
 	# show self skipped dmessages in SSDPListener and SSDPSearch
@@ -52,7 +56,7 @@ my $dbg_self = 1;
 
 # Message Debugging
 
-my $show_search_dbg = 0x110;	# 0x110;
+my $show_search_dbg = 0x100;	# 0x110;
 	# bitwise, high order nibble is New Devices,
 	# middle is Known Devices, and last is all msgs.
 	# 0=off, 1=line, 2=hash
@@ -80,7 +84,7 @@ my $ALIVE_INTERVAL = 300;
 	# How often, do we send out 'alive' messages?
 	# Spec says we should send them out randomly
 	# at a rate of not less than 1/2 cache_max_age,
-my $SSDPSEARCH_INTERVAL = 20;
+my $SSDPSEARCH_INTERVAL = 60;
 	# Interval between ssdp searches
 my $SSDPSEARCH_TIME = 4;
 	# How long to perform the search for
@@ -340,7 +344,7 @@ sub run
 				elsif ($send_search || (!$DEBUG_SSDP_ALONE &&  (time() > $next_search)))
 				{
 					$send_search = 0;
-					display($dbg_run,0,"sendSearch()",0,$Pub::Utils::win_color_light_cyan);
+					display($dbg_search,0,"sendSearch()",0,$Pub::Utils::win_color_light_cyan);
 					my $msg = search_msg();
 
 					# OK, weirdness, to get WMP on THIS machine to respond, I
