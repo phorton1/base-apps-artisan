@@ -3,7 +3,11 @@
 # remotePlaylist.pm
 #---------------------------------------
 # Builds the master playlists.db for a remote library
-# Playlists with version==0 have not yet been built.
+# Playlists are not built until they are accessed
+# via call to remoteLibrary::getPlaylist(), which in
+# turn calls initPlaylist() to actually build the
+# playlist.  For a playlist of 1000 records this
+# can take several minutes.
 
 package remotePlaylist;
 use strict;
@@ -76,20 +80,20 @@ sub initPlaylist
 	{
 		display($dbg_rpl,1,"got playlist($id) $playlist->{name}");
 
-		my $playlist_ts = getTimestamp($playlist_db);
+		# my $playlist_ts = getTimestamp($playlist_db);
 		my $playlist_dir = $library->dataDir()."/playlists";
 		my_mkdir $playlist_dir if !-d $playlist_dir;
 
 		my $name = $playlist->{name};
 		my $named_db = "$playlist_dir/$name.db";
-		my $named_ts = getTimestamp($named_db);
+		# my $named_ts = getTimestamp($named_db);
 
-		display($dbg_rpl,1,"Timestamps playlists.db($playlist_ts) $playlist->{name}($named_ts)");
+		# display($dbg_rpl,1,"Timestamps playlists.db($playlist_ts) $playlist->{name}($named_ts)");
 
-		if ($playlist_ts gt $named_ts)
+		if (!-f $named_db)	# $playlist_ts gt $named_ts)
 		{
 			display($dbg_rpl,1,"creating new $name.db");
-			unlink $named_db;
+			# unlink $named_db;
 
 			my $tracks = $library->getSubitems('tracks',$playlist->{id});
 			display($dbg_rpl,1,"found ".scalar(@$tracks)." tracks");

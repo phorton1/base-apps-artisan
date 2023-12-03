@@ -19,7 +19,7 @@ var dbg_prefs = 0;
 var device_id = '';
 
 
-jQuery.ajaxSetup({async:false});
+// jQuery.ajaxSetup({async:false});
 
 
 window.onerror = function(message, source, lineNumber, colno, err)

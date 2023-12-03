@@ -537,7 +537,7 @@ sub browse_directory
 			raw => 1,
 			pretty => 1,
 			my_dump => 1,
-			dumper => 1 }) if 1; # $PARSE_RESULTS;
+			dumper => 1 }) if $PARSE_RESULTS;
 
 		parseXML($content,{
 			dbg => $dbg_browse,
