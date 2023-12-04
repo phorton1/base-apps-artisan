@@ -89,7 +89,7 @@ sub stream_media
 		}
 
 
-		my $BUF_SIZE = 3000000;   # $is_wd && $ANDROID ? 16384 : 300000;
+		my $BUF_SIZE = 30000000;   # $is_wd && $ANDROID ? 16384 : 300000;
 
 		# build headers
 

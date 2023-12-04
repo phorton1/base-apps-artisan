@@ -232,10 +232,13 @@ function track_to_html_renderer(track)
 	// create the media path for our localLibrary
 
 	var path = track['path'];
-	if (!path.startsWith('http'))
+	if (current_library.local || current_library.remote_artisan)
 	{
-		path = "/media/" + track['id'] + '.' + track['type'];
-		html_renderer.metadata.art_uri = '/get_art/' + track['parent_id'] + '/folder.jpg';
+		var ip = current_library.ip;
+		var port = current_library.port;
+		var host = 'http://' + ip + ':' + port;
+		path = host + "/media/" + track['id'] + '.' + track['type'];
+		html_renderer.metadata.art_uri = host + '/get_art/' + track['parent_id'] + '/folder.jpg';
 	}
 
 	html_renderer.path = path;
