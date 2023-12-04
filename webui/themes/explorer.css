@@ -31,7 +31,7 @@ table.fancytree-ext-table tbody tr td
 
 /* example of using a media query in the CSS to change one thing */
 
-@media (max-width: 1250px)
+@media (max-device-width: 1250px)
 {
 	#explorer_tracklist td,
 	#explorer_tree td
