@@ -52,10 +52,16 @@ use remoteArtisan;
 use Pub::Utils;
 use sigtrap 'handler', \&onSignal, 'normal-signals';
 
-
 Pub::Utils::initUtils(1);
 
 my $dbg_main = 0;
+
+
+display($dbg_main,0,"----------------------------------------------");
+display($dbg_main,0,"Artisan.pm starting");
+display($dbg_main,0,"----------------------------------------------");
+display($dbg_main,0,"perl_dir=$artisan_perl_dir");
+display($dbg_main,0,"server_ip($server_ip) server_port($server_port)");
 
 
 sub onSignal

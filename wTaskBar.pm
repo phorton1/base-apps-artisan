@@ -80,7 +80,17 @@ use base qw( Wx::TaskBarIcon );
 
 Pub::Utils::initUtils(1);
 
+
 my $dbg_icon = 0;
+
+display($dbg_icon,0,"----------------------------------------------");
+display($dbg_icon,0,"wTaskBar.pm starting");
+display($dbg_icon,0,"----------------------------------------------");
+display($dbg_icon,0,"perl_dir=$artisan_perl_dir");
+display($dbg_icon,0,"server_ip($server_ip) server_port($server_port)");
+
+
+
 
 my $SERVICE_NAME = '_artisan';
 

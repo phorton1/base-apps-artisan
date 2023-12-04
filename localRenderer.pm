@@ -21,14 +21,16 @@ my $dbg_lren = 0;
 my $dbg_mp = 0;
 
 Win32::OLE::prhSetThreadNum(1);
-	# I found this old fix in my own build, under
-	# /src/wx/Win32_OLE.  You call this from the
-	# main program and OLE will short return from
-	# it's AtExit() method, not deleting anything.
-	# Presumably everytinng is deleted when the
-	# main Perl interpreter realy exits.
-	#
-	# I *may* not have needed to enclose $mp in a loop!
+	# I found this old fix in my own build, under /src/wx/Win32_OLE.
+	# This prevents threads from crashing on return (i.e. in HTTPServer
+	# 	connections) by setting a flag into my version of Win32::OLE
+	# 	that causees it to short return from it's AtExit() method,
+	# 	not deleting anything. Otherwise threads get messed up.
+	# Presumably everytinng is deleted when the main Perl interpreter
+	# 	realy exits.
+	# I *may* not have needed to enclose $mp in a loop, but it's
+	#	done now so I'm not changing it!
+
 
 # fields that get moved from a track to the renderer
 # art_uri will be gotten from parent if not available

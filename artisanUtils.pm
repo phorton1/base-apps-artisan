@@ -1,8 +1,13 @@
 #---------------------------------------
 # artisanUtils.pm
 #---------------------------------------
-# re-export of My::Utils @XPLAT with
-# artisan specific constants, vars, and methods
+# Re-export of My::Utils @XPLAT with
+# 	artisan specific constants, vars, and methods.
+# In general Packages should not call display(), error(),
+# warning(), or LOG() in their mainline body, or else they
+# will inadvertantly call initUtils(0 == not a service) and
+# set $AS_SERVICE to 0!! Use of print() is nominally allowed.
+
 
 package artisanUtils;
 use strict;
@@ -130,16 +135,14 @@ BEGIN
 our %stats;
 our $quitting:shared = 0;
 
-print "0=$0\n";
-
-
 our $artisan_perl_dir = $0;
 $artisan_perl_dir =~ s/^.*://;
 $artisan_perl_dir =~ s/\\/\//g;
 $artisan_perl_dir = pathOf($artisan_perl_dir);
 $artisan_perl_dir = "./" if $artisan_perl_dir eq '/';
 
-print "perl_dir=$artisan_perl_dir\n";
+# print "0=$0\n";
+# print "perl_dir=$artisan_perl_dir\n";
 
 our $program_name = 'Artisan Perl';
 our $this_uuid = '56657273-696f-6e34-4d41-' . $ENV{COMPUTERNAME};	# '20231112feed';
@@ -150,11 +153,6 @@ $data_dir = "$mp3_dir/_data";
 $temp_dir = "/base_data/temp/artisan";
 $logfile = "$temp_dir/artisan.log";
 mkdir $temp_dir if !-d $temp_dir;
-
-
-display(0,0,"----------------------------------------------");
-display(0,0,"Artisan starting perl_dir=$artisan_perl_dir");
-display(0,0,"----------------------------------------------");
 
 
 # WINDOWS SPECIFIC CODE
@@ -168,13 +166,13 @@ my $ip_text = `ipconfig /all`;
 if ($ip_text !~ /^.*?IPv4 Address.*?:\s*(.*)$/im)
 {
 	error("Could not determine IP Address!")
+		# This is inline display() call in body of package!
 }
 else
 {
 	$server_ip = $1;
 	$server_ip =~ s/\(.*\)//;	# remove (Preferred)
 	$server_ip =~ s/\s//g;
-	LOG(0,"Server IP Address=$server_ip:$server_port");
 }
 
 
