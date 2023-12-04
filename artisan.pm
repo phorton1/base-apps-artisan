@@ -48,6 +48,7 @@ use localLibrary;
 use localPlaylist;
 use remoteLibrary;
 use remoteRenderer;
+use remoteArtisan;
 use Pub::Utils;
 use sigtrap 'handler', \&onSignal, 'normal-signals';
 

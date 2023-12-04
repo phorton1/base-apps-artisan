@@ -76,6 +76,9 @@ sub has_error
 
 
 sub library_request
+	# library requests to remote_artisan libraries
+	# are already diverted to the other instance of
+	# Artisan by using the js library_url() method
 {
 	my ($path,$params) = @_;
 	display($dbg_uilib,0,"library_request($path)");
@@ -88,6 +91,13 @@ sub library_request
 
 	my $library = findDevice($DEVICE_TYPE_LIBRARY,$uuid);
 	return json_error("could not find library '$uuid'") if !$library;
+
+	# Remote request for another Artisan library
+
+	if ($library->{remote_artisan})
+	{
+		return remoteArtisanRequest($library,$path,$params);
+	}
 
 	# handle request
 
@@ -329,6 +339,36 @@ sub library_tracklist
 	$response .= ']';
 	return $response;
 }
+
+
+#-------------------------------------------------------
+# remoteArtisanRequest
+#-------------------------------------------------------
+
+use LWP::UserAgent;
+
+
+my $dbg_remote = 0;
+
+sub remoteArtisanRequest
+{
+ 	my ($library,$path,$params) = @_;
+ 	my $args = '';
+ 	for my $key (keys %$params)
+ 	{
+ 		$args .= $args ? '&' : '?';
+ 		$args .= "$key=$params->{$key}";
+ 	}
+ 	my $url = "http://$library->{ip}:$library->{port}/webui/library/$library->{uuid}/$path$args";
+ 	display($dbg_remote,0,"remoteArtisanRequest($url)");
+ 	my $ua = LWP::UserAgent->new();
+ 	my $response = $ua->get($url);
+ 	return json_error("No response from get($url)") if !$response;
+ 	display($dbg_remote,0,"response=".length($response->as_string())." bytes");
+ 	return $response->as_string();
+}
+
+
 
 
 

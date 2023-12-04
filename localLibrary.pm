@@ -42,7 +42,9 @@ sub new
 	my $this = $class->SUPER::new({
 		local => 1,
 		uuid  => $this_uuid,
-		name  => $program_name });
+		name  => $program_name,
+		ip    => $server_ip,
+		port  => $server_port });
 	bless $this,$class;
 	return $this;
 }
@@ -88,7 +90,8 @@ sub getFolder
 	# if 0, return a fake record
 
 	my $folder;
-	my $playlist = Playlist::getPlaylist($this,$id);
+	my $playlist = Playlist::getPlaylist($this,$id,1);
+		# 1 == no error
 
 	if ($id eq '0')
 	{
@@ -140,7 +143,8 @@ sub getSubitems
 	my @retval;
 
 
-	my $playlist = Playlist::getPlaylist($this,$id);
+	my $playlist = Playlist::getPlaylist($this,$id,1);
+		# 1 == no_error
 
 	# return virtual folders for playlists
 	# table must be 'folders', and as usual
@@ -245,26 +249,6 @@ sub getSubitems
 	return \@retval;
 
 }   # get_subitems
-
-
-
-
-sub getPlaylists
-	# pass through
-{
-	my ($this) = @_;
-	return Playlist::getPlaylists($this);
-}
-
-
-
-sub getPlaylist
-	# pass thru
-{
-	my ($this,$id) = @_;
-	return Playlist::getPlaylist($this,$id);
-}
-
 
 
 
@@ -467,6 +451,54 @@ sub getPlaylistTracks
 	display($dbg_llib,0,"getPlaylistTracks got ".scalar(@$tracks)." tracks from ".scalar(@$pl_tracks)." pl_tracks");
 	return $tracks;
 }
+
+
+
+
+#-------------------------------------------
+# Playlist API
+#-------------------------------------------
+
+
+
+sub getPlaylists
+	# pass through
+{
+	my ($this) = @_;
+	display($dbg_llib,0,"getPlaylists()");
+	return Playlist::getPlaylists($this);
+}
+
+
+
+sub getPlaylist
+	# pass thru
+{
+	my ($this,$id) = @_;
+	display($dbg_llib,0,"getPlaylist($id)");
+	return Playlist::getPlaylist($this,$id);
+}
+
+
+sub getPlaylistTrack
+{
+    my ($this,$id,$version,$mode,$index) = @_;
+	display($dbg_llib,0,"getPlaylist($id,$version,$mode,$index)");
+	my $playlist = Playlist::getPlaylist($this,$id);
+	return if !$playlist;
+	return $playlist->getPlaylistTrack($version,$mode,$index);
+}
+
+
+sub sortPlaylist
+{
+    my ($this,$id,$shuffle) = @_;
+	display($dbg_llib,0,"sortPlaylist($id,$shuffle)");
+	my $playlist = Playlist::getPlaylist($this,$id);
+	return if !$playlist;
+	return $playlist->sortPlaylist($shuffle);
+}
+
 
 
 

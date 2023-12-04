@@ -19,7 +19,7 @@ var dbg_prefs = 0;
 var device_id = '';
 
 
-// jQuery.ajaxSetup({async:false});
+jQuery.ajaxSetup({async:false});
 
 
 window.onerror = function(message, source, lineNumber, colno, err)
@@ -360,15 +360,16 @@ function create_numeric_pref(min,med,max,var_name,spinner_id)
 			var value = parseInt($(this).spinner('value'));
 			window[var_name] = value;
 			setCookie(var_name,value,180);
-			if (false && var_name == 'explorer_mode')
-			{
-				var tree = $('#explorer_tree').fancytree('getTree');
-				tree.reload({
-					url: "/webui/library/" + current_library['uuid'] + "/dir",
-					data: {mode:explorer_mode, source:'numeric_pref'},
-					cache: false,
-				});
-			}
+
+			// if (false && var_name == 'explorer_mode')
+			// {
+			// 	var tree = $('#explorer_tree').fancytree('getTree');
+			// 	tree.reload({
+			// 		url: "/webui/library/" + current_library['uuid'] + "/dir",
+			// 		data: {mode:explorer_mode, source:'numeric_pref'},
+			// 		cache: false,
+			// 	});
+			// }
 		},
 	});
 

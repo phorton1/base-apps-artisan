@@ -150,7 +150,9 @@ sub read_device_cache
 	for $dev (@$devs)
 	{
 		my $device = $dev->{type} eq $DEVICE_TYPE_LIBRARY ?
-			remoteLibrary->new($dev) :
+			 $dev->{remote_artisan} ?
+				remoteArtisan->new($dev) :
+				remoteLibrary->new($dev) :
 			remoteRenderer->new($dev);
 			push @$device_list,$device;
 	}
@@ -347,7 +349,9 @@ sub updateDevice
 		$dev->{max_age} = $DEFAULT_MAX_AGE;
 
 		$device = $type eq $DEVICE_TYPE_LIBRARY ?
-			remoteLibrary->new($dev) :
+			$dev->{name} =~ /Artisan/ ?
+				remoteArtisan->new($dev) :
+				remoteLibrary->new($dev) :
 			remoteRenderer->new($dev);
 
 		if ($state eq 'byebye')

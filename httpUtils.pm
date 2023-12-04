@@ -90,6 +90,8 @@ sub http_header
 	push(@response, "HTTP/1.1 $status_code ".$HTTP_CODES{$status_code});
 	push(@response, "Server: $program_name");
 	push(@response, "Content-Type: $content_type");
+	push(@response, "Access-Control-Allow-Origin: *");
+		# all my responses are allowed from any referrer
 	push(@response, "Content-Length: $params->{'content_length'}") if $params->{'content_length'};
 	push(@response, "Date: ".gmtime()." GMT");
     # push(@response, "Last-Modified: "gmtime()." GMT"));
@@ -151,7 +153,10 @@ sub soap_footer
 
 sub json_header
 {
-	return http_header({ content_type => 'application/json' });
+	my ($params) = @_;
+	$params ||= {};
+	$params->{content_type} = 'application/json';
+	return http_header($params);
 }
 
 

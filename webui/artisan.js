@@ -9,6 +9,16 @@ var dbg_swipe    = 1;
 var current_renderer = false;
 var current_library = false;
 
+function library_url()
+{
+	var host = current_library.remote_artisan ?
+		'http://' + current_library.ip + ':' + current_library.port : '';
+	var url =  host + "/webui/library/" + current_library['uuid'];
+	display(0,0,"library url=" + url);
+	return url;
+}
+
+
 var WITH_SWIPE = false;
 	// If it is true, then no handles will show for closed windows,
 	// and a swipe event handler will be added to the element specified

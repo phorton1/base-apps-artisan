@@ -82,7 +82,7 @@ sub running
 sub doMPCommand
 {
 	my ($command) = @_;
-	display($dbg_mp+1,0,"doMPCommand($command)");
+	display($dbg_mp,0,"doMPCommand($command)");
 	push @$mp_command_queue,$command;
 }
 
@@ -414,15 +414,23 @@ sub doCommand
 		return error("no playlist in doCommand($command)")
 			if !$playlist;
 
-		display($dbg_lren,0,"calling sortPlaylist($shuffle) ".
-			"on playlist($playlist->{name},$playlist->{track_index},$playlist->{num_tracks}) shuffle=$playlist->{shuffle}");
+		my $library_uuid = $playlist->{uuid};
+		my $library = findDevice($DEVICE_TYPE_LIBRARY,$library_uuid);
+		return error("Could not find library($library_uuid)")
+			if !$library;
 
-		if (!$playlist->sortPlaylist($shuffle))
+		my $pl_id = $playlist->{id};
+		display($dbg_lren,1,"calling library::sortPlaylist($library_uuid,$pl_id,$shuffle) name=$playlist->{name}");
+		my $new_pl = $library->sortPlaylist($pl_id,$shuffle);
+
+		if (!$new_pl)
 		{
 			$error = "Could not sort playlist $playlist->{name}";
 		}
 		else
 		{
+			display($dbg_lren,1,"new_playlist".Playlist::dbg_info($new_pl,2));
+			$this->{playlist} = $new_pl;
 			$error = $this->playlist_song($PLAYLIST_ABSOLUTE,1);
 		}
 
@@ -464,10 +472,12 @@ sub play_track
 	# get the art from the parent folder
 
 	my $path = $track->{path};
-	if ($library->{local})
+	if ($library->{local} || $library->{remote_artisan})
 	{
-		$this->{metadata}->{art_uri} = "http://$server_ip:$server_port/get_art/$track->{parent_id}/folder.jpg";
-		$path = "http://$server_ip:$server_port/media/$track->{id}.$track->{type}";
+		my $library_ip = $library->{ip};
+		my $library_port = $library->{port};
+		$this->{metadata}->{art_uri} = "http://$library_ip:$library_port/get_art/$track->{parent_id}/folder.jpg";
+		$path = "http://$library_ip:$library_port/media/$track->{id}.$track->{type}";
 		# $path = "$mp3_dir/$track->{path}";		direct file access
 	}
 	else
@@ -493,20 +503,29 @@ sub playlist_song
 	return error("no playlist!")
 		if !$playlist;
 
+
+	my $library_uuid = $playlist->{uuid};
+	my $library = findDevice($DEVICE_TYPE_LIBRARY,$library_uuid);
+	return error("Could not find library($library_uuid)")
+		if !$library;
+
 	display($dbg_lren,0,"playlist_song($mode,$index) on".$playlist->dbg_info(2));
 
-	my $new_playlist = $playlist->getPlaylistTrack($playlist->{version},$mode,$index);
+	my $pl_id = $playlist->{id};
+	my $new_pl = $library->getPlaylistTrack($pl_id,$playlist->{version},$mode,$index);
+	return error("No playlist returned by getPlaylistTrack($library_uuid,$pl_id)")
+		if !$new_pl;
 
-	display($dbg_lren,0,"new_playlist".Playlist::dbg_info($new_playlist,2));
+	display($dbg_lren,0,"new_playlist".Playlist::dbg_info($new_pl,2));
 
-	$this->{playlist} = $new_playlist;
-	if ($new_playlist && $new_playlist->{track_id})
+	$this->{playlist} = $new_pl;
+	if ($new_pl->{track_id})
 	{
-		$this->play_track($playlist->{uuid},$new_playlist->{track_id});
+		$this->play_track($new_pl->{uuid},$new_pl->{track_id});
 	}
 	else
 	{
-		return error("Could not get getPlaylistTrack($mode,$index) from playlist".Playlist::dbg_info($new_playlist,2));
+		return error("No {track_id} in new_playlist".Playlist::dbg_info($new_pl,2));
 	}
 	return '';
 }

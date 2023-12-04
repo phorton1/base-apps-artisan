@@ -117,7 +117,7 @@ sub dbg_info
 
 	return "("._def($this).")" if !$this;
 
-	my $name = "($this->{name}" ;
+	my $name = "($this->{uuid}:$this->{name}" ;
 	$name .= ",V_$this->{version},$this->{track_index},$this->{num_tracks}"
 		if $dbg_pl < $extra_dbg;
 	$name .= ",S_$this->{shuffle},$this->{track_id}"
@@ -129,7 +129,7 @@ sub dbg_info
 
 sub getPlaylist
 {
-	my ($library,$id) = @_;
+	my ($library,$id,$no_error) = @_;
 	display($dbg_pl+1,0,"getPlaylist($library->{name},$id)");
 
 	my $master_dir = $library->dataDir();
@@ -151,6 +151,10 @@ sub getPlaylist
 		$playlist = shared_clone($rec);
 		bless $playlist,'Playlist';
 		$playlist->{library_name} = $library->{name};
+	}
+	elsif (!$no_error)
+	{
+		error("Could not find playlist($library->{name},$id)");
 	}
 
 	display($dbg_pl,0,"getPlaylist() returning".dbg_info($playlist,2));

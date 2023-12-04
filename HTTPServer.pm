@@ -257,11 +257,33 @@ sub handle_connection
 	my $response = undef;
 	my $dbg_displayable = 1;
 
+	#-------------------------------------------------
+	# OPTIONS request
+	#-------------------------------------------------
+	# Thought this was required to allow cross-origin requests from
+	# the webUI running on one Artisan to another Artisan, but not so.
+	# If jquery ajax is setup to 'preflight' the requests with various
+	# options, then it *would* call OPTIONS asking for more info, and
+	# then we NEEDED this.
+	#
+	# if ($request_method eq 'OPTIONS')
+	# {
+	# 	$response = http_header({
+	# 		addl_headers=> [
+	# 			"Allow: OPTIONS,GET,POST,SUBSCRIBE,UNSUBSCRIBE",
+	# 			"Access-Control-Allow-Origin: *",
+	# 			"Access-Control-Allow-Headers: *",
+	# 			],
+	# 		});
+	# }
+	# elsif
+
 	#------------------------------------------------------------
 	# Artisan Perl BEING a DLNA Media Server/Renderer
 	#------------------------------------------------------------
 	# These are Post Requests, and are only for us BEING a DLNA Server/Renderer
 	# and, of course, supported only for the localLibrary and localRenderer
+
 
 	if ($request_path eq '/upnp/control/ContentDirectory1')
 	{

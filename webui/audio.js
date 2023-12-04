@@ -193,8 +193,7 @@ function audio_command(command,args)
 function play_song_local(library_uuid,track_id)
 {
 	init_html_renderer(RENDERER_STATE_TRANSIT);
-	$.get('/webui/library/'+library_uuid +
-		  '/get_track?id=' + track_id,
+	$.get(library_url() + '/get_track?id=' + track_id,
 	function(result)
 	{
 		if (result.error)
@@ -247,7 +246,7 @@ function track_to_html_renderer(track)
 function set_local_playlist(library_uuid,playlist_id)
 {
 	init_html_renderer(RENDERER_STATE_TRANSIT);
-	$.get('/webui/library/'+ library_uuid + '/get_playlist' +
+	$.get(library_url()  + '/get_playlist' +
 		  '?id=' + playlist_id,
 
 	function(result)
@@ -282,7 +281,7 @@ function playlist_song(mode,inc)
 	library_uuid = playlist.uuid;
 	playlist_id = playlist.id;
 
-	$.get('/webui/library/'+ library_uuid + '/get_playlist_track' +
+	$.get(library_url()  + '/get_playlist_track' +
 	  '?version=' + playlist.version +
 	  '&id=' + playlist_id +
 	  '&mode=' + mode +
@@ -322,7 +321,7 @@ function playlist_shuffe(shuffle)
 	library_uuid = playlist.uuid;
 	playlist_id = playlist.id;
 
-	$.get('/webui/library/'+ library_uuid + '/shuffle_playlist' +
+	$.get(library_url() + '/shuffle_playlist' +
 	  '?id=' + playlist_id +
 	  '&shuffle=' + shuffle,
 

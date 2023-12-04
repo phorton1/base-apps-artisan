@@ -122,11 +122,15 @@ sub web_ui
 			# allow cross-origin requests to iPad browsers
 			# which would not call /get_art/ to get our album art URIs otherwise
 
+			# Modified to allow most generous CORS options while messing with
+			# 	cross-origin webUI request, but this is not, per se, specifically
+			# 	needed for those.
+
 			my $addl_headers = [];
 			if ($type eq 'html')
 			{
-				push @$addl_headers,"Access-Control-Allow-Origin: http://$server_ip:$server_port";
-				push @$addl_headers,"Access-Control-Allow-Methods: GET";	# POST, GET, OPTIONS
+				push @$addl_headers,"Access-Control-Allow-Origin: *";			# was http://$server_ip:$server_port";
+				push @$addl_headers,"Access-Control-Allow-Methods: GET";		# OPTIONS, POST, SUBSCRIBE, UNSUBSCRIBE
 			}
 
 			$response = http_header({

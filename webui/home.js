@@ -162,11 +162,7 @@ function init_playlists()
 {
 	if (!current_library || !current_renderer)
 		return;
-	var library_uuid = current_library.uuid;
-
-	$.get('/webui/library/' + library_uuid + '/get_playlists',
-	function(result)
-	{
+	$.get(library_url() + '/get_playlists',function(result) {
 		if (result.error)
 		{
 			rerror('Error in init_playlists(' + library_uuid + '): ' + result.error);

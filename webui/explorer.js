@@ -43,7 +43,7 @@ function update_explorer()
 	// we need to update urls and re-load the page
 {
 	display(dbg_explorer,0,"update_explorer()");
-	explorer_tree.options.source.url = "/webui/library/" + current_library['uuid'] + "/dir";
+	explorer_tree.reload();	// options.source.url = "/webui/library/" + current_library['uuid'] + "/dir";
 	update_explorer_ui('',{})
 	init_page_explorer();
 }
@@ -71,22 +71,23 @@ function init_page_explorer()
 
 		scrollParent: $('#explorer_tree_div'),
 
-		source:
+		source: function()
 		{
-			url: "/webui/library/" + current_library['uuid'] + "/dir",
-			data: {mode:explorer_mode, source:'main'},
-			cache: false,
+			return {
+				url: library_url() + "/dir",
+				data: {id:0, mode:explorer_mode, source:'main'},
+				cache: false,
+			}
 		},
 
 		lazyLoad: function(event, data)
 		{
 			var node = data.node;
-			var use_id = node.key;
-			// if (use_id == undefined) use_id = 0
+			var id = node.key;
 			data.result =
 			{
-				url: "/webui/library/" + current_library['uuid'] + "/dir",
-				data: {id: use_id, mode:explorer_mode, source:'lazyLoad'},
+				url: library_url() + "/dir",
+				data: {id: id, mode:explorer_mode, source:'lazyLoad'},
 				cache: true
 			};
 		},
@@ -173,7 +174,7 @@ function init_page_explorer()
 			var node = data.node;
 			var rec = node.data;
 			explorer_details.reload({
-				url:'/webui/library/'+current_library['uuid'] + '/track_metadata?id=' + rec.id,
+				url: library_url() + '/track_metadata?id=' + rec.id,
 				cache: true});
 		},
 
@@ -399,7 +400,7 @@ function update_explorer_ui(title,rec)
 		if (rec.id != undefined)
 		{
 			explorer_tracklist.reload({
-				url:'/webui/library/' + current_library['uuid'] + '/tracklist?id=' + rec.id,
+				url: library_url() + '/tracklist?id=' + rec.id,
 				cache: true});
 		}
 		else
@@ -421,7 +422,7 @@ function update_explorer_ui(title,rec)
 	else
 	{
 		explorer_details.reload({
-			url:'/webui/library/'+current_library['uuid'] + '/folder_metadata?id=' + rec.id,
+			url: library_url() + '/folder_metadata?id=' + rec.id,
 			cache: true});
 	}
 

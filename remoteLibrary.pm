@@ -313,24 +313,6 @@ sub getSubitems
 
 
 
-sub getPlaylist
-	# pass thru
-{
-	my ($this,$id) = @_;
-	$this->start();
-	return if !remotePlaylist::initPlaylist($this,$id);
-	return Playlist::getPlaylist($this,$id);
-}
-
-sub getPlaylists
-	# pass through
-{
-	my ($this) = @_;
-	$this->start();
-	return Playlist::getPlaylists($this);
-}
-
-
 sub getFolderMetadata
 {
 	my ($this,$id) = @_;
@@ -702,6 +684,55 @@ sub getArtist
 	$performer ||= $album_artist;
 
 	return $album ? $album_artist : $performer;
+}
+
+
+
+#----------------------------------------
+# Playlist API
+#----------------------------------------
+
+sub getPlaylists
+	# pass through
+{
+	my ($this) = @_;
+	display($dbg_rlib,0,"getPlaylists()");
+	$this->start();
+	return Playlist::getPlaylists($this);
+}
+
+
+sub getPlaylist
+	# pass thru
+{
+	my ($this,$id) = @_;
+	display($dbg_rlib,0,"getPlaylists($id)");
+	$this->start();
+	return if !remotePlaylist::initPlaylist($this,$id);
+	return Playlist::getPlaylist($this,$id);
+}
+
+
+sub getPlaylistTrack
+{
+    my ($this,$id,$version,$mode,$index) = @_;
+	display($dbg_rlib,0,"getPlaylistTrack($id,$version,$mode,$index)");
+	$this->start();
+	return if !remotePlaylist::initPlaylist($this,$id);
+	my $playlist = Playlist::getPlaylist($this,$id);
+	return if !$playlist;
+	return $playlist->getPlaylistTrack($version,$mode,$index);
+}
+
+sub sortPlaylist
+{
+    my ($this,$id,$shuffle) = @_;
+	display($dbg_rlib,0,"sortPlaylist($id,$shuffle)");
+	$this->start();
+	return if !remotePlaylist::initPlaylist($this,$id);
+	my $playlist = Playlist::getPlaylist($this,$id);
+	return if !$playlist;
+	return $playlist->sortPlaylist($shuffle);
 }
 
 
