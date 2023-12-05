@@ -35,12 +35,19 @@ mkdir $playlist_dir if (!(-d $playlist_dir));
 
 sub getPlaylistTracks
 {
-	my ($name) = @_;
+	my ($name,$start,$count) = @_;
+	display($dbg_lpl,0,"getPlaylistTracks($name,$start,$count)");
 	my $named_db = "$playlist_dir/$name.db";
 	my $named_dbh = db_connect($named_db);
 	return !error("Could not connect to local namedb $named_db")
 		if !$named_dbh;
-	my $tracks = get_records_db($named_dbh,"SELECT * FROM pl_tracks ORDER BY position");
+
+	my $last = $start + $count - 1;
+	my $query = "SELECT * FROM pl_tracks WHERE position>=$start AND position<=$last ORDER BY position";
+	display($dbg_lpl,1,"query=$query");
+
+	my $tracks = get_records_db($named_dbh,$query);
+
 	db_disconnect($named_dbh);
 	display($dbg_lpl,0,"getPlaylistTracks($name) returning ".scalar(@$tracks)." pl_track records");
 	return $tracks;

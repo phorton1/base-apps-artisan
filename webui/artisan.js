@@ -118,7 +118,6 @@ $(function()
 
 	setTimeout(idle_loop, REFRESH_TIME);
 	set_page(default_page);
-	resize_layout(current_page);
 
 	display(dbg_load,0,"FINISHED LOADING ARTISAN");
 });
@@ -194,9 +193,20 @@ function set_page(page_id)	// ,context)
 	// 	display(0,0,'calling ' + context_fxn + '(' + context + ')');
 	// 	window[context_fxn](context);
 	// }
-
 	// reset_timeouts();
+
 	resize_layout(current_page);
+
+	// If the default page *were* 'explorer', then you
+	// switch to 'home', the accordian was not resized.
+	// We have to call resizeAll() twice, once in resize_layout(),
+	// once here to force resizeAll() to call the method
+	// $.layout.callbacks.resizePaneAccordions,
+	// even though it is set as the default west__onresize hook.
+
+	var layout = $('#' + page_id + '_page').layout();
+	layout.resizeAll();
+
 	display(dbg_load,0,"set_page(" + page_id + ") returning");
 }
 

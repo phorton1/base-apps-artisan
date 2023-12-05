@@ -227,7 +227,10 @@ sub library_dir
 {
 	my ($library,$params) = @_;
 	my $id = $params->{id} || 0;
-	display($dbg_uilib,0,"library_dir($id)");
+	my $start = $params->{start} || 0;
+	my $count = $params->{count} || 0;
+		# count==0 means get all of em
+	display($dbg_uilib,0,"library_dir($id,$start,$count)");
 
 	# sublimate id(0) to id(1)
 
@@ -235,7 +238,7 @@ sub library_dir
 
 	# collect the child folders
 
-	my $results = $library->getSubitems('folders', $use_id);
+	my $results = $library->getSubitems('folders', $use_id, $start, $count);
 
 	my $started = 0;
 	my $response = json_header();
@@ -260,11 +263,17 @@ sub library_dir_element
 {
 	my ($library,$params,$rec) = @_;
 
-	# required
+	# key and title are required for explorer_tree (fancyTree)
+	# folder=1 is apparently meaningless
+	# lazy=1 is what drives having an expander before it is loaded
 
 	$rec->{key} = $rec->{id};
 	my $title = $rec->{title};
-	if ($rec->{dirtype} ne 'album')
+
+	# I have sections, classes, albums, and playlists
+
+	if ($rec->{dirtype} ne 'album' &&
+		$rec->{dirtype} ne 'playlist')
 	{
 		$rec->{folder} = '1';
 		$rec->{lazy} = '1';
@@ -312,8 +321,10 @@ sub library_tracklist
 {
 	my ($library,$params) = @_;
 	my $id = $params->{id} || 0;
-	display($dbg_uilib,0,"library_tracklist($id)");
-	my $results = $library->getSubitems('tracks', $id);
+	my $start = $params->{start} || 0;
+	my $count = $params->{count} || 0;
+	display($dbg_uilib,0,"library_tracklist($id,$start,$count)");
+	my $results = $library->getSubitems('tracks', $id, $start, $count);
 
 	my $started = 0;
 	my $response = json_header().'[';

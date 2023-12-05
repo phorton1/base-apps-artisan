@@ -240,17 +240,19 @@ sub getFolder
 
 
 sub getSubitems
-	# Called by DLNA and webUI to return the list of items in a
+	# Called by the webUI to return the list of items in a
 	# folder given by ID.  If $table is 'folders', we return only
 	# Folders, and if table is 'tracks' we return only Tracks.
 	#
 	# If the cache_file is present, we return results from the databae,
 	# otherwise, we make the request, parse the results for both
-	# both containers (Folders) and items (Tracks), adding them
+	# containers (Folders) and items (Tracks), adding them
 	# to the database, and then return only the specified things.
 	#
-	# I currently always ask for everything, and this method does
-	# not return partial results.
+	# This caching scheme depends on me calling getSubItems()
+	# exactly the same way on subsequent calls.
+	#
+	# THIS WHOLE IDEA NEEDS TO BE REWORKED.
 {
 	my ($this,$table,$id,$start,$count) = @_;
     $start ||= 0;
@@ -266,7 +268,7 @@ sub getSubitems
 	# and deviceRequest() will add '.txt'
 
 	my $from_database = 0;
-	my $dbg_name = "Browse($id)";
+	my $dbg_name = "Browse($id,$start,$count)";
 	my $cache_dir = $this->subDir('cache');
 	my $cache_file = "$cache_dir/$dbg_name.didl.txt";
 
@@ -298,7 +300,7 @@ sub getSubitems
 			ObjectID => $id,
 			BrowseFlag => 'BrowseDirectChildren',
 			Filter => '*',
-			StartingIndex => 0,
+			StartingIndex => $start,
 			RequestedCount => $count,
 			SortCriteria => '', ];
 

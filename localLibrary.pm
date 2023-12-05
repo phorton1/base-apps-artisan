@@ -173,15 +173,10 @@ sub getSubitems
 
 	elsif ($table eq 'tracks' && $playlist)
 	{
-		my $recs = $this->getPlaylistTracks($playlist);
-			# I'm not sure where this goes.
-
+		my $recs = $this->getPlaylistTracks($playlist,$start,$count);
 		display($dbg_subitems,1,"found ".scalar(@$recs)." playlist tracks");
-		my $max = $start+$count-1;
-		$max = @$recs-1 if $max > @$recs-1;
-		for my $i ($start .. $max)
+		for my $rec (@$recs)
 		{
-			my $rec = $recs->[$i];
 			my $track = Track->newFromHash($rec);
 			if ($track)
 			{
@@ -432,9 +427,9 @@ sub getPlaylistTracks
 	# a time with no caching whatsoever. It can probably be made faster
 	# with a JOIN somehow.
 {
-	my ($this,$playlist) = @_;
-	display($dbg_llib,0,"getPlaylistTracks($playlist->{name})");
-	my $pl_tracks = localPlaylist::getPlaylistTracks($playlist->{name});
+	my ($this,$playlist,$start,$count) = @_;
+	display($dbg_llib,0,"getPlaylistTracks($playlist->{name},$start,$count)");
+	my $pl_tracks = localPlaylist::getPlaylistTracks($playlist->{name},$start,$count);
 	return if !$pl_tracks;
 
 	my $dbh = db_connect();

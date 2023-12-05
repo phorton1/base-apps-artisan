@@ -7,6 +7,10 @@ var dbg_explorer = 1;
 var explorer_tree;
 var explorer_tracklist;
 var explorer_details;
+var loading_tracklist = 0;
+	// an incrementing unique id to stop previous loads
+
+const LOAD_PER_REQUEST = 100;
 
 
 
@@ -49,13 +53,69 @@ function update_explorer()
 }
 
 
+
+
+//---------------------------------------
+// incremental directory loading
+//---------------------------------------
+
+function addDirNode(data)
+{
+	data.cache = true;
+	var parent = explorer_tree.getNodeByKey(data.parent_id);
+	if (!parent)
+		parent = explorer_tree.getRootNode();
+	parent.addNode(data);
+}
+
+
+function onLoadDir(result)
+{
+	display(0,0,"onLoadDir()");
+	for (var i=0; i<result.length; i++)
+	{
+		addDirNode(result[i]);
+	}
+}
+
+
+function loadDirRemaining(rec)
+	// called the first time after an asynchrounous lazyLoad completes,
+	// loop through more synchronous calls to $.get{)->onLoadDir() until
+	// the whole thing is loaded.
+{
+	if (rec.loaded >= rec.num_elements)
+		return;
+
+	$.ajax({
+		async: true,
+		url: library_url() + "/dir",
+		data: {
+			id: rec.id,
+			mode: 0,
+			source: 'incremental',
+			start: rec.loaded,
+			count: LOAD_PER_REQUEST },
+		success: function (result)
+		{
+			onLoadDir(result);
+			rec.loaded += result.length;
+			loadDirRemaining(rec);
+		},
+	});
+}
+
+
+
+//--------------------------------------
+// init_page_explorer()
+//--------------------------------------
+
 function init_page_explorer()
 {
 	// Generally speaking, in fancyTree event data has the node object
 	// The node object has a data member  which is any fields we returned via json.
-	// fancytree didn't know.  We have to be careful with name collisions,
-	// for example, fancyTree treats 'title' specially, so we raise it to
-	// TITLE in certain cases.  Another potential conflict is 'key'.
+	// fancytree didn't know, chiefly among them 'title', 'key', and 'lazy'
 
 	display(dbg_explorer,0,"init_page_explorer()");
 
@@ -65,64 +125,75 @@ function init_page_explorer()
 
 	$("#explorer_tree").fancytree({
 
-		// checkbox: true,
-		// selectMode:3,
 		clickFolderMode:3,
-
+			// 1:activate, 2:expand, 3:activate and expand, 4:activate/dblclick expands (default: 4)
 		scrollParent: $('#explorer_tree_div'),
+
+		// Incremental Loading
+		// sourc: has to at least return an empty array or my addNodes don't render.
 
 		source: function()
 		{
-			return {
-				url: library_url() + "/dir",
-				data: {id:0, mode:explorer_mode, source:'main'},
-				cache: false,
-			}
+			return [];
 		},
 
 		lazyLoad: function(event, data)
 		{
 			var node = data.node;
-			var id = node.key;
-			data.result =
-			{
-				url: library_url() + "/dir",
-				data: {id: id, mode:explorer_mode, source:'lazyLoad'},
-				cache: true
-			};
-		},
-
-
-		extensions: ["table"],
-		renderColumns: function(event, data)
-		{
-			var node = data.node;
 			var rec = node.data;
-			var $tdList = $(node.tr).find(">td");
+			var id = node.key;
 
-			// $tdList.eq(1).text(rec.num_elements).addClass("explorer_tree_num");
-				// add the "number of tracks/children folders"
+			// use a Deferred result for the 0th lazyLoad
 
-			// some other examples
-			// $tdList.eq(1).text(node.key).addClass("explorer_tree_num_column");
-			// $tdList.eq(2).text(node.getIndexHier()).addClass("alignRight");
-			// $tdList.eq(4).html("<input type='checkbox' name='like' value='" + node.key + "'>");
+			var dfd = new $.Deferred();
+			data.result = dfd.promise();
+			rec.loaded = 0;
+
+			$.ajax({
+				async: true,
+				url: library_url() + "/dir",
+				data: {
+					id: id,
+					mode: 0,
+					source: 'lazyLoad',
+					start: 0,
+					count: LOAD_PER_REQUEST },
+				success: function (result)
+				{
+					dfd.resolve(result);
+
+					// Therafter, load the remaing recs in a self-perpetuating loop.
+					// We check result.length JIC it's not really a folder and has
+					// no 'folder' children.  Then it is probably an 'album' or a
+					// 'playlist' and will load tracks in update_explorer_ui().
+					// This will have the added effect of removing the (bogus) expander,
+					// as now fancyTree will know there are no children.
+
+					if (result.length)
+					{
+						rec.loaded = result.length;
+						loadDirRemaining(rec);
+					}
+				},
+			});
+
+			display(0,0,"as we can prove from this");
+
 		},
 
 		activate: function(event, data)
 		{
 			var node = data.node;
 			var rec = node.data;
-			display(dbg_explorer,0,"calling update_explore_album_info() " + node.title);
 			update_explorer_ui(node.title,rec);
-			display(dbg_explorer,0,"back from update_explore_album_info()");
-			// hide_layout_panes();
-
 		}
 	});		// explorer_tree
 
 	explorer_tree = $("#explorer_tree").fancytree("getTree");
-		// cache the explorer tree
+		// cache the explorer tree, then...
+	$.get(library_url() + "/dir" + '?id=0&mode=0&source=main',
+		function (result) { onLoadDir(result) } );
+		// load the data ...
 
 
 	// EXPLORER TRACKLIST
@@ -133,11 +204,8 @@ function init_page_explorer()
 	$("#explorer_tracklist").fancytree({
 
 		scrollParent: $('#explorer_tracklist_div'),
-
 		extensions: ["table"],
-		table:{
-			// nodeColumnIdx:null,		// we'll explicitly write the main node
-		},
+		table: {},
 
 		renderColumns: function(event, data)
 		{
@@ -147,7 +215,6 @@ function init_page_explorer()
 
 			// TITLE in lowercase conflicts with jquery-ui,
 			// so we raise it to TITLE in uiLibrary.pm
-
 			// Note also that we used to use .text() for content,
 			// but now we use .html() as the content may contain
 			// encoded characters from Perl Utils::escape_tag()
@@ -192,6 +259,7 @@ function init_page_explorer()
 		},
 	});		// explorer_tracklist
 
+
 	explorer_tracklist = $("#explorer_tracklist").fancytree("getTree");
 		// cache the tracklist
 
@@ -205,8 +273,8 @@ function init_page_explorer()
 		clickFolderMode:3,		// activateAndExpand
 		extensions: ["table"],
 
-		expand: function(event, data)  { saveExpanded(true,data.node); },
-		collapse: function(event, data) { saveExpanded(false,data.node); },
+		expand: function(event, data)  { saveDetailsExpanded(true,data.node); },
+		collapse: function(event, data) { saveDetailsExpanded(false,data.node); },
 			// save the expanded state when done by hand
 
 		click: function(event, data)
@@ -337,7 +405,7 @@ function init_page_explorer()
 
 
 
-function saveExpanded(expanded,node)
+function saveDetailsExpanded(expanded,node)
 {
 	var rec = node.data;
 	var title = rec.TITLE;
@@ -392,20 +460,21 @@ function update_explorer_ui(title,rec)
 		error_string ? error_string : ""
 	 );
 
-	// load the track list
+	// Incrementally load the track list asynchronously
+	// The rec keeps track of the number loaded, just like the tree folders,
+	// but we also set a unique id 'loading_tracklist' to stop the load if
+	// it the activated explorer_tree 'folder' changes.
 
 	if (explorer_tracklist)
 	{
+		loading_tracklist++;
+		explorer_tracklist.getRootNode().removeChildren();
 		display(dbg_explorer,1,"loading tracks for  " + rec.TITLE);
 		if (rec.id != undefined)
 		{
-			explorer_tracklist.reload({
-				url: library_url() + '/tracklist?id=' + rec.id,
-				cache: true});
-		}
-		else
-		{
-			explorer_tracklist.getRootNode().removeChildren();
+			rec.loaded = 0;
+			rec.loading = loading_tracklist;
+			loadTracklist(rec);
 		}
 	}
 	else
@@ -427,6 +496,61 @@ function update_explorer_ui(title,rec)
 	}
 
 }	// update_explorer_ui()
+
+
+
+//--------------------------------------
+// incremental tracklist loading
+//--------------------------------------
+
+function loadTracklist(rec)
+	// incrementally, and asyncrhounously load the tracklist
+{
+	if (rec.loading != loading_tracklist)
+		return;
+	if (rec.loaded >= rec.num_elements)
+		return;
+
+	$.ajax({
+		async: true,
+		url: library_url() + "/tracklist",
+		data: {
+			id: rec.id,
+			source: 'loadTracklist',
+			start: rec.loaded,
+			count: LOAD_PER_REQUEST },
+		success: function (result)
+		{
+			// it *may not* be an actual 'album' or 'playlist', so
+			// if the result returns 0 length, we bail.
+
+			if (!result.length)
+				return;
+			onLoadTracks(result,rec.loading);
+			rec.loaded += result.length;
+			loadTracklist(rec);
+		},
+	});
+}
+
+
+function addTrackNode(data,loading)
+{
+	data.cache = true;
+	var	parent = explorer_tracklist.getRootNode();
+	if (loading == loading_tracklist)
+		parent.addNode(data);
+}
+
+
+function onLoadTracks(result,loading)
+{
+	display(0,0,"onLoadTracks()");
+	for (var i=0; loading==loading_tracklist && i<result.length; i++)
+	{
+		addTrackNode(result[i],loading);
+	}
+}
 
 
 

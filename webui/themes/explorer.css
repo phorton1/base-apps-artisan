@@ -21,9 +21,8 @@ table.fancytree-ext-table tbody tr td
 	table-layout:fixed;
 }
 
-
-#explorer_tracklist td,
-#explorer_tree td
+#explorer_tree span,
+#explorer_tracklist td
 {
     overflow:hidden;
 	font-size:12pt;			/* pt? */
@@ -33,8 +32,8 @@ table.fancytree-ext-table tbody tr td
 
 @media (max-device-width: 1250px)
 {
-	#explorer_tracklist td,
-	#explorer_tree td
+	#explorer_tree span,
+	#explorer_tracklist td
 	{
 		font-size:15pt;
 	}
