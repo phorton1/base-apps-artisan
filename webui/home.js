@@ -217,7 +217,9 @@ function renderer_command(command,args)
 	if (current_renderer['uuid'] == 'html_renderer')
 	{
 		audio_command(command,args);
-		in_slider=false;
+		in_slider = false;
+		in_playlist_slider = false;
+		in_playlist_spinner = false;
 		update_renderer_ui();
 		return;
 	}
@@ -254,15 +256,6 @@ function renderer_command(command,args)
 }
 
 
-function unused_renderer_onidle()
-{
-	display(dbg_loop,0,"renderer_onidle");
-	if (current_renderer && !in_slider)
-	{
-		renderer_command('update');
-	}
-}
-
 
 
 
@@ -295,7 +288,6 @@ function on_slider_complete(event,ui)
 	// sliders are in pct
 	// command is in millieseconds
 {
-	in_slider=false;
 	var millis = parseInt(ui.value * current_renderer.duration/100);
 	display(dbg_slider,0,"on_slider_complete(" + millis + ")");
 	renderer_command('seek',{position:millis});

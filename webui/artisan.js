@@ -32,6 +32,7 @@ var default_page = 'home';
 var current_page = ''
 var layout_defs = {};
 
+var update_id = 1;
 
 var explorer_mode = 0;
 var autoclose_timeout = 0;
@@ -132,45 +133,41 @@ $( window ).resize(function()
 
 
 
-
-var update_id = 1;
-
 function idle_loop()
 {
 	display(dbg_loop,0,"idle_loop(" + current_page + ")");
 	idle_count++;
 
-	// Now ALWAYS calls the server with the update_id and possibly the renderer_uuid
+	if (!in_slider &&
+		!in_playlist_slider &&
+		!in_playlist_spinner)
+	{
+		var data = { update_id: update_id };
+		if (current_renderer.uuid != html_renderer.uuid)
+			data.renderer_uuid = current_renderer.uuid;
 
-	var data = { update_id: update_id };
-	if (current_renderer.uuid != html_renderer.uuid)
-		data.renderer_uuid = current_renderer.uuid;
+		$.ajax({
+			async: true,
+			url: '/webui/update',
+			data: data,
 
-	$.ajax({
-		async: true,
-		url: '/webui/update',
-		data: data,
-
-		success: function (result)
-		{
-			if (result.update_id)
-				update_id = result.update_id;
-			if (result.libraries)
-				updateLibraries(result.libraries);
-			if (result.renderer)
+			success: function (result)
 			{
-				current_renderer = result.renderer;
-				in_slider = false;
-				in_playlist_slider = false;
-				in_playlist_spinner = false;
-				update_renderer_ui();
-			}
-		},
+				if (result.update_id)
+					update_id = result.update_id;
+				if (result.libraries)
+					updateLibraries(result.libraries);
+				if (result.renderer)
+				{
+					current_renderer = result.renderer;
+					update_renderer_ui();
+				}
+			},
 
-		error: function() { onUpdateError() },
-		timeout: 3000,
-	});
-
+			error: function() { onUpdateError() },
+			timeout: 3000,
+		});
+	}
 
 	setTimeout("idle_loop();", REFRESH_TIME);
 }
