@@ -343,6 +343,9 @@ sub run
 
 				elsif ($send_search || (!$DEBUG_SSDP_ALONE &&  (time() > $next_search)))
 				{
+					DeviceManager::invalidateOldDevices();
+						# check for invalid (timed out) devices on every search
+
 					$send_search = 0;
 					display($dbg_search,0,"sendSearch()",0,$Pub::Utils::win_color_light_cyan);
 					my $msg = search_msg();
@@ -775,9 +778,11 @@ sub processExternalMessage
 	$usn =~ s/^urn://;
 	$usn =~ s/^schemas-upnp-org://;
 
+	# Currently only 'sees' MediaServers
+
     my $type =
-		$utype eq 'MediaServer:1' ? $DEVICE_TYPE_LIBRARY :
-		$utype eq 'MediaRenderer:1' ? $DEVICE_TYPE_RENDERER : '';
+		$utype eq 'MediaServer:1' ? $DEVICE_TYPE_LIBRARY : '';
+		# $utype eq 'MediaRenderer:1' ? $DEVICE_TYPE_RENDERER : '';
 
 	my $mask = 1;
 	$mask |= $type ? 0x10 : 0;

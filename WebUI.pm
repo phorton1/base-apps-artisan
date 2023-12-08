@@ -36,6 +36,8 @@ my $dbg_webui = 1;
 	# 0 = show basic calls
 	# -1 = show building of html files with js and css
 	# -2 = show fancytree scaling pct
+my $dbg_update = 1;
+	# specific to update calls
 
 
 my $SEND_MINIFIED_JS_AND_CSS = 1;
@@ -60,15 +62,23 @@ my $SEND_MINIFIED_JS_AND_CSS = 1;
 #--------------------------------------
 # webUI request dispatcher
 #--------------------------------------
+# NEW syntax of update is
+#	/webui/update?update_id=$update_id&renderer_uuid=$renderer_uuid
+
 
 sub web_ui
 {
 	my ($path_with_query) = @_;  # ,$headers,$post_xml) = @_;
 	$path_with_query ||= 'artisan.html';
 
-	if ($path_with_query !~ /update/)
+
+	if ($path_with_query !~ /^update/)
 	{
 		display($dbg_webui,0,"--> web_ui($path_with_query) called");
+	}
+	else
+	{
+		display($dbg_update,0,"UPDATE CALLED: $path_with_query");
 	}
 
 	# parse query parameters
@@ -181,9 +191,48 @@ sub web_ui
 		return getDeviceJson($singular,$uuid);
 	}
 
+
+	# NEW UPDATE SYNTAX
+
+	elsif ($path eq 'update')
+	{
+		my $update_id = $params->{update_id} || 0;
+		return json_error("No update_id in UPDATE call")
+			if !$update_id;
+
+		# The HTML Renderer can call without a UUID at this time
+
+		my $renderer_uuid = $params->{renderer_uuid} || '';
+		warning($dbg_update,0,"No renderer_uuid in UPDATE call!")
+			if !$renderer_uuid;
+
+		my $data = {
+			update_id => $system_update_id };
+
+		$data->{libraries} = getDevicesData($DEVICE_TYPE_LIBRARY)
+			if $update_id != $system_update_id;
+
+		if ($renderer_uuid)
+		{
+			my $renderer = findDevice($DEVICE_TYPE_RENDERER,$renderer_uuid);
+			return json_error("could not find renderer '$renderer_uuid'") if !$renderer;
+
+			my $error = $renderer->doCommand('update',{});
+
+			return json_error("renderer_request($path) error: $error")
+				if $error;
+			$data->{renderer} = $renderer;
+		}
+
+		return json_header().json($data);
+
+	}
+
 	# dispatch renderer request directly to object
 	# note that actual playlist commands take place
 	# on the renderer ...
+	#
+	# renderer/update is no longer called.
 
 	elsif ($path =~ s/^renderer\///)
 	{
@@ -202,7 +251,7 @@ sub web_ui
 		return json_header().json($renderer);
 	}
 
-	# pass request to sub module
+	# pass library requests to PM sub module
 
 	elsif ($path =~ s/^library\///)
 	{
@@ -226,16 +275,7 @@ sub getDeviceJson
 	my ($type,$uuid) = @_;
 
 	display($dbg_webui,0,"getDeviceJson($type,$uuid)");
-	my $device;
-	# if ($uuid eq 'local')
-	# {
-	# 	$device = $local_library if $type eq $DEVICE_TYPE_LIBRARY;
-	# 	$device = $local_renderer if $type eq $DEVICE_TYPE_RENDERER;
-	# }
-	# else
-	# {
-		$device = findDevice($type,$uuid);
-	# }
+	my $device  = findDevice($type,$uuid);
 	return http_error("Could not get getDeviceJson($type,$uuid)")
 		if !$device;
 	my $response = json_header();
@@ -244,7 +284,7 @@ sub getDeviceJson
 }
 
 
-sub getDevicesJson
+sub getDevicesData
 {
 	my ($type) = @_;
 
@@ -256,15 +296,34 @@ sub getDevicesJson
 			!$device->{local};
 			# remote renderers not yet supported
 
-		push @$result,{
+		my $use_device = {
 			type => $device->{type},
 			uuid => $device->{uuid},
-			name => $device->{name} };
+			name => $device->{name},
+			online => $device->{online} };
+
+		# temporary kludge to handle remoteLibrary initialization
+
+		$use_device->{online} = '' if
+			$type eq $DEVICE_TYPE_LIBRARY &&
+			$device->{state} != $DEVICE_STATE_READY;
+
+		push @$result,$use_device;
 	}
+	return $result;
+}
+
+
+sub getDevicesJson
+{
+	my ($type) = @_;
+	my $result = getDevicesData($type);
 	my $response = json_header();
 	$response .= json($result);
 	return $response;
 }
+
+
 
 
 

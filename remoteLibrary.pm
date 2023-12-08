@@ -2,22 +2,8 @@
 #---------------------------------------
 # remoteLibrary.pm
 #---------------------------------------
-
-# I cannot presume that the ip address of the remote library will
-# remain consistent. Sheesh.  I need to check it all the time.
-
-# Building all of the playlists at first access can be VERY slow
-# (i.e. if Artisan(LENOVO3) is a 'remoteLibrary' as far as LENOVO2
-# is concerned).  May need to build playlists namedb files only
-# on demand ...
-
-# I'm not sure WHERE to optimize for my own libraries as 'remoteLibraries'.
-
-# uiLibrary.pm could "know" if it's a remote library and make a pass through
-# call to the remote Artisan.   In some cases (i.e. HTML Renderer), it might
-# even be feasable to have the webUI call the other server.
-
 # API
+#
 #	getTrack
 #	getFolder
 #	getSubitems
@@ -52,7 +38,6 @@
 # of the database based on (event) UpdateID or partial
 # removal of cachefiles.  Remove them all, or none.
 
-
 package remoteLibrary;
 use strict;
 use warnings;
@@ -61,6 +46,7 @@ use threads::shared;
 use IO::Socket::INET;
 use XML::Simple;
 use artisanUtils;
+use httpUtils;
 use Library;
 use Database;
 use Track;
@@ -122,18 +108,37 @@ sub new
 	my $this = $class->SUPER::new($params);
 	bless $this,$class;
 
-	$this->{started} = 0;
+	$this->{state} = $DEVICE_STATE_NONE;
+		# Remote libraries are not ready to use upon construction.
+		# start() or startThread() MUST be called.  As far as the UI
+		# is concerned a device is not 'online' unless the {online}
+		# member is set AND the state is $DEVICE_STATE_READY
+
 	return $this;
+}
+
+
+sub startThread
+	# Weird kludgy behavior to rebuild the playlist.db file
+	# on every transition to 'online'
+{
+	my ($this) = @_;
+	display($dbg_rlib,0,"remoteLibrary($this->{name})::startThread()");
+	my $thread = threads->create(\&start,$this);
+	$thread->detach();
+	display($dbg_rlib,0,"remoteLibrary($this->{name})::startThread() returning");
 }
 
 
 sub start
 {
 	my ($this) = @_;
-	return if $this->{started};
-	$this->{started} = 1;
+	display($dbg_rlib,0,"remoteLibrary($this->{name})::start()");
 	$this->startDatabase();
 	remotePlaylist::initPlaylists($this);
+	$this->{state} = $DEVICE_STATE_READY;
+	DeviceManager::notifyDevice($this);
+	display($dbg_rlib,0,"remoteLibrary($this->{name})::start() returning");
 }
 
 
@@ -189,8 +194,8 @@ sub getParseParams
 	my ($this,$dbg,$dbg_name,) = @_;
 	my $cache_dir = $this->subDir('cache');
 	my $parse_params = {
-		dbg => $dbg_rlib,
-		dbg_name => "$dbg_name",
+		dbg => $dbg,
+		dbg_name => $dbg_name,
 		cache_file => "$cache_dir/$dbg_name.didl.txt",
 		dump_dir => $this->subDir('dump'),
 		raw => 0,
@@ -209,7 +214,7 @@ sub getTrack
 {
     my ($this,$id) = @_;
 	display($dbg_rlib,0,"getTrack($id)");
-	$this->start();
+	# $this->start();
 
 	my $dbh = db_connect($this->dbPath());
 	return if !$dbh;
@@ -226,7 +231,7 @@ sub getFolder
 {
     my ($this,$id) = @_;
 	display($dbg_rlib,0,"getFolder($id)");
-	$this->start();
+	# $this->start();
 
 	my $dbh = db_connect($this->dbPath());
 	return if !$dbh;
@@ -258,7 +263,7 @@ sub getSubitems
     $start ||= 0;
     $count ||= 999999;
     display($dbg_rlib,0,"get_subitems($table,$id,$start,$count)");
-	$this->start();
+	# $this->start();
 
 	my $rslt = shared_clone([]);
 	my $dbh = db_connect($this->dbPath());
@@ -319,7 +324,7 @@ sub getFolderMetadata
 {
 	my ($this,$id) = @_;
 	display($dbg_rlib,0,"getFolderMetadata($id)");
-	$this->start();
+	# $this->start();
 
 	my $folder = $this->getFolder($id);
 	return [] if !$folder;
@@ -335,7 +340,7 @@ sub getTrackMetadata
 {
 	my ($this,$id) = @_;
 	display($dbg_rlib,0,"getTrackMetadata($id)");
-	$this->start();
+	# $this->start();
 
 	my $track = $this->getTrack($id);
 	return [] if !$track;
@@ -360,7 +365,7 @@ sub getAndParseDidl
 	my $dbg = $params->{dbg};
 	my $dbg_name = $params->{dbg_name};
     display($dbg,0,"getAndParseDidl($dbg_name) table($table)");
-	$this->start();
+	# $this->start();
 
 	my $rslt = shared_clone([]);
 	my $didl = $this->didlRequest($params);
@@ -699,7 +704,7 @@ sub getPlaylists
 {
 	my ($this) = @_;
 	display($dbg_rlib,0,"getPlaylists()");
-	$this->start();
+	# $this->start();
 	return Playlist::getPlaylists($this);
 }
 
@@ -709,7 +714,7 @@ sub getPlaylist
 {
 	my ($this,$id) = @_;
 	display($dbg_rlib,0,"getPlaylists($id)");
-	$this->start();
+	# $this->start();
 	return if !remotePlaylist::initPlaylist($this,$id);
 	return Playlist::getPlaylist($this,$id);
 }
@@ -719,7 +724,7 @@ sub getPlaylistTrack
 {
     my ($this,$id,$version,$mode,$index) = @_;
 	display($dbg_rlib,0,"getPlaylistTrack($id,$version,$mode,$index)");
-	$this->start();
+	# $this->start();
 	return if !remotePlaylist::initPlaylist($this,$id);
 	my $playlist = Playlist::getPlaylist($this,$id);
 	return if !$playlist;
@@ -730,12 +735,172 @@ sub sortPlaylist
 {
     my ($this,$id,$shuffle) = @_;
 	display($dbg_rlib,0,"sortPlaylist($id,$shuffle)");
-	$this->start();
+	# $this->start();
 	return if !remotePlaylist::initPlaylist($this,$id);
 	my $playlist = Playlist::getPlaylist($this,$id);
 	return if !$playlist;
 	return $playlist->sortPlaylist($shuffle);
 }
+
+
+
+#======================================================================
+# updateIds, system info, etc
+#======================================================================
+# This code is currently unused, but, as far as it goes, it has
+# been tested, so I am keeping it ...
+
+
+my $dbg_update_id = 0;
+
+sub getSystemUpdateId
+	# Synchronous call to get the remoteLibrary's systemUpdateId
+{
+	my ($this) = @_;
+	display($dbg_update_id+1,0,"getSystemUpdateId()");
+	$this->{update_id} = -1 if !defined($this->{update_id});
+
+	my $params = $this->getParseParams($dbg_update_id+1,'update_id');
+	$params->{service} = 'ContentDirectory';
+	$params->{action} = 'GetSystemUpdateID';
+	$params->{args} = [];
+
+	my $data = $this->serviceRequest($params);
+	display($dbg_update_id+1,1,"got "._def($data));
+
+	if ($data)
+	{
+		my $id = $data->{Id} ||  '';
+		my $update_id = $id ? $id->{content} : '';
+		if ($this->{update_id} ne $update_id)
+		{
+			$this->{update_id} = $update_id;
+			warning($dbg_update_id,0,"$this->{name} update_id CHANGED($update_id)");
+		}
+	}
+
+	display($dbg_update_id+1,0,"getSystemUpdateId() done");
+}
+
+
+
+
+#---------------------------------------
+# subscription logic
+#---------------------------------------
+# This code does the following:
+#
+# (a) SUBSCRIBE to the remoteLibrary eventSubURL,
+# (b) get NOTIFY events via HTTPServer /remoteLibrary/event/uuid,
+# (c) parses the NOTIFY post_data
+#
+# Does nothing to handle subscription timeouts
+
+my $dbg_subscribe = 0;
+
+
+sub subscribe_msg
+	# returns a message to SUBSCRIBE or
+	# update a subscription to a remote device
+{
+	my ($this,$url) = @_;
+	my $msg = '';
+	$msg .= "SUBSCRIBE $url HTTP/1.1\r\n";
+	$msg .= "Cache-Control: no-cache\r\n";
+	$msg .= "Connection: Close\r\n";
+	$msg .= "Pragma: no-cache\r\n";
+	$msg .= "User-Agent: Artisan/2.0 UPnP/1.0\r\n";
+	$msg .= "NT: upnp:event\r\n";
+
+	if ($this->{sid})
+	{
+		$msg .= "SID: uuid:$this->{sid}\r\n";
+	}
+	else
+	{
+		$msg .= "Callback: <http://$server_ip:$server_port/remoteLibrary/event/$this->{uuid}>\r\n";
+	}
+
+	$msg .= "Timeout: Second-1800\r\n";
+	$msg .= "Host: $this->{ip}:$this->{port}\r\n";
+	$msg .= "\r\n";
+	return $msg;
+}
+
+
+sub subscribe
+	# Subscribe to the remoteLibrary's eventSubURL
+	# will result in NOTIFY messages to HTTPServer
+{
+	my ($this) = @_;
+	$this->{sid} ||= '';
+	my $dbg_name = "subscribe($this->{name})";
+
+	display($dbg_subscribe,0,$dbg_name);
+
+	my $service = $this->{services}->{ContentDirectory};
+	return error("could not find ContentDirectory service")
+		if !$service;
+
+	my $url = $service->{eventSubURL};
+	return error("No eventSubURL") if !$url;
+
+	my $request = $this->subscribe_msg($url);
+
+	my $response = $this->doRequest($request,$dbg_subscribe,$dbg_name);
+	return if $response->{error};
+
+	display_hash($dbg_subscribe,0,"$dbg_name response headers",$response->{headers});
+}
+
+
+
+
+
+sub handleEvent
+	# Called from HTTPServer on NOTIFY to /remoteLibrary/event/uuid
+	# gets the systemUpdateId and thousands of pairs of id/containerUpdateIds
+{
+	my ($this,$data) = @_;
+	$this->{event_num} ||= 0;
+	$this->{event_num} ++;
+	my $dbg_name = "event($this->{event_num})";
+	display($dbg_subscribe,0,"handleEvent($this->{name},$this->{event_num}) data=".length($data)." bytes");
+
+	my $params = $this->getParseParams($dbg_subscribe,$dbg_name);
+	my $xml = parseXML($data,$params);
+	return if !$xml;
+
+	# I get an array in 'e:property' of anonymous hashes
+
+	my $props = $xml->{'e:property'};
+	if (!$props || !ref($props) =~ /ARRAY/)
+	{
+		error("Unexpected event properties: "._def($props));
+		return;
+	}
+
+	my $system_update_id = '';
+	my $container_update_ids = '';
+	for my $prop (@$props)
+	{
+		# display_hash(0,0,"prop",$prop);
+		if ($prop->{SystemUpdateID})
+		{
+			$system_update_id = $prop->{SystemUpdateID}->{content};
+			warning($dbg_subscribe,1,"system_update_id=$system_update_id");
+		}
+		elsif ($prop->{ContainerUpdateIDs})
+		{
+			$container_update_ids = $prop->{ContainerUpdateIDs}->{content};
+			my @eles = split(/,/,$container_update_ids);
+			display($dbg_subscribe,1,"container_update_ids=".length($container_update_ids)." bytes ".scalar(@eles)." elements");
+		}
+	}
+}
+
+
+
 
 
 1;

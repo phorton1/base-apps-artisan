@@ -120,7 +120,7 @@ else
 
 addDevice(new localLibrary());
 addDevice(new localRenderer());
-DeviceManager::read_device_cache();
+# DeviceManager::read_device_cache();
 
 
 # (3) HTTP SERVER - establishes $server_ip

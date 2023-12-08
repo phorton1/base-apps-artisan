@@ -25,6 +25,13 @@ use Playlist;
 my $dbg_rpl = 0;
 
 
+my $WMP_PLAYLIST_KLUDGE = 1;
+	# This kludge will merely do a fake request
+	# to the remoteLibrary contentServer to Search
+	# for playlists, which *seems* to fix the WMP
+	# weirdness.
+
+
 sub playlistDbName
 {
 	my ($library) = @_;
@@ -47,7 +54,9 @@ sub initPlaylists
 	my ($library) = @_;
 	my $playlist_db = playlistDbName($library);
 	display($dbg_rpl,0,"initPlaylists($library->{name})");
-	display($dbg_rpl,1,"playlist_db = $playlist_db");
+	display($dbg_rpl,1,"playlist_db = $playlist_db exists = ".((-f $playlist_db) ? 1 : 0));
+
+	display($dbg_rpl,1,"after unlink exists = ".((-f $playlist_db) ? 1 : 0));
 
 	# if the playlists.db file does not exists
 	# create it from the database or a didl request
@@ -58,6 +67,26 @@ sub initPlaylists
 		$playlists = createPlaylistsDB($library,$playlist_db);
 		return if !$playlists;
 		display($dbg_rpl,1,"got ".scalar(@$playlists)." playlists from new playlists.db");
+	}
+
+	# otherwise, do a 'fake' request just to satisfy WMP
+
+	elsif ($WMP_PLAYLIST_KLUDGE)
+	{
+		display($dbg_rpl,1,"DOING FAKE SEARCH PLAYLISTS");
+		my $fake_name = 'FakeSearch(playlists)';
+		my $params = $library->getParseParams($dbg_rpl,$fake_name);
+		$params->{dbg} = $dbg_rpl;
+		$params->{service} = 'ContentDirectory';
+		$params->{action} = 'Search';
+		$params->{args} = [
+			ContainerID => 0,
+			SearchCriteria =>  'upnp:class derivedfrom "object.container.playlistContainer"',
+			Filter => '*',
+			StartingIndex => 0,
+			RequestedCount => 9999,
+			SortCriteria => '', ];
+		$library->serviceRequest($params);
 	}
 
 	return 1;

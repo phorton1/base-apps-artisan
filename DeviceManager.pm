@@ -1,13 +1,9 @@
 #---------------------------------------
 # DeviceManager.pm
 #---------------------------------------
-# TODO: support for 'online' versus 'offline' remoteDevices
-#     starting here with a monitoring thread to that works
-#     across invocations, going all the way up to the UI
-#     which should not use, or connect to, a device that
-#     is not online.
-# TODO: ContentDirectory1 SUBSCRIPTION caching/timeout
-
+# TODO: Sigh, still does not handle simple IP address changes of
+# remoteLibraries (including artisanRemotes), but I needed to
+# check this mess in.
 
 package DeviceManager;
 use strict;
@@ -20,17 +16,14 @@ use artisanUtils;
 use Device;
 
 
-
-my $dbg_devices = 0;
+my $dbg_devices = -1;
 	#  0 = show new and additions
 	# -1 = show status changes
-my $dbg_desc = -1;
+my $dbg_desc = 0;
 	#  0 = show HTTP gets
 	# -1 = show descriptor details
 	# -2 = show XML parsing
-my $dbg_cache = 0;
-	# 0 = read_headers
-	# -1 = write_header && read details
+
 
 my $DUMP_XML_FILES = 1;
 	# debugging
@@ -102,94 +95,6 @@ sub getDevicesByType
 
 
 
-#-------------------------------------
-# cache file
-#-------------------------------------
-
-sub read_device_cache
-{
-	display($dbg_cache,0,"read_device_cache()");
-
-	my $devs = [];
-	my $dev;
-	my $service;
-	my @lines = getTextLines($device_cache_file);
-	for my $line (@lines)
-	{
-		my $pos = index($line,"=");
-		my $lval = substr($line,0,$pos);
-		my $rval = substr($line,$pos+1);
-		if ($lval eq 'device')
-		{
-			display($dbg_cache+1,1,"cache_device($rval)");
-			$dev = shared_clone({
-				type => $rval,
-				services => shared_clone({}) });
-			$dev->{metadata} = shared_clone({})
-				if $rval eq $DEVICE_TYPE_RENDERER;
-			push @$devs,$dev;
-			$service = '';
-		}
-		elsif ($lval eq 'service')
-		{
-			display($dbg_cache+1,2,"service($rval)");
-			$service= shared_clone({});
-			$dev->{services}->{$rval} = $service;
-		}
-		else
-		{
-			display($dbg_cache+1,2+($service?1:0),"$lval='$rval'");
-			$service ?
-				$service->{$lval} = $rval :
-				$dev->{$lval} = $rval;
-		}
-	}
-
-	# call proper ctors
-
-	for $dev (@$devs)
-	{
-		my $device = $dev->{type} eq $DEVICE_TYPE_LIBRARY ?
-			 $dev->{remote_artisan} ?
-				remoteArtisan->new($dev) :
-				remoteLibrary->new($dev) :
-			remoteRenderer->new($dev);
-			push @$device_list,$device;
-	}
-}
-
-
-
-sub write_device_cache
-{
-	display($dbg_cache+1,0,"write_device_cache()");
-
-	my $text = '';
-	for my $device (@$device_list)
-	{
-		next if $device->{local};
-		$text .= "device=$device->{type}\n";
-		for my $field (sort keys %$device)
-		{
-			next if $field =~ /metadata|playlist|services/;
-			$text .= "$field=$device->{$field}\n";
-		}
-		for my $name (sort keys %{$device->{services}})
-		{
-			$text .= "service=$name\n";
-
-			my $service = $device->{services}->{$name};
-			for my $field (sort keys %$service)
-			{
-				$text .= "$field=$service->{$field}\n";
-			}
-		}
-	}
-	printVarToFile(1,$device_cache_file,$text);
-}
-
-
-
 
 #-------------------------------
 # process device XML
@@ -239,8 +144,6 @@ sub getDeviceXML
 	my $dev = shared_clone({
 		uuid => $uuid,
 		type => $type,
-		ip => $ip,
-		port => $port,
 		services => shared_clone({}), });
 
 	my $ua = LWP::UserAgent->new();
@@ -296,17 +199,26 @@ sub getDeviceXML
 
 		return !error("$type($uuid) $req could not find controlURL")
 			if !$xml_service->{controlURL};
-		# return !error("$type($uuid) $req could not find eventSubURL")
-		# 	if !$xml_service->{eventSubURL};
-		# return !error("$type($uuid) $req could not find SCPDURL")
-		# 	if !$xml_service->{SCPDURL};
+		return !error("$type($uuid) $req could not find eventSubURL")
+			if !$xml_service->{eventSubURL};
+		return !error("$type($uuid) $req could not find SCPDURL")
+			if !$xml_service->{SCPDURL};
 
 		$dev->{services}->{$req} = shared_clone({
 			name => $req,
 			controlURL => $xml_service->{controlURL},
-			#eventSubURL => $xml_service->{eventURL},
-			#SCPDURL => $xml_service->{SCPDURL},
+			eventSubURL => $xml_service->{eventSubURL},
+			SCPDURL => $xml_service->{SCPDURL},
 		});
+
+		# Unused, but tested code to get the Service Descriptor
+		#
+		# if ($dev->{services}->{$req}->{SCPDURL})
+		# {
+		# 	my $scpdurl = "http://$ip:$port$dev->{services}->{$req}->{SCPDURL}";
+		# 	my $scpd_id = "$type.$uuid.$req.SCPDURL";
+		# 	my $scpd_xml = get_xml($ua,$scpd_id,$scpdurl);
+		# }
 	}
 
 	display($dbg_desc+1,0,"getDeviceXML($type) returning");
@@ -317,34 +229,70 @@ sub getDeviceXML
 
 
 #-----------------------------------------------------------
-# called from SSDP
+# updateDevice() called from SSDP
 #-----------------------------------------------------------
+# I want to thread these so that they are not on the SSDP thread.
+# But, once again, I am afraid of re-entrancy issues, particularly
+# in creating new devices.  One more stab.
+#
+# I spent quite a bit of time 'solving' a problem with WMP Server.
+# If the " Windows Media Player Network Sharing Service" is stopped
+# and restarted, then, for some effing unknown reason, simply starting
+# a playlist no longer works correctly.
+#
+# After much messing around, I added $DEVICE_STATES and
+# $WMP_PLAYLIST_KLUDGE to remoteLibrary and remotePlaylist,
+# discovering that merely making a 'fake' request to the
+# WMP Server (to get the playlists) 'fixes' it.
+#
+# That's all I ahve to say for now. A complicated scheme to
+# accomodate some weird behavior from WMP's Server.
+
 
 sub notifyDevice
 	# notify of online change
 {
 	my ($device) = @_;
-	display($dbg_devices,0,"$device->{name} ".($device->{online} ? "ONLINE" : "OFFLINE"));
+	$system_update_id++;
+	display($dbg_devices,0,"my_update_id($system_update_id) $device->{name} ".($device->{online} ? "ONLINE" : "OFFLINE"));
 }
 
 
 sub updateDevice
 {
-	my ($type,$uuid,$state,$message) = @_;
+	my ($type,					# Currently only called with $DEVICE_TYPE_LIBRARY
+		$uuid,					# the UUID of the library
+		$state,					# can be blank, 'alive', 'byebye'
+		$message) = @_;			# the entire message received by SSDP
+
+	display_hash($dbg_devices+2,0,"MESSAGE",$message);
+
+	# Every message has a LOCATION
+	# We check for IP changes and notify UI if it changes
+
+	my $location = $message->{LOCATION} || '';
+	return error("No location for $type($uuid) state($state)")
+		if !$location;
+
+	return !error("$type($uuid) could not get ip:port from '$location'")
+		if $location !~ /^http:\/\/(\d+\.\d+\.\d+\.\d+):(\d+)\//;
+	my ($ip,$port) = ($1,$2);
+	display($dbg_desc+2,1,"ip:port = $ip:$port");
+
 	my $device = findDevice($type,$uuid);
 
 	my $notify = 0;
 	if (!$device)
 	{
-		display($dbg_devices,-1,"updateDevice(NEW) $type $uuid $state");
-		my $location = $message->{LOCATION} || '';
-		return error("No location for $type($uuid) state($state)")
-			if !$location;
-		display($dbg_devices+1,-2,"location=$location");
+		display($dbg_devices,1,"updateDevice(NEW) $type $uuid $state");
+
+		display($dbg_devices+1,2,"location=$location");
 
 		my $dev = getDeviceXML($type,$uuid,$location);
 		return if !$dev;
 
+		$dev->{ip} = $ip;
+		$dev->{port} = $port;
 		$dev->{online} = time();
 		$dev->{max_age} = $DEFAULT_MAX_AGE;
 
@@ -354,39 +302,108 @@ sub updateDevice
 				remoteLibrary->new($dev) :
 			remoteRenderer->new($dev);
 
+		# JIC we happen to start with a bye-bye message
+
 		if ($state eq 'byebye')
 		{
 			$device->{online} = '';
 			$device->{max_age} = 0;
 		}
+
+		# Unused code to subscribe to remoteLibrary's eventSubURL
+		#
+		# else
+		# {
+		# 	$device->subscribe()
+		# 		if $device->can('subscribe');
+		# }
 
 		push @$device_list,$device;
 		$notify = 1;
 	}
+	elsif ($state eq 'byebye')
+	{
+		$notify = $device->{online} ? 1 : 0;
+		$device->{online} = '';
+		$device->{max_age} = 0;
+		display($dbg_devices+1,1,"updateDevice STATE_CHG(byebye) $type $device->{name} notify=$notify");
+	}
 	else
 	{
-		if ($state eq 'byebye')
+		$notify = $device->{online} ? 0 : 1;
+
+		my $cache_ctrl = $message->{CACHE_CONTROL} || '';
+		my $max_age = $cache_ctrl =~ /max-age=(\d+)$/ ? $1 : $DEFAULT_MAX_AGE;
+		display($dbg_devices+1,-1,"updateDevice STATE_CHG(alive,$max_age) $type $device->{name}")
+			if !$device->{online};
+		$device->{online} = time();
+		$device->{max_age} = $max_age;
+	}
+
+	# This is completely useless for local WMP which just changes
+	# ip's every minute because we SEARCH on 127.0.0.1 and it sends
+	# ALIVE on 10.237.50.101
+
+	# if ($ip ne '127.0.0.1' && (
+	# 	$device->{ip} ne $ip ||
+	# 	$device->{port} ne $port))
+	# {
+	# 	display($dbg_devices+1,-1,"updateDevice IP_PORT_CHG from($device->{ip}:$device->{port}) to ($ip:$port)");
+	# 	$device->{ip} = $ip;
+	# 	$device->{port} = $port;
+	# 	$notify = 1;
+	# }
+
+	# Unused code to asynchronously get the remoteLibrary's systemUpdateId
+	#
+	# $device->getSystemUpdateId()
+	# 	if $device->can('getSystemUpdateId');
+
+	if ($notify)
+	{
+		if ($device->{remote_artisan})
 		{
-			$notify = $device->{online} ? 1 : 0;
-			$device->{online} = '';
-			$device->{max_age} = 0;
-			display($dbg_devices+1,-1,"updateDevice STATE_CHG(byebye) $type $device->{name}")
+			notifyDevice($device)
 		}
-		else
+		else	# notify offline immediately, online calls startThread()
 		{
-			$notify = $device->{online} ? 0 : 1;
-			my $cache_ctrl = $message->{CACHE_CONTROL} || '';
-			my $max_age = $cache_ctrl =~ /max-age=(\d+)$/ ? $1 : $DEFAULT_MAX_AGE;
-			display($dbg_devices+1,-1,"updateDevice STATE_CHG(alive,$max_age) $type $device->{name}")
-				if !$device->{online};
-			$device->{online} = time();
-			$device->{max_age} = $max_age;
+			$device->{state} = $DEVICE_STATE_NONE;
+			notifyDevice($device) if !$device->{online};
+			$device->startThread() if $device->{online};
 		}
 	}
-	write_device_cache();
-	notifyDevice($device) if $notify;
 }
 
+
+
+sub invalidateOldDevices
+	# This *should* work. Never seen it happen
+{
+	display($dbg_devices+2,0,"Invalidate Devices");
+
+	for my $device (@$device_list)
+	{
+		# we WILL keep track of remote artisan's states
+		# all external devices are currently libraries
+
+		next if $device->{local};
+		next if $device->{type} ne $DEVICE_TYPE_LIBRARY;
+		next if !$device->{online};
+
+		my $now = time();
+		my $timeout = $device->{online} + $device->{max_age};
+		display($dbg_devices+2,1,"checking($device->{name} now=$now timeout=$timeout");
+
+		if ($now > $timeout)
+		{
+			$device->{online} = '';
+			$device->{max_age} = 0;
+			warning($dbg_devices+1,0,"invalidating($device->{name})");
+			notifyDevice($device);
+		}
+	}
+
+}
 
 
 

@@ -18,6 +18,22 @@ use Socket;
 use Sys::Hostname;
 use Pub::Utils qw(!:win_only);
 
+our $system_update_id:shared = 1;
+	# global system_update_id, currently used to detect
+	# changes to devices and communicate them to the UI
+our $DEVICE_STATE_NONE  = 0;
+our $DEVICE_STATE_INIT  = 1;
+our $DEVICE_STATE_READY = 2;
+	# Initially for remoteLibraries.
+	# localLibrary will start at DEVICE_STATE_READY as the database scan
+	#	is completed before the Server even starts.
+	# remoteLibraries will start at $DEVICE_STATE_OFFLINE
+	#   if they are 'online' then,  if the playlists are being built
+	#   (on a thread) the state will be INITIALIZING.
+	# the UI will only show, and allow devices (Libraries) that
+	#   are READY.
+
+
 
 our $DEVICE_TYPE_LIBRARY  = 'library';
 our $DEVICE_TYPE_RENDERER = 'renderer';
@@ -44,6 +60,11 @@ BEGIN
 	# our constants
 
 	our @EXPORT = qw (
+
+		$system_update_id
+		$DEVICE_STATE_NONE
+		$DEVICE_STATE_INIT
+		$DEVICE_STATE_READY
 
 		$DEVICE_TYPE_LIBRARY
 		$DEVICE_TYPE_RENDERER

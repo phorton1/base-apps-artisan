@@ -199,8 +199,8 @@ function dialog(title, message)
 			autoOpen: false,
 			title: title,
 			close: function() {
-		$(this).remove();
-		}
+				$(this).remove();
+			}
 	});
 }
 
@@ -385,7 +385,16 @@ function appendRadioButton(menu_name, name, id, fxn, param1, param2)
 	//		 playlist_003
 	//       renderer_90830984feed
 	// as well as the specific function (i.e. setPlaylist) and
-	// parametrers (setPlaylist(library_uuid, playist_id)
+	// parameters (setPlaylist(library_uuid, playist_id)
+	//
+	// Creates a <div> with an id of MENUNAME_id_div that contains
+	//     an <input> with an id of MENUNAME_id,
+	//     a <label> 'for' the id MENUNAME_id
+	//     and a <br>
+	//
+	// These have to be created within a div in this complicated
+	//    manner if they are to be removed atomically during device
+	//    management, sigh.
 {
 	display(dbg_menu,1,"appendRadioButton(" + commaJoin([menu_name, name, id, fxn, param1, param2]) + ")" );
 
@@ -393,27 +402,45 @@ function appendRadioButton(menu_name, name, id, fxn, param1, param2)
 	var hash_id = '#' + use_id;
 
 	$('#' + menu_name + '_menu').append(
-		$('<input>').prop({
-			type: 	'radio',
-			name: 	menu_name + "_button",
-				// this is what groups them into a radio group.
-				// we are calling them renderer_button, etc.
-				// which is different than the menu itself.
-			id: 	use_id,
-		})
-	).append(
-		$('<label>').prop({
-			for: use_id,
-		}).html(name)
-	).append(
-		$('<br>'));
+
+		$('<div>').prop({
+			id: use_id + '_div' })
+
+		.append(
+			$('<input>').prop({
+				type: 	'radio',
+				name: 	menu_name + "_button",
+					// this is what groups them into a radio group.
+					// we are calling them renderer_button, etc.
+					// which is different than the menu itself.
+				id: 	use_id,
+			})
+		).append(
+			$('<label>').prop({
+				for: use_id,
+			}).html(name)
+		).append(
+			$('<br>'))
+
+	);
 
 	$(hash_id).attr('onClick',fxn + "('" + param1 + "','" + param2 + "')");
 }
 
 
+
 function buildHomeMenu(array, menu_name, id_field, fxn, param1_field, param2_field)
-	// builds the menu_playlist, menu_renderer or menu_library in the page_home_menu.html
+	// called from init_page_home(), this builds the INITIAL/FULL lists of
+	// 		Playlist, Renderer, and Library buttons.
+	// complicated.  Accepts an array of 'items' where the item must contain
+	// the correct fields according to the other parameters:
+	//
+	//     menu_name will be 'playlist', 'renderer', or 'library'
+	//     id_field will be 'id' for playlists, or uuid for renderers and library
+	//     fxn will be 'selectDevice' or 'setPlaylist'
+	//     param1_field,param2_field will be
+	//			'uuid','id' for playlists (the library uuid, and the playlist id)
+	//			'type'
 {
 	display(dbg_menu,0,"buildHomeMenu(" + commaJoin([ menu_name, id_field, fxn, param1_field, param2_field ]) + ")");
 

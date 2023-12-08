@@ -213,7 +213,8 @@ sub handle_connection
 	my $use_dbg_request = $dbg_request;
 	my $use_dbg_response = $dbg_response;
 
-	$use_dbg_request += 2  if $request_path =~ /^\/webui\/renderer\/(.*)\/update|^\/webui\/debug_output\//; #|\/^ContentDirectory1\.xml|\/ServerDesc\.xml/;
+	$use_dbg_request += 2  if $request_path =~ /^\/webui\/update|^\/webui\/debug_output\//;
+	#|\/^ContentDirectory1\.xml|\/ServerDesc\.xml/;
 	# $use_dbg_request -= 2  if $request_method =~ /SUBSCRIBE/;
 	# $use_dbg_response -= 2  if $request_method =~ /SUBSCRIBE/;
 
@@ -224,11 +225,14 @@ sub handle_connection
 	}
 
 	#=================================
-    # Parse POST request XML
+    # Get POST/NOTIFY data
 	#=================================
+	# NOTIFY is currently unused, but needed to support
+	# remoteLibrary::subscribe()
 
 	my $post_data = '';
-	if ($request_method eq "POST")
+	if ($request_method eq "POST" ||
+		$request_method eq "NOTIFY" )
 	{
 		my $content_length = $request_headers{CONTENT_LENGTH};
 		if (defined($content_length) && length($content_length) > 0)
@@ -283,7 +287,6 @@ sub handle_connection
 	#------------------------------------------------------------
 	# These are Post Requests, and are only for us BEING a DLNA Server/Renderer
 	# and, of course, supported only for the localLibrary and localRenderer
-
 
 	if ($request_path eq '/upnp/control/ContentDirectory1')
 	{
@@ -347,6 +350,23 @@ sub handle_connection
 	#------------------------------------------------------------
 	# all other calls
 	#------------------------------------------------------------
+	# currently unused NOTIFY events from remoteLibraries we are 'subscribed' to.
+
+	elsif ($request_path =~ s/\/remoteLibrary\/event\///)
+	{
+		display(0,0,"got /remoteLibrary/event to $request_path");
+		my $library = findDevice($DEVICE_TYPE_LIBRARY,$request_path);
+		if (!$library)
+		{
+			$response = http_header({ status_code => 401 }).error("Could not find library $request_path");
+		}
+		else
+		{
+			$library->handleEvent($post_data);
+			$response = http_header();
+		}
+	}
+
 	# generic icon request
 
 	elsif ($request_path =~ /^\/(favicon.ico|icons)/)

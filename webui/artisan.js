@@ -131,15 +131,98 @@ $( window ).resize(function()
 });
 
 
+
+
+var update_id = 1;
+
 function idle_loop()
 {
 	display(dbg_loop,0,"idle_loop(" + current_page + ")");
 	idle_count++;
 
-	renderer_onidle();
+	// Now ALWAYS calls the server with the update_id and possibly the renderer_uuid
+
+	var data = { update_id: update_id };
+	if (current_renderer.uuid != html_renderer.uuid)
+		data.renderer_uuid = current_renderer.uuid;
+
+	$.ajax({
+		async: true,
+		url: '/webui/update',
+		data: data,
+
+		success: function (result)
+		{
+			if (result.update_id)
+				update_id = result.update_id;
+			if (result.libraries)
+				updateLibraries(result.libraries);
+			if (result.renderer)
+			{
+				current_renderer = result.renderer;
+				in_slider = false;
+				in_playlist_slider = false;
+				in_playlist_spinner = false;
+				update_renderer_ui();
+			}
+		},
+
+		error: function() { onUpdateError() },
+		timeout: 3000,
+	});
+
 
 	setTimeout("idle_loop();", REFRESH_TIME);
 }
+
+
+function onUpdateError()
+{
+	error("UPDATE ERROR: There was an error calling /webui/update");
+}
+
+
+function updateLibraries(libraries)
+	// initial implementation is obtuse.
+	// I need to rework this from the beginninng
+{
+	var set_current = false;
+	var any_changed = false;
+	for (var library of libraries)
+	{
+		display(0,0,"library=" + library.name + "(" + library.uuid + ")");
+		var use_id = 'library_' + library.uuid;
+		var exists = document.getElementById(use_id);
+		if (!exists && library.online != '')
+		{
+			any_changed = true;
+			appendRadioButton(
+				'library',
+				library.name,
+				library.uuid,
+				'selectDevice',
+				'library',
+				library.uuid );
+		}
+		else if (exists && library.online == '')
+		{
+			any_changed = true;
+			if (library.uuid == current_library.uuid)
+				set_current = true;
+
+			// had to add a wrapper _div to get delete to work as an atomic function
+			$('#' + use_id + '_div').remove();
+		}
+	}
+	if (any_changed)
+	{
+		$('#library_menu').buttonset('refresh');
+		if (set_current)
+			selectDefaultDevice('library');
+	}
+}
+
+
 
 
 function toggleFullScreen()

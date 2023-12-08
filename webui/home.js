@@ -83,23 +83,29 @@ function load_device_list(type)
 				type: DEVICE_TYPE_RENDERER });
 
 		buildHomeMenu(result,type,'uuid','selectDevice','type','uuid');
-
-		var last_cookie = 'last_' + type;
-		var last_uuid = getCookie(last_cookie);
-		var found = document.getElementById(type + '_' + last_uuid );
-		if (!found)
-		{
-			var buttons = document.getElementsByName(type + '_button');
-			found = buttons[0];
-		}
-
-		// this should never fail as there should ALWAYS be at least
-		// the Perl localLibrary and localRenderer (and HTML Renderer).
-		// We have to get the uuid back from the element's id
-
-		var found_uuid = found.id.replace(type + '_','');
-		selectDevice(type,found_uuid);
+		selectDefaultDevice(type);
 	});
+}
+
+
+
+function selectDefaultDevice(type)
+{
+	var last_cookie = 'last_' + type;
+	var last_uuid = getCookie(last_cookie);
+	var found = document.getElementById(type + '_' + last_uuid );
+	if (!found)
+	{
+		var buttons = document.getElementsByName(type + '_button');
+		found = buttons[0];
+	}
+
+	// this should never fail as there should ALWAYS be at least
+	// the Perl localLibrary and localRenderer (and HTML Renderer).
+	// We have to get the uuid back from the element's id
+
+	var found_uuid = found.id.replace(type + '_','');
+	selectDevice(type,found_uuid);
 }
 
 
@@ -248,7 +254,7 @@ function renderer_command(command,args)
 }
 
 
-function renderer_onidle()
+function unused_renderer_onidle()
 {
 	display(dbg_loop,0,"renderer_onidle");
 	if (current_renderer && !in_slider)

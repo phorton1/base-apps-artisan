@@ -1,4 +1,6 @@
 # Redesign1
+# PRH - all 'redsign' MD files are garbage, but they contain gems.
+
 
 The basic notion of this redesign is to get rid of 'Playlist Sources',
 and to bind Playlists to libraries for compatibility with WMP and

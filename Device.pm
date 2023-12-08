@@ -62,7 +62,7 @@ use httpUtils;
 
 my $dbg_device = 0;
 
-my $dbg_dlna = 0;
+my $dbg_dlna = 1;
 
 my $dbg_response = 0;
 
@@ -76,7 +76,7 @@ sub new
 	}
 	else
 	{
-		display($dbg_device,0,"Device::new($params->{type} $params->{name}=$params->{uuid}"),
+		display($dbg_device,0,"Device::new($params->{type} $params->{name}=$params->{uuid})"),
 	}
 	my $this = shared_clone($params);
 		# local 		=> $is_local,
@@ -201,26 +201,12 @@ sub serviceRequest
 	my $action = $params->{action};
 	my $args = $params->{args};
 
-	display($dbg_dlna,0,"serviceRequest($dbg_name) service($service_name) action($action)");
+	display($dbg,0,"serviceRequest($dbg_name) service($service_name) action($action)");
 
 	my $service = $this->{services}->{$service_name};
 	if (!$service)
 	{
 		$params->{error} = error("$dbg_name could not find service '$service_name'");
-		return;
-	}
-
-	display($dbg_dlna,0,"creating socket to $this->{ip}:$this->{port}");
-
-	my $sock = IO::Socket::INET->new(
-		PeerAddr => $this->{ip},
-		PeerPort => $this->{port},
-		Proto => 'tcp',
-		Type => SOCK_STREAM,
-		Blocking => 1);
-	if (!$sock)
-	{
-		$params->{error} = error("$dbg_name could not open socket to $this->{ip}:$this->{port}");
 		return;
 	}
 
@@ -256,89 +242,19 @@ sub serviceRequest
 	$request .= "\r\n";
 	$request .= $content;
 
-	# send the action
 
-	display($dbg_dlna+2,1,"sending $dbg_name request");
-	display($dbg_dlna+2,1,"--------------- request --------------------");
-	display($dbg_dlna+2,1,$request);
-	display($dbg_dlna+2,1,"--------------------------------------------");
-
-	if (!$sock->send($request))
+	my $response = $this->doRequest($request,$dbg,$dbg_name);
+	if ($response->{error})
 	{
-		$params->{error} = error("$dbg_name could not send message to renderer socket");
-		$sock->close();
+		$params->{error} = $response->{error};
 		return;
 	}
-
-	# get the response
-
-	display($dbg_dlna,1,"getting action($action) response");
-
-	my %headers;
-	my $first_line = 1;
-	my $line = <$sock>;
-	while (defined($line) && $line ne "\r\n")
-	{
-		chomp($line);
-		$line =~ s/\r|\n//g;
-		display($dbg_dlna+1,2,"line=$line");
-		if ($line =~ /:/)
-		{
-			my ($name, $value) = split(':', $line, 2);
-			$name = lc($name);
-			$name =~ s/-/_/g;
-			$value =~ s/^\s//g;
-			$headers{$name} = $value;
-		}
-		$line = <$sock>;
-	}
-
-	# WDTV puts out chunked which I think means that
-	# the length is on a the next line, in hex
-
-	my $length = $headers{content_length};
-	display($dbg_dlna+1,2,"content_length=$length");
-
-	if (!$length &&
-		 $headers{transfer_encoding} &&
-		 $headers{transfer_encoding} eq 'chunked')
-	{
-		my $hex = <$sock>;
-		$hex =~ s/^\s*//g;
-		$hex =~ s/\s*$//g;
-		$length = hex($hex);
-		display($dbg_dlna+1,2,"using chunked transfer_encoding($hex) length=$length");
-	}
-
-	# continuing ...
-
-	if (!$length)
-	{
-		$params->{error} = error("No content length returned by $dbg_name response");
-		$sock->close();
-		return;
-	}
-
-
-	my $data;
-	my $bytes = $sock->read($data,$length);
-	$sock->close();
-
-	if (!$bytes || $bytes != $length)
-	{
-		$params->{error} = error("$dbg_name could not read $length bytes from socket");
-		return;
-	}
+	my $data = $response->{content};
 	if (!$data)
 	{
-		$params->{error} = error("No data found in $dbg_name response");
+		$params->{error} = error("No data returned from doRequest($dbg_name)");
 		return;
 	}
-
-	display($dbg_dlna+1,2,"got "._def($bytes)." bytes from socket");
-	display($dbg_dlna+1,2,"--------------- response --------------------");
-	display($dbg_dlna+1,2,"'$data'");
-	display($dbg_dlna+1,2,"--------------------------------------------");
 
 	my $xml = parseXML($data,$params);
 	return if !$xml;
@@ -373,6 +289,107 @@ sub serviceRequest
 
 }   # serviceRequest()
 
+
+
+
+sub doRequest
+{
+	my ($this,$request,$dbg,$dbg_name) = @_;
+	$dbg ||= 0;
+	$dbg_name ||= 'doRequest()';
+
+	my $response = {
+		error => '',
+		headers => {},
+		content => '' };
+	my $headers = $response->{headers};
+
+	display($dbg,0,"doRequest($dbg_name) to $this->{ip}:$this->{port}");
+
+	my $sock = IO::Socket::INET->new(
+		PeerAddr => $this->{ip},
+		PeerPort => $this->{port},
+		Proto => 'tcp',
+		Type => SOCK_STREAM,
+		Blocking => 1);
+
+	if ($sock)
+	{
+		display($dbg+2,1,"sending $dbg_name request");
+		display($dbg+2,1,"--------------- request --------------------");
+		display($dbg+2,1,$request);
+		display($dbg+2,1,"--------------------------------------------");
+
+		if ($sock->send($request))
+		{
+			display($dbg,1,"getting($dbg_name) response");
+
+			my $first_line = 1;
+			my $line = <$sock>;
+			while (defined($line) && $line ne "\r\n")
+			{
+				chomp($line);
+				$line =~ s/\r|\n//g;
+				display($dbg+1,2,"header_line=$line");
+				if ($line =~ /:/)
+				{
+					my ($name, $value) = split(':', $line, 2);
+					$name = lc($name);
+					$name =~ s/-/_/g;
+					$value =~ s/^\s//g;
+					$headers->{$name} = $value;
+				}
+				$line = <$sock>;
+			}
+
+			# WDTV puts out chunked which I think means that
+			# the length is on a the next line, in hex
+
+			my $length = $headers->{content_length};
+			display($dbg+1,2,"content_length=$length");
+
+			if (!$length &&
+				 $headers->{transfer_encoding} &&
+				 $headers->{transfer_encoding} eq 'chunked')
+			{
+				my $hex = <$sock>;
+				$hex =~ s/^\s*//g;
+				$hex =~ s/\s*$//g;
+				$length = hex($hex);
+				display($dbg+1,2,"using chunked transfer_encoding($hex) length=$length");
+			}
+
+			if ($length)
+			{
+				my $bytes = $sock->read($response->{content},$length);
+				if (!$bytes || $bytes != $length)
+				{
+					$response->{error} = error("$dbg_name could not read $length bytes from socket");
+				}
+				elsif (!$response->{content})
+				{
+					$response->{error} = error("No content found in $dbg_name response");
+					return;
+				}
+			}
+		}
+		else
+		{
+			$response->{error} = error("$dbg_name could not send request to socket");
+		}
+
+		$sock->close();
+	}
+	else
+	{
+		$response->{error} = error("$dbg_name could not open socket to $this->{ip}:$this->{port}");
+	}
+
+	display($dbg,0,"doRequest($dbg_name) returning ".scalar(keys %$headers)." headers and ".length($response->{content})." bytes of content")
+		if !$response->{error};
+
+	return $response;
+}
 
 
 

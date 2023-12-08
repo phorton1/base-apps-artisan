@@ -43,6 +43,7 @@ sub new
 	my $this = $class->SUPER::new($params);
 	bless $this,$class;
 	$this->{remote_artisan} = 1;
+	$this->{state} = $DEVICE_STATE_READY;
 	return $this;
 }
 

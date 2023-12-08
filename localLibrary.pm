@@ -44,7 +44,9 @@ sub new
 		uuid  => $this_uuid,
 		name  => $program_name,
 		ip    => $server_ip,
-		port  => $server_port });
+		port  => $server_port,
+		online => time(),
+		state  => $DEVICE_STATE_READY });
 	bless $this,$class;
 	return $this;
 }
