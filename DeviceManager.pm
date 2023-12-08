@@ -1,9 +1,6 @@
 #---------------------------------------
 # DeviceManager.pm
 #---------------------------------------
-# TODO: Sigh, still does not handle simple IP address changes of
-# remoteLibraries (including artisanRemotes), but I needed to
-# check this mess in.
 
 package DeviceManager;
 use strict;
@@ -269,6 +266,9 @@ sub updateDevice
 
 	# Every message has a LOCATION
 	# We check for IP changes and notify UI if it changes
+	# Maps 127.0.0.1 to $server_ip to handle the fact
+	# that we have to M-SEARCH for local WMP on 127.0.0.1, but
+	# it NOTIFIES alive on 10.237.50.101
 
 	my $location = $message->{LOCATION} || '';
 	return error("No location for $type($uuid) state($state)")
@@ -279,9 +279,20 @@ sub updateDevice
 	my ($ip,$port) = ($1,$2);
 	display($dbg_desc+2,1,"ip:port = $ip:$port");
 
+	if ($ip eq '127.0.0.1')
+	{
+		display($dbg_devices+1,1,"mapping 127.0.0.1 to $server_ip");
+		$ip = $server_ip;
+	}
+
 	my $device = findDevice($type,$uuid);
 
 	my $notify = 0;
+		# -1 = offline,
+		#  1 = online
+	my $ip_change = 0;
+		# did the ip address change?
+
 	if (!$device)
 	{
 		display($dbg_devices,1,"updateDevice(NEW) $type $uuid $state");
@@ -306,8 +317,13 @@ sub updateDevice
 
 		if ($state eq 'byebye')
 		{
+			$notify = -1;
 			$device->{online} = '';
 			$device->{max_age} = 0;
+		}
+		else
+		{
+			$notify = 1;
 		}
 
 		# Unused code to subscribe to remoteLibrary's eventSubURL
@@ -319,19 +335,17 @@ sub updateDevice
 		# }
 
 		push @$device_list,$device;
-		$notify = 1;
 	}
 	elsif ($state eq 'byebye')
 	{
-		$notify = $device->{online} ? 1 : 0;
+		$notify = -1 if $device->{online};
 		$device->{online} = '';
 		$device->{max_age} = 0;
 		display($dbg_devices+1,1,"updateDevice STATE_CHG(byebye) $type $device->{name} notify=$notify");
 	}
 	else
 	{
-		$notify = $device->{online} ? 0 : 1;
-
+		$notify = 1 if !$device->{online};
 		my $cache_ctrl = $message->{CACHE_CONTROL} || '';
 		my $max_age = $cache_ctrl =~ /max-age=(\d+)$/ ? $1 : $DEFAULT_MAX_AGE;
 		display($dbg_devices+1,-1,"updateDevice STATE_CHG(alive,$max_age) $type $device->{name}")
@@ -340,37 +354,46 @@ sub updateDevice
 		$device->{max_age} = $max_age;
 	}
 
-	# This is completely useless for local WMP which just changes
-	# ip's every minute because we SEARCH on 127.0.0.1 and it sends
-	# ALIVE on 10.237.50.101
 
-	# if ($ip ne '127.0.0.1' && (
-	# 	$device->{ip} ne $ip ||
-	# 	$device->{port} ne $port))
-	# {
-	# 	display($dbg_devices+1,-1,"updateDevice IP_PORT_CHG from($device->{ip}:$device->{port}) to ($ip:$port)");
-	# 	$device->{ip} = $ip;
-	# 	$device->{port} = $port;
-	# 	$notify = 1;
-	# }
+	# detect IP or PORT changes
+
+	if ($device->{ip} ne $ip ||
+		$device->{port} ne $port)
+	{
+		display($dbg_devices+1,-1,"updateDevice IP_PORT_CHG from($device->{ip}:$device->{port}) to ($ip:$port)");
+		$device->{ip} = $ip;
+		$device->{port} = $port;
+		$ip_change = 1;
+	}
 
 	# Unused code to asynchronously get the remoteLibrary's systemUpdateId
 	#
 	# $device->getSystemUpdateId()
 	# 	if $device->can('getSystemUpdateId');
 
-	if ($notify)
+	#----------------------------------------------
+	# notification
+	#----------------------------------------------
+	# There are only two kinds of devices here:
+	# remoteLibraries and remoteArtisans.
+	#
+	# We simply notify remoteArtisan on any changes and it just works.
+	# But for WMP we can only notify immediately if going offline.
+	# Otherwise we have to do the $WMP_PLAYLIST_KLUDGE
+
+	if ($device->{remote_artisan})
 	{
-		if ($device->{remote_artisan})
-		{
-			notifyDevice($device)
-		}
-		else	# notify offline immediately, online calls startThread()
-		{
-			$device->{state} = $DEVICE_STATE_NONE;
-			notifyDevice($device) if !$device->{online};
-			$device->startThread() if $device->{online};
-		}
+		notifyDevice($device) if $notify || $ip_change;
+	}
+	elsif ($notify == -1)		# offline
+	{
+		$device->{state} = $DEVICE_STATE_NONE;
+		notifyDevice($device);
+	}
+	elsif ($notify || $ip_change)
+	{
+		$device->{state} = $DEVICE_STATE_NONE;
+		$device->startThread();
 	}
 }
 
