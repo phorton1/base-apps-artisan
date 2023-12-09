@@ -558,7 +558,7 @@ EOXML
             <service>
                 <serviceType>urn:schemas-upnp-org:service:ContentDirectory:1</serviceType>
                 <serviceId>urn:upnp-org:serviceId:ContentDirectory</serviceId>
-                <SCPDURL>ContentDirectory1.xml</SCPDURL>
+                <SCPDURL>/ContentDirectory1.xml</SCPDURL>
                 <controlURL>/upnp/control/ContentDirectory1</controlURL>
                 <eventSubURL>/upnp/event/ContentDirectory1</eventSubURL>
             </service>

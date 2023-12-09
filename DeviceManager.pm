@@ -24,6 +24,10 @@ my $dbg_desc = 0;
 
 my $DUMP_XML_FILES = 1;
 	# debugging
+my $GET_SERVICE_DESCRIPTORS = 1;
+	# Get Service Descriptor XML from SCPDURL
+	# Currently unused but useful for understanding Devices
+
 
 
 BEGIN
@@ -208,14 +212,14 @@ sub getDeviceXML
 			SCPDURL => $xml_service->{SCPDURL},
 		});
 
-		# Unused, but tested code to get the Service Descriptor
-		#
-		# if ($dev->{services}->{$req}->{SCPDURL})
-		# {
-		# 	my $scpdurl = "http://$ip:$port$dev->{services}->{$req}->{SCPDURL}";
-		# 	my $scpd_id = "$type.$uuid.$req.SCPDURL";
-		# 	my $scpd_xml = get_xml($ua,$scpd_id,$scpdurl);
-		# }
+		# Unused, but tested code to get the Service Descriptors
+
+		if ($GET_SERVICE_DESCRIPTORS)
+		{
+			my $scpdurl = "http://$ip:$port$dev->{services}->{$req}->{SCPDURL}";
+			my $scpd_id = "$type.$uuid.$req.SCPDURL";
+			my $scpd_xml = get_xml($ua,$scpd_id,$scpdurl);
+		}
 	}
 
 	display($dbg_desc+1,0,"getDeviceXML($type) returning");
@@ -381,19 +385,22 @@ sub updateDevice
 	# But for WMP we can only notify immediately if going offline.
 	# Otherwise we have to do the $WMP_PLAYLIST_KLUDGE
 
-	if ($device->{remote_artisan})
+	if ($device->{type} eq $DEVICE_TYPE_LIBRARY)
 	{
-		notifyDevice($device) if $notify || $ip_change;
-	}
-	elsif ($notify == -1)		# offline
-	{
-		$device->{state} = $DEVICE_STATE_NONE;
-		notifyDevice($device);
-	}
-	elsif ($notify || $ip_change)
-	{
-		$device->{state} = $DEVICE_STATE_NONE;
-		$device->startThread();
+		if ($device->{remote_artisan})
+		{
+			notifyDevice($device) if $notify || $ip_change;
+		}
+		elsif ($notify == -1)		# offline
+		{
+			$device->{state} = $DEVICE_STATE_NONE;
+			notifyDevice($device);
+		}
+		elsif ($notify || $ip_change)
+		{
+			$device->{state} = $DEVICE_STATE_NONE;
+			$device->startThread();
+		}
 	}
 }
 
