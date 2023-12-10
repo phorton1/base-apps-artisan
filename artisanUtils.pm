@@ -18,6 +18,10 @@ use Socket;
 use Sys::Hostname;
 use Pub::Utils qw(!:win_only);
 
+
+my $USE_MINI_LIBRARY_FOR_ANDROID = 0;
+
+
 our $system_update_id:shared = 1;
 	# global system_update_id, currently used to detect
 	# changes to devices and communicate them to the UI
@@ -167,8 +171,16 @@ $artisan_perl_dir = "./" if $artisan_perl_dir eq '/';
 
 our $program_name = 'Artisan Perl';
 our $this_uuid = '56657273-696f-6e34-4d41-' . $ENV{COMPUTERNAME};	# '20231112feed';
+
 our $mp3_dir = "/mp3s";
 our $mp3_dir_RE = '\/mp3s';
+
+if ($USE_MINI_LIBRARY_FOR_ANDROID)
+{
+	$mp3_dir = "/mp3s_mini_android";
+	$mp3_dir_RE = '\/mp3s_mini_android';
+}
+
 
 $data_dir = "$mp3_dir/_data";
 $temp_dir = "/base_data/temp/artisan";
