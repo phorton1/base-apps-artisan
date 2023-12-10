@@ -770,6 +770,7 @@ sub add_folder
 			dirtype   	  => $split->{type},
 			path  	      => $path,
 			has_art   	  => $has_art,
+			year_str      => $split->{year_str} || '',
 			genre         => $is_album ? $split->{class} : '',
 			title   	  => $is_album ? clean_str($split->{album_title}) : pathName($path),
 			artist        => $is_album ? clean_str($split->{album_artist}) : '',

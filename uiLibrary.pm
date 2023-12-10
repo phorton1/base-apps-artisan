@@ -284,7 +284,8 @@ sub library_dir_element
 
 	if ($library->{uuid} eq $this_uuid &&
 		$rec->{dirtype} eq 'album' &&
-		$rec->{path} !~ /\/dead/i)
+		$rec->{path} !~ /\/dead/i &&
+		$rec->{path} !~ /\/beatles/i)
 	{
 		$title = "$rec->{artist} - $title"
 			if $rec->{artist};

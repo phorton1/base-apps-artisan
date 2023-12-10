@@ -731,7 +731,8 @@ sub split_dir
 	# Used for generating folder database records in Library.pm
 	# and getting default filename information in MediaFile.pm
 	# Intended to be the only code that knows my special
-	# folder structure/implied artist for the Grateful Dead.
+	# folder structure/implied artist for the Grateful Dead
+	# and Beatles.
 	#
 	# Takes an $mp3_dir relative path to a folder or (media) file.
 	# Returns members
@@ -814,14 +815,12 @@ sub split_dir
 		$rec->{class} = join(' ',@parts);
 
 		# split the album_name into it's parts
-		# with special handling for the dead
+		# with special handling for the dead and beatles
 
 		if ($rec->{album_name})
 		{
 			($rec->{album_artist},
 			 $rec->{album_title}) = split(' - ',$rec->{album_name});
-
-
 
 			if ($rec->{class} =~ /Dead/)
 			{
@@ -830,6 +829,22 @@ sub split_dir
 				$rec->{album_artist} = 'Jerry Garcia'
 					if ($rec->{class} =~ /Jerry/);
 			}
+			elsif ($rec->{class} =~ /Beatles/)
+			{
+				# The year is part of the path but not the title for my beatles albums
+				# so they are sorted by year, but the year doesn't show up in the title
+
+				$rec->{album_title} = $rec->{album_name};
+				if ($rec->{album_title} =~ s/^(\d\d\d\d) -//)
+				{
+					$rec->{year_str} = $1;
+					# print "$rec->{album_title} year_str=$rec->{year_str}\n";
+
+				}
+
+				$rec->{album_artist} = 'The Beatles';
+			}
+
 			elsif (!$rec->{album_title})
 			{
 				warning(0,0,"No title for album at $fullpath");

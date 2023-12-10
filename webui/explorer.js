@@ -422,6 +422,13 @@ function update_explorer_ui(title,rec)
 	// Update the album pane of the explorer which in turn clears
 	// the old details and loads the tracks if any
 {
+	if (rec.genre && (
+		rec.genre.startsWith('Dead') ||
+		rec.genre.startsWith('Beatles')))
+	{
+		title = rec.artist + ' - ' + title;
+	}
+
 	display(dbg_explorer,1,"update_explorer_ui() " + title);
 
 	$("#explorer_header_left").html(title);

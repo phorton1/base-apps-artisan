@@ -70,6 +70,8 @@ my %default_playlists = (
 	# except maybe dash and dot (certainly not ampersand)
 	# which does not work unencoded in xml
 
+	# Working folders
+
 	'001' => {
 		id => '001',
 		name => 'test',
@@ -79,104 +81,120 @@ my %default_playlists = (
 		name => 'work',
 		query =>
 			"albums/Work" },
-	'003' => {
-		name => 'dead',
-		query =>
-			"albums/Dead\t".
-			"singles/Dead" },
-    '004' => {
+
+	# Special Classes
+
+    '011' => {
 		name => 'favorite',
 		query =>
 			"albums/Favorite\t".
 			"singles/Favorite" },
-    '005' => {
+	'012' => {
+		name => 'dead',
+		query =>
+			"albums/Dead\t".
+			"singles/Dead" },
+	'013' => {
+		name => 'beatles',
+		query =>
+			"albums/Beatles" },
+
+	# Main Classes
+
+    '021' => {
+		name => 'blues',
+		query =>
+			"albums/Blues\t".
+			"singles/Blues" },
+    '022' => {
+		name => 'classical',
+		query =>
+			"albums/Classical minus /Baroque\t".
+			"singles/Classical minus /Baroque" },
+    '023' => {
+		name => 'country',
+		query =>
+			"albums/Country\t".
+			"singles/Country" },
+    '024' => {
+		name => 'folk',
+		query =>
+			"albums/Folk\t".
+			"singles/Folk" },
+    '025' => {
 		name => 'jazz',
 		query =>
 			"albums/Jazz/Old\t".
 			"albums/Jazz/Soft\t".
 			"albums/Jazz/Swing\t".
 			"singles/Jazz" },
-    '006' => {
-		name => 'blues',
-		query =>
-			"albums/Blues\t".
-			"singles/Blues" },
-	'007' => {
-		name => 'bands',
-		query =>
-			"albums/Productions/Bands\t".
-			"albums/Productions/Other\t".
-			"albums/Productions/Theo"},
-	'008' => {
-		name => 'originals',
-		query =>
-			"albums/Productions/Originals" },
-    '009' => {
-		name => 'world',
-		query =>
-			"albums/World minus /Tipico\t".
-			"singles/World" },
-	'010' => {
+	'026' => {
 		name => 'orleans',
 		query =>
 			"albums/NewOrleans\t".
 			"albums/Zydeco" },
-    '011' => {
+    '027' => {
+		name => 'RandB',
+		query =>
+			"albums/R&B\t".
+			"singles/R&B" },
+    '028' => {
 		name => 'reggae',
 		query =>
 			"albums/Reggae\t".
 			"singles/Reggae" },
-	'012' => {
+	'029' => {
 		name => 'rock',
 		query =>
 			"albums/Rock\t".
 			"albums/SanDiegoLocals\t".
 			"singles/Rock" },
-     '013' => {
-		name => 'RandB',
+    '02A' => {
+		name => 'world',
 		query =>
-			"albums/R&B\t".
-			"singles/R&B" },
-    '014' => {
-		name => 'country',
+			"albums/World minus /Tipico\t".
+			"singles/World" },
+
+	# Personal
+
+	'031' => {
+		name => 'originals',
 		query =>
-			"albums/Country\t".
-			"singles/Country" },
-    '015' => {
-		name => 'classical',
+			"albums/Productions/Originals" },
+	'032' => {
+		name => 'bands',
 		query =>
-			"albums/Classical minus /Baroque\t".
-			"singles/Classical minus /Baroque" },
-    '016' => {
-		name => 'xmas',
-		query =>
-			"albums/Christmas\t".
-			"singles/Christmas" },
-    '017' => {
+			"albums/Productions/Bands\t".
+			"albums/Productions/Other\t".
+			"albums/Productions/Theo"},
+    '033' => {
 		name => 'friends',
 		query =>
 			"albums/Productions minus Sweardha Buddha\t".
 			"albums/Friends" },
-    '018' => {
-		name => 'folk',
+
+
+	# Other
+
+    '041' => {
+		name => 'xmas',
 		query =>
-			"albums/Folk\t".
-			"singles/Folk" },
-    '019' => {
+			"albums/Christmas\t".
+			"singles/Christmas" },
+    '042' => {
 		name => 'compilations',
 		query =>
 			"albums/Compilations\t".
 			"singles/Compilations" },
-    '020' => {
+    '043' => {
 		name => 'soundtrack',
 		query =>
 			"albums/Soundtracks" },
-    '021' => {
+    '044' => {
 		name => 'other',
 		query =>
 			"albums/Other\t".
 			"singles/Other" },
-
 
 );	# %default_playlists
 
