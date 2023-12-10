@@ -130,9 +130,4 @@ I start a search.  One to $server_ip:1900 and one to
 127.0.0.1:1900.   Now, at least I see both WMP's.
 
 
-
-
-
-
-------------------------
-end of ssdp.pm
+---- end of ssdp.md --

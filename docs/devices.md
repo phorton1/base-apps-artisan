@@ -1,5 +1,4 @@
 # Artisan Perl Devices
-# PRH - close but not quite
 
 Artisan Perl Devices abstract the DLNA interfaces into a more
 easily understood set of APIs that are then used by the WebUI
@@ -20,9 +19,7 @@ Devices consist of a base class and the following derived classes
 - Library
   - localLibrary
   - remoteLibrary
-- PLSource
-  - localPLSource
-  - remotePLSource
+  - remoteArtisan
 
 The three base deviceTypes provide orthogonal APIs.
 
@@ -45,7 +42,7 @@ The Device API consists of the following members
 - type
 - services (hash by serviceType)
 
-It provides the following methods:
+The DeviceManager provides the following methods:
 
 - addService()
 - findService()
@@ -155,64 +152,4 @@ URI.
 ## Library API
 
 
-## PLSource API
-
-A PLSource is a source of Playlists.
-
-A Playlist has a Name, and a number of Tracks and is
-associated with a particular Library.
-
-A Track can be identified in two different ways:
-
-- the path to the track within any Library
-- its unique_id within an Artisan Library
-
-A Renderer can be set to automatically play a Playlist,
-continuing even without the UI being present.
-
-The special case of a Playlist that refers to the
-localLibrary being played on the localRenderer can
-be easily implemented.
-
-
-### PLSource Methods
-
-- **getPlaylists** - returns a list of the names of the
-  playlists within the PLSource, which is all that's generally
-  required for the UI.
-- **getPlaylistJson(name)** - returns a subset of the members
-  of a Playlist, specifically including the
-  - the number of tracks within the playlist
-  - current track index within the playlist, one based
-  - the shuffle mode
-- **shufflePlaylist(name,off|tracks|albums)** - sets the
-  shuffle mode and sorts the tracks in the playlist,
-  resetting the current track index to 1. It is the
-  UI's responibility to re-call Renderer::setPlaylist()
-  after a shuffle.
-
-
-
-
-
-
-
-
-
-
-
-
-## License
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License Version 3 as published by
-the Free Software Foundation.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-Please see **LICENSE.TXT** for more information.
-
----- end of readme ----
+---- end of devices.md ----

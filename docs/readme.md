@@ -9,17 +9,17 @@ and UPNP standards:
 
 - it is a standard DLNA Media Server, providing its Library to a huge
   number of existing devices (Music Players) that can render audio on
-  a home network using DLNA standards.
+  a home network.
 - it can present and play audio from a similarly huge number of
   existing networked Media Servers that implement the DLNA standard.
+
+Planned (possible) enhancements:
+
 - it can control any Music Players on the netork that implement the
   standard DLNA Renderer interface, of which there are many. As such
   it can connect any DLNA Media Server to any DLNA Renderer on the
   network to present and play audio from the given Server on the
   given Renderer.
-- *it is an OpenHome Playlist Source, providing lists of songs
-  that can be played on devices that support the Open Home Playlist
-  interface.*
 
 Artisan Perl runs as a Service on the Windows Machine, and provides a
 User Interface via an HTTP Server that can be accessed by a Browser
@@ -32,38 +32,58 @@ Artisan Perl
 
 - is a DLNA MediaServer
 - can access any existing DLNA Media Servers
-- can control any existing DLNA Media Renderers
+- **can control any existing DLNA Media Renderers**
 
 It is **not** a DLNA Renderer.  Artisan itself cannot be
 controlled by existing DLNA Control Points.  Internally
-it abstracts the existing DLNA Media Servers and Renderers
+it abstracts the existing DLNA Media Servers **and Renderers**
 it finds on the home network down to a much simpler API
 for use by the webUI.
 
 
-### OpenHome Playlist Source
 
-It is not clear at this time if it is useful, or advisable
-for Artisan to be an OpenHome Playlist Source.
+## Design Details
 
-Artisan certainly implements Playlists and can Render them
-and push the songs in them to existing DLNA Renderers, but
-at this time, I am not certain that I care enough about
-controlling other Renderers to determine whether or not,
-and if so, how, typical DLNA Renderers utilize OpenHome
-Playlists.   So, at this time, the Playlist Source within
-Artisan is purely my own and does not follow any particular
-standards.
+In reference to previous Artisan Perl and
+currently un-modified Artisan Android.
 
-Nonetheless, I have abstracted the hierarchy of classes so
-that Artisan Perl has a localPLSource, and can utilize a
-remotePLSource from another instance of Artistan (i.e.
-Artisan Android).
+**Playlists are 'persistent' per Library**
+
+- The system able to play through a sorted-random-by-album playlist
+  on multiple different devices sequentially so that I don't hear the
+  same albums/song twice and yet I hear all of them once.
+- I can select anything from the explorer tree and
+  play it immediately (interrupting the current playlist).
 
 
+**Got rid of 'Playlist Sources'**
+
+Playlists are bound to libraries for compatibility with WMP and
+a more general UI.
+
+- added a new 'dirtype' = 'playlist'
+- redesigned playlists.db and namedb.files (they are now incompatible
+  with Artisan Android).
+
+I *think* the main artisan.db file remains compatible.
+
+**Webui HTML Renderer**
+
+The webUI has a truly Local Renderer in the embeded HTML music player
+that can play music on the Browsing, as opposed to the Serving, device.
+
+Artisan Android does not currently serve the webUI.  It should.
 
 
+**WebUI FancyTree now entirely JSON based**
 
+I no longer send HTML from the Server to the webUI.
+
+The understanding starts by realizing that if the 'source:' or 'lazyLoad:' options
+of the tree return Hashes, those hashes are used to form Ajax requests
+to get the data, which is then loaded into the tree from the 'success'
+of the Ajax call.  BUT, if source: or lazyLoad: return Arrays, those
+arrays ARE the data.   See explorer.js for more info.
 
 
 
@@ -80,4 +100,5 @@ GNU General Public License for more details.
 
 Please see **LICENSE.TXT** for more information.
 
----- end of readme ----
+
+---- end of readme.md ----
