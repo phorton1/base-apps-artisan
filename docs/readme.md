@@ -41,6 +41,30 @@ it finds on the home network down to a much simpler API
 for use by the webUI.
 
 
+## Standardization on MP3 files
+
+As of today, 2023-12-10, I have decided to standardize my Library
+to MP3 files, and will use ffmpeg_prebuilt_6.1.exe to convert
+all of my WMA and M4A files to MP3's at 124kps using the command
+line:
+
+	ffmpeg_prebuilt_6.1.exe -i blah.m4a -acodec libmp3lame blah.mp3
+
+and to cleanup the database, removing all unused fpcalc_info files.
+To begin with, I added ffmpeg_prebuilt_6.1.exe from
+
+	/zip/apps/ffmpeg/ffmpeg-6.1-essentials_build.z7 ffmpeg.exe
+
+to the /bin folder. Then I made a copy of /mp3s to /mp3s_save (there is
+already a vestigial copy in /junk/maybe_save) and wrote and tested
+a script /docs/tests/convertAllToMP3.pm that does the conversions,
+removing the old files in the process.
+
+This is specifically to solve the fact that HTML Renderers cannot
+play WMA files, but will eventually lead to other simplifications
+in the code by eliminating other Media File Types.
+
+
 
 ## Design Details
 
