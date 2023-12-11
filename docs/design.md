@@ -268,15 +268,24 @@ I can back out of it if I want.  Hmmmmm.....
 
 Getting my head around it.
 
-Can I, should I, fork my own repo?
-Should I create a whole new repo?
-This will be exceedingly difficult to test if I don't, inasmuch
-as I use Push to get things to the other machine.
+## New Repo Branch 'new_playlists'
+
+Cannot fork my own repo.
+Not creating a whole new repo.
+
+- Did a checkin and push of 'master' branch
+- Deleted some old branches from GitHub
+- Saved off and Re-cloned my artisan from GitHub
+- Added a branch new_playlists via the normal gitUI.
+- Added the new_playlists branch to my git_repositories.tst
+- Manually added the new_playlist branch to artisan/.git/config
+
+my gitUI now appears to work.  I *think* I am on new branch
+and that I can go back to 'master' if I need to, and that I will
+someday, somehow, be able to Merge this back into the master branch.
 
 
-I am going to try a checkin, push, and creating a new branch.
 
-How will my gitUI.pm work?
 
 
 
