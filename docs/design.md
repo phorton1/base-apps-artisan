@@ -285,30 +285,23 @@ and that I can go back to 'master' if I need to, and that I will
 someday, somehow, be able to Merge this back into the master branch.
 
 
+# Ripped out old Playlists and created new ones
 
+- copied all files that mentioned playlists to /base/apps/artisan_obs
+- removed Playlist.pm and remotePlaylist.pm
+- reworked localPlaylist.pm to be the only 'playlists' in the system.
 
+I am checking this in.
 
+I am now re-confronted with the fact that there's no good way to do
+a context menu on the stupid iPad, which is at the core of this
+re-design.
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+The idea is that I can now multiple-select a number of Explorer Tracks,
+or any branch of the Explorer Tree and add them to the Queue.  The UI
+artifice for this is, in worlds exept the iPad, the Context Menu, which
+is always brought up with a right click from a mouse, or a long press
+on a touch screen, EXCEPT FOR THE FUCKING IPAD.
 
 
 

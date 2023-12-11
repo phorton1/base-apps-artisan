@@ -9,8 +9,8 @@ var dbg_audio = 0;
 var audio;
 
 
-const PLAYLIST_ABSOLUTE = 0;
-const PLAYLIST_RELATIVE = 1;
+//	const PLAYLIST_ABSOLUTE = 0;
+//	const PLAYLIST_RELATIVE = 1;
 
 
 const RENDERER_STATE_NONE 		= 'NONE';
@@ -44,7 +44,11 @@ var html_renderer = {
 		highLevel   : 0,
 		// position 	: 0,
 		// duration 	: 0,
-		playlist	: '',
+
+
+		//		playlist	: '',
+
+
 		//metadata    : {
 		//	artist      : '',
 		//	album_title : '',
@@ -161,30 +165,30 @@ function audio_command(command,args)
 		play_song_local(library_uuid,track_id);
 	}
 
-	else if (command == 'set_playlist')
-	{
-		var library_uuid = args['library_uuid'];
-		var playlist_id = args['id'];
-		set_local_playlist(library_uuid,playlist_id);
-	}
-	else if (command == 'next')
-	{
-		playlist_song(PLAYLIST_RELATIVE,1);
-	}
-	else if (command == 'prev')
-	{
-		playlist_song(PLAYLIST_RELATIVE,-1);
-	}
-	else if (command == 'playlist_song')
-	{
-		var index = args['index'];
-		playlist_song(PLAYLIST_ABSOLUTE,index);
-	}
-	else if (command == 'shuffle_playlist')
-	{
-		var shuffle = args.shuffle;
-		playlist_shuffe(shuffle);
-	}
+	//	else if (command == 'set_playlist')
+	//	{
+	//		var library_uuid = args['library_uuid'];
+	//		var playlist_id = args['id'];
+	//		set_local_playlist(library_uuid,playlist_id);
+	//	}
+	//	else if (command == 'next')
+	//	{
+	//		playlist_song(PLAYLIST_RELATIVE,1);
+	//	}
+	//	else if (command == 'prev')
+	//	{
+	//		playlist_song(PLAYLIST_RELATIVE,-1);
+	//	}
+	//	else if (command == 'playlist_song')
+	//	{
+	//		var index = args['index'];
+	//		playlist_song(PLAYLIST_ABSOLUTE,index);
+	//	}
+	//	else if (command == 'shuffle_playlist')
+	//	{
+	//		var shuffle = args.shuffle;
+	//		playlist_shuffe(shuffle);
+	//	}
 }
 
 
@@ -246,110 +250,110 @@ function track_to_html_renderer(track)
 }
 
 
-function set_local_playlist(library_uuid,playlist_id)
-{
-	init_html_renderer(RENDERER_STATE_TRANSIT);
-	$.get(library_url()  + '/get_playlist' +
-		  '?id=' + playlist_id,
-
-	function(result)
-	{
-		if (result.error)
-		{
-			rerror('Error in set_local_playlist(' + library_uuid + ',' + playlist_id + '): ' + result.error);
-		}
-		else
-		{
-			html_renderer.playlist = result;
-			var track_id = result.track_id;
-			if (track_id == undefined || !track_id)
-			{
-				rerror("No track_id(" + track_id + ") in set_local_playlist(" + library_uuid + ',' + playlist_id + ")");
-			}
-			else
-			{
-				play_song_local(library_uuid,track_id);
-			}
-		}
-	});
-}
-
-
-function playlist_song(mode,inc)
-{
-	var playlist = html_renderer.playlist;
-	if (!playlist)
-		return;
-
-	library_uuid = playlist.uuid;
-	playlist_id = playlist.id;
-
-	$.get(library_url()  + '/get_playlist_track' +
-	  '?version=' + playlist.version +
-	  '&id=' + playlist_id +
-	  '&mode=' + mode +
-	  '&index=' + inc,
-
-	function(result)
-	{
-		if (result.error)
-		{
-			rerror('Error in playlist_song(' + mode + ',' + inc + '): ' + result.error);
-		}
-		else
-		{
-			html_renderer.playlist = result;
-			var track_id = result.track_id;
-			if (track_id == undefined ||
-				!track_id)
-			{
-				rerror("No track_id(" + track_id + ") in playlist_song local(" + mode + "," + inc + ")");
-			}
-			else
-			{
-				play_song_local(library_uuid,track_id);
-			}
-		}
-	});
-}
-
-
-
-function playlist_shuffe(shuffle)
-{
-	var playlist = html_renderer.playlist;
-	if (!playlist)
-		return;
-
-	library_uuid = playlist.uuid;
-	playlist_id = playlist.id;
-
-	$.get(library_url() + '/shuffle_playlist' +
-	  '?id=' + playlist_id +
-	  '&shuffle=' + shuffle,
-
-	function(result)
-	{
-		if (result.error)
-		{
-			rerror('Error in playlist_shuffe(' + shuffle + '): ' + result.error);
-		}
-		else
-		{
-			html_renderer.playlist = result;
-			var track_id = result.track_id;
-			if (track_id == undefined || !track_id)
-			{
-				rerror("No track_id(" + track_id + ") in playlist_shuffe(" + shuffle + ")");
-			}
-			else
-			{
-				play_song_local(library_uuid,track_id);
-			}
-		}
-	});
-}
-
+//	function set_local_playlist(library_uuid,playlist_id)
+//	{
+//		init_html_renderer(RENDERER_STATE_TRANSIT);
+//		$.get(library_url()  + '/get_playlist' +
+//			  '?id=' + playlist_id,
+//
+//		function(result)
+//		{
+//			if (result.error)
+//			{
+//				rerror('Error in set_local_playlist(' + library_uuid + ',' + playlist_id + '): ' + result.error);
+//			}
+//			else
+//			{
+//				html_renderer.playlist = result;
+//				var track_id = result.track_id;
+//				if (track_id == undefined || !track_id)
+//				{
+//					rerror("No track_id(" + track_id + ") in set_local_playlist(" + library_uuid + ',' + playlist_id + ")");
+//				}
+//				else
+//				{
+//					play_song_local(library_uuid,track_id);
+//				}
+//			}
+//		});
+//	}
+//
+//
+//	function playlist_song(mode,inc)
+//	{
+//		var playlist = html_renderer.playlist;
+//		if (!playlist)
+//			return;
+//
+//		library_uuid = playlist.uuid;
+//		playlist_id = playlist.id;
+//
+//		$.get(library_url()  + '/get_playlist_track' +
+//		  '?version=' + playlist.version +
+//		  '&id=' + playlist_id +
+//		  '&mode=' + mode +
+//		  '&index=' + inc,
+//
+//		function(result)
+//		{
+//			if (result.error)
+//			{
+//				rerror('Error in playlist_song(' + mode + ',' + inc + '): ' + result.error);
+//			}
+//			else
+//			{
+//				html_renderer.playlist = result;
+//				var track_id = result.track_id;
+//				if (track_id == undefined ||
+//					!track_id)
+//				{
+//					rerror("No track_id(" + track_id + ") in playlist_song local(" + mode + "," + inc + ")");
+//				}
+//				else
+//				{
+//					play_song_local(library_uuid,track_id);
+//				}
+//			}
+//		});
+//	}
+//
+//
+//
+//	function playlist_shuffe(shuffle)
+//	{
+//		var playlist = html_renderer.playlist;
+//		if (!playlist)
+//			return;
+//
+//		library_uuid = playlist.uuid;
+//		playlist_id = playlist.id;
+//
+//		$.get(library_url() + '/shuffle_playlist' +
+//		  '?id=' + playlist_id +
+//		  '&shuffle=' + shuffle,
+//
+//		function(result)
+//		{
+//			if (result.error)
+//			{
+//				rerror('Error in playlist_shuffe(' + shuffle + '): ' + result.error);
+//			}
+//			else
+//			{
+//				html_renderer.playlist = result;
+//				var track_id = result.track_id;
+//				if (track_id == undefined || !track_id)
+//				{
+//					rerror("No track_id(" + track_id + ") in playlist_shuffe(" + shuffle + ")");
+//				}
+//				else
+//				{
+//					play_song_local(library_uuid,track_id);
+//				}
+//			}
+//		});
+//	}
+//
 
 
 
@@ -357,11 +361,11 @@ function playlist_shuffe(shuffle)
 
 function onMediaEnded(event)
 {
-	if (html_renderer.playlist &&
-		html_renderer.state == RENDERER_STATE_PLAYING)
-	{
-		playlist_song(PLAYLIST_RELATIVE,1);
-	}
+	//	if (html_renderer.playlist &&
+	//		html_renderer.state == RENDERER_STATE_PLAYING)
+	//	{
+	//		playlist_song(PLAYLIST_RELATIVE,1);
+	//	}
 }
 
 

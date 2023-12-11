@@ -8,8 +8,8 @@
 #	getTrack
 #	getFolder
 #	getSubitems
-#	getPlaylist
-#	getPlaylists
+#	#	getPlaylist
+#	#	getPlaylists
 #	getTrackMetadata
 #	getFolderMetadata
 
@@ -24,7 +24,7 @@ use Database;
 use Folder;
 use Track;
 use Library;
-use Playlist;
+#	use Playlist;
 use base qw(Library);
 
 my $dbg_llib = 0;
@@ -92,8 +92,7 @@ sub getFolder
 	# if 0, return a fake record
 
 	my $folder;
-	my $playlist = Playlist::getPlaylist($this,$id,1);
-		# 1 == no error
+	my $playlist = localPlaylist::getPlaylistByName($id);
 
 	if ($id eq '0')
 	{
@@ -116,7 +115,7 @@ sub getFolder
 			$dbh = db_connect();
 		}
 		$folder = Folder->newFromDbId($dbh,$id);
-		db_disconnect($dbh) if ($connected);
+		db_disconnect($dbh) if $connected;
 	}
 	error("could not getFolder($id)") if !$folder;
 	return $folder;
@@ -145,27 +144,29 @@ sub getSubitems
 	my @retval;
 
 
-	my $playlist = Playlist::getPlaylist($this,$id,1);
-		# 1 == no_error
+	my $playlist = localPlaylist::getPlaylistByName($id);
 
 	# return virtual folders for playlists
-	# table must be 'folders', and as usual
-	# getPlaylists must be called before getPlaylist
+	# table must be 'folders'
 
 	if ($table eq 'folders' && $id eq $ID_PLAYLISTS)
 	{
-		my $playlists = Playlist::getPlaylists($this);
-		display($dbg_subitems,1,"found ".scalar(@$playlists)." playlists");
-		my $max = $start+$count-1;
-		$max = @$playlists-1 if $max > @$playlists-1;
-		for my $i ($start .. $max)
+		my $playlists = localPlaylist::getPlaylists();
+		if ($playlists && @$playlists)
 		{
-			my $playlist = $playlists->[$i];
-			my $folder = $this->virtualPlaylistFolder($playlist);
-			if ($folder)
+			my $num_playlists = @$playlists;
+			display($dbg_subitems,1,"found $num_playlists playlists");
+			my $max = $start+$count-1;
+			$max = $num_playlists-1 if $max > $num_playlists-1;
+			for my $i ($start .. $max)
 			{
-				push @retval,$folder;
-				$num++;
+				my $playlist = $playlists->[$i];
+				my $folder = $this->virtualPlaylistFolder($playlist);
+				if ($folder)
+				{
+					push @retval,$folder;
+					$num++;
+				}
 			}
 		}
 	}
@@ -175,23 +176,26 @@ sub getSubitems
 
 	elsif ($table eq 'tracks' && $playlist)
 	{
-		my $recs = $this->getPlaylistTracks($playlist,$start,$count);
-		display($dbg_subitems,1,"found ".scalar(@$recs)." playlist tracks");
-		for my $rec (@$recs)
+		my $recs = localPlaylist::getTracks($playlist,$start,$count);
+		if ($recs)
 		{
-			my $track = Track->newFromHash($rec);
-			if ($track)
+			display($dbg_subitems,1,"found ".scalar(@$recs)." playlist tracks");
+			for my $rec (@$recs)
 			{
-				push @retval,$track;
-				$num++;
+				my $track = Track->newFromHash($rec);
+				if ($track)
+				{
+					push @retval,$track;
+					$num++;
+				}
 			}
 		}
 	}
 
 	# regular query from database
 
-	else
-	{
+	# else
+	# {
 		my $sort_clause = ($table eq 'folders') ? 'dirtype DESC,path' : 'path';
 		my $query = "SELECT * FROM $table ".
 			"WHERE parent_id='$id' ".
@@ -240,7 +244,8 @@ sub getSubitems
 			my $folder = $this->virtualPlaylistsFolder();
 			push @retval,$folder if $folder;
 		}
-	}
+
+	# }
 
     display($dbg_subitems,1,"get_subitems() returning ".scalar(@retval)." items");
 	return \@retval;
@@ -371,19 +376,22 @@ sub virtualRootFolder
 		year => substr(today(),0,4)  });
 }
 
+
 sub virtualPlaylistsFolder
 {
 	my ($this) = @_;
 	display($dbg_virt,0,"virtualPlaylistsFolder()");
-	my $playlists = Playlist::getPlaylists($this);
+	my $playlists = localPlaylist::getPlaylists();
 	return if !$playlists;
+	my $num_playlists = @$playlists;
+	return if !$num_playlists;
 
 	return Folder->newFromHash({
 		id => $ID_PLAYLISTS,
 		parent_id => 0,
 		title => 'playlists',
 		dirtype => 'section',
-		num_elements => scalar(@{$playlists}),
+		num_elements => $num_playlists,
 		artist => '',
 		genre => '',
 		path => '\playlists',
@@ -393,16 +401,16 @@ sub virtualPlaylistsFolder
 
 sub virtualPlaylistFolder
 {
-	my ($this,$playlist) = @_;		# the id is the name of the playlist
+	my ($this,$playlist) = @_;
 	my $name = $playlist->{name};
 	display($dbg_virt,0,"virtualPlaylistFolder($name)");
 
 	return Folder->newFromHash({
-		id => $playlist->{id},
+		id => $name,
 		parent_id => $ID_PLAYLISTS,
 		title => $name,
 		dirtype => 'playlist',
-		num_elements => $playlist->{num_tracks},
+		num_elements => $playlist->{count},
 		artist => '',
 		genre => '',
 		path => "/playlists/$name",
@@ -410,44 +418,45 @@ sub virtualPlaylistFolder
 }
 
 
+
 #------------------------------------
 # ContentDirectory1 API
 #------------------------------------
 
-sub getPlaylistTracks
-	# Called only by localLibrary::getSubitems() by ContentDirectory1
-	# for Artisan BEING a MediaServer.  Returns a list of pl_tracks
-	# which the localLibrary then turns into a list of real Tracks.
-	#
-	# As far as the rest of the world is concerned, the playlist is
-	# sorted our way, and it is upto them to shuffle it if they want.
-	#
-	# There is still the requirement that getPlaylists() is called
-	# before this method.
-	#
-	# Initial implementation is probably very slow, working a record at
-	# a time with no caching whatsoever. It can probably be made faster
-	# with a JOIN somehow.
-{
-	my ($this,$playlist,$start,$count) = @_;
-	display($dbg_llib,0,"getPlaylistTracks($playlist->{name},$start,$count)");
-	my $pl_tracks = localPlaylist::getPlaylistTracks($playlist->{name},$start,$count);
-	return if !$pl_tracks;
-
-	my $dbh = db_connect();
-	return if !$dbh;
-
-	my $tracks = [];
-	for my $pl_track (@$pl_tracks)
-	{
-		my $track = get_record_db($dbh,"SELECT * FROM tracks WHERE id='$pl_track->{id}'");
-		push @$tracks,$track if $track;
-	}
-
-	db_disconnect($dbh);
-	display($dbg_llib,0,"getPlaylistTracks got ".scalar(@$tracks)." tracks from ".scalar(@$pl_tracks)." pl_tracks");
-	return $tracks;
-}
+#	sub getPlaylistTracks
+#		# Called only by localLibrary::getSubitems() by ContentDirectory1
+#		# for Artisan BEING a MediaServer.  Returns a list of pl_tracks
+#		# which the localLibrary then turns into a list of real Tracks.
+#		#
+#		# As far as the rest of the world is concerned, the playlist is
+#		# sorted our way, and it is upto them to shuffle it if they want.
+#		#
+#		# There is still the requirement that getPlaylists() is called
+#		# before this method.
+#		#
+#		# Initial implementation is probably very slow, working a record at
+#		# a time with no caching whatsoever. It can probably be made faster
+#		# with a JOIN somehow.
+#	{
+#		my ($this,$playlist,$start,$count) = @_;
+#		display($dbg_llib,0,"getPlaylistTracks($playlist->{name},$start,$count)");
+#		my $pl_tracks = localPlaylist::getPlaylistTracks($playlist->{name},$start,$count);
+#		return if !$pl_tracks;
+#
+#		my $dbh = db_connect();
+#		return if !$dbh;
+#
+#		my $tracks = [];
+#		for my $pl_track (@$pl_tracks)
+#		{
+#			my $track = get_record_db($dbh,"SELECT * FROM tracks WHERE id='$pl_track->{id}'");
+#			push @$tracks,$track if $track;
+#		}
+#
+#		db_disconnect($dbh);
+#		display($dbg_llib,0,"getPlaylistTracks got ".scalar(@$tracks)." tracks from ".scalar(@$pl_tracks)." pl_tracks");
+#		return $tracks;
+#	}
 
 
 
@@ -458,43 +467,43 @@ sub getPlaylistTracks
 
 
 
-sub getPlaylists
-	# pass through
-{
-	my ($this) = @_;
-	display($dbg_llib,0,"getPlaylists()");
-	return Playlist::getPlaylists($this);
-}
-
-
-
-sub getPlaylist
-	# pass thru
-{
-	my ($this,$id) = @_;
-	display($dbg_llib,0,"getPlaylist($id)");
-	return Playlist::getPlaylist($this,$id);
-}
-
-
-sub getPlaylistTrack
-{
-    my ($this,$id,$version,$mode,$index) = @_;
-	display($dbg_llib,0,"getPlaylist($id,$version,$mode,$index)");
-	my $playlist = Playlist::getPlaylist($this,$id);
-	return if !$playlist;
-	return $playlist->getPlaylistTrack($version,$mode,$index);
-}
-
-
-sub sortPlaylist
-{
-    my ($this,$id,$shuffle) = @_;
-	display($dbg_llib,0,"sortPlaylist($id,$shuffle)");
-	my $playlist = Playlist::getPlaylist($this,$id);
-	return if !$playlist;
-	return $playlist->sortPlaylist($shuffle);
-}
+#	sub getPlaylists
+#		# pass through
+#	{
+#		my ($this) = @_;
+#		display($dbg_llib,0,"getPlaylists()");
+#		return Playlist::getPlaylists($this);
+#	}
+#
+#
+#
+#	sub getPlaylist
+#		# pass thru
+#	{
+#		my ($this,$id) = @_;
+#		display($dbg_llib,0,"getPlaylist($id)");
+#		return Playlist::getPlaylist($this,$id);
+#	}
+#
+#
+#	sub getPlaylistTrack
+#	{
+#	    my ($this,$id,$version,$mode,$index) = @_;
+#		display($dbg_llib,0,"getPlaylist($id,$version,$mode,$index)");
+#		my $playlist = Playlist::getPlaylist($this,$id);
+#		return if !$playlist;
+#		return $playlist->getPlaylistTrack($version,$mode,$index);
+#	}
+#
+#
+#	sub sortPlaylist
+#	{
+#	    my ($this,$id,$shuffle) = @_;
+#		display($dbg_llib,0,"sortPlaylist($id,$shuffle)");
+#		my $playlist = Playlist::getPlaylist($this,$id);
+#		return if !$playlist;
+#		return $playlist->sortPlaylist($shuffle);
+#	}
 
 
 

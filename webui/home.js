@@ -31,12 +31,12 @@ layout_defs['home'] = {
 		limit:600,
 		element_id:'#renderer_page_header_left',
 	},
-	east: {
-		size:200,
-		limit:900,
-		element_id:'#renderer_button_shuffle',
-		element_is_button:true,
-	},
+	//	east: {
+	//		size:200,
+	//		limit:900,
+	//		element_id:'#renderer_button_shuffle',
+	//		element_is_button:true,
+	//	},
 
 };
 
@@ -50,7 +50,7 @@ function init_page_home()
 	load_device_list(DEVICE_TYPE_RENDERER);
 	load_device_list(DEVICE_TYPE_LIBRARY);
 
-	init_playlist_info();
+	// init_playlist_info();
 	init_renderer_pane();
 
 	$("#home_menu").accordion({ heightStyle: "fill" });
@@ -143,7 +143,7 @@ function onSelectDevice(type,uuid,result)
 	if (type == DEVICE_TYPE_LIBRARY)
 	{
 		$('.artisan_menu_library_name').html(result.name);
-		init_playlists();
+		// init_playlists();
 	}
 
 	// current_page indicates the app has really started
@@ -163,42 +163,42 @@ function onSelectDevice(type,uuid,result)
 // Playlists
 //----------------------------------
 
-function init_playlists()
-	// only works if both current_library and current_renderer are set
-{
-	if (!current_library || !current_renderer)
-		return;
-	$.get(library_url() + '/get_playlists',function(result) {
-		if (result.error)
-		{
-			rerror('Error in init_playlists(' + library_uuid + '): ' + result.error);
-		}
-		else
-		{
-			buildHomeMenu(result,'playlist','id','setPlaylist','uuid','id');
-		}
-	});
-}
-
-
-function setPlaylist(uuid,id)
-	// called by easy-ui event registration on the renderer_list
-	// when the user changes the current selection.
-	// Set the current renderer name and enable the buttons.
-	// We have to be careful about re-entrancy, so that we don't
-	// confuse the server.
-{
-	display(dbg_home,0,"setPlaylist("+name+")");
-	// the button is a radio button and I don't want it to be,
-	// so I have to explicitly uncheck it ... fix later
-	$('#playlist_' + id).prop('checked', false).button('refresh');
-
-
-	// hide_layout_panes();
-	renderer_command('set_playlist',{
-		library_uuid:uuid,
-		id: id});
-}
+//	function init_playlists()
+//		// only works if both current_library and current_renderer are set
+//	{
+//		if (!current_library || !current_renderer)
+//			return;
+//		$.get(library_url() + '/get_playlists',function(result) {
+//			if (result.error)
+//			{
+//				rerror('Error in init_playlists(' + library_uuid + '): ' + result.error);
+//			}
+//			else
+//			{
+//				buildHomeMenu(result,'playlist','id','setPlaylist','uuid','id');
+//			}
+//		});
+//	}
+//
+//
+//	function setPlaylist(uuid,id)
+//		// called by easy-ui event registration on the renderer_list
+//		// when the user changes the current selection.
+//		// Set the current renderer name and enable the buttons.
+//		// We have to be careful about re-entrancy, so that we don't
+//		// confuse the server.
+//	{
+//		display(dbg_home,0,"setPlaylist("+name+")");
+//		// the button is a radio button and I don't want it to be,
+//		// so I have to explicitly uncheck it ... fix later
+//		$('#playlist_' + id).prop('checked', false).button('refresh');
+//
+//
+//		// hide_layout_panes();
+//		renderer_command('set_playlist',{
+//			library_uuid:uuid,
+//			id: id});
+//	}
 
 
 
@@ -218,8 +218,8 @@ function renderer_command(command,args)
 	{
 		audio_command(command,args);
 		in_slider = false;
-		in_playlist_slider = false;
-		in_playlist_spinner = false;
+		// in_playlist_slider = false;
+		// in_playlist_spinner = false;
 		update_renderer_ui();
 		return;
 	}
@@ -248,8 +248,8 @@ function renderer_command(command,args)
 				current_renderer = result;
 			}
 			in_slider = false;
-			in_playlist_slider = false;
-			in_playlist_spinner = false;
+			// in_playlist_slider = false;
+			// in_playlist_spinner = false;
 			update_renderer_ui();
 		}
 	);
@@ -305,7 +305,7 @@ function update_renderer_ui()
 	var shuffle_on = false;
 
 	var state = '';
-	var playlistName = 'Now Playing';
+	// var playlistName = 'Now Playing';
 	var rendererName = 'No Renderer Selected';
 
 	var art_uri = '/webui/icons/artisan.png';
@@ -338,16 +338,16 @@ function update_renderer_ui()
 		state = current_renderer.state;
 
 		rendererName = current_renderer.name;
-		if (current_renderer.playlist)
-		{
-			disable_prevnext = false;
-			playlistName =
-				// current_renderer.playlist.num + '. ' +
-				current_renderer.playlist.name;
-			playlistName += '(' +
-				current_renderer.playlist.track_index + ',' +
-				current_renderer.playlist.num_tracks + ')';
-		}
+		//	if (current_renderer.playlist)
+		//	{
+		//		disable_prevnext = false;
+		//		playlistName =
+		//			// current_renderer.playlist.num + '. ' +
+		//			current_renderer.playlist.name;
+		//		playlistName += '(' +
+		//			current_renderer.playlist.track_index + ',' +
+		//			current_renderer.playlist.num_tracks + ')';
+		//	}
 
 		// Display information about the Song in fields
 		// that just happen to be the same as fields in a Track,
@@ -442,6 +442,7 @@ function update_renderer_ui()
 		// var title_panel = header_panel.find('.panel-title');
 		// title_panel.html('Now Playing &nbsp;&nbsp; ' + renderer.state);
 
+		var playlistName = '';
 		ele_set_inner_html('renderer_header_left',playlistName + ' &nbsp;&nbsp; ' + state);
 		ele_set_inner_html('renderer_header_right',"" +  + idle_count + " " + rendererName);
 
@@ -486,7 +487,7 @@ function update_renderer_ui()
 
 		display(dbg_loop,0,"renderer.update_renderer_ui(2)");
 
-		update_playlist_ui();
+		// update_playlist_ui();
 			// in playlist.js
 
 	}	// !autofull

@@ -51,8 +51,8 @@ use Library;
 use Database;
 use Track;
 use Folder;
-use Playlist;
-use remotePlaylist;
+# use Playlist;
+# use remotePlaylist;
 use base qw(Library);
 
 
@@ -135,7 +135,7 @@ sub start
 	my ($this) = @_;
 	display($dbg_rlib,0,"remoteLibrary($this->{name})::start()");
 	$this->startDatabase();
-	remotePlaylist::initPlaylists($this);
+	# remotePlaylist::initPlaylists($this);
 	$this->{state} = $DEVICE_STATE_READY;
 	DeviceManager::notifyDevice($this);
 	display($dbg_rlib,0,"remoteLibrary($this->{name})::start() returning");
@@ -699,48 +699,48 @@ sub getArtist
 # Playlist API
 #----------------------------------------
 
-sub getPlaylists
-	# pass through
-{
-	my ($this) = @_;
-	display($dbg_rlib,0,"getPlaylists()");
-	# $this->start();
-	return Playlist::getPlaylists($this);
-}
-
-
-sub getPlaylist
-	# pass thru
-{
-	my ($this,$id) = @_;
-	display($dbg_rlib,0,"getPlaylists($id)");
-	# $this->start();
-	return if !remotePlaylist::initPlaylist($this,$id);
-	return Playlist::getPlaylist($this,$id);
-}
-
-
-sub getPlaylistTrack
-{
-    my ($this,$id,$version,$mode,$index) = @_;
-	display($dbg_rlib,0,"getPlaylistTrack($id,$version,$mode,$index)");
-	# $this->start();
-	return if !remotePlaylist::initPlaylist($this,$id);
-	my $playlist = Playlist::getPlaylist($this,$id);
-	return if !$playlist;
-	return $playlist->getPlaylistTrack($version,$mode,$index);
-}
-
-sub sortPlaylist
-{
-    my ($this,$id,$shuffle) = @_;
-	display($dbg_rlib,0,"sortPlaylist($id,$shuffle)");
-	# $this->start();
-	return if !remotePlaylist::initPlaylist($this,$id);
-	my $playlist = Playlist::getPlaylist($this,$id);
-	return if !$playlist;
-	return $playlist->sortPlaylist($shuffle);
-}
+#	sub getPlaylists
+#		# pass through
+#	{
+#		my ($this) = @_;
+#		display($dbg_rlib,0,"getPlaylists()");
+#		# $this->start();
+#		return Playlist::getPlaylists($this);
+#	}
+#
+#
+#	sub getPlaylist
+#		# pass thru
+#	{
+#		my ($this,$id) = @_;
+#		display($dbg_rlib,0,"getPlaylists($id)");
+#		# $this->start();
+#		return if !remotePlaylist::initPlaylist($this,$id);
+#		return Playlist::getPlaylist($this,$id);
+#	}
+#
+#
+#	sub getPlaylistTrack
+#	{
+#	    my ($this,$id,$version,$mode,$index) = @_;
+#		display($dbg_rlib,0,"getPlaylistTrack($id,$version,$mode,$index)");
+#		# $this->start();
+#		return if !remotePlaylist::initPlaylist($this,$id);
+#		my $playlist = Playlist::getPlaylist($this,$id);
+#		return if !$playlist;
+#		return $playlist->getPlaylistTrack($version,$mode,$index);
+#	}
+#
+#	sub sortPlaylist
+#	{
+#	    my ($this,$id,$shuffle) = @_;
+#		display($dbg_rlib,0,"sortPlaylist($id,$shuffle)");
+#		# $this->start();
+#		return if !remotePlaylist::initPlaylist($this,$id);
+#		my $playlist = Playlist::getPlaylist($this,$id);
+#		return if !$playlist;
+#		return $playlist->sortPlaylist($shuffle);
+#	}
 
 
 
@@ -788,7 +788,7 @@ sub getSystemUpdateId
 #---------------------------------------
 # subscription logic
 #---------------------------------------
-# This code does the following:
+# This unused code has been tested and does the following:
 #
 # (a) SUBSCRIBE to the remoteLibrary eventSubURL,
 # (b) get NOTIFY events via HTTPServer /remoteLibrary/event/uuid,

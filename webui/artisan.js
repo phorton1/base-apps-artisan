@@ -138,9 +138,9 @@ function idle_loop()
 	display(dbg_loop,0,"idle_loop(" + current_page + ")");
 	idle_count++;
 
-	if (!in_slider &&
-		!in_playlist_slider &&
-		!in_playlist_spinner)
+	if (!in_slider) // &&
+		// !in_playlist_slider &&
+		// !in_playlist_spinner)
 	{
 		var data = { update_id: update_id };
 		if (current_renderer.uuid == html_renderer.uuid)

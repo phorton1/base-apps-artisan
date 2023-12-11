@@ -140,21 +140,4 @@ sub error_section
 }
 
 
-
-#----------------------------------------------------------
-# Generic Support for Playlists
-#----------------------------------------------------------
-# The Playlist database files are setup so that playlists
-# do not need to be cached in memory.  They are entirely
-# read into memory only upon Sorting.
-
-
-
-
-
-
-
-
-
-
 1;

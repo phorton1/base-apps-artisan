@@ -285,7 +285,7 @@ sub updateDevice
 
 	if ($ip eq '127.0.0.1')
 	{
-		display($dbg_devices+1,1,"mapping 127.0.0.1 to $server_ip");
+		display($dbg_devices+2,1,"mapping 127.0.0.1 to $server_ip");
 		$ip = $server_ip;
 	}
 

@@ -60,32 +60,9 @@ my $db_name = "$data_dir/artisan.db";
 #------------------------------------
 # DATABASE DEFINITION
 #------------------------------------
-# Playlists
+
 
 our %artisan_field_defs = (
-
-	# The ID fields VARCHARS need to be large enough to accept
-	# ANY library's IDs (i.e. WMP)
-
-	playlists => [
-		'id		 	 VARCHAR(128)',
-		'uuid        VARCHAR(128)',
-		'name		 VARCHAR(128)',
-		'num_tracks  INTEGER',
-		'shuffle	 INTEGER',
-		'track_index INTEGER',
-		'track_id	 VARCHAR(128)',
-		'version	 INTEGER',
-		'query		 VARCHAR(2048)'		# removed by json web replies
-	],
-
-	pl_tracks => [
-		'id		 	 VARCHAR(128)',
-		'album_id    VARCHAR(128)',
-		'position    INTEGER',
-		'idx		 INTEGER',
-	],
-
 
     #------------------------------------
     # TRACKS

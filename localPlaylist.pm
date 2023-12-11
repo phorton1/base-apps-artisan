@@ -2,10 +2,11 @@
 #---------------------------------------
 # localPlaylist.pm
 #---------------------------------------
-# Builds the master playlists for the localLibrary.
-# Note that this is NOT a derived class.
-# It merely builds the database(s).
-
+# Builds the /playlists subdirectory and the databases
+# for each Playlist.  The ID of a Playlist is it's NAME.
+# The Ordering of Playlists within the virtual Playlists
+# Folder is gotten by a call to the static default_playlists
+# data structure.
 
 package localPlaylist;
 use strict;
@@ -14,11 +15,11 @@ use threads;
 use threads::shared;
 use Database;
 use artisanUtils;
-use Playlist;
 
 
-my $dbg_lpl = 0;
-my $dbg_pl_create = 0;
+
+my $dbg_get = 0;
+my $dbg_create = -2;
 	#  0 == show init_playlists header
 	# -1 == show playlist creation
 	# -2 == show playlist creation details
@@ -28,224 +29,218 @@ my $dbg_pl_create = 0;
 my $playlist_dir = "$data_dir/playlists";
 mkdir $playlist_dir if (!(-d $playlist_dir));
 
+
+
+#---------------------------
+# DEFAULT PLAYLISTS
+#---------------------------
+# The 'count' member will be added during init_playlists()
+
+
+my $playlists_by_name = {};
+	# built during init_playlists();
+
+my $playlists = [
+
+	# Working folders
+
+	{
+		name => 'test',
+		query => [
+			"albums/Productions/Originals/Forgotten Space" ]
+	},
+
+	{
+		name => 'work',
+		query => [
+			"albums/Work" ]
+	},
+
+	# Special Classes
+
+    {
+		name => 'favorite',
+		query => [
+			"albums/Favorite",
+			"singles/Favorite" ]
+	},
+	{
+		name => 'dead',
+		query => [
+			"albums/Dead",
+			"singles/Dead" ]
+	},
+	{
+		name => 'beatles',
+		query => [
+			"albums/Beatles" ]
+	},
+
+	# Main Classes
+
+    {
+		name => 'blues',
+		query => [
+			"albums/Blues",
+			"singles/Blues" ]
+	},
+    {
+		name => 'classical',
+		query => [
+			"albums/Classical minus /Baroque",
+			"singles/Classical minus /Baroque" ]
+	},
+    {
+		name => 'country',
+		query => [
+			"albums/Country",
+			"singles/Country" ]
+	},
+    {
+		name => 'folk',
+		query => [
+			"albums/Folk",
+			"singles/Folk" ]
+	},
+    {
+		name => 'jazz',
+		query => [
+			"albums/Jazz/Old",
+			"albums/Jazz/Soft",
+			"albums/Jazz/Swing",
+			"singles/Jazz" ]
+	},
+	{
+		name => 'orleans',
+		query => [
+			"albums/NewOrleans",
+			"albums/Zydeco" ]
+	},
+    {
+		name => 'RandB',
+		query => [
+			"albums/R&B",
+			"singles/R&B" ]
+	},
+    {
+		name => 'reggae',
+		query => [
+			"albums/Reggae",
+			"singles/Reggae" ]
+	},
+	{
+		name => 'rock',
+		query => [
+			"albums/Rock",
+			"albums/SanDiegoLocals",
+			"singles/Rock" ]
+	},
+    {
+		name => 'world',
+		query => [
+			"albums/World minus /Tipico",
+			"singles/World" ]
+	},
+
+	# Personal
+
+	{
+		name => 'originals',
+		query => [
+			"albums/Productions/Originals" ]
+	},
+	{
+		name => 'bands',
+		query => [
+			"albums/Productions/Bands",
+			"albums/Productions/Other",
+			"albums/Productions/Theo"]
+	},
+    {
+		name => 'friends',
+		query => [
+			"albums/Productions minus Sweardha Buddha",
+			"albums/Friends" ]
+	},
+
+
+	# Other
+
+    {
+		name => 'xmas',
+		query => [
+			"albums/Christmas",
+			"singles/Christmas" ]
+	},
+    {
+		name => 'compilations',
+		query => [
+			"albums/Compilations",
+			"singles/Compilations" ]
+	},
+    {
+		name => 'soundtrack',
+		query => [
+			"albums/Soundtracks" ]
+	},
+    {
+		name => 'other',
+		query => [
+			"albums/Other",
+			"singles/Other" ]
+	},
+
+];	# $playlists
+
+
+
+
 #-----------------------------
 # support for localLibrary
 #-----------------------------
-# return them in their native original order
 
-sub getPlaylistTracks
+
+sub getPlaylists
 {
-	my ($name,$start,$count) = @_;
-	display($dbg_lpl,0,"getPlaylistTracks($name,$start,$count)");
+	return $playlists;
+}
+
+
+sub getPlaylistByName
+{
+	my ($name) = @_;
+	return $playlists_by_name->{$name};
+}
+
+
+
+sub getTracks
+{
+	my ($desc,$start,$count) = @_;
+	my $name = $desc->{name};
+	display($dbg_get,0,"getTracks($name,$start,$count)");
 	my $named_db = "$playlist_dir/$name.db";
 	my $named_dbh = db_connect($named_db);
 	return !error("Could not connect to local namedb $named_db")
 		if !$named_dbh;
 
 	my $last = $start + $count - 1;
-	my $query = "SELECT * FROM pl_tracks WHERE position>=$start AND position<=$last ORDER BY position";
-	display($dbg_lpl,1,"query=$query");
+	my $query = "SELECT * FROM tracks WHERE position>=$start AND position<=$last ORDER BY position";
+	display($dbg_get,1,"query=$query");
 
 	my $tracks = get_records_db($named_dbh,$query);
 
 	db_disconnect($named_dbh);
-	display($dbg_lpl,0,"getPlaylistTracks($name) returning ".scalar(@$tracks)." pl_track records");
+	display($dbg_get,0,"getTracks($name) returning ".scalar(@$tracks)." Tracks");
 	return $tracks;
 }
 
 
 
-#---------------------------
-# DEFAULT PLAYLISTS
-#---------------------------
-# The master playlists all start as un-shuffled.
-# The shuffle state is retained in the per-library-renderer copies.
 
-
-my %default_playlists = (
-
-	# playlist names may have spaces
-	# but since they get sent along as parts of
-	# urls, etc, they cannot have any special characters
-	# except maybe dash and dot (certainly not ampersand)
-	# which does not work unencoded in xml
-
-	# Working folders
-
-	'001' => {
-		id => '001',
-		name => 'test',
-		query =>
-			"albums/Productions/Originals/Forgotten Space" },
-	'002' => {
-		name => 'work',
-		query =>
-			"albums/Work" },
-
-	# Special Classes
-
-    '011' => {
-		name => 'favorite',
-		query =>
-			"albums/Favorite\t".
-			"singles/Favorite" },
-	'012' => {
-		name => 'dead',
-		query =>
-			"albums/Dead\t".
-			"singles/Dead" },
-	'013' => {
-		name => 'beatles',
-		query =>
-			"albums/Beatles" },
-
-	# Main Classes
-
-    '021' => {
-		name => 'blues',
-		query =>
-			"albums/Blues\t".
-			"singles/Blues" },
-    '022' => {
-		name => 'classical',
-		query =>
-			"albums/Classical minus /Baroque\t".
-			"singles/Classical minus /Baroque" },
-    '023' => {
-		name => 'country',
-		query =>
-			"albums/Country\t".
-			"singles/Country" },
-    '024' => {
-		name => 'folk',
-		query =>
-			"albums/Folk\t".
-			"singles/Folk" },
-    '025' => {
-		name => 'jazz',
-		query =>
-			"albums/Jazz/Old\t".
-			"albums/Jazz/Soft\t".
-			"albums/Jazz/Swing\t".
-			"singles/Jazz" },
-	'026' => {
-		name => 'orleans',
-		query =>
-			"albums/NewOrleans\t".
-			"albums/Zydeco" },
-    '027' => {
-		name => 'RandB',
-		query =>
-			"albums/R&B\t".
-			"singles/R&B" },
-    '028' => {
-		name => 'reggae',
-		query =>
-			"albums/Reggae\t".
-			"singles/Reggae" },
-	'029' => {
-		name => 'rock',
-		query =>
-			"albums/Rock\t".
-			"albums/SanDiegoLocals\t".
-			"singles/Rock" },
-    '02A' => {
-		name => 'world',
-		query =>
-			"albums/World minus /Tipico\t".
-			"singles/World" },
-
-	# Personal
-
-	'031' => {
-		name => 'originals',
-		query =>
-			"albums/Productions/Originals" },
-	'032' => {
-		name => 'bands',
-		query =>
-			"albums/Productions/Bands\t".
-			"albums/Productions/Other\t".
-			"albums/Productions/Theo"},
-    '033' => {
-		name => 'friends',
-		query =>
-			"albums/Productions minus Sweardha Buddha\t".
-			"albums/Friends" },
-
-
-	# Other
-
-    '041' => {
-		name => 'xmas',
-		query =>
-			"albums/Christmas\t".
-			"singles/Christmas" },
-    '042' => {
-		name => 'compilations',
-		query =>
-			"albums/Compilations\t".
-			"singles/Compilations" },
-    '043' => {
-		name => 'soundtrack',
-		query =>
-			"albums/Soundtracks" },
-    '044' => {
-		name => 'other',
-		query =>
-			"albums/Other\t".
-			"singles/Other" },
-
-);	# %default_playlists
-
-
-
-
-#------------------------------------------
-# Pseudo Constructors
-#------------------------------------------
-
-sub updateFromRecQuery
-	# the record already exists, and we need to create the
-	# table from the query ...
-{
-	my ($playlist) = @_;
-	display($dbg_pl_create+2,1,"updateFromRecQuery($playlist->{id}) $playlist->{name}");
-	return if !create_tracks_from_query($playlist);
-	display($dbg_pl_create+2,1,"updateFromRecQuery($playlist->{id}) finished");
-	return 1;
-}
-
-
-sub newFromDefault
-	# create a playlist from the default definition
-	# wipes out and recreates the tracks.db by calling
-	# create_tracks_from_query. The record will be
-	# inserted into the main database by caller.
-{
-	my ($id,$desc) = @_;
-	display($dbg_pl_create+2,1,"newFromDefault($id) $desc->{name}");
-
-	my $playlist = {
-		id => '',
-		uuid => $this_uuid,
-		name => '',
-		query => '',
-		shuffle => 0,
-		num_tracks => 0,
-		track_index => 0,
-		track_id => '',
-		version => 0,
-	};
-
-	mergeHash($playlist,$desc);
-	$playlist->{id} = $id;
-
-	return if !create_tracks_from_query($playlist);
-
-	display($dbg_pl_create+2,1,"newFromDefault($desc->{name}) finished");
-	return $playlist;
-}
+#-----------------------------------------
+# initPlaylists
+#-----------------------------------------
 
 
 sub normalizedPath
@@ -270,8 +265,6 @@ sub default_sort
 	# is provided, by that, and finally by the track title.
 	#
 	# I remove /albums and /singles from the path before comparing
-
-
 {
     my ($a,$b) = @_;
     my $cmp = normalizedPath($a->{path}) cmp normalizedPath($b->{path});
@@ -282,167 +275,102 @@ sub default_sort
 }
 
 
-sub create_tracks_from_query
-	# Creates the database playlists/name.db, with
-	# 	a 'tracks' table
-	# and populates it with records from the main library
-	#   using the query.
-	# Wipes out the tracks.db file if it exists,
-	# which it should not in my initial usage.
+
+sub updatePlaylist
+	# create named.db file if it doesn't exist
+	# else set $desc->{count} from existing database
 {
-    my ($playlist) = @_;
-	my $name = $playlist->{name};
-	my $query = $playlist->{query};
-
-	display($dbg_pl_create+2,1,"create_tracks_from_query($name) ...");
-	display($dbg_pl_create+2,2,"query=$query");
-
-	$playlist->{num_tracks} = 0;
-	$playlist->{track_index} = 0;
-
-	# connect to the local Artisan (Library) database
-
-    my $artisan_dbh = db_connect();
-
-	# get the records by path
-
-	my $tracks = [];
-	my @paths = split("\t",$playlist->{query});
-    for my $path (@paths)
-    {
-		display($dbg_pl_create+2,1,"path=$path");
-
-		my $query = "SELECT * FROM tracks WHERE instr(path,?) > 0";
-		my $exclude = ($path =~ s/\s+minus\s+(.*)$//) ? $1 : '';
-		my $args = [ $path ]; # ."/" ];
-		if ($exclude)
-		{
-			display($dbg_pl_create+2,3,"exclude='$exclude'");
-			push @$args,$exclude;
-			$query .= " AND instr(path,?) <= 0";
-		}
-		$query .= " ORDER BY path";
-			# "genre,album_artist,album_title,tracknum,title";
-		my $recs = get_records_db($artisan_dbh,$query,$args);
-		display($dbg_pl_create+2,3,"found ".scalar(@$recs)." tracks from query path=$path");
-		$playlist->{num_tracks} += @$recs;
-		push @$tracks,@$recs;
-	}
-
-	# disconnect from the databases
-
-    db_disconnect($artisan_dbh);
-
-	# wipe out and recreate the tracks.db database
-
-	display($dbg_pl_create+2,1,"inserting ".scalar(@$tracks)." items in new Playlist($playlist->{name})");
-
-	# create new table
-
+	my ($desc) = @_;
+	my $name = $desc->{name};
+	my $query = $desc->{query};
 	my $named_db = "$playlist_dir/$name.db";
-	unlink $named_db;
-	my $named_dbh = db_connect($named_db);
-	return if !$named_dbh;
 
-	create_table($named_dbh,"pl_tracks");
+	$playlists_by_name->{$name} = $desc;
 
-	my $position = 1;
-	my $first_track_id = '';
-	for my $track (sort {default_sort($a,$b)} @$tracks)
+	display($dbg_create+1,0,"updatePlaylist($desc->{name})");
+
+	if (-f $named_db)
 	{
-		$first_track_id = $track->{id} if $position == 1;
-		my $pl_track = {
-			id => $track->{id},
-			album_id => pathOf($track->{path}),
-			position => $position,
-			idx => $position };
-		$position++;
+		my $named_dbh = db_connect($named_db);
+		return if !$named_dbh;
+		my $recs = get_records_db($named_dbh,"SELECT id FROM tracks");
+		db_disconnect($named_dbh);
 
-		if (!insert_record_db($named_dbh,'pl_tracks',$pl_track))
+		my $count = @$recs;
+		display($dbg_create+1,1,"found count($count) recs in existing $name.db");
+		$desc->{count} = $count;
+	}
+	else	# Create it
+	{
+		# connect to the main database
+
+		my $artisan_dbh = db_connect();
+
+		# get the records by path
+
+		my $tracks = [];
+		for my $path (@$query)
 		{
-			error("Could not insert pl_track($track->{id}==$track->{title}) into $playlist->{name}.db database");
-			return;
+			display($dbg_create+2,1,"query path=$path");
+
+			my $query = "SELECT * FROM tracks WHERE instr(path,?) > 0";
+			my $exclude = ($path =~ s/\s+minus\s+(.*)$//) ? $1 : '';
+			my $args = [ $path ]; # ."/" ];
+			if ($exclude)
+			{
+				display($dbg_create+2,1,"exclude='$exclude'");
+				push @$args,$exclude;
+				$query .= " AND instr(path,?) <= 0";
+			}
+			$query .= " ORDER BY path";
+				# "genre,album_artist,album_title,tracknum,title";
+			my $recs = get_records_db($artisan_dbh,$query,$args);
+			display($dbg_create+2,1,"found ".scalar(@$recs)." tracks from query path=$path");
+			push @$tracks,@$recs;
 		}
+
+		# disconnect from the databases
+
+		db_disconnect($artisan_dbh);
+
+		# create the new database and it's tracks table
+
+		display($dbg_create+1,1,"creating $name.db with ".scalar(@$tracks)." tracks");
+
+		my $named_dbh = db_connect($named_db);
+		return if !$named_dbh;
+
+		create_table($named_dbh,"tracks");
+
+		my $position = 1;
+		for my $track (sort {default_sort($a,$b)} @$tracks)
+		{
+			$track->{position} = $position++;
+			if (!insert_record_db($named_dbh,'tracks',$track))
+			{
+				error("Could not insert track($track->{id}==$track->{title}) into $name.db database");
+				return;
+			}
+		}
+
+		db_disconnect($named_dbh);
+		$desc->{count} = @$tracks;
 	}
-	db_disconnect($named_dbh);
 
-
-	# fix the track_index
-
-	if (@$tracks)
-	{
-		$playlist->{track_index} = 1;
-		$playlist->{track_id} = $first_track_id;
-	}
-	else
-	{
-		warning(0,0,"CREATED EMPTY TRACKLIST($playlist->{name}) FROM QUERY!!");
-	}
-
-	display($dbg_pl_create+2,1,"create_tracks_from_query($name) finished");
+	display($dbg_create+1,0,"updatePlaylist($name) finished");
 	return 1;
 }
 
 
 
-
-#-----------------------------------------
-# initPlaylists
-#-----------------------------------------
-
 sub initPlaylists
 {
-	display($dbg_pl_create,0,"initPlaylists() started ...");
-
-	my $playlist_db = "$data_dir/playlists.db";
-	my $new_database = !-f $playlist_db;
-	my $playlist_dbh = db_connect($playlist_db);
-	create_table($playlist_dbh,"playlists") if $new_database;
-
-	# create any missing default playlists
-	# or update the track databases if not found
-	# the default playlists are assumed to be in the correct order.
-
-	for my $id (sort {$a cmp $b} keys(%default_playlists))
+	display($dbg_create,0,"initPlaylists() started ...");
+	for my $desc (@$playlists)
 	{
-		my $desc = $default_playlists{$id};
-		my $name = $desc->{name};
-
-		my $exists = -f "$playlist_dir/$name.db" ? 1 : 0;
-		my $playlist = get_record_db($playlist_dbh, "SELECT * FROM playlists WHERE id='$id'");
-
-		display($dbg_pl_create+2,1,"got($name) exists=$exists rec="._def($playlist));
-
-		# if record does not exist, we recreate the playlist from scratch
-		# if the table doesn't exist, then we create it from the query
-		# otherwise, we assume it is correct and do nothing
-
-		if (!$playlist)
-		{
-			display($dbg_pl_create+1,2,"creating new playlist($name) from default");
-			$playlist = newFromDefault($id,$desc);
-			next if !$playlist;
-			if (!insert_record_db($playlist_dbh,'playlists',$playlist))
-			{
-				error("Could not insert playlist($name) into database");
-				next;
-			}
-		}
-		elsif (!$exists)
-		{
-			display($dbg_pl_create+1,2,"updating playlist($name) from rec's query");
-			next if !updateFromRecQuery($playlist);
-			if (!update_record_db($playlist_dbh,'playlists',$playlist,'id'))
-			{
-				error("Could not update playlist.db database");
-				return;
-			}
-		}
+		updatePlaylist($desc);
 	}
-
-	# finished
-
-	display($dbg_pl_create,0,"initPlaylists() finished");
+	display($dbg_create,0,"initPlaylists() finished");
 }
 
 

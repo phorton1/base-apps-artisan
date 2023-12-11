@@ -84,11 +84,11 @@ sub init_state_vars
 {
 	my ($this) = @_;
 
-	delete $this->{playlist};
+	# delete $this->{playlist};
 
 	$this->{position} = 0;
 	$this->{duration} = 0;
-	$this->{playlist} = '';
+	# $this->{playlist} = '';
 	$this->{metadata} = shared_clone({
 		artist      => '',
 		album_title => '',
