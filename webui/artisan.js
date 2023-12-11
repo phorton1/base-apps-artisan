@@ -143,8 +143,15 @@ function idle_loop()
 		!in_playlist_spinner)
 	{
 		var data = { update_id: update_id };
-		if (current_renderer.uuid != html_renderer.uuid)
+		if (current_renderer.uuid == html_renderer.uuid)
+		{
+			audio_command('update');
+			update_renderer_ui();
+		}
+		else
+		{
 			data.renderer_uuid = current_renderer.uuid;
+		}
 
 		$.ajax({
 			async: true,
