@@ -285,7 +285,7 @@ and that I can go back to 'master' if I need to, and that I will
 someday, somehow, be able to Merge this back into the master branch.
 
 
-# Ripped out old Playlists and created new ones
+## Ripped out old Playlists and created new ones
 
 - copied all files that mentioned playlists to /base/apps/artisan_obs
 - removed Playlist.pm and remotePlaylist.pm
@@ -299,9 +299,212 @@ re-design.
 
 The idea is that I can now multiple-select a number of Explorer Tracks,
 or any branch of the Explorer Tree and add them to the Queue.  The UI
-artifice for this is, in worlds exept the iPad, the Context Menu, which
-is always brought up with a right click from a mouse, or a long press
-on a touch screen, EXCEPT FOR THE FUCKING IPAD.
+artifice for this, in al worlds worlds exept the iPad, the Context Menu,
+which is always brought up with a right click from a mouse, or a long
+press on a touch screen, according to HTML STANDARDS ....
+EXCEPT FOR THE STUPID IPAD.
+
+ON EVERYONE ELSE:
+
+- a click on a folder will expand or contract it and show it in the database and page header
+- a click on a track will show it in the database
+- a long or right click will bring up the context menu
+- a double click will play the thing immediately
+- multiple selection of Tracks *should* be supportable
+
+
+ON IPAD:
+
+Maybe the best approach is to simply add a right most column to the
+tree and tracklist that has a [...] button to bring up the context menu.
+when running on IOS ...
+
+
+
+## jquery Experiments with Multiple Selection (in Tracklist)
+
+Once again I find myself in another digression.
+
+fancyTree multiple selection did not work as advertised.
+Particularly there is no "multi" extension in my (old) version
+of fancyTree.  Some testing showed that the current versions
+of jquery stuff basically work and support "multi" extension
+and multiple selection in the Tracklist, so I am updating
+to the latest versions of all jquery related JS.
+
+The underlying collections of jquery related 'sources' files
+can now be found in my /zip/js folder
+
+- /zip/js/_artisan_js_old
+- /zip/js/_artisan_js_new
+
+I am/was using old versions of everything, dating back 8 or more years:
+
+- jquery 1.11.1
+- jquery-ui 1.11.2
+- jquery-layout 1.4.3
+- jquery.fancytree 2.6.0
+
+and a few other one-of-a-kind files:
+
+- jquery.layout.resizeaneAccordians (from callbacks folder of jquery-layout 1.4.3)
+- jquery.touchSwipe - from https://github.com/mattbryson/TouchSwipe-Jquery-Plugin
+- jquery.ui-contextmenu - from https://github.com/mar10/jquery-ui-contextmenu
+- jquery.touch-punch - unversioned single repo at https://github.com/furf/jquery-ui-touch-punch
+
+
+### _artisan_js_new Versions and Notes
+
+Here's what I found as the current, latest available sources on 2023-12-11.
+These files are downloaded to _artisan_js_new/sources before unzipping or
+re-organizing:
+
+- [jquery](https://jquery.com/) 3.7.1 released 2023-08-28
+  - downloaded regular and min versioned JS files via browser from
+    first two links on https://jquery.com/download/
+  - [github source](https://github.com/jquery/jquery)
+- [jquery-ui](https://jqueryui.com/) 1.13.2, released 2023-07-14
+  - says it is compatible with jquery upto 3.6
+  - downloaded https://jqueryui.com/resources/download/jquery-ui-1.13.2.zip
+    which contains unversioned regular, min, and css files
+  - [github source](https://github.com/jquery/jquery-ui)
+- [jquery layout](https://plugins.jquery.com/layout) 1.4.3, released 2014-09-07
+  - same version I was already using
+  - download link returns layout_master.zip which contains unversioned
+    regular and min js files under the source/stable folder
+  - [github source](https://github.com/allpro/layout)
+- [jquery.fancytree](https://github.com/mar10/fancytree) 2.38.3, released 2023-02-01
+  - downloaded 2.38.3 zip from the 'releases' link on the github site
+- [jquery.touch-punch](https://github.com/furf/jquery-ui-touch-punch) - unversioned
+  - single repo at https://github.com/furf/jquery-ui-touch-punch
+  - downloaded entire repos as jquery-ui-touch-punch-master.zip file
+- [jquery.touchSwipe](https://github.com/mattbryson/TouchSwipe-Jquery-Plugin) 1.6, from 2018-09-17
+  - version implied from github readme
+  - downloaded TouchSwipe-Jquery-Plugin-master.zip
+  - small doc appears at http://labs.rampinteractive.co.uk/touchSwipe/demos/index.html
+- [jquery.ui-contextmenu](https://github.com/mar10/jquery-ui-contextmenu) 1.18.1, from 2017-08-28
+  - downloaded jquery-ui-contextmenu-1.18.1 from releases link on github site
+
+
+That leaves me with the following files in _artisan_js_new/sources
+
+
+- jquery-3.7.1.js
+- jquery-3.7.1.min.js
+- jquery-3.7.1.min.map
+- jquery-ui-1.13.2.zip
+- layout-master.zip
+- fancytree-2.38.3.zip
+- jquery-ui-touch-punch-master.zip
+- TouchSwipe-Jquery-Plugin-master.zip
+- jquery-ui-contextmenu-1.18.1.zip
+
+I then built a 'new' version of the /webui_jquery folder from that stuff.
+
+- jquery-3.7.1.js - copied bare file
+- jquery-3.7.1.min.js - copied bare file
+- jquery-3.7.1.min.map - copied bare file
+- subfolder jquery-ui-1.13.2 - from zip file
+- subfolder layout-1.4.3 - copied and versioned from 'stable' folder from zip file
+- subfolder fancytree-2.38.3 - copied and versioned from 'dist' folder from zip file
+- jquery.ui.touch-punch.js - copied unversioned file from root of zip file
+- jquery.ui.touch-punch.min.js - copied unversioned file from root of zip file
+- jquery.touchSwipe-1.6.js - copied and versioned from root folder from zip file
+- jquery.touchSwipe-1.6.min.js - copied and versioned from root folder from zip file
+- jquery.ui-contextmenu-1.18.1.js - copied and versioned from root folder from zip file
+- jquery.ui-contextmenu.min-1.18.1.js - copied and versioned from root folder from zip file
+- jquery.ui-contextmenu.min-1.18.1.js.map - copied and versioned from root folder from zip file
+
+
+And I am **finally** ready to try modifying artisan.html to call the
+new JS.  I will start by
+
+- renaming webui/jquery to webui/jquery_old
+- inserting the new webui/jquery folder
+- modifying artisan.html to make it easier to change whole group of includes
+- create a whole 'new' section of includes
+
+Also note that I have
+- temp modification to webUI.pm to NOT deliver MIN files
+- sitting on temp mods to explorer.js and explorer.css to highlight selections
+
+This *should* enable me then to track down the needed CSS changes,
+and once I have those, and am satisfied, I can remove the old
+stuff and check it in.
+
+
+## Jquery Problems
+
+After correcting the following two problems, the UI came up,
+albeit with pretty major CSS problems.
+
+
+### (1) TypeError: v.selector is undefined
+
+When I got it all hooked up, I ran into this problem:
+
+	http://10.237.50.101:8091/webui/jquery/layout-1.4.3/jquery.layout.js:123: TypeError: v.selector is undefined
+
+A search on the web found a page at
+
+	https://stackoverflow.com/questions/39513448/jquery-layout-throws-error-because-n-selector-is-undefined
+
+that said the following
+
+	For jquery.layout 1.4.4 just comment row 1831: sC.selector = $N.selector.split(".slice")[0];
+	and all works normally (tested on jQuery v3.3.1)
+
+So I am temporarily making that change. I must remember to unmake it,
+then checkin the virgin jquery layout, then make the change on my own.
+
+**THIS CHANGE MUST ALSO BE MADE TO THE MINIFIED JS**
+
+
+### (2) Error: ui-contextmenu: Missing required option `delegate`.
+
+Temporarily removing context menus from my code (explorer.js),
+especially as I will be entirely changing the way I call
+context menus, using on('context_menu') rather than the
+context_menu.js extension ...
+
+
+## Testing Multiple Selection
+
+Hmmmm ... I thought it just worked in my earlier tests with
+just the added explorer.css styles
+
+	.fancytree-selected > td,
+	.fancytree-partsel > td
+	{
+		background: green;
+		background-color: #74992e !important;
+	}
+
+But I'm not getting a selected status on these.
+
+### Try1 - add explicit selection mode to Tracklist
+
+No joy.
+
+### Try2 - add "multi" extension to Tracklist
+
+It works.
+
+
+## Noted problems before checkin
+
+- The Renderer and Library Buttons are styled incorrectly, with checkboxes, in center
+- The top menu Home/Explorer/Full Screen buttons are styled incorrectly, light grey with tiny print
+- The Renderer Transport buttons are likewise styled incorrectly
+- Explorer tree has a node that says "No Data" at top
+
+
+# Checking in
+
+- Undo the change to jquery.layout.js for TypeError: v.selector is undefined
+-
+
+
 
 
 
