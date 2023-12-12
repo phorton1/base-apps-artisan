@@ -9,7 +9,12 @@
 	<!-- CSS MUST BE loaded before JAVASCRIPT !!! -->
     <!-- the order of the css is important -->
 
-    <link rel="stylesheet" type="text/css" href="/webui/jquery/jquery-ui-1.11.2.structure.css"/>
+    <!-- OLD -->
+	<!-- link rel="stylesheet" type="text/css" href="/webui/jquery/jquery-ui-1.11.2.structure.css"/-->
+    <!-- NEW -->
+	<link rel="stylesheet" type="text/css" href="/webui/jquery/jquery-ui-1.13.2/jquery-ui.structure.css"/>
+
+
     <link rel="stylesheet" type="text/css" href="/webui/themes/artisan_jquery_black.css" />
     <link rel="stylesheet" type="text/css" href="/webui/themes/artisan_fancytree/ui.fancytree.css"/>
 		<!-- I have my own code in webUI.pm to scale fancy tree.css if there's a param ?scale=blah -->
@@ -23,22 +28,31 @@
         media="(max-width:599px),(max-device-width:1599px)"/ -->
 		<!-- I havn't gotten around to revisiting changing display sizes via css and 'media queries' -->
 
-	<!-- JAVASCRIPT MUST BE loaded after CSS !!! -->
-
-    <script type="text/javascript" src="/webui/jquery/jquery-1.11.1.js"></script>
+    <!-- OLD -->
+    <!-- script type="text/javascript" src="/webui/jquery/jquery-1.11.1.js"></script>
     <script type="text/javascript" src="/webui/jquery/jquery-ui-1.11.2.js"></script>
     <script type="text/javascript" src="/webui/jquery/layout-1.4.3/jquery.layout.js"></script>
     <script type="text/javascript" src="/webui/jquery/jquery.layout.resizePaneAccordions.js"></script>
     <script type="text/javascript" src="/webui/jquery/jquery.fancytree-2.6.0-all.js"></script>
     <script type="text/javascript" src="/webui/jquery/jquery.ui.touch-punch.js"></script>
     <script type="text/javascript" src="/webui/jquery/jquery.touchSwipe.js"></script>
-    <script type="text/javascript" src="/webui/jquery/prh-jquery.ui-contextmenu.js"></script>
+    <script type="text/javascript" src="/webui/jquery/prh-jquery.ui-contextmenu.js"></script -->
+    <!-- NEW -->
+    <script type="text/javascript" src="/webui/jquery/jquery-3.7.1.js"></script>
+    <script type="text/javascript" src="/webui/jquery/jquery-ui-1.13.2/jquery-ui.js"></script>
+    <script type="text/javascript" src="/webui/jquery/layout-1.4.3/jquery.layout.js"></script>
+    <script type="text/javascript" src="/webui/jquery/layout-1.4.3/callbacks/jquery.layout.resizePaneAccordions.js"></script>
+    <script type="text/javascript" src="/webui/jquery/fancytree-2.38.3/jquery.fancytree-all.js"></script>
+    <script type="text/javascript" src="/webui/jquery/jquery.ui.touch-punch.js"></script>
+    <script type="text/javascript" src="/webui/jquery/jquery.touchSwipe-1.6.js"></script>
+    <script type="text/javascript" src="/webui/jquery/jquery.ui-contextmenu-1.18.1.js"></script>
+
 
     <script type="text/javascript" src="/webui/utils.js"></script>
     <script type="text/javascript" src="/webui/artisan.js"></script>
     <script type="text/javascript" src="/webui/home.js"></script>
     <script type="text/javascript" src="/webui/explorer.js"></script>
-    <script type="text/javascript" src="/webui/playlist.js"></script>
+    <!-- script type="text/javascript" src="/webui/playlist.js"></script -->
 	<script type="text/javascript" src="/webui/audio.js"></script>
 
 </head>
