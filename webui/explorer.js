@@ -204,7 +204,9 @@ function init_page_explorer()
 	$("#explorer_tracklist").fancytree({
 
 		scrollParent: $('#explorer_tracklist_div'),
-		extensions: ["table"],
+		selectMode:2,					// Try1
+		extensions: ["table","multi"],	// Try2
+
 		table: {},
 
 		renderColumns: function(event, data)
@@ -335,69 +337,76 @@ function init_page_explorer()
 	// TRACKLIST CONTEXT MENU
 	// Requires modified prh-jquery.ui-contextmenu.js
 
-	display(dbg_explorer,1,"initializizing explorer context menu");
+	// temporarily removing context menus
+	// due to  Uncaught Error: ui-contextmenu: Missing required option `delegate`.
+	// with new Jquery stuff
 
-	$("#explorer_tracklist").contextmenu({
+	if (false)
+	{
+		display(dbg_explorer,1,"initializizing explorer context menu");
 
-		// delegate: "span.fancytree-title",
-		// menu: "#options",
+		$("#explorer_tracklist").contextmenu({
 
-		menu:
-		[
-			{title: "Play (Renderer)", cmd: "play_renderer", uiIcon: "ui-icon-extlink"},
-			{title: "Play (Local)", cmd: "play_local", uiIcon: ".ui-icon-newwin"},
-			{title: "Play (Download)", cmd: "play_download", uiIcon: ".ui-icon-newwin"},
+			// delegate: "span.fancytree-title",
+			// menu: "#options",
 
-			{title: "----"},
-			{title: "Cut", cmd: "cut", uiIcon: "ui-icon-scissors"},
-			{title: "Copy", cmd: "copy", uiIcon: "ui-icon-copy"},
-			{title: "Paste", cmd: "paste", uiIcon: "ui-icon-clipboard", disabled: false },
-			{title: "----"},
-			{title: "Edit", cmd: "edit", uiIcon: "ui-icon-pencil", disabled: true },
-			{title: "Delete", cmd: "delete", uiIcon: "ui-icon-trash", disabled: true },
-			{title: "More", children: [
-				{title: "Sub 1", cmd: "sub1"},
-				{title: "Sub 2", cmd: "sub1"}
-				]}
-		],
+			menu:
+			[
+				{title: "Play (Renderer)", cmd: "play_renderer", uiIcon: "ui-icon-extlink"},
+				{title: "Play (Local)", cmd: "play_local", uiIcon: ".ui-icon-newwin"},
+				{title: "Play (Download)", cmd: "play_download", uiIcon: ".ui-icon-newwin"},
 
-		beforeOpen: function(event, ui)
-		{
-			var node = $.ui.fancytree.getNode(ui.target);
-			// node.setFocus();
-			node.setActive();
-		},
+				{title: "----"},
+				{title: "Cut", cmd: "cut", uiIcon: "ui-icon-scissors"},
+				{title: "Copy", cmd: "copy", uiIcon: "ui-icon-copy"},
+				{title: "Paste", cmd: "paste", uiIcon: "ui-icon-clipboard", disabled: false },
+				{title: "----"},
+				{title: "Edit", cmd: "edit", uiIcon: "ui-icon-pencil", disabled: true },
+				{title: "Delete", cmd: "delete", uiIcon: "ui-icon-trash", disabled: true },
+				{title: "More", children: [
+					{title: "Sub 1", cmd: "sub1"},
+					{title: "Sub 2", cmd: "sub1"}
+					]}
+			],
 
-		select: function(event, ui)
-		{
-			var node = $.ui.fancytree.getNode(ui.target);
-
-			if (ui.cmd == 'play_renderer')
+			beforeOpen: function(event, ui)
 			{
-				renderer_command('play_song',{
-					library_uuid: current_library['uuid'],
-					track_id: +node.data.id });
+				var node = $.ui.fancytree.getNode(ui.target);
+				// node.setFocus();
+				node.setActive();
+			},
+
+			select: function(event, ui)
+			{
+				var node = $.ui.fancytree.getNode(ui.target);
+
+				if (ui.cmd == 'play_renderer')
+				{
+					renderer_command('play_song',{
+						library_uuid: current_library['uuid'],
+						track_id: +node.data.id });
+				}
+
+				else if (ui.cmd == 'play_local')
+				{
+					var play_url = "/media/" + node.data.id + '.' + node.data.type;
+					$('#audio_player').attr('src',play_url);
+					$('#audio_player_title').html(node.data.title);
+				}
+
+				else if (ui.cmd == 'play_download')
+				{
+					var play_url = "/media/" + node.data.id + '.' + node.data.type;
+					var myWindow = window.open(
+						play_url,
+						"playerWindow",
+						"width=400, height=300");
+				}
 			}
 
-			else if (ui.cmd == 'play_local')
-			{
-				var play_url = "/media/" + node.data.id + '.' + node.data.type;
-				$('#audio_player').attr('src',play_url);
-				$('#audio_player_title').html(node.data.title);
-			}
+		});		// tracklist context menu
 
-			else if (ui.cmd == 'play_download')
-			{
-				var play_url = "/media/" + node.data.id + '.' + node.data.type;
-				var myWindow = window.open(
-					play_url,
-					"playerWindow",
-					"width=400, height=300");
-			}
-		}
-
-	});		// tracklist context menu
-
+	}	// temporarily removed
 
 	display(dbg_explorer,1,"init_page_explorer() returning");
 
