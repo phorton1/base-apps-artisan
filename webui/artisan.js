@@ -63,6 +63,12 @@ function debug_environment()
 		"platform(" + navigator.platform + ") " +
 		"appVersion(" + navigator.appVersion + ") " +
 		"ua(" + navigator.userAgent + ") ");
+
+	var touchPoints = navigator.maxTouchPoints;
+	if (touchPoints == undefined)
+		touchPoints = 'undefined';
+
+	debug_remote(0,0,"touchPoints = " + touchPoints);
 }
 
 
@@ -81,6 +87,9 @@ $(function()
 	    ( navigator.msMaxTouchPoints > 0 );
 
 	debug_environment();
+
+	init_utils();
+
 
 	WITH_SWIPE = true;
 		// turn WITH_SWIPE on for testing on laptop

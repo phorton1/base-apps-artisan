@@ -1,4 +1,19 @@
 // utils.js
+// all this was about the stupid iPad anyways
+
+// So, we have to lamely IDENTIFY we are on IOS (iPad or an iPhone too probably)
+// so that we can lamely REIMPLEMENT Context menus to work on DoubleClicks on
+// only that platform.  Reading through the literature, the best, state of the art,
+// way to detect this problem is:
+//
+// 		- if the user agent contains 'iPad' or 'iPhone'
+//		- the platform iw 'MacIntel' and some heuristic about features
+//
+// The most popular heutistic seems to be to call
+//
+//    navigator.MaxTouchPoints and see if it's larger than 1 (or maybe == 5)
+
+
 
 var DEBUG_REMOTE = true;
 	// This variable turns on certain output from mobile devices
@@ -15,8 +30,12 @@ var DISPLAY_REMOTE = false;
 var debug_level = 0;
 var dbg_menu = 0;
 var dbg_prefs = 0;
+var dbg_ios = 0;
+
 
 var device_id = '';
+var is_ios = false;
+
 
 
 jQuery.ajaxSetup({async:false});
@@ -32,6 +51,21 @@ window.onerror = function(message, source, lineNumber, colno, err)
 const DEVICE_TYPE_RENDERER = 'renderer';
 const DEVICE_TYPE_LIBRARY = 'library';
 
+
+function init_utils()
+	// this method is currently supplied soley to lamely set is_ios
+{
+	var platform = navigator.platform;
+	if (navigator.userAgent.includes('iPad') ||
+		navigator.userAgent.includes('iPhone') || (
+		navigator.platform == 'MacIntel' &&
+		navigator.maxTouchPoints &&
+		navigator.maxTouchPoints == 5))
+	{
+		is_ios = true;
+	}
+	debug_remote(dbg_ios,0,"IS_IOS=" + is_ios);
+}
 
 //---------------------------------------------
 // device_id
