@@ -64,7 +64,12 @@ table.fancytree-ext-table tbody tr td
 	overflow-y:auto !important;
 }
 
-
+.fancytree-selected > td,
+.fancytree-partsel > td
+{
+	background: green;
+	background-color: #74992e !important;
+}
 
 #explorer_album_info1   { font-size:10pt; margin-top:0px; margin-bottom:0px; font-weight:bold; }
 #explorer_album_info2   { font-size:8pt;  margin-top:0px; margin-bottom:0px;}
