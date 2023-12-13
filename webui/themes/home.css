@@ -1,10 +1,117 @@
 /*******************************************
- renderer.css
+ home.css
 *******************************************/
-/* Contains styles in in pane_renderer.html */
+/* Contains styles used in page_home.html and children */
 
 
-/* ALBUM INFO SECTION */
+/************** pane_home_menu.html ****************/
+
+.ui-accordion,
+.ui-accordion-header
+{
+	margin-top: 0px !important;
+}
+
+.ui-accordion-header
+{
+	overflow:hidden !important;
+}
+
+.home_accordian
+{
+	overflow-x: hidden !important;
+}
+
+
+
+#home_menu
+{
+	width:100% !important;
+	font-size:16px;
+	font-weight:bold;
+}
+
+
+
+/*.home_menu_button
+{
+	font-size:32px;
+	margin-right:20%;
+}
+*/
+
+
+#renderer_menu,
+#library_menu
+{
+	width:100%;
+	padding:0;
+	white-space:nowrap;
+	overflow-x: hidden !important;
+}
+
+
+#renderer_menu label,
+#library_menu label
+{
+	width: 78%;
+	font-size:16px;
+	font-weight:bold;
+	overflow:hidden;
+	white-space:nowrap;
+	margin-top: 6px;
+	margin-left: 5%;
+	margin-right: 25%;
+}
+
+
+
+
+#prefs_div
+{
+	font-size:20px;
+	width:100%;
+	padding:0px;
+	margin:0px;
+}
+
+.pref_div
+{
+	margin-top:12px;
+	width:100%;
+}
+
+.pref_title
+{
+	margin-bottom:8px;
+}
+
+.pref_value
+{
+	color:#6666ff;
+	margin-left:30px;
+	font-weight:bold;
+}
+
+.pref_control_div
+{
+	margin-top:6px;
+	margin-left:45px;
+}
+
+
+.pref_descrip
+{
+	margin-top:10px;
+	margin-left:15px;
+}
+
+
+
+
+
+/************ the 'renderer' pane ********************/
+
 
 #renderer_full_album_image_td,
 #renderer_album_image_td
@@ -48,7 +155,6 @@
 }
 
 
-/* the album_info_td contains the album_info_div and the slider_div */
 
 #renderer_full_album_info_td
 #renderer_album_info_td
@@ -61,20 +167,15 @@
 #renderer_album_info_div
 {
 	height:125px;
-	/* width:340px; the width is fixed in car_stereo.css */
 	overflow:hidden;
 }
 
 #renderer_full_album_info_div
 {
-	/* height:125px; */
-	/* width:340px; the width is fixed in car_stereo.css */
 	overflow:hidden;
 }
 
 
-
-/* the song info elements live within the renderer_album_info_div */
 
 #renderer_song_title     { font-size:15pt; font-weight:bold; margin-top:10px; margin-bottom:0px;}
 #renderer_album_artist   { font-size:11pt;                   margin-top:0px;  margin-bottom:0px;}
@@ -89,8 +190,6 @@
 #renderer_full_song_genre     { font-size:12pt;                   margin-top:16px; margin-bottom:0px;}
 
 
-
-/* slider styling */
 
 #renderer_slider_div
 {
@@ -119,11 +218,8 @@
 .renderer_play_time      { font-size:10pt; }
 
 
-/* TRANSPORT CONTROLS */
-
 
 .renderer_table
-	/* styling for the two tables that contain the transport buttons */
 {
 	width:98%;
 	margin-bottom:10px;
@@ -153,202 +249,4 @@
 .renderer_big_button
 {
 	width:90px;
-}
-
-
-/******************* HOME-MENU PANE STYLES ****************/
-
-/* this affects the section HEADER buttons*/
-
-#home_menu
-{
-	/* width:243px; */
-	width:auto;
-	font-size:16px;
-	font-weight:bold;
-}
-
-
-
-/* HOME-MENU LIST STYLES */
-
-/* this affects the buttons WITHIN a section
-   by virtue of the sub-tag 'label'.  There
-   is no specific class for these, their id
-   is typically renderer_uuid or playlist_id,
-   and their 'name' is renderer_button,
-   playlist_button, etc.
-*/
-
-#playlist_menu label,
-#renderer_menu label,
-#library_menu label
-{
-	/* width:200px; */
-	width:95%;
-	font-size:16px;
-	font-weight:bold;
-	overflow:hidden;
-	white-space:nowrap;
-	margin-bottom:10px;
-}
-
-/* this affects the section itself */
-
-#playlist_menu,
-#renderer_menu,
-#library_menu
-{
-	/* width:197px; */
-	width: 95%;
-
-	padding-left:5%;
-	/* padding-left:10px; */
-	white-space:nowrap;
-}
-
-
-
-/* raise the renderer_menu over the slider button which is at z-index:2
-
-#renderer_menu,
-#renderer_menu_div
-{
-	z-index:3;
-}
-
-*/
-
-
-/* HOME-MENU PREF STYLES */
-
-#prefs_div
-	/* the whole prefs div */
-{
-	font-size:20px;
-	width:100%;
-	padding:0px;
-	margin:0px;
-}
-
-.pref_div
-	/* a div per pref */
-{
-	margin-top:12px;
-	width:100%;
-}
-
-.pref_title
-	/* title of the pref */
-{
-	margin-bottom:8px;
-}
-
-.pref_value
-	/* current value of the pref */
-{
-	color:#6666ff;
-	margin-left:30px;
-	font-weight:bold;
-}
-
-.pref_control_div
-	/* an area under the value for controls to change the value */
-{
-	margin-top:6px;
-	margin-left:45px;
-}
-
-
-.pref_descrip
-	/* one or more paragraphs describing the preference */
-{
-	margin-top:10px;
-	margin-left:15px;
-}
-
-
-
-/******************* PLAYLIST INFO PANE ****************/
-
-.playlist_info_header_left
-{
-	padding-left:6px;
-	cursor:pointer;
-}
-
-.playlist_info_div
-	/* wraps the whole pane except the header bar */
-{
-	white-space:nowrap;
-	margin-top:6px;
-	margin-left:6px;
-	margin-right:6px;
-	text-align:center;
-}
-
-
-/* controls */
-
-.playlist_info_shuffle_div
-	/* div around the shuffle buttons */
-{
-	margin-top:8px;
-}
-
-.playlist_info_shuffle_button
-	/* style is also applied to the unplayed_first button */
-{
-	margin-top:6px;
-	white-space:nowrap;
-	width:140px;
-}
-
-
-/* slider */
-
-.playlist_info_slider_div
-	/* div around just the playlist_info_slider */
-{
-	width:100%;
-	margin-top:30px;
-	margin-left:10%;
-	margin-bottom:24px;
-}
-
-.playlist_info_slider
-{
-	width:80%;
-	height:6px;
-	background:#0000ff;
-}
-
-
-.playlist_info_slider_table
-	/* table under the slider that contains the track number */
-{
-	/* width:90%; */
-}
-
-
-.playlist_info_track_num_td,
-.playlist_info_track_of_td,
-.playlist_info_num_tracks_td
-{
-	font-size:18px;
-	text-align:center;
-	vertical-align:middle;
-	width:30px;
-	/* border:1px solid white; */
-}
-
-.playlist_info_num_tracks_td
-{
-	text-align:left;
-}
-
-.playlist_info_track_num
-{
-	font-size:18px;
-	width:52px;
 }

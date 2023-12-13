@@ -53,7 +53,14 @@ function init_page_home()
 	// init_playlist_info();
 	init_renderer_pane();
 
-	$("#home_menu").accordion({ heightStyle: "fill" });
+	$("#home_menu").accordion({
+		icons: false,
+		heightStyle: "fill",
+		classes: {
+		  "ui-accordion": "home_accordian"
+		}
+
+		});
 	$('#prefs_div').buttonset();
 
 	create_numeric_pref(0,10,60,
@@ -82,7 +89,7 @@ function load_device_list(type)
 				uuid: html_renderer.uuid,
 				type: DEVICE_TYPE_RENDERER });
 
-		buildHomeMenu(result,type,'uuid','selectDevice','type','uuid');
+		buildDeviceMenu(result,type);
 		selectDefaultDevice(type);
 	});
 }

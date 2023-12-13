@@ -40,7 +40,7 @@ my $dbg_update = 1;
 	# specific to update calls
 
 
-my $SEND_MINIFIED_JS_AND_CSS = 1;
+my $SEND_MINIFIED_JS_AND_CSS = 0;
 	# I spent over an hour trying to figure out how JS was getting minified
 	# when I am loading the unminified versions ins artisan.html, only to discover
 	# that I myself am loading the min files if they exist, sheesh.

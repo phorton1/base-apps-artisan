@@ -125,17 +125,16 @@ function init_page_explorer()
 
 	$("#explorer_tree").fancytree({
 
+		nodata:false,
+			// don't add a dummy 'No Data' node
 		clickFolderMode:3,
 			// 1:activate, 2:expand, 3:activate and expand, 4:activate/dblclick expands (default: 4)
 		scrollParent: $('#explorer_tree_div'),
 
 		// Incremental Loading
-		// sourc: has to at least return an empty array or my addNodes don't render.
 
-		source: function()
-		{
-			return [];
-		},
+		source: function()   {  return []; },
+			// source: has to at least return an empty array or my addNodes don't render.
 
 		lazyLoad: function(event, data)
 		{
@@ -203,11 +202,12 @@ function init_page_explorer()
 
 	$("#explorer_tracklist").fancytree({
 
+		nodata:false,
 		scrollParent: $('#explorer_tracklist_div'),
 		selectMode:2,					// Try1
 		extensions: ["table","multi"],	// Try2
-
 		table: {},
+		source: function()   {  return []; },
 
 		renderColumns: function(event, data)
 		{
@@ -272,8 +272,10 @@ function init_page_explorer()
 
 	$("#explorer_details").fancytree({
 
+		nodata:false,
 		clickFolderMode:3,		// activateAndExpand
 		extensions: ["table"],
+		source: function()   {  return []; },
 
 		expand: function(event, data)  { saveDetailsExpanded(true,data.node); },
 		collapse: function(event, data) { saveDetailsExpanded(false,data.node); },

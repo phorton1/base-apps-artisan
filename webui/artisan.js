@@ -89,7 +89,7 @@ $(function()
 	debug_environment();
 
 	init_utils();
-
+		// sets 'is_ios'
 
 	WITH_SWIPE = true;
 		// turn WITH_SWIPE on for testing on laptop
@@ -102,8 +102,7 @@ $(function()
 
 	// STATIC LAYOUT
 
-	$('.artisan_menu_table').buttonset();
-	$('#context_menu_div').buttonset();
+	$('.artisan_menu_item').button();
 
 	create_layout('home');
 	create_layout('explorer');
@@ -180,7 +179,10 @@ function idle_loop()
 				}
 			},
 
-			error: function() { onUpdateError() },
+			error: function() {
+				error("UPDATE ERROR: There was an error calling /webui/update");
+			},
+
 			timeout: 3000,
 		});
 	}
@@ -191,7 +193,7 @@ function idle_loop()
 
 function onUpdateError()
 {
-	error("UPDATE ERROR: There was an error calling /webui/update");
+
 }
 
 
@@ -209,20 +211,13 @@ function updateLibraries(libraries)
 		if (!exists && library.online != '')
 		{
 			any_changed = true;
-			appendRadioButton(
-				'library',
-				library.name,
-				library.uuid,
-				'selectDevice',
-				'library',
-				library.uuid );
+			appendDeviceButton('library',library);
 		}
 		else if (exists && library.online == '')
 		{
 			any_changed = true;
 			if (library.uuid == current_library.uuid)
 				set_current = true;
-
 			// had to add a wrapper _div to get delete to work as an atomic function
 			$('#' + use_id + '_div').remove();
 		}

@@ -412,87 +412,66 @@ function create_numeric_pref(min,med,max,var_name,spinner_id)
 }
 
 
-function appendRadioButton(menu_name, name, id, fxn, param1, param2)
-	// called from home.js
-	// menu_name will be 'playlist', 'renderer', or 'library'
-	// caller provides the id to concatenate to the menu_name
-	//		 playlist_003
-	//       renderer_90830984feed
-	// as well as the specific function (i.e. setPlaylist) and
-	// parameters (setPlaylist(library_uuid, playist_id)
-	//
-	// Creates a <div> with an id of MENUNAME_id_div that contains
-	//     an <input> with an id of MENUNAME_id,
-	//     a <label> 'for' the id MENUNAME_id
-	//     and a <br>
-	//
-	// These have to be created within a div in this complicated
-	//    manner if they are to be removed atomically during device
-	//    management, sigh.
-{
-	display(dbg_menu,1,"appendRadioButton(" + commaJoin([menu_name, name, id, fxn, param1, param2]) + ")" );
 
-	var use_id = menu_name + '_' + id;
+
+
+
+function appendDeviceButton(type, rec)
+{
+	var name = rec.name;
+	var uuid = rec.uuid;
+
+	display(dbg_menu,1,"appendDeviceButton(" + commaJoin([type,name,uuid]) + ")" );
+
+	var use_id = type + '_' + uuid;
 	var hash_id = '#' + use_id;
 
-	$('#' + menu_name + '_menu').append(
+    var input = document.createElement('input');
+    input.type = 'radio';
+    input.id = use_id;
+	input.name = type + '_button';
+    input.value = use_id;
 
-		$('<div>').prop({
-			id: use_id + '_div' })
+    var label = document.createElement('label')
+    var text = document.createTextNode(name);
+    label.htmlFor = use_id;
+    label.appendChild(text);
 
-		.append(
-			$('<input>').prop({
-				type: 	'radio',
-				name: 	menu_name + "_button",
-					// this is what groups them into a radio group.
-					// we are calling them renderer_button, etc.
-					// which is different than the menu itself.
-				id: 	use_id,
-			})
-		).append(
-			$('<label>').prop({
-				for: use_id,
-			}).html(name)
-		).append(
-			$('<br>'))
+    var br = document.createElement('br');
 
-	);
+	var div = document.createElement('div');
+	div.id = use_id + '_div';
+    div.appendChild(input);
+    div.appendChild(label);
+    div.appendChild(br);
 
-	$(hash_id).attr('onClick',fxn + "('" + param1 + "','" + param2 + "')");
+    var menu = document.getElementById(type + "_menu");
+	menu.appendChild(div);
+
+	$(hash_id).attr('onClick',"selectDevice('" + type + "','" + uuid + "')");
+	$(hash_id).button({ icon: false });
+
+
 }
 
 
-
-function buildHomeMenu(array, menu_name, id_field, fxn, param1_field, param2_field)
-	// called from init_page_home(), this builds the INITIAL/FULL lists of
-	// 		Playlist, Renderer, and Library buttons.
-	// complicated.  Accepts an array of 'items' where the item must contain
-	// the correct fields according to the other parameters:
-	//
-	//     menu_name will be 'playlist', 'renderer', or 'library'
-	//     id_field will be 'id' for playlists, or uuid for renderers and library
-	//     fxn will be 'selectDevice' or 'setPlaylist'
-	//     param1_field,param2_field will be
-	//			'uuid','id' for playlists (the library uuid, and the playlist id)
-	//			'type'
+function buildDeviceMenu(array, type)
+	// builds a set of buttons for the a list of devices in array
+	// typeis either 'library' or 'renderer'
 {
-	display(dbg_menu,0,"buildHomeMenu(" + commaJoin([ menu_name, id_field, fxn, param1_field, param2_field ]) + ")");
+	display(dbg_menu,0,"buildHomeMenu(" + type + ")");
 
-	$('#' + menu_name + '_menu').html('');		// clear existing
+	$('#' + type + '_menu').html('');
+		// remove existing buttons
 
-	$.each(array , function(index, item)  {
-
-		appendRadioButton(
-			menu_name,
-			item.name,
-			item[id_field],
-			fxn,
-			item[param1_field],
-			item[param2_field]);
+	$.each(array , function(index, rec)
+	{
+		appendDeviceButton(type, rec);
 	});
 
-	$('#' + menu_name + '_menu').buttonset();
+	$('#' + type + '_menu').buttonset();
 }
+
 
 
 // end of utils.js

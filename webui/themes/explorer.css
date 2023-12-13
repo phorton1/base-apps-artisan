@@ -2,16 +2,11 @@
  explorer.css
 ********************************************/
 
-/* Currently contains some classes that have common definitions
- * between the explorer and the old station pages, specifically the
- * fancyTree of elements. */
-
-/* no borders in explorer */
-
 table.fancytree-ext-table tbody tr td
 {
 	border:0px;
 }
+
 
 
 #explorer_tracklist,
@@ -21,27 +16,30 @@ table.fancytree-ext-table tbody tr td
 	table-layout:fixed;
 }
 
+ul.fancytree-container
+{
+	background-color:#000000;
+	border: none;
+}
+
 #explorer_tree span,
 #explorer_tracklist td
 {
     overflow:hidden;
+	color:#ffffff;
+	background-color:#000000;
 	font-size:12pt;			/* pt? */
 }
 
-/* example of using a media query in the CSS to change one thing */
 
-@media (max-device-width: 1250px)
+
+.fancytree-selected > td,
+.fancytree-partsel > td
 {
-	#explorer_tree span,
-	#explorer_tracklist td
-	{
-		font-size:15pt;
-	}
-	#explorer_details td
-	{
-		font-size:13pt;
-	}
+	background: green !important;
+	background-color: #74992e !important;
 }
+
 
 
 .explorer_tree_num
@@ -64,12 +62,8 @@ table.fancytree-ext-table tbody tr td
 	overflow-y:auto !important;
 }
 
-.fancytree-selected > td,
-.fancytree-partsel > td
-{
-	background: green;
-	background-color: #74992e !important;
-}
+
+
 
 #explorer_album_info1   { font-size:10pt; margin-top:0px; margin-bottom:0px; font-weight:bold; }
 #explorer_album_info2   { font-size:8pt;  margin-top:0px; margin-bottom:0px;}
@@ -135,4 +129,21 @@ table.fancytree-ext-table tbody tr td
 	/* font-size:12px; */
 	font-weight: bold;
 	icon: auto;
+}
+
+
+
+/* example of using a media query in the CSS to change one thing */
+
+@media (max-device-width: 1250px)
+{
+	#explorer_tree span,
+	#explorer_tracklist td
+	{
+		font-size:15pt;
+	}
+	#explorer_details td
+	{
+		font-size:13pt;
+	}
 }
