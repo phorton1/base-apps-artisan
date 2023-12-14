@@ -110,6 +110,14 @@ function loadDirRemaining(rec)
 //--------------------------------------
 // init_page_explorer()
 //--------------------------------------
+// There is a current issue on the laptop with "multi"
+// selection on the Explorer Tree.  When you switch to
+// the Tracklist, fancytree considers the 0th item (the
+// folder) to be selected and so shift-select always
+// starts at the 0th track.
+
+// Experiment1 - selection in one pane at a time
+
 
 function init_page_explorer()
 {
@@ -127,9 +135,18 @@ function init_page_explorer()
 
 		nodata:false,
 			// don't add a dummy 'No Data' node
-		clickFolderMode:3,
+		clickFolderMode:  is_ios ? 3 : 4,
 			// 1:activate, 2:expand, 3:activate and expand, 4:activate/dblclick expands (default: 4)
+
 		scrollParent: $('#explorer_tree_div'),
+
+		extensions: ["multi"],
+		multi:
+		{
+	      mode: "sameParent",
+	    },
+
+
 
 		// Incremental Loading
 
@@ -185,6 +202,9 @@ function init_page_explorer()
 			var node = data.node;
 			var rec = node.data;
 			update_explorer_ui(node.title,rec);
+
+			// node.setSelected(!node.isSelected());
+			return true;
 		}
 	});		// explorer_tree
 
@@ -238,13 +258,17 @@ function init_page_explorer()
 			$tdList.eq(5).text(rec.year_str).addClass('explorer_tracklist_td5 explorer_tracklist_variable_td');
 		},
 
-		activate: function(event, data)
+		// click:
+		activate:
+		function(event, data)
 		{
 			var node = data.node;
 			var rec = node.data;
 			explorer_details.reload({
 				url: library_url() + '/track_metadata?id=' + rec.id,
 				cache: true});
+			deselectTree();
+			return true;
 		},
 
 		dblclick: function(event, data) {
@@ -423,6 +447,16 @@ function saveDetailsExpanded(expanded,node)
 	// alert((expanded ? "expand " : "collapse") + title);
 	explorer_details['expanded_' + title] = expanded;
 }
+
+
+
+function deselectTree()
+{
+	$('#explorer_tree').find('.fancytree-selected')
+		.removeClass('fancytree-selected');
+}
+
+
 
 
 //---------------------------------------------------------------

@@ -32,7 +32,7 @@ ul.fancytree-container
 }
 
 
-
+.fancytree-selected > span,
 .fancytree-selected > td,
 .fancytree-partsel > td
 {
@@ -107,6 +107,9 @@ ul.fancytree-container
 
 
 /* details pane */
+/* i dislike CSS */
+/* i need to add comments to explain each decision to add a style */
+/* to get things to look right */
 
 #explorer_details_div
 {
@@ -114,6 +117,16 @@ ul.fancytree-container
 	overflow-x:auto !important;
 }
 
+/* this was necessary to get rid of the min-height:20px from
+   jquery/fancytree-2.38.3/skin-themeroller/ui.fancytree.css:372
+   I means, how simple is this, really, to use ?
+*/
+
+
+#explorer_details span
+{
+	min-height:0px !important;
+}
 
 
 

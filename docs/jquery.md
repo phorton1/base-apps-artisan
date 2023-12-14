@@ -21,9 +21,15 @@ can now be found in my /zip/js folder
 - /zip/artisan_js/_artisan_js_old
 - /zip/artisan_js/_artisan_js_new
 
+*afterward* - NOW I notice, after all that work that the "multi"
+extension intercepts the "activation" event, that multi-selection
+doesn't work well, and that I will probably want to implement it
+myself.
+
+
 ## Old Versions
 
-I am/was using old versions of everything, dating back 8 or more years:
+I was using old versions of everything, dating back 8 or more years:
 
 - jquery 1.11.1
 - jquery-ui 1.11.2
@@ -71,7 +77,7 @@ re-organizing:
   - downloaded jquery-ui-contextmenu-1.18.1 from releases link on github site
 
 
-That leaves me with the following files in _artisan_js_new/sources
+That leaves me with the following files in /zip/artisan_js/_artisan_js_new/sources
 
 - jquery-3.7.1.js
 - jquery-3.7.1.min.js
@@ -158,15 +164,6 @@ When I added the "multi" extension to the Tracklist,
 multiple selection, with highlighting, began to work.
 
 
-## NEW JQUERY - Noted problems at this time
-
-- The Renderer and Library Buttons are styled incorrectly, with checkboxes, in center
-- The top menu Home/Explorer/Full Screen buttons are styled incorrectly, light grey with tiny print
-- The Renderer Transport buttons are likewise styled incorrectly
-- Explorer tree has a node that says "No Data" at top
-
-
-
 ## THEMES
 
 It's so flexible you can't use it.
@@ -184,7 +181,7 @@ Not only is there an issue over identifying the 'correct'
 'standard' CSS files to load, but then there are ordering
 issues, kludges like '!important' and so on.
 
-All I want to do is get my fucking program to work.
+All I want to do is get my program to work.
 
 The buttons are grey.  They should be blue.
 
@@ -211,10 +208,10 @@ own 'themes' are total garbage and totally counter to good software
 design principles.  You end up with a glom of unreproducable
 CSS that you will NEVER be able to figure out or rebuild again.
 And once you do that, as I did, apparently many years ago,
-and you need to update something, you are totally fucked.
+and you need to update something, you are totally hosed.
 
 /webui/jquery/fancytree-2.38.3 contains a bunch of 'skins'
-whatever the fuck those are.  There is ostensibly documentation
+whatever the heck those are.  There is ostensibly documentation
 on 'theming' fancytree, but like so many bad documentation efforts,
 it starts off by jumping right into details about some particular
 weird side issue ... like how to make a particular widget have
@@ -227,14 +224,15 @@ future.  Sheesh.  Who comes up with this stuff?
 
 Likewise, jquery-ui's approach to 'explaining' theming is
 to start off by giving you a list of EVERY CLASS that
-ANY OBJECT might ever have,
+ANY OBJECT might ever have, and never presenting any
+kind of overview.
 
 According to jquery-ui's recommendations, one should start
 by downloading a 'theme' from ThemeRoller and stick it in
-their project.  I saw a note that I started with 'Dark Hive',
-and downloaded that.  It gave me a jquery-ui-1.13.2.custom.zip
-file that not only RE-GIVES me jquery, and jquery-ui.js
-JAVASCRIPT files, but does not even include the name of
+their project.  I saw a note that I previously started with 'Dark Hive',
+so I went to the current ThemeRoller and downloaded that.
+It gave me a jquery-ui-1.13.2.custom.zip file that not only RE-GIVES me jquery,
+and jquery-ui.js JAVASCRIPT files, but does not even include the name of
 the theme I downloaded.  Sheesh.
 
 With the following hugely complicated url embeded in it
@@ -244,7 +242,7 @@ With the following hugely complicated url embeded in it
 When I look back at what I created 8 years ago, all I
 see is a reference to 'dark hive'.
 
-TOTALLY FUCKED.  AFTER 8 FUCKING YEARS?!?!
+TOTAL MESS.  WHAT WILL IT BE LIKE EIGHT YEARS FROM NOW?!?!
 
 So, leesse, at this point, how many copies of the following files
 exist in my directory tree
@@ -252,19 +250,17 @@ exist in my directory tree
 - jquery.js - three, the base copy 3.7.1, and one in each jqeury_ui folder
 - jquery-ui.js - two
 - jquery-structure.css - two
-- et-fucking-cetera
+- et-cetera
 
 Are they the same?  Probably.  Do I have to prove it?
 Well, on my first attempt to compare jquery.js I got a lot
-of changes that appear to be superflous ...
-
+of changes that appear to be superflous ... maybe they're
+different versions. Who knows.
 
 
 And if I ever desire to 'boil it down', then I am creating the same
-problem in the future.  Rebuilding ALL of this when some little fucking
-bug pops up on some module.
-
-
+problem in the future.  Rebuilding ALL of this when some little
+bug pops up on some module in the future.
 
 
 
