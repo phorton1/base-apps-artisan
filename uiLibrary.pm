@@ -25,6 +25,67 @@ my $dbg_uipls = 0;
 	# 'Local Playlist Source'
 
 
+#-------------------------------------------------
+# FancyTree Notes
+#-------------------------------------------------
+# We add the following fields to the directory entries (folders)
+# and tracklist items (tracks) data-records we return to the UI
+# for fancytree:
+#
+#		key = is set to the id of the Folder/Track
+#       icon = retrievable url for an error icon
+#			i.e. "/webui/icons/error_3.png"
+#
+# For Explorer Tree we pass 'title' to fancytree (it is removed from
+# the data-record by fancytree). We also add the following fields for
+# for non-terminal nodes (not playlists or albums)
+#
+# 		folder => 1
+#		lazy => 1
+#
+# The following fields in our Track records CONFLICT with fancytree.
+# Fancytree USES these identifiers itself and removes them from the
+# data record.  therefore we UPPERCASE these normal field names
+# from the database Tracks that we return to the UI as fancytree
+# data records:
+#
+#	title		=> TITLE
+#	type		=> TYPE
+#
+# Other 'reserved words" we that fancytree will interpret include:
+# (example is from Track)
+#
+#	_error: null
+#	_isLoading: false
+#	checkbox: undefined
+#	children: null
+#	data: {…}									<-- OUR RECORD is in here
+#	expanded: undefined
+#	extraClasses: undefined
+#	folder: undefined
+#	icon: "/webui/icons/error_3.png"			<-- WE ADDED THIS
+#	iconTooltip: undefined						<-- WE SET THIS for non-terminal ExplorerTree nodes
+#	key: "c04b4dc0c522241edfbecf916be2ee03"		<-- WE ADDED THIS
+#	lazy: undefined								<-- WE SET THIS for non-terminal ExplorerTree nodes
+#	li: null
+#	parent: {…}
+#	partsel: undefined
+#	radiogroup: undefined
+#	refKey: undefined
+#	selected: undefined
+#	span: span.fancytree-node
+#	statusNodeType: undefined
+#	title: undefined
+#	tooltip: undefined
+#	tr: tr.fancytree-lastsib.fancytree-exp-nl.fancytree-ico-c??
+#	tree: {…}
+#	type: undefined
+#	ul: null
+#	unselectable: undefined
+#	unselectableIgnore: undefined
+#	unselectableStatus: undefined
+
+
 #---------------------------------
 # EXPLORER ERROR MODE
 #---------------------------------
@@ -293,6 +354,8 @@ sub library_dir_element
 	}
 
 	$rec->{title} = $title;	# required
+	$rec->{TITLE} = $title;	# for consistency with Track convention
+
 
 	# art_uri build for localLibrary, and highest errors are
 	# zero for remoteLibraries
@@ -333,16 +396,18 @@ sub library_tracklist
 	{
 		next if (!$rec->{id});
 
-		# note that the 'title' of the fancytree 0th td is the tracknum
-		# should the title just be the tile ?
+		# add fancy tree fields
 
 		$rec->{key} = $rec->{id};
-		display($dbg_uilib+1,1,"rec->{title}=$rec->{title}");
-		$rec->{TITLE} = $rec->{title};
-		delete $rec->{title};
-			# lc title conflicts with jquery-ui fancyTree
-			# so we send upercase
 		$rec->{icon} = "/webui/icons/error_$rec->{highest_error}.png";
+
+		# map fancy tree conflict fields
+
+		$rec->{TITLE} = $rec->{title};
+		$rec->{TYPE} = $rec->{type};
+		delete $rec->{title};
+		delete $rec->{type};
+
 
 		$response .= ',' if ($started);
 		$started = 1;
