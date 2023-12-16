@@ -86,11 +86,10 @@ function init_audio()
 	audio = document.createElement('audio');
 	audio.setAttribute('autoplay', true);
 
-	if (true)
+	// The HTML Renderer no longer has a visual set of controls
+
+	if (false)
 	{
-		// <! audio id='audio_player'
-		// 	style='padding-top:10px;'
-		// 	autoplay controls height='30px'/ >
 		audio.setAttribute('controls', true);
 		var div = document.getElementById('explorer_album_info_td');
 		div.appendChild(audio);
@@ -100,6 +99,7 @@ function init_audio()
 	audio.addEventListener("ended", (event) =>
 		{ onMediaEnded(event); } );
 }
+
 
 
 function audio_command(command,args)
