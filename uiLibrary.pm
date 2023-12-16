@@ -221,51 +221,51 @@ sub library_request
 	# Playlists
 	#-----------------------------
 
-	#	elsif ($path eq 'get_playlists')
-	#	{
-	#		my $playlists = $library->getPlaylists();
-	#		my $result = [];
-	#		for my $playlist (@$playlists)
-	#		{
-	#			push @$result,{
-	#				id => $playlist->{id},
-	#				name => $playlist->{name},
-	#				uuid => $playlist->{uuid}, };
-	#		}
-	#		return json_header().json($result);
-	#	}
-    #
-	#	# command that need a playlist
-    #
-	#	elsif ($path =~ /^(get_playlist|get_playlist_track|shuffle_playlist)$/)
-	#	{
-	#		my $id = $params->{id} || '';
-	#		return json_error("no playlist id in get_playiist")
-	#			if !$id;
-    #
-	#		my $playlist = $library->getPlaylist($id);
-	#		return json_error("could not find playlist '$id'") if !$playlist;
-    #
-	#		if ($path eq 'get_playlist_track')
-	#		{
-	#			my $version = $params->{version} || 0;
-	#			my $mode = $params->{mode} || 0;
-	#			my $index = $params->{index} || 0;
-	#			$playlist = $playlist->getPlaylistTrack($version,$mode,$index);
-	#			return json_error("uiLibrary($library->{name}) could not getPlaylistTrack($mode,$index)")
-	#				if !$playlist;
-	#		}
-	#		elsif ($path eq 'shuffle_playlist')
-	#		{
-	#			my $shuffle = $params->{shuffle} || 0;
-	#			$playlist = $playlist->sortPlaylist($shuffle);
-	#			return json_error("uiLibrary($library->{name}) could not sortPlaylist($shuffle)")
-	#				if !$playlist;
-	#		}
-    #
-	#		return json_header().json($playlist);
-	#	}
-    #
+	elsif ($path eq 'get_playlists')
+	{
+		my $playlists = $library->getPlaylists();
+		my $result = [];
+		for my $playlist (@$playlists)
+		{
+			push @$result,{
+				id => $playlist->{id},
+				name => $playlist->{name},
+				uuid => $playlist->{uuid}, };
+		}
+		return json_header().json($result);
+	}
+
+	# command that need a playlist
+
+	elsif ($path =~ /^(get_playlist|get_playlist_track|shuffle_playlist)$/)
+	{
+		my $id = $params->{id} || '';
+		return json_error("no playlist id in get_playiist")
+			if !$id;
+
+		my $playlist = $library->getPlaylist($id);
+		return json_error("could not find playlist '$id'") if !$playlist;
+
+		if ($path eq 'get_playlist_track')
+		{
+			my $version = $params->{version} || 0;
+			my $mode = $params->{mode} || 0;
+			my $index = $params->{index} || 0;
+			$playlist = $playlist->getPlaylistTrack($version,$mode,$index);
+			return json_error("uiLibrary($library->{name}) could not getPlaylistTrack($mode,$index)")
+				if !$playlist;
+		}
+		elsif ($path eq 'shuffle_playlist')
+		{
+			my $shuffle = $params->{shuffle} || 0;
+			$playlist = $playlist->sortPlaylist($shuffle);
+			return json_error("uiLibrary($library->{name}) could not sortPlaylist($shuffle)")
+				if !$playlist;
+		}
+
+		return json_header().json($playlist);
+	}
+
 	#-----------------------------
 	# unknown
 	#-----------------------------

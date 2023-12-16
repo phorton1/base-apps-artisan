@@ -64,6 +64,24 @@ my $db_name = "$data_dir/artisan.db";
 
 our %artisan_field_defs = (
 
+	# The ID fields VARCHARS need to be large enough to accept
+	# ANY library's IDs (i.e. WMP)
+
+	#------------------------------------
+	# Playlists
+	#------------------------------------
+
+	playlists => [
+		'id		 	 VARCHAR(128)',
+		'uuid        VARCHAR(128)',
+		'name		 VARCHAR(128)',
+		'num_tracks  INTEGER',
+		'shuffle	 INTEGER',
+		'track_index INTEGER',
+		'track_id	 VARCHAR(128)',
+		'version	 INTEGER',
+	],
+
     #------------------------------------
     # TRACKS
     #------------------------------------
@@ -134,6 +152,10 @@ our %artisan_field_defs = (
 		'highest_error   INTEGER',
 			# The error level of the highest error found during
 			# the llibrary scan of this item
+
+		'pl_idx			INTEGER',
+			# the sorted position when the track is
+			# in a playlist
 
 	],	# tracks
 

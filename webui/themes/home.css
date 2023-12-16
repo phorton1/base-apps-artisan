@@ -40,7 +40,7 @@
 }
 */
 
-
+#playlist_menu,
 #renderer_menu,
 #library_menu
 {
@@ -50,7 +50,7 @@
 	overflow-x: hidden !important;
 }
 
-
+#playlist_menu label,
 #renderer_menu label,
 #library_menu label
 {

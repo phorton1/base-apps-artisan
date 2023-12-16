@@ -148,7 +148,7 @@ sub mpThread
 			{
 				my $mp_state = $mp->{playState} || 0;
 
-				display($dbg_mp+1,0,"mp_state($mp_state) state($this->{state})");	#  playlist($this->{playlist})");
+				display($dbg_mp+1,0,"mp_state($mp_state) state($this->{state}) playlist($this->{playlist})");
 
 				if ($this->{state} eq $RENDERER_STATE_PLAYING)
 				{
@@ -163,15 +163,15 @@ sub mpThread
 
 				if ($mp_state == $MP_STATE_STOPPED)
 				{
-					#	if ($this->{playlist} &&
-					#		$this->{state} eq $RENDERER_STATE_PLAYING)
-					#	{
-					#		$this->playlist_song($PLAYLIST_RELATIVE,1);
-					#	}
-					#	else
-					#	{
+					if ($this->{playlist} &&
+						$this->{state} eq $RENDERER_STATE_PLAYING)
+					{
+						$this->playlist_song($PLAYLIST_RELATIVE,1);
+					}
+					else
+					{
 						$this->{state} = $RENDERER_STATE_STOPPED
-					#	}
+					}
 				}
 			}
 
@@ -224,7 +224,7 @@ sub new
         maxBal  => 100,
 		transportURL => "http://$server_ip:$server_port/AVTransport",
         controlURL   => "http://$server_ip:$server_port/control",
-		#	playlist => '',
+		playlist => '',
 	}));
 
 	if (1)
@@ -362,81 +362,81 @@ sub doCommand
 	#-------------------------------------
 	# next and prev
 
-	#	elsif ($command eq 'next')
-	#	{
-	#		$error = $this->playlist_song($PLAYLIST_RELATIVE,1);
-	#	}
-	#	elsif ($command eq 'prev')
-	#	{
-	#		$error = $this->playlist_song($PLAYLIST_RELATIVE,-1);
-	#	}
-    #
-	#	# start a playlist on the current index of the playlist
-	#	# this command will trigger the creation of the
-	#	# base_data/temp/Renderer/renderer_id/library_id/playlists.db file
-    #
-	#	elsif ($command eq 'set_playlist')
-	#	{
-	#		my $library_uuid = checkParam(\$error,$command,$params,'library_uuid');
-	#		return $error if !defined($library_uuid);
-    #
-	#		my $playlist_id = checkParam(\$error,$command,$params,'id');
-	#		return $error if !defined($playlist_id);
-    #
-	#		my $library = findDevice($DEVICE_TYPE_LIBRARY,$library_uuid);
-	#		return error("Could not find library($library_uuid)")
-	#			if !$library;
-    #
-	#		$this->{playlist} = $library->getPlaylist($playlist_id);
-	#		$error = $this->playlist_song($PLAYLIST_RELATIVE,0);
-	#	}
-    #
-	#	# play a song by index within the current playlist
-    #
-	#	elsif ($command eq 'playlist_song')
-	#	{
-	#		my $index = checkParam(\$error,$command,$params,'index');
-	#		return $error if !defined($index);
-    #
-	#		my $playlist = $this->{playlist};
-	#		return error("no playlist in doCommand($command)")
-	#			if !$playlist;
-    #
-	#		$error = $this->playlist_song($PLAYLIST_ABSOLUTE,$index);
-	#	}
-    #
-	#	# sort/shuffle the playlist
-    #
-	#	elsif ($command eq 'shuffle_playlist')
-	#	{
-	#		my $shuffle = checkParam(\$error,$command,$params,'shuffle');
-	#		return $error if !defined($shuffle);
-    #
-	#		my $playlist = $this->{playlist};
-	#		return error("no playlist in doCommand($command)")
-	#			if !$playlist;
-    #
-	#		my $library_uuid = $playlist->{uuid};
-	#		my $library = findDevice($DEVICE_TYPE_LIBRARY,$library_uuid);
-	#		return error("Could not find library($library_uuid)")
-	#			if !$library;
-    #
-	#		my $pl_id = $playlist->{id};
-	#		display($dbg_lren,1,"calling library::sortPlaylist($library_uuid,$pl_id,$shuffle) name=$playlist->{name}");
-	#		my $new_pl = $library->sortPlaylist($pl_id,$shuffle);
-    #
-	#		if (!$new_pl)
-	#		{
-	#			$error = "Could not sort playlist $playlist->{name}";
-	#		}
-	#		else
-	#		{
-	#			display($dbg_lren,1,"new_playlist".Playlist::dbg_info($new_pl,2));
-	#			$this->{playlist} = $new_pl;
-	#			$error = $this->playlist_song($PLAYLIST_ABSOLUTE,1);
-	#		}
-    #
-	#	}
+	elsif ($command eq 'next')
+	{
+		$error = $this->playlist_song($PLAYLIST_RELATIVE,1);
+	}
+	elsif ($command eq 'prev')
+	{
+		$error = $this->playlist_song($PLAYLIST_RELATIVE,-1);
+	}
+
+	# start a playlist on the current index of the playlist
+	# this command will trigger the creation of the
+	# base_data/temp/Renderer/renderer_id/library_id/playlists.db file
+
+	elsif ($command eq 'set_playlist')
+	{
+		my $library_uuid = checkParam(\$error,$command,$params,'library_uuid');
+		return $error if !defined($library_uuid);
+
+		my $playlist_id = checkParam(\$error,$command,$params,'id');
+		return $error if !defined($playlist_id);
+
+		my $library = findDevice($DEVICE_TYPE_LIBRARY,$library_uuid);
+		return error("Could not find library($library_uuid)")
+			if !$library;
+
+		$this->{playlist} = $library->getPlaylist($playlist_id);
+		$error = $this->playlist_song($PLAYLIST_RELATIVE,0);
+	}
+
+	# play a song by index within the current playlist
+
+	elsif ($command eq 'playlist_song')
+	{
+		my $index = checkParam(\$error,$command,$params,'index');
+		return $error if !defined($index);
+
+		my $playlist = $this->{playlist};
+		return error("no playlist in doCommand($command)")
+			if !$playlist;
+
+		$error = $this->playlist_song($PLAYLIST_ABSOLUTE,$index);
+	}
+
+	# sort/shuffle the playlist
+
+	elsif ($command eq 'shuffle_playlist')
+	{
+		my $shuffle = checkParam(\$error,$command,$params,'shuffle');
+		return $error if !defined($shuffle);
+
+		my $playlist = $this->{playlist};
+		return error("no playlist in doCommand($command)")
+			if !$playlist;
+
+		my $library_uuid = $playlist->{uuid};
+		my $library = findDevice($DEVICE_TYPE_LIBRARY,$library_uuid);
+		return error("Could not find library($library_uuid)")
+			if !$library;
+
+		my $pl_id = $playlist->{id};
+		display($dbg_lren,1,"calling library::sortPlaylist($library_uuid,$pl_id,$shuffle) name=$playlist->{name}");
+		my $new_pl = $library->sortPlaylist($pl_id,$shuffle);
+
+		if (!$new_pl)
+		{
+			$error = "Could not sort playlist $playlist->{name}";
+		}
+		else
+		{
+			display($dbg_lren,1,"new_playlist".Playlist::dbg_info($new_pl,2));
+			$this->{playlist} = $new_pl;
+			$error = $this->playlist_song($PLAYLIST_ABSOLUTE,1);
+		}
+
+	}
 	else
 	{
 		return error("unknown doCommand($command)");
@@ -495,42 +495,42 @@ sub play_track
 
 
 
-#	sub playlist_song
-#		# starts a playlist on a particular index
-#		# note that the localRenderer keeps actual playlists, which
-#		# contain queries and will be written to the database!!
-#	{
-#		my ($this,$mode,$index) = @_;
-#		my $playlist = $this->{playlist};
-#		return error("no playlist!")
-#			if !$playlist;
-#
-#
-#		my $library_uuid = $playlist->{uuid};
-#		my $library = findDevice($DEVICE_TYPE_LIBRARY,$library_uuid);
-#		return error("Could not find library($library_uuid)")
-#			if !$library;
-#
-#		display($dbg_lren,0,"playlist_song($mode,$index) on".$playlist->dbg_info(2));
-#
-#		my $pl_id = $playlist->{id};
-#		my $new_pl = $library->getPlaylistTrack($pl_id,$playlist->{version},$mode,$index);
-#		return error("No playlist returned by getPlaylistTrack($library_uuid,$pl_id)")
-#			if !$new_pl;
-#
-#		display($dbg_lren,0,"new_playlist".Playlist::dbg_info($new_pl,2));
-#
-#		$this->{playlist} = $new_pl;
-#		if ($new_pl->{track_id})
-#		{
-#			$this->play_track($new_pl->{uuid},$new_pl->{track_id});
-#		}
-#		else
-#		{
-#			return error("No {track_id} in new_playlist".Playlist::dbg_info($new_pl,2));
-#		}
-#		return '';
-#	}
+sub playlist_song
+	# starts a playlist on a particular index
+	# note that the localRenderer keeps actual playlists, which
+	# contain queries and will be written to the database!!
+{
+	my ($this,$mode,$index) = @_;
+	my $playlist = $this->{playlist};
+	return error("no playlist!")
+		if !$playlist;
+
+
+	my $library_uuid = $playlist->{uuid};
+	my $library = findDevice($DEVICE_TYPE_LIBRARY,$library_uuid);
+	return error("Could not find library($library_uuid)")
+		if !$library;
+
+	display($dbg_lren,0,"playlist_song($mode,$index) on".$playlist->dbg_info(2));
+
+	my $pl_id = $playlist->{id};
+	my $new_pl = $library->getPlaylistTrack($pl_id,$playlist->{version},$mode,$index);
+	return error("No playlist returned by getPlaylistTrack($library_uuid,$pl_id)")
+		if !$new_pl;
+
+	display($dbg_lren,0,"new_playlist".Playlist::dbg_info($new_pl,2));
+
+	$this->{playlist} = $new_pl;
+	if ($new_pl->{track_id})
+	{
+		$this->play_track($new_pl->{uuid},$new_pl->{track_id});
+	}
+	else
+	{
+		return error("No {track_id} in new_playlist".Playlist::dbg_info($new_pl,2));
+	}
+	return '';
+}
 
 
 

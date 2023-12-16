@@ -150,7 +150,7 @@ function onSelectDevice(type,uuid,result)
 	if (type == DEVICE_TYPE_LIBRARY)
 	{
 		$('.artisan_menu_library_name').html(result.name);
-		// init_playlists();
+		init_playlists();
 	}
 
 	// current_page indicates the app has really started
@@ -170,42 +170,42 @@ function onSelectDevice(type,uuid,result)
 // Playlists
 //----------------------------------
 
-//	function init_playlists()
-//		// only works if both current_library and current_renderer are set
-//	{
-//		if (!current_library || !current_renderer)
-//			return;
-//		$.get(library_url() + '/get_playlists',function(result) {
-//			if (result.error)
-//			{
-//				rerror('Error in init_playlists(' + library_uuid + '): ' + result.error);
-//			}
-//			else
-//			{
-//				buildHomeMenu(result,'playlist','id','setPlaylist','uuid','id');
-//			}
-//		});
-//	}
-//
-//
-//	function setPlaylist(uuid,id)
-//		// called by easy-ui event registration on the renderer_list
-//		// when the user changes the current selection.
-//		// Set the current renderer name and enable the buttons.
-//		// We have to be careful about re-entrancy, so that we don't
-//		// confuse the server.
-//	{
-//		display(dbg_home,0,"setPlaylist("+name+")");
-//		// the button is a radio button and I don't want it to be,
-//		// so I have to explicitly uncheck it ... fix later
-//		$('#playlist_' + id).prop('checked', false).button('refresh');
-//
-//
-//		// hide_layout_panes();
-//		renderer_command('set_playlist',{
-//			library_uuid:uuid,
-//			id: id});
-//	}
+function init_playlists()
+	// only works if both current_library and current_renderer are set
+{
+	if (!current_library || !current_renderer)
+		return;
+	$.get(library_url() + '/get_playlists',function(result) {
+		if (result.error)
+		{
+			rerror('Error in init_playlists(' + library_uuid + '): ' + result.error);
+		}
+		else
+		{
+			buildPlaylistMenu(result);
+		}
+	});
+}
+
+
+function setPlaylist(uuid,id)
+	// called by easy-ui event registration on the renderer_list
+	// when the user changes the current selection.
+	// Set the current renderer name and enable the buttons.
+	// We have to be careful about re-entrancy, so that we don't
+	// confuse the server.
+{
+	display(dbg_home,0,"setPlaylist("+name+")");
+	// the button is a radio button and I don't want it to be,
+	// so I have to explicitly uncheck it ... fix later
+	$('#playlist_' + id).prop('checked', false).button('refresh');
+
+
+	// hide_layout_panes();
+	renderer_command('set_playlist',{
+		library_uuid:uuid,
+		id: id});
+}
 
 
 
@@ -314,6 +314,7 @@ function update_renderer_ui()
 	var state = '';
 	// var playlistName = 'Now Playing';
 	var rendererName = 'No Renderer Selected';
+	var playlistName = '';
 
 	var art_uri = '/webui/icons/artisan.png';
 	var song_title = '';
@@ -345,16 +346,16 @@ function update_renderer_ui()
 		state = current_renderer.state;
 
 		rendererName = current_renderer.name;
-		//	if (current_renderer.playlist)
-		//	{
-		//		disable_prevnext = false;
-		//		playlistName =
-		//			// current_renderer.playlist.num + '. ' +
-		//			current_renderer.playlist.name;
-		//		playlistName += '(' +
-		//			current_renderer.playlist.track_index + ',' +
-		//			current_renderer.playlist.num_tracks + ')';
-		//	}
+		if (current_renderer.playlist)
+		{
+			disable_prevnext = false;
+			playlistName =
+				// current_renderer.playlist.num + '. ' +
+				current_renderer.playlist.name;
+			playlistName += '(' +
+				current_renderer.playlist.track_index + ',' +
+				current_renderer.playlist.num_tracks + ')';
+		}
 
 		// Display information about the Song in fields
 		// that just happen to be the same as fields in a Track,
@@ -430,7 +431,7 @@ function update_renderer_ui()
 	// Move the variables into the UI
 	//----------------------------------------
 
-	var playlistName = '';
+
 	ele_set_inner_html('renderer_header_left',playlistName + ' &nbsp;&nbsp; ' + state);
 	ele_set_inner_html('renderer_header_right',"" +  + idle_count + " " + rendererName);
 

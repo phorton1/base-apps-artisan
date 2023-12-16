@@ -420,17 +420,11 @@ function create_numeric_pref(min,med,max,var_name,spinner_id)
 
 
 
-
-
-
-function appendDeviceButton(type, rec)
+function appendMenuButton(type, name, id, fxn, param1, param2)
 {
-	var name = rec.name;
-	var uuid = rec.uuid;
+	display(dbg_menu,1,"appendMenuButton(" + commaJoin([type, name, id, fxn, param1, param2]) + ")" );
 
-	display(dbg_menu,1,"appendDeviceButton(" + commaJoin([type,name,uuid]) + ")" );
-
-	var use_id = type + '_' + uuid;
+	var use_id = type + '_' + id;
 	var hash_id = '#' + use_id;
 
     var input = document.createElement('input');
@@ -455,29 +449,50 @@ function appendDeviceButton(type, rec)
     var menu = document.getElementById(type + "_menu");
 	menu.appendChild(div);
 
-	$(hash_id).attr('onClick',"selectDevice('" + type + "','" + uuid + "')");
+	$(hash_id).attr('onClick', fxn + "('" + param1 + "','" + param2 + "')");
 	$(hash_id).button({ icon: false });
-
-
 }
+
+
+
+
 
 
 function buildDeviceMenu(array, type)
 	// builds a set of buttons for the a list of devices in array
 	// typeis either 'library' or 'renderer'
 {
-	display(dbg_menu,0,"buildHomeMenu(" + type + ")");
+	display(dbg_menu,0,"buildDeviceMenu(" + type + ")");
 
 	$('#' + type + '_menu').html('');
 		// remove existing buttons
 
 	$.each(array , function(index, rec)
 	{
-		appendDeviceButton(type, rec);
+		appendMenuButton(type, rec.name, rec.uuid, 'selectDevice', type, rec.uuid);
 	});
 
 	$('#' + type + '_menu').buttonset();
 }
+
+
+
+function buildPlaylistMenu(array)
+	// builds a set of buttons for the a list of devices in array
+	// typeis either 'library' or 'renderer'
+{
+	display(dbg_menu,0,"buildPlaylistMenu()");
+
+	$('#playlist_menu').html('');
+
+	$.each(array , function(index, rec)
+	{
+		appendMenuButton('playlist', rec.name, rec.id, 'setPlaylist', rec.uuid, rec.id);
+	});
+
+	$('#playlist_menu').buttonset();
+}
+
 
 
 

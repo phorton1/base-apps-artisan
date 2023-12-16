@@ -42,12 +42,12 @@ our $DEVICE_STATE_READY = 2;
 our $DEVICE_TYPE_LIBRARY  = 'library';
 our $DEVICE_TYPE_RENDERER = 'renderer';
 
-# our $PLAYLIST_ABSOLUTE  = 0;
-# our $PLAYLIST_RELATIVE  = 1;
-#
-# our $SHUFFLE_NONE = 0;
-# our $SHUFFLE_TRACKS = 1;
-# our $SHUFFLE_ALBUMS = 2;
+our $PLAYLIST_ABSOLUTE  = 0;
+our $PLAYLIST_RELATIVE  = 1;
+
+our $SHUFFLE_NONE = 0;
+our $SHUFFLE_TRACKS = 1;
+our $SHUFFLE_ALBUMS = 2;
 
 our ($ERROR_NONE,					# 0 = grey = NONE = informational message
 	 $ERROR_INFO,					# 1 = green = INFO = informational message of note
@@ -56,13 +56,6 @@ our ($ERROR_NONE,					# 0 = grey = NONE = informational message
      $ERROR_HIGH,					# 4 = yellow = HIGH = level issue of concern
      $ERROR_HARD ) = (0..5);		# 5 = red = EXTREME = highest level concern
 
-
-#		$PLAYLIST_ABSOLUTE
-#		$PLAYLIST_RELATIVE
-#
-#		$SHUFFLE_NONE
-#		$SHUFFLE_TRACKS
-#		$SHUFFLE_ALBUMS
 
 
 
@@ -82,7 +75,12 @@ BEGIN
 		$DEVICE_TYPE_LIBRARY
 		$DEVICE_TYPE_RENDERER
 
+		$PLAYLIST_ABSOLUTE
+		$PLAYLIST_RELATIVE
 
+		$SHUFFLE_NONE
+		$SHUFFLE_TRACKS
+		$SHUFFLE_ALBUMS
 
         $ERROR_NONE
         $ERROR_INFO
