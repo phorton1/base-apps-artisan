@@ -34,8 +34,10 @@ var dbg_ios = 0;
 
 
 var device_id = '';
-var is_ios = false;
 
+var IS_IOS = false;
+var IS_TOUCH = false;
+var IS_DESKTOP = false;
 
 
 jQuery.ajaxSetup({async:false});
@@ -53,18 +55,23 @@ const DEVICE_TYPE_LIBRARY = 'library';
 
 
 function init_utils()
-	// this method is currently supplied soley to lamely set is_ios
+	// this method is currently supplied soley to lamely set IS_IOS
 {
+	if (navigator.maxTouchPoints &&
+		navigator.maxTouchPoints > 1)
+	{
+		IS_TOUCH = 1;
+	}
 	var platform = navigator.platform;
 	if (navigator.userAgent.includes('iPad') ||
 		navigator.userAgent.includes('iPhone') || (
-		navigator.platform == 'MacIntel' &&
-		navigator.maxTouchPoints &&
-		navigator.maxTouchPoints == 5))
+		IS_TOUCH && navigator.platform == 'MacIntel'))
 	{
-		is_ios = true;
+		IS_IOS = true;
 	}
-	debug_remote(dbg_ios,0,"IS_IOS=" + is_ios);
+
+	IS_DESKTOP = !IS_TOUCH;
+	debug_remote(dbg_ios,0,"IS_IOS(" + IS_IOS + ") IS_TOUCH(" + IS_TOUCH + ") IS_DESKTOP(" + IS_DESKTOP + ")");
 }
 
 //---------------------------------------------
@@ -153,7 +160,7 @@ function display(level,indent,msg,call_level)
 	var out_msg = caller(call_level) + ' ' + indent_txt + msg;
 
 	console.debug(out_msg);
-	if (DISPLAY_REMOTE)
+	if (DISPLAY_REMOTE)	// && !IS_DESKTOP)
 		output_remote(out_msg);
 }
 

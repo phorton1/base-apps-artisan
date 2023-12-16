@@ -89,7 +89,7 @@ $(function()
 	debug_environment();
 
 	init_utils();
-		// sets 'is_ios'
+		// sets 'IS_IOS'
 
 	WITH_SWIPE = true;
 		// turn WITH_SWIPE on for testing on laptop
