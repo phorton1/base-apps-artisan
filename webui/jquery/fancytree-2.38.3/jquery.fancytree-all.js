@@ -11678,10 +11678,22 @@
 			var //pluginOpts = ctx.options.multi,
 				tree = ctx.tree,
 				node = ctx.node,
+
+
 				activeNode = tree.getActiveNode() || tree.getFirstChild(),
 				isCbClick = ctx.targetType === "checkbox",
 				isExpanderClick = ctx.targetType === "expander",
 				eventStr = $.ui.fancytree.eventToString(ctx.originalEvent);
+
+			// PRH - reworked multi-selection.
+			// - can select multiple ranges with SHIFT
+			// - shift+click with no anchor sublimates to CLICK,
+			//   clears the selection, selects the item at the cursor.
+
+			// PRH - sublimate shift-click with no anchor to regular click
+			if (eventStr == "shift+click" && tree.getActiveNode()==undefined)
+				eventStr = "click";
+			// PRH - end of change
 
 			switch (eventStr) {
 				case "click":
@@ -11714,6 +11726,16 @@
 				case "ctrl+click":
 				case "meta+click": // Mac: [Command]
 					node.toggleSelected();
+
+					// PRH - if item is
+					// - selected, set new 'anchor' for shift+click
+					// - unselected, clear the 'anchor'
+					if (node.isSelected())
+						node.setActive();
+					else
+						tree.activeNode = undefined;
+					// PRH end of change
+
 					return;
 			}
 			return this._superApply(arguments);
