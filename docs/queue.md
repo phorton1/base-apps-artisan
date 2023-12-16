@@ -1,48 +1,69 @@
-# New Architecture - Queues, Playlists, and Tracklists
+#  The Queue, Selection, and Explorer Behavior
 
-This is the **new_playlists** branch of the base-apps-artisan repo.
+There is/will be a Queue for the Renderer.
 
-This is a **major change** to the architecture.
-
-- get rid of **playlists.db** file(s)
-- get rid of **Playlist Buttons**
-- Playlists are not given any special treatment in remoteLibraries
-  - they are just like Albums - merely lists of Tracks
-- localPlaylists are JUST named.db file that contain copies
-  of Track records from the main database.
-- Renderers now have a Queue where they used to have Playlists
-- The Renderer has the Shuffle and Index States
-- *Things* from Explorer can be added to the Queue
-  - multiple selected Tracks
-  - any branch of the Explorer Tree via SQL query
-
-The use of major screen real estate to select Renderer and Library is overkill.
-The UI prefs have never been re-utilized.
-
-This will initially be implemented only for the localRenderer,
-This will eventually be implemented for HTML Renderers.
-
-- I will do the work on the (local) Perl objects first
-- I will then incorporte those changes into the Javascript
-- It will take at least several days to get the UI working again.
-- There will be vestigial issues with remoteLibraries, particularly
-  around the WMP Servers finicky need to be accessed in order to work.
+The implementation is very complicated due to fancytree tree
+lazy loading, sequential selection sessions, and the fact
+that the Queue itself is moving.
 
 
-## Initial Architectural Changes
+Initial implementation
 
-There are now ONLY localPlaylists.
-These probably get wrapped into Playlists.pm, possibly with
-PlaylistsInit.pm as a separate file.
+- the UI maintains the Queue
+- the Queue is not persistent
+- no Shuffling or Sorting
 
-I *think* that the named.db files have to be named by ID
-for the system to work, or, possibly the ID of a playlist
-IS it's name.  Yeah, that might be better.
+Later:
 
-I think I will start by removing all references to Playlists
-from the Repo (saved to an alternate location) and getting
-the UI to work with the double-click play a song ONLY and
-then rebuild the code from there.
+- Shuffling and Sorting
+- Persistence per Renderer
+
+
+## Requirements
+
+Much of this has to do with the Explorer tree and getting
+Tracks from it to the Queue while ma
+
+
+There are numerous, possibly conflicting, requirements
+
+
+
+
+ // There appear to be conflicting requirements.
+//
+// - clear the selection and return immediately from the double click
+//   or context menu (play) and (add) commands
+// - add tracks as soon as possible to the queue, especially in the
+//   case of (play) immediate.
+// - maintining responsiveness in the explorer tree
+//
+// especially when combined with the notions:
+//
+// - sequential selection sessions must remain in order
+// - the user may separately expand the tree, causing loads
+// - the difference between (add) and (play)
+// - the queue is moving on it's own as it is played.
+//
+// Ordering wise, Plays should come before Adds
+// User Loads should have priority over Selection Loads
+// This combined with Tracklist loading
+
+// It seems like things need to be done in chunks.
+//
+// - A Play selection has highest priority until the queue
+// 	 gets at least one Track from the selection and it
+//   starts playing.
+// - A user Tracklist has the next highest priority as
+//   they may want to proceed directly to selection and
+//   have explicitly selected an Album or Playlist.
+// - A user Expand has the next highest priority
+//
+// And THEN we still have to deal with persistence of Queues
+// per renderer ... yikes.
+
+// I think the persistence of the Queue is the lowest priority
+// and can be handled when everything settles down.
 
 
 

@@ -7,6 +7,18 @@ table.fancytree-ext-table tbody tr td
 	border:0px;
 }
 
+ul.fancytree-container
+{
+	background-color:#000000;
+	border: none;
+}
+
+
+#explorer_tracklist_div,
+#explorer_tree_div
+{
+	overflow-y:auto !important;
+}
 
 
 #explorer_tracklist,
@@ -16,11 +28,6 @@ table.fancytree-ext-table tbody tr td
 	table-layout:fixed;
 }
 
-ul.fancytree-container
-{
-	background-color:#000000;
-	border: none;
-}
 
 #explorer_tree span,
 #explorer_tracklist td
@@ -28,11 +35,13 @@ ul.fancytree-container
     overflow:hidden;
 	color:#ffffff;
 	background-color:#000000;
-	font-size:12pt;			/* pt? */
+	font-size:12pt;
 }
 
 
-.fancytree-selected > span,
+/* selected color must come after normal color */
+
+.fancytree-selected > span.fancytree-title,
 .fancytree-selected > td,
 .fancytree-partsel > td
 {
@@ -41,6 +50,8 @@ ul.fancytree-container
 }
 
 
+
+/* There is a vestigial right column available in the tree */
 
 .explorer_tree_num
 {
@@ -56,13 +67,6 @@ ul.fancytree-container
 }
 
 
-#explorer_tracklist_div,
-#explorer_tree_div
-{
-	overflow-y:auto !important;
-}
-
-
 
 
 #explorer_album_info1   { font-size:10pt; margin-top:0px; margin-bottom:0px; font-weight:bold; }
@@ -73,7 +77,6 @@ ul.fancytree-container
 
 
 
-/* tracklist specific */
 
 #explorer_details td,
 #explorer_tracklist td
@@ -81,24 +84,6 @@ ul.fancytree-container
 	vertical-align:middle !important;
 }
 
-.explorer_tracklist_variable_td
-{
-	display:table-cell;
-}
-
-.explorer_tracklist_variable_col
-{
-	display:block;
-}
-
-
-.explorer_tracklist_td0  { width:16px;  }
-.explorer_tracklist_td1  { width:24px;  padding-left:2px; }
-.explorer_tracklist_td2  { width:220px; padding-left:10px; }
-.explorer_tracklist_td3  { width:60px;  text-align:center;}
-.explorer_tracklist_td4  { width:120px; }
-.explorer_tracklist_td5  { width:60px;  text-align:center;}
-.explorer_tracklist_td6  { width:60px;  }
 
 #explorer_tracklist .fancytree-expander
 {
@@ -106,10 +91,15 @@ ul.fancytree-container
 }
 
 
-/* details pane */
-/* i dislike CSS */
-/* i need to add comments to explain each decision to add a style */
-/* to get things to look right */
+.tracklist_icon  	{ width:16px; max-width:16px; }
+.tracklist_tracknum	{ width:24px; max-width:24px;  padding-left:2px; }
+.tracklist_title  	{ width: 33%; min-width:160px; padding-left:8px; }
+.tracklist_album  	{ width: 25%; min-width:120px;  padding-left:8px; }
+.tracklist_genre  	{ min-width:50px;  padding-left:8px; }
+.tracklist_year  	{ min-width:20px;  text-align:center;}
+
+
+
 
 #explorer_details_div
 {
@@ -117,11 +107,11 @@ ul.fancytree-container
 	overflow-x:auto !important;
 }
 
-/* this was necessary to get rid of the min-height:20px from
-   jquery/fancytree-2.38.3/skin-themeroller/ui.fancytree.css:372
-   I means, how simple is this, really, to use ?
-*/
 
+
+/* it was necessary to get rid of the min-height:20px from
+   jquery/fancytree-2.38.3/skin-themeroller/ui.fancytree.css:372
+   in order to make the details lines more compact */
 
 #explorer_details span
 {
@@ -130,23 +120,23 @@ ul.fancytree-container
 
 
 
+/* there is no actual styling for explorer_details_rvalue */
 
-.explorer_details_td0  { width:16px; !important;  }
-.explorer_details_td1  { width:45px; overflow:hidden; }
-/* .explorer_details_td2  { width:220px; padding-left:10px; } */
-
+.explorer_details_icon    { width:16px; !important;  }
+.explorer_details_lvalue  { width:45px; overflow:hidden; }
 
 
 .explorer_details_section_label {
 	color:#6666ff;
-	/* font-size:12px; */
 	font-weight: bold;
 	icon: auto;
 }
 
 
 
-/* example of using a media query in the CSS to change one thing */
+/* Example of using a media query in the CSS to change one thing */
+/* We set bigger fonts in the tracklist and tree on mobile devices
+   as determined by anything with a width <= 1250 pix */
 
 @media (max-device-width: 1250px)
 {
@@ -160,3 +150,6 @@ ul.fancytree-container
 		font-size:13pt;
 	}
 }
+
+
+/* end of explorer.css */

@@ -3,6 +3,12 @@
 //----------------------------------------------------
 
 var dbg_explorer = 1;
+var dbg_folder_load = 0;
+var dbg_track_load = 0;
+
+
+const LOAD_PER_REQUEST = 100;
+
 
 var explorer_tree;
 var explorer_tracklist;
@@ -10,8 +16,9 @@ var explorer_details;
 var loading_tracklist = 0;
 	// an incrementing unique id to stop previous loads
 
-const LOAD_PER_REQUEST = 100;
-
+var load_folders = [];
+var load_folder_timer;
+	// a queue of folders to be loaded
 
 
 layout_defs['explorer'] = {
@@ -47,62 +54,33 @@ function update_explorer()
 	// we need to update urls and re-load the page
 {
 	display(dbg_explorer,0,"update_explorer()");
-	explorer_tree.reload();	// options.source.url = "/webui/library/" + current_library['uuid'] + "/dir";
-	update_explorer_ui('',{})
+	explorer_tree.reload();
 	init_page_explorer();
 }
 
 
 
-
-//---------------------------------------
-// incremental directory loading
-//---------------------------------------
-
-function addDirNode(data)
+function deselectTree(id)
+	// unselect all items and remove the 'anchor'
 {
-	data.cache = true;
-	var parent = explorer_tree.getNodeByKey(data.parent_id);
-	if (!parent)
-		parent = explorer_tree.getRootNode();
-	parent.addNode(data);
+	$('#' + id).find('.fancytree-selected')
+		.removeClass('fancytree-selected');
+	$('#' + id).fancytree("getTree").activeNode = undefined;
+
 }
 
 
-function onLoadDir(result)
+function nodeTitle(node)
 {
-	display(0,0,"onLoadDir()");
-	for (var i=0; i<result.length; i++)
-	{
-		addDirNode(result[i]);
-	}
+	return node.data.TITLE;
 }
 
-
-function loadDirRemaining(rec)
-	// called the first time after an asynchrounous lazyLoad completes,
-	// loop through more synchronous calls to $.get{)->onLoadDir() until
-	// the whole thing is loaded.
+function nodeType(node)
 {
-	if (rec.loaded >= rec.num_elements)
-		return;
-
-	$.ajax({
-		async: true,
-		url: library_url() + "/dir",
-		data: {
-			id: rec.id,
-			mode: 0,
-			source: 'incremental',
-			start: rec.loaded,
-			count: LOAD_PER_REQUEST },
-		success: function (result)
-		{
-			onLoadDir(result);
-			rec.loaded += result.length;
-			loadDirRemaining(rec);
-		},
-	});
+	var type = node.data.dirtype;
+	if (type == undefined)
+		type = 'track';
+	return type;
 }
 
 
@@ -110,184 +88,88 @@ function loadDirRemaining(rec)
 //--------------------------------------
 // init_page_explorer()
 //--------------------------------------
-// There is a current issue on the laptop with "multi"
-// selection on the Explorer Tree.  When you switch to
-// the Tracklist, fancytree considers the 0th item (the
-// folder) to be selected and so shift-select always
-// starts at the 0th track.
-
-// Experiment1 - selection in one pane at a time
-
 
 function init_page_explorer()
 {
-	// Generally speaking, in fancyTree event data has the node object
-	// The node object has a data member  which is any fields we returned via json.
-	// fancytree didn't know, chiefly among them 'title', 'key', and 'lazy'
-
 	display(dbg_explorer,0,"init_page_explorer()");
 
 	// EXPLORER TREE
+	// nodata: 				false = don't add a dummy 'No Data' node
+	// clickFolderMode:		1:activate, 2:expand, 3:activate and expand, 4:activate/dblclick expands (default: 4)
+	// source: 				has to at least return an empty array or my addNodes don't render.
 
 	display(dbg_explorer,1,"initializizing explorer tree");
 
 	$("#explorer_tree").fancytree({
-
-		nodata:false,
-			// don't add a dummy 'No Data' node
-		clickFolderMode:  is_ios ? 3 : 4,
-			// 1:activate, 2:expand, 3:activate and expand, 4:activate/dblclick expands (default: 4)
-
-		scrollParent: $('#explorer_tree_div'),
-
-		extensions: ["multi"],
-		multi:
+		nodata:				false,
+		clickFolderMode:  	1,
+		scrollParent: 		$('#explorer_tree_div'),
+		extensions: 		["multi"],
+		multi: 				{ mode: "sameParent" },
+		source: 			function() { return []; },
+		click:				function(event,data)
 		{
-	      mode: "sameParent",
-	    },
-
-
-
-		// Incremental Loading
-
-		source: function()   {  return []; },
-			// source: has to at least return an empty array or my addNodes don't render.
-
+			// return myOnClick('tree', event, data)
+			var node = data.node;
+			deselectTree('explorer_tracklist');
+			update_explorer_ui(node);
+		},
 		lazyLoad: function(event, data)
 		{
 			var node = data.node;
-			var rec = node.data;
-			var id = node.key;
-
-			// use a Deferred result for the 0th lazyLoad
-
-			var dfd = new $.Deferred();
-			data.result = dfd.promise();
-			rec.loaded = 0;
-
-			$.ajax({
-				async: true,
-				url: library_url() + "/dir",
-				data: {
-					id: id,
-					mode: 0,
-					source: 'lazyLoad',
-					start: 0,
-					count: LOAD_PER_REQUEST },
-				success: function (result)
-				{
-					dfd.resolve(result);
-
-					// Therafter, load the remaing recs in a self-perpetuating loop.
-					// We check result.length JIC it's not really a folder and has
-					// no 'folder' children.  Then it is probably an 'album' or a
-					// 'playlist' and will load tracks in update_explorer_ui().
-					// This will have the added effect of removing the (bogus) expander,
-					// as now fancyTree will know there are no children.
-
-					if (result.length)
-					{
-						rec.loaded = result.length;
-						loadDirRemaining(rec);
-					}
-				},
-			});
-
-			display(0,0,"as we can prove from this");
-
+			var test_bool = false; // node.title == 'Beatles';
+			addLoadFolder(0,node,test_bool);
+			data.result =  [];
 		},
-
-		activate: function(event, data)
-		{
-			var node = data.node;
-			var rec = node.data;
-			update_explorer_ui(node.title,rec);
-
-			// node.setSelected(!node.isSelected());
-			return true;
-		}
-	});		// explorer_tree
+	});
 
 	explorer_tree = $("#explorer_tree").fancytree("getTree");
-		// cache the explorer tree, then...
 	$.get(library_url() + "/dir" + '?id=0&mode=0&source=main',
-		function (result) { onLoadDir(result) } );
-		// load the data ...
+		function (result) { onLoadFolder(0,result) } );
+	if (IS_TOUCH)
+		init_touch('explorer_tree');
 
 
 	// EXPLORER TRACKLIST
-	// TRACKLIST(S) TO BE REWORKED
 
 	display(dbg_explorer,1,"initializizing explorer tracklist");
 
 	$("#explorer_tracklist").fancytree({
-
-		nodata:false,
-		scrollParent: $('#explorer_tracklist_div'),
-		selectMode:2,					// Try1
-		extensions: ["table","multi"],	// Try2
-		table: {},
-		source: function()   {  return []; },
-
-		renderColumns: function(event, data)
+		nodata:			false,
+		scrollParent: 	$('#explorer_tracklist_div'),
+		selectMode:		2,
+		extensions: 	["table","multi"],
+		table: 			{},
+		source: 		function() {  return []; },
+		click:  		function(event,data)
 		{
-			var node = data.node;
-			var rec = node.data;
-			var $tdList = $(node.tr).find(">td");
-
-			// TITLE in lowercase conflicts with jquery-ui,
-			// so we raise it to TITLE in uiLibrary.pm
-			// Note also that we used to use .text() for content,
-			// but now we use .html() as the content may contain
-			// encoded characters from Perl Utils::escape_tag()
-
-			$tdList.eq(0).addClass('explorer_tracklist_td0');
-			$tdList.eq(1).text(rec.tracknum).addClass('explorer_tracklist_td1');
-			$tdList.eq(2).html(rec.TITLE)	.addClass('explorer_tracklist_td2');
-			$tdList.eq(3).text(rec.type)	.addClass('explorer_tracklist_td3');
-
-			// Should note differences in GENRE and only display non-standard GENRES
-			// that don't agree with the Album Info
-
-			$tdList.eq(4).text(rec.genre).addClass('explorer_tracklist_td4 explorer_tracklist_variable_td');
-
-			// Should note difference in ARTIST / ALBUM / ALBUM_ARTIST and
-			// only show those that don't agree with the Album Info
-			// Other candidate fields include ID, STREAM_MD5, file_md5, etc
-
-			$tdList.eq(5).text(rec.year_str).addClass('explorer_tracklist_td5 explorer_tracklist_variable_td');
-		},
-
-		// click:
-		activate:
-		function(event, data)
-		{
+			// return myOnClick('tracklist', event, data)
 			var node = data.node;
 			var rec = node.data;
 			explorer_details.reload({
 				url: library_url() + '/track_metadata?id=' + rec.id,
 				cache: true});
-			deselectTree();
+			deselectTree('explorer_tree');
 			return true;
 		},
-
-		dblclick: function(event, data) {
+		renderColumns: 	function(event, data)
+		{
 			var node = data.node;
 			var rec = node.data;
+			var $tdList = $(node.tr).find(">td");
 
-			renderer_command('play_song',{
-				library_uuid: current_library['uuid'],
-				track_id: node.data.id });
-
-			return true;
-				// we could return false to prevent default handling,
-				// i.e. generating subsequent activate, expand, or select events
+			$tdList.eq(0)						.addClass('tracklist_icon');
+			$tdList.eq(1).text(rec.tracknum)	.addClass('tracklist_tracknum');
+			$tdList.eq(2).html(rec.TITLE)		.addClass('tracklist_title');
+			$tdList.eq(3).text(rec.album_title)	.addClass('tracklist_album');
+			$tdList.eq(4).text(rec.genre)		.addClass('tracklist_genre');
+			$tdList.eq(5).text(rec.year_str)	.addClass('tracklist_year');
 		},
-	});		// explorer_tracklist
-
+	});
 
 	explorer_tracklist = $("#explorer_tracklist").fancytree("getTree");
-		// cache the tracklist
+	if (IS_TOUCH)
+		init_touch('explorer_tracklist');
 
 
 	// EXPLORER DETAILS
@@ -295,45 +177,28 @@ function init_page_explorer()
 	display(dbg_explorer,1,"initializizing explorer details");
 
 	$("#explorer_details").fancytree({
-
-		nodata:false,
-		clickFolderMode:3,		// activateAndExpand
-		extensions: ["table"],
-		source: function()   {  return []; },
-
-		expand: function(event, data)  { saveDetailsExpanded(true,data.node); },
-		collapse: function(event, data) { saveDetailsExpanded(false,data.node); },
-			// save the expanded state when done by hand
-
+		nodata:				false,
+		clickFolderMode:	3,
+		extensions: 		["table"],
+		source: 			function() { return []; },
+		expand: 			function(event, data) { saveDetailsExpanded(true,data.node); },
+		collapse: 			function(event, data) { saveDetailsExpanded(false,data.node); },
 		click: function(event, data)
 		{
 			var node = data.node;
 			if (node.children)
-			{
 				node.setExpanded(!node.isExpanded());
-			}
 			return false;	// no default event
 		},
-
-
 		renderColumns: function(event, data)
 		{
 			var node = data.node;
 			var rec = node.data;
 			var $tdList = $(node.tr).find(">td");
 
-			// note that we use .html() for the error icons,
-			// and Utils::escape_tag() which changes non-printable
-			// characters into their &#NNN; html equivilants.
-			//
-			// It is worth noting that non-displayable characters
-			// will show up as a white triangle, and we *may* want
-			// to consider that chr(13), and chr(0) are special
-			// cases in Utils::escape_tag()
-
-			$tdList.eq(0)					.addClass('explorer_details_td0');
-			$tdList.eq(1).html(rec.TITLE)	.addClass('explorer_details_td1');
-			$tdList.eq(2).html(rec.VALUE)	.addClass('explorer_details_td2');
+			$tdList.eq(0)					.addClass('explorer_details_icon');
+			$tdList.eq(1).html(rec.TITLE)	.addClass('explorer_details_lvalue');
+			$tdList.eq(2).html(rec.VALUE)	.addClass('explorer_details_rvalue');
 
 			if (!node.children)
 			{
@@ -353,91 +218,14 @@ function init_page_explorer()
 				$tdList.eq(1).addClass('explorer_details_section_label');
 			}
  		},
-
 	});		// explorer_details
 
 	explorer_details = $("#explorer_details").fancytree("getTree");
-		// cache the explorer_details
 
+	update_explorer_ui()
 
-	// TRACKLIST CONTEXT MENU
-	// Requires modified prh-jquery.ui-contextmenu.js
-
-	// temporarily removing context menus
-	// due to  Uncaught Error: ui-contextmenu: Missing required option `delegate`.
-	// with new Jquery stuff
-
-	if (false)
-	{
-		display(dbg_explorer,1,"initializizing explorer context menu");
-
-		$("#explorer_tracklist").contextmenu({
-
-			// delegate: "span.fancytree-title",
-			// menu: "#options",
-
-			menu:
-			[
-				{title: "Play (Renderer)", cmd: "play_renderer", uiIcon: "ui-icon-extlink"},
-				{title: "Play (Local)", cmd: "play_local", uiIcon: ".ui-icon-newwin"},
-				{title: "Play (Download)", cmd: "play_download", uiIcon: ".ui-icon-newwin"},
-
-				{title: "----"},
-				{title: "Cut", cmd: "cut", uiIcon: "ui-icon-scissors"},
-				{title: "Copy", cmd: "copy", uiIcon: "ui-icon-copy"},
-				{title: "Paste", cmd: "paste", uiIcon: "ui-icon-clipboard", disabled: false },
-				{title: "----"},
-				{title: "Edit", cmd: "edit", uiIcon: "ui-icon-pencil", disabled: true },
-				{title: "Delete", cmd: "delete", uiIcon: "ui-icon-trash", disabled: true },
-				{title: "More", children: [
-					{title: "Sub 1", cmd: "sub1"},
-					{title: "Sub 2", cmd: "sub1"}
-					]}
-			],
-
-			beforeOpen: function(event, ui)
-			{
-				var node = $.ui.fancytree.getNode(ui.target);
-				// node.setFocus();
-				node.setActive();
-			},
-
-			select: function(event, ui)
-			{
-				var node = $.ui.fancytree.getNode(ui.target);
-
-				if (ui.cmd == 'play_renderer')
-				{
-					renderer_command('play_song',{
-						library_uuid: current_library['uuid'],
-						track_id: +node.data.id });
-				}
-
-				else if (ui.cmd == 'play_local')
-				{
-					var play_url = "/media/" + node.data.id + '.' + node.data.type;
-					$('#audio_player').attr('src',play_url);
-					$('#audio_player_title').html(node.data.title);
-				}
-
-				else if (ui.cmd == 'play_download')
-				{
-					var play_url = "/media/" + node.data.id + '.' + node.data.type;
-					var myWindow = window.open(
-						play_url,
-						"playerWindow",
-						"width=400, height=300");
-				}
-			}
-
-		});		// tracklist context menu
-
-	}	// temporarily removed
-
-	display(dbg_explorer,1,"init_page_explorer() returning");
-
-}	// init_page_explorer()
-
+	display(dbg_explorer,1,"init_page_explorer() finished");
+}
 
 
 function saveDetailsExpanded(expanded,node)
@@ -450,104 +238,122 @@ function saveDetailsExpanded(expanded,node)
 
 
 
-function deselectTree()
+//---------------------------------------
+// incremental directory loading
+//---------------------------------------
+
+function addLoadFolder(level,node,load_children)
 {
-	$('#explorer_tree').find('.fancytree-selected')
-		.removeClass('fancytree-selected');
+	var rec = node.data;
+	var title = node.title;
+	display(dbg_folder_load,level,"addLoadFolder(" + load_children + ") " + rec.TITLE);
+
+	rec.load_level = level;
+	load_folders.push(node);
+
+	// push any existing children for recursive loading
+
+	if (load_children)
+	{
+		rec.load_children = true;
+		var children = node.getChildren();
+		if (children != undefined)
+		{
+			for (let i=0; i<children.length; i++)
+			{
+				var child = children[i];
+				var child_rec = child.data;
+				if (child_rec.dirtype != 'album' &&
+					child_rec.dirtype != 'playlist')
+				{
+					addLoadFolder(level+1,child,true);
+				}
+			}
+		}
+	}
+
+	if (load_folder_timer == undefined)
+		load_folder_timer = setTimeout(loadFolders,1);
+}
+
+
+function loadFolders()
+{
+	load_folder_timer = undefined;
+	if (load_folders.length == 0)
+	{
+		display(0,0,"loadFolders() finished");
+		return;
+	}
+	var node = load_folders.shift();
+	loadFolder(node);
 }
 
 
 
-
-//---------------------------------------------------------------
-// update_explorer_ui
-//---------------------------------------------------------------
-
-function update_explorer_ui(title,rec)
-	// Update the album pane of the explorer which in turn clears
-	// the old details and loads the tracks if any
+function addFolderNode(level,rec,load_children)
 {
-	if (rec.genre && (
-		rec.genre.startsWith('Dead') ||
-		rec.genre.startsWith('Beatles')))
+	display(dbg_folder_load+1,level,"addFolderNode(" + load_children + ") " + rec.TITLE);
+	rec.cache = true;
+	var parent = explorer_tree.getNodeByKey(rec.parent_id);
+	if (!parent)
+		parent = explorer_tree.getRootNode();
+	var node = parent.addNode(rec);
+
+	// push any newly loaded folders for recursive loading
+
+	if (load_children &&
+		rec.dirtype != 'album' &&
+		rec.dirtype != 'playlist' )
 	{
-		title = rec.artist + ' - ' + title;
+		addLoadFolder(1,node,true);
+	}
+}
+
+
+function onLoadFolder(level,result,load_children)
+{
+	if (load_children == undefined)
+		load_children = false;
+	display(dbg_folder_load,level,"onLoadFolder(" + load_children + ") length=" + result.length);
+	for (var i=0; i<result.length; i++)
+	{
+		addFolderNode(level+1,result[i],load_children);
+	}
+}
+
+
+function loadFolder(node)
+{
+	var rec = node.data;
+	var level = rec.load_level;
+	if (rec.loaded == undefined)
+		rec.loaded = 0;
+	display(dbg_folder_load,level,"loadFolder(" + rec.TITLE + ") loaded=" + rec.loaded + " num=" + rec.num_elements);
+
+	if (rec.loaded >= rec.num_elements)
+	{
+		load_folder_timer = setTimeout(loadFolders,1);
+		return;
 	}
 
-	display(dbg_explorer,1,"update_explorer_ui() " + title);
-
-	$("#explorer_header_left").html(title);
-	$('#explorer_album_image').attr('src',rec.art_uri);
-
-	var error_string = 'no errors';
-	if (rec.errors)
-	{
-		for (var i=0; i<rec.errors.length; i++)
+	$.ajax({
+		async: true,
+		url: library_url() + "/dir",
+		data: {
+			id: rec.id,
+			mode: 0,
+			source: 'incremental',
+			start: rec.loaded,
+			count: LOAD_PER_REQUEST },
+		success: function (result)
 		{
-			var level = rec.errors[i].level;
-			error_string += "<img src='/webui/icons/error_" + level + ".png' height='16px' width='16px'>";
-			error_string += rec.errors[i].msg + "<br>";
-		}
-	}
-
-	$('#explorer_album_info1').html(
-		'type: ' + rec.dirtype + ' &nbsp;&nbsp ' +
-		(rec.year_str ? 'year: ' + rec.year_str + ' &nbsp;&nbsp ' : '') +
-		(rec.genre ? 'genre: ' + rec.genre + ' &nbsp;&nbsp ' : '') +
-		'id:' + rec.id + ' &nbsp;&nbsp; ');
-
-	$('#explorer_album_info2').html(
-		(rec.has_art ? 'has_art:'+rec.has_art : '') + ' &nbsp;&nbsp ' +
-		'error:' + rec.folder_error + ' &nbsp;&nbsp ' +
-		'high_folder_error:' + rec.highest_folder_error +  ' &nbsp;&nbsp ' +
-		'high_track_error:' + rec.highest_track_error +  ' &nbsp;&nbsp ' );
-
-	$('#explorer_album_info3').html(
-		'parent:' + rec.parent_id + ' &nbsp;&nbsp '
-	 );
-
-	$('#explorer_album_info4').html(rec.path);
-
-	$('#explorer_album_info5').html(
-		error_string ? error_string : ""
-	 );
-
-	// Incrementally load the track list asynchronously
-	// The rec keeps track of the number loaded, just like the tree folders,
-	// but we also set a unique id 'loading_tracklist' to stop the load if
-	// it the activated explorer_tree 'folder' changes.
-
-	if (explorer_tracklist)
-	{
-		loading_tracklist++;
-		explorer_tracklist.getRootNode().removeChildren();
-		display(dbg_explorer,1,"loading tracks for  " + rec.TITLE);
-		if (rec.id != undefined)
-		{
-			rec.loaded = 0;
-			rec.loading = loading_tracklist;
-			loadTracklist(rec);
-		}
-	}
-	else
-	{
-		display(dbg_explorer,1,"could not find #explorer_tracklist");
-	}
-
-	// replace track details if an id exists or clear them
-
-	if (rec.id == undefined)
-	{
-		explorer_details.getRootNode().removeChildren();
-	}
-	else
-	{
-		explorer_details.reload({
-			url: library_url() + '/folder_metadata?id=' + rec.id,
-			cache: true});
-	}
-
-}	// update_explorer_ui()
+			onLoadFolder(level,result,rec.load_children);
+			rec.loaded += result.length;
+			loadFolder(node);
+		},
+	});
+}
 
 
 
@@ -586,18 +392,21 @@ function loadTracklist(rec)
 }
 
 
-function addTrackNode(data,loading)
+function addTrackNode(rec,loading)
 {
-	data.cache = true;
+	rec.cache = true;
 	var	parent = explorer_tracklist.getRootNode();
 	if (loading == loading_tracklist)
-		parent.addNode(data);
+	{
+		display(dbg_track_load+1,1,"addTrackNode(" + rec.TITLE + ")");
+		parent.addNode(rec);
+	}
 }
 
 
 function onLoadTracks(result,loading)
 {
-	display(0,0,"onLoadTracks()");
+	display(dbg_track_load,0,"onLoadTracks()");
 	for (var i=0; loading==loading_tracklist && i<result.length; i++)
 	{
 		addTrackNode(result[i],loading);
@@ -607,81 +416,185 @@ function onLoadTracks(result,loading)
 
 
 
-//----------------------------------------------------------
-// set_context_explorer()
-//----------------------------------------------------------
+//--------------------------------------------------------------
+// selection handling
+//--------------------------------------------------------------
+// WIP
 
-function set_context_explorer(context)
+var selection_sessions = [];
+var loaded_tracks = [];
+var selected_folders = [];
+var album_queue = [];
+
+
+function pushTrack(node,level)
 {
-	display(0,0,'set_context_explorer(' + context + ') called');
-
-	$.get('/webui/explorer/get_id_path' +
-		  '?track_id='+context,
-
-		function(result)
-		{
-			if (result.error)
-			{
-				rerror('Error in set_context_explorer(): ' + result.error);
-			}
-			else
-			{
-				var path = result.id_path;
-				display(0,1,"id_path='" + path + "'");
-
-				// strip the last track_id off if it exists
-
-				var track_id = '';
-				if (path.replace(/\/track_(.*)$/,''))
-				{
-					track_id = RegExp.$1;
-				}
-
-
-				var last_node;
-				var tree = $('#explorer_tree').fancytree('getTree');
-				tree.loadKeyPath(path, function(node, status)
-				{
-					display(0,2,"Node ["+node.title+"] status ["+status+"]");
-					if (status == "loading")
-					{
-						node.data.shouldPromptForFilter=false;
-					}
-					else if (status == "loaded")
-					{
-						display(0,2,"intermediate_node=" + node);
-						last_node = node;
-					}
-					else if (status == "ok")
-					{
-						// node.setExpanded(true);
-						// node.setActive(true);
-						display(0,2,"ok_node=" + node);
-						last_node = node;
-					}
-				});
-
-
-				display(0,1,"last_node=" + last_node);
-				if (last_node)
-				{
-					last_node.makeVisible({scrollIntoView: true});
-					last_node.setActive(true);
-
-					// explorer specific code
-
-					if (track_id)
-					{
-						display(0,1,"set track_id=" + track_id);
-						var track_list = $("#explorer_tracklist").fancytree('getTree');
-						var node = track_list.getNodeByKey(track_id);
-						if (node)
-						{
-							node.makeVisible({scrollIntoView: true});
-							node.setActive(true);
-						}
-					}
-				}
-			}
-		});
+	display(0,level+1,"pushTrack(" + node.data.TITLE + ")");
+	loaded_tracks.push(node);
 }
+
+function pushFolder(node,level)
+{
+	display(0,level+1,"pushFolder(" + nodeType(node) + ") " + nodeTitle(node));
+	folder_queue.push(node);
+}
+
+function pushAlbum(node,level)
+{
+	display(0,level+1,"pushAlbum(" + nodeType(node) + ") " + nodeTitle(node));
+	album_queue.push(node);
+}
+
+
+function enqueuAll(main_node)
+{
+	display(0,0,"enqueueAll(" + main_node + ")");
+	var tree = main_node.tree;
+	var selected = tree.getSelectedNodes();
+	for (let i=0; i<selected.length; i++)
+	{
+		var node = selected[i];
+		if (node.data.dirtype == undefined)
+		{
+			pushTrack(node,0);
+		}
+		else
+		{
+			enqueueFolder(node,0);
+		}
+	}
+}
+
+
+function enqueueFolder(node,level)
+	// the rubber meets the road.
+	// This ties into the 'regular' directory loading process which is
+	// 		aynchrounous and can be happening simultaneously and now
+	// 		becomes aware that it must continue for other directories
+	//		and is not solely predicated on fancytree lazyload logic.
+{
+	var rec = node.data;
+	var type = rec.dirtype;
+	display(0,1+level,"enqueueFolder(" + type + ") " + node.title);
+	if (type == 'album')
+	{
+		enqueuAlbum(node);
+	}
+	else
+	{
+	}
+}
+
+
+function enqueueAlbum(node)
+	// except for the current selected Album, all
+	// would have to be loaded, and even then, the
+	// current tracklist could be in the process of
+	// asynchrounously loading, so we just go ahead
+	// and synchronously load the entire tracklist
+	// for the album in a single call.
+{
+}
+
+
+
+
+
+
+
+//---------------------------------------------------------------
+// update_explorer_ui
+//---------------------------------------------------------------
+
+function update_explorer_ui(node)
+	// Update the album pane of the explorer which in turn clears
+	// the old details and loads the tracks if any
+{
+	var rec;
+	var info1 = '';
+	var info2 = '';
+	var info3 = '';
+	var info4 = '';
+	var info5 = '';
+	var title = '';
+	var art_uri = '/webui/icons/artisan.png';
+
+	if (node != undefined)
+	{
+		rec = node.data;
+
+		art_uri = rec.art_uri;
+		title = rec.TITLE;
+
+		if (rec.genre && (
+			rec.genre.startsWith('Dead') ||
+			rec.genre.startsWith('Beatles')))
+		{
+			title = rec.artist + ' - ' + title;
+		}
+
+		var error_string = 'no errors';
+		if (rec.errors)
+		{
+			for (var i=0; i<rec.errors.length; i++)
+			{
+				var level = rec.errors[i].level;
+				error_string += "<img src='/webui/icons/error_" + level + ".png' height='16px' width='16px'>";
+				error_string += rec.errors[i].msg + "<br>";
+			}
+		}
+
+		info1 =
+			'type: ' + rec.dirtype + ' &nbsp;&nbsp ' +
+			(rec.year_str ? 'year: ' + rec.year_str + ' &nbsp;&nbsp ' : '') +
+			(rec.genre ? 'genre: ' + rec.genre + ' &nbsp;&nbsp ' : '') +
+			'id:' + rec.id + ' &nbsp;&nbsp; ';
+		info2 =
+			(rec.has_art ? 'has_art:'+rec.has_art : '') + ' &nbsp;&nbsp ' +
+			'error:' + rec.folder_error + ' &nbsp;&nbsp ' +
+			'high_folder_error:' + rec.highest_folder_error +  ' &nbsp;&nbsp ' +
+			'high_track_error:' + rec.highest_track_error +  ' &nbsp;&nbsp ';
+		info3 =
+			'parent:' + rec.parent_id + ' &nbsp;&nbsp ';
+		info4 =
+			rec.path;
+		info5 =
+			error_string;
+	}
+
+	$("#explorer_header_right").html('');
+	$("#explorer_header_left").html(title);
+	$('#explorer_album_image').attr('src',art_uri);
+	$('#explorer_album_info1').html(info1);
+	$('#explorer_album_info2').html(info2);
+	$('#explorer_album_info3').html(info3);
+	$('#explorer_album_info4').html(info4);
+	$('#explorer_album_info5').html(info5);
+
+	// update tracklist and details accordingly
+
+	if (explorer_tracklist)
+	{
+		loading_tracklist++;
+		explorer_tracklist.getRootNode().removeChildren();
+		if (rec != undefined)
+		{
+			display(dbg_explorer,1,"loading tracks for  " + rec.TITLE);
+			rec.loaded = 0;
+			rec.loading = loading_tracklist;
+			loadTracklist(rec);
+		}
+	}
+
+	if (rec == undefined)
+	{
+		explorer_details.getRootNode().removeChildren();
+	}
+	else
+	{
+		explorer_details.reload({
+			url: library_url() + '/folder_metadata?id=' + rec.id,
+			cache: true});
+	}
+
+}	// update_explorer_ui()
