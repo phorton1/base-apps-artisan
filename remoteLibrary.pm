@@ -525,6 +525,9 @@ sub remoteFolder
 	}
 
 
+	my $genre = $container->{'upnp:genre'};
+	$genre = $genre->[0] if ref($genre) =~ /ARRAY/;
+
 	my $folder = shared_clone({
 		id 				=> $id,
 		title			=> $title,
@@ -542,7 +545,7 @@ sub remoteFolder
 		# mostly specific to albums
 
 		artist   		=> getArtist($container,1),
-        genre		    => $container->{'upnp:genre'} || '',
+        genre		    => $genre,
         year_str        => '',
 		folder_error          => 0,
 		highest_folder_error  => 0,
