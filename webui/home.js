@@ -1,5 +1,5 @@
 //--------------------------------------------------
-// renderer.js
+// home.js
 //--------------------------------------------------
 
 var dbg_home = 0;
@@ -316,11 +316,11 @@ function update_renderer_ui()
 	var rendererName = 'No Renderer Selected';
 
 	var art_uri = '/webui/icons/artisan.png';
-	var song_title = '&nbsp;';
-	var album_artist = '&nbsp;';
-	var album_title = '&nbsp;';
-	var album_track = '&nbsp;';
-	var song_genre = '&nbsp;';
+	var song_title = '';
+	var album_artist = '';
+	var album_title = '';
+	var album_track = '';
+	var song_genre = '';
 
 	var play_pct = 0;
 	var position_str = '0:00';
@@ -426,78 +426,57 @@ function update_renderer_ui()
 		pause_button_on = (state == 'PAUSED') ? true : false;
 	}
 
-	if (autofull)
+	//----------------------------------------
+	// Move the variables into the UI
+	//----------------------------------------
+
+	var playlistName = '';
+	ele_set_inner_html('renderer_header_left',playlistName + ' &nbsp;&nbsp; ' + state);
+	ele_set_inner_html('renderer_header_right',"" +  + idle_count + " " + rendererName);
+
+	// What's Playing info and image
+
+	ele_set_inner_html('renderer_song_title',song_title);
+	ele_set_inner_html('renderer_album_artist',album_artist);
+	ele_set_inner_html('renderer_album_title',album_title);
+	ele_set_inner_html('renderer_album_track',album_track);
+	ele_set_inner_html('renderer_song_genre',song_genre);
+	if (ele_get_src('renderer_album_image') != art_uri)
 	{
-		ele_set_inner_html('renderer_full_song_title',song_title);
-		ele_set_inner_html('renderer_full_album_artist',album_artist);
-		ele_set_inner_html('renderer_full_album_title',album_title);
-		ele_set_inner_html('renderer_full_album_track',album_track);
-		ele_set_inner_html('renderer_full_song_genre',song_genre);
-		if (ele_get_src('renderer_full_album_image') != art_uri)
-		{
-			ele_set_src('renderer_full_album_image',art_uri);
-		}
+		ele_set_src('renderer_album_image',art_uri);
 	}
-	else
+
+
+	// Playback Controls
+
+	if (!in_slider)
 	{
-		//----------------------------------------
-		// Move the variables into the UI
-		//----------------------------------------
-		// Note code to change title in a easyUI header
-		// var ele = $('#artisan_body');
-		// var header_panel = ele.panel('header');
-		// var title_panel = header_panel.find('.panel-title');
-		// title_panel.html('Now Playing &nbsp;&nbsp; ' + renderer.state);
+		display(dbg_loop,0,"renderer.update_renderer_ui(a)");
 
-		var playlistName = '';
-		ele_set_inner_html('renderer_header_left',playlistName + ' &nbsp;&nbsp; ' + state);
-		ele_set_inner_html('renderer_header_right',"" +  + idle_count + " " + rendererName);
+		renderer_slider.slider( disable_slider?'disable':'enable');
+		$('#renderer_slider').slider('value',play_pct);
+	}
 
-		// What's Playing info and image
+	ele_set_inner_html('renderer_position',position_str);
+	ele_set_inner_html('renderer_duration',duration_str);
+	ele_set_inner_html('renderer_play_type',play_type_size);
 
-		ele_set_inner_html('renderer_song_title',song_title);
-		ele_set_inner_html('renderer_album_artist',album_artist);
-		ele_set_inner_html('renderer_album_title',album_title);
-		ele_set_inner_html('renderer_album_track',album_track);
-		ele_set_inner_html('renderer_song_genre',song_genre);
-		if (ele_get_src('renderer_album_image') != art_uri)
-		{
-			ele_set_src('renderer_album_image',art_uri);
-		}
+	ele_set_value('renderer_button_play_pause',pause_button_label );
+	set_button_on('renderer_button_play_pause',pause_button_on);
 
+	// Enable/disable the buttons
 
-		// Playback Controls
+	display(dbg_loop,0,"renderer.update_renderer_ui(1)");
 
-		if (!in_slider)
-		{
-			display(dbg_loop,0,"renderer.update_renderer_ui(a)");
+	disable_button('renderer_button_prev',disable_prevnext);
+	disable_button('renderer_button_play_pause',disable_play_pause);
+	disable_button('renderer_button_stop',stop_disabled);
+	disable_button('renderer_button_next',disable_prevnext);
 
-			renderer_slider.slider( disable_slider?'disable':'enable');
-			$('#renderer_slider').slider('value',play_pct);
-		}
+	display(dbg_loop,0,"renderer.update_renderer_ui(2)");
 
-		ele_set_inner_html('renderer_position',position_str);
-		ele_set_inner_html('renderer_duration',duration_str);
-		ele_set_inner_html('renderer_play_type',play_type_size);
-
-		ele_set_value('renderer_button_play_pause',pause_button_label );
-		set_button_on('renderer_button_play_pause',pause_button_on);
-
-		// Enable/disable the buttons
-
-		display(dbg_loop,0,"renderer.update_renderer_ui(1)");
-
-		disable_button('renderer_button_prev',disable_prevnext);
-		disable_button('renderer_button_play_pause',disable_play_pause);
-		disable_button('renderer_button_stop',stop_disabled);
-		disable_button('renderer_button_next',disable_prevnext);
-
-		display(dbg_loop,0,"renderer.update_renderer_ui(2)");
-
-		// update_playlist_ui();
-			// in playlist.js
-
-	}	// !autofull
+	// update_playlist_ui();
+		// in playlist.js
 
 	display(dbg_loop,0,"renderer.update_renderer_ui() returning");
 
@@ -607,26 +586,6 @@ function millis_to_duration(millis,precise)
 		retval += "." + padZero(3,millis);
 
 	return retval;
-}
-
-
-
-//-------------------------------------
-// autofull stuff
-//-------------------------------------
-
-function on_renderer_autofull_changed()
-{
-	if (autofull)
-	{
-		$('#renderer_pane').css('display','none');
-		$('#renderer_autofull_div').css('display','block');
-	}
-	else
-	{
-		$('#renderer_pane').css('display','block');
-		$('#renderer_autofull_div').css('display','none');
-	}
 }
 
 

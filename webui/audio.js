@@ -117,7 +117,7 @@ function audio_command(command,args)
 			audio.pause();
 		init_html_renderer(RENDERER_STATE_STOPPED);
 		$('#audio_player_title').html(html_renderer.metadata.title);
-		$('#explorer_album_image').attr('src',html_renderer.metadata.art_uri);
+		$('#explorer_folder_image').attr('src',html_renderer.metadata.art_uri);
 	}
 	else if (command == 'play_pause')
 	{
@@ -209,7 +209,7 @@ function play_song_local(library_uuid,track_id)
 			track_to_html_renderer(result);
 			audio.src = html_renderer.path;
 			$('#audio_player_title').html(html_renderer.metadata.title);
-			$('#explorer_album_image').attr('src',html_renderer.metadata.art_uri);
+			$('#explorer_folder_image').attr('src',html_renderer.metadata.art_uri);
 			html_renderer.state = RENDERER_STATE_PLAYING;
 		}
 	});

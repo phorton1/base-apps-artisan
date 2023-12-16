@@ -20,11 +20,9 @@ function library_url()
 
 
 var WITH_SWIPE = false;
-	// If it is true, then no handles will show for closed windows,
-	// and a swipe event handler will be added to the element specified
-	// in the layout_def that will close or open the relevant pane.
-	// We also take this as being synonymous with the browser NOT
-	// having a debugger, and populate the #console_output div if so
+	// If it is true, then a swipe event handler will be added to
+	// the element specified in the layout_def that will close or
+	// open the relevant pane(s).
 
 var REFRESH_TIME = 600;
 
@@ -35,11 +33,6 @@ var layout_defs = {};
 var update_id = 1;
 
 var explorer_mode = 0;
-var autoclose_timeout = 0;
-var autofull_timeout = 0;
-var autoclose_count = 0;
-var autofull_count = 0;
-var autofull = false;
 var idle_timer = null;
 var idle_count = 0;
 
@@ -95,8 +88,6 @@ $(function()
 		// turn WITH_SWIPE on for testing on laptop
 
 	// explorer_mode = getCookie('explorer_mode') || 0;
-	// autoclose_timeout = parseInt(getCookie('autoclose_timeout') || 0);
-	// autofull_timeout = parseInt(getCookie('autofull_timeout') || 0);
 
 	init_audio();
 
@@ -112,7 +103,7 @@ $(function()
 
 	$('#explorer_center_div').layout({
 		applyDemoStyles: true,
-		north__size:160, });
+		north__size:140, });
 
 	$('#renderer_pane_div').layout({
 		applyDemoStyles: true,
@@ -198,8 +189,10 @@ function onUpdateError()
 
 
 function updateLibraries(libraries)
-	// initial implementation is obtuse.
-	// I need to rework this from the beginninng
+	// called if 'update' returns libraries, which is
+	// in turn predicated on Perl's update_id changing,
+	// gets a new new list of active Libraries and adds
+	// or removes Library buttons as needed.
 {
 	var set_current = false;
 	var any_changed = false;
@@ -222,6 +215,10 @@ function updateLibraries(libraries)
 			$('#' + use_id + '_div').remove();
 		}
 	}
+
+	// if the current library goes offline,
+	// select another one (the 0th one)
+
 	if (any_changed)
 	{
 		$('#library_menu').buttonset('refresh');
@@ -261,6 +258,7 @@ function toggleFullScreen()
 
 	// hide_layout_panes();
 }
+
 
 
 //------------------------------------------------
@@ -577,164 +575,4 @@ function onswipe(event, direction, distance, duration, fingerCount, fingerData)
 			layout.close(pane);
 		}
 	}
-}
-
-
-
-
-//------------------------------------------------------------------------
-// currently untested and unused auto-close, swipe, and autofull
-//------------------------------------------------------------------------
-// auto-closing windows
-
-// function reset_timeouts()
-// {
-// 	display(dbg_layout,0,"reset_timeouts()");
-// 	update_autofull(false);
-// 	autoclose_count = 0;
-// 	autofull_count = 0;
-// }
-//
-// function check_timeouts()
-// {
-// 	if (autoclose_timeout > 0)
-// 	{
-// 		autoclose_count++;
-// 		if (autoclose_count == autoclose_timeout)
-// 		{
-// 			hide_context_menu();
-// 			hide_layout_panes();
-// 		}
-// 	}
-// 	if (autofull_timeout > 0)
-// 	{
-// 		autofull_count++;
-// 		if (autofull_count == autofull_timeout)
-// 		{
-// 			update_autofull(true);
-// 		}
-// 	}
-// }
-
-
-// autofull
-//
-// function update_autofull(value)
-// {
-// 	if (autofull != value)
-// 	{
-// 		autofull = value;
-// 		if (current_page == 'renderer')
-// 		{
-// 			on_renderer_autofull_changed();
-// 		}
-// 	}
-// }
-
-
-// function hide_layout_panes()
-// 	// close it if it is showing and has slide option set
-// {
-// 	return;
-// 		// crashing
-//
-// 	onchange_popup_numeric();
-//
-// 	var layout = $('#' + current_page + '_page').layout();
-// 	hide_layout_pane(layout,'west');
-// 	hide_layout_pane(layout,'north');
-// 	hide_layout_pane(layout,'east');
-// 	hide_layout_pane(layout,'south');
-// }
-//
-// function hide_layout_pane(layout,pane)
-// {
-// 	if (!layout.state[pane].isClosed &&
-// 		layout.options[pane].slide)
-// 	{
-// 		layout.options[pane].closable = true;
-// 		layout.slideClose(pane);
-// 	}
-// }
-
-
-
-//------------------------------------------------------------------------
-// context menu
-//------------------------------------------------------------------------
-
-function show_in_explorer(event)
-{
-	if (current_page == "home" &&
-		current_renderer &&
-		current_renderer.song_id &&
-		current_renderer.song_id != "")
-	{
-		ele_set_inner_html('renderer_header_left',"Showing current track in explorer...");
-
-		load_page("explorer");
-		set_context_explorer(current_renderer.song_id);
-	}
-}
-
-
-function unused_show_context_menu(event)
-{
-	display(0,0,"show_context_menu()");
-
-	var height = window.innerHeight;
-	var width = window.innerWidth;
-	var w = parseInt($('#context_menu_div').css('width'));
-	var h = parseInt($('#context_menu_div').css('height'));
-
-	var x = parseInt((width - w) / 2);
-	var y = 100;
-	if (event.type=='click')
-	{
-		x = event.clientX;
-		y = event.clientY;
-	}
-
-	var fudge = 20;
-
-	if (x + w + fudge > width)
-		{ x = width-w-fudge; }
-	if (y + h + fudge> height)
-		{ y = height-h-fudge; }
-	if (x<0)
-		{ x=0; }
-	if (y<0)
-		{ y=0; }
-
-	$('#context_menu_div').css('left',x);
-	$('#context_menu_div').css('top',y);
-
-	$('#context_menu_div').css('display','block');
-
-}
-
-function hide_context_menu()
-{
-	$('#context_menu_div').css('display','none');
-}
-
-function do_context_menu(page_id)
-{
-	display(0,0,"do_context_menu(" + page_id + ")");
-	hide_context_menu();
-
-	var context = '';
-	if (current_page == 'home')
-	{
-		if (current_renderer && current_renderer.song_id != '')
-		{
-			context =  current_renderer.song_id;
-		}
-	}
-
-	// if (context)
-	// {
-	// 	load_page(page_id,context);
-	// }
-
 }

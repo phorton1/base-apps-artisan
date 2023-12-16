@@ -40,17 +40,17 @@
             id="explorer_album_div"
             class="ui-layout-north">
 
-            <!-- include section_header_bar.html id=explorer -->
+            <!--- include section_header_bar.html id=explorer --->
 
-            <!-- album info -->
+            <!-- folder info -->
 
-            <div id="explorer_album_info_div">
+            <div>
 
-                <table width='100%' height="100%">
+                <table width='100%'>
                     <tr>
                         <td width='5%'>
                             <img
-                                id="explorer_album_image"
+                                id="explorer_folder_image"
                                 style="
                                     vertical-align:top;
                                     padding-top:5px;
@@ -61,19 +61,34 @@
                                 src="/webui/icons/artisan.png" >
                         </td>
 
-                        <td id="explorer_album_info_td"
-                            style="
-                                padding-top:2px;
-                                margin-left:20px;
-                                ">
-                            <p id="explorer_album_info1">Info 1</p>
-                            <p id="explorer_album_info2">Info 2</p>
-                            <p id="explorer_album_info3">Info 3</p>
-                            <p id="explorer_album_info4">Info 4</p>
-                            <p id="explorer_album_info5">Info 5</p>
+                        <td id="explorer_folder_td">
+                            <p id="explorer_folder_title"></p>
+                            <p id="explorer_folder_artist"></p>
+                            <p id="explorer_folder_genre"></p>
+                            <p id="explorer_folder_year"></p>
+                            <p id="explorer_folder_path"></p>
                         </td>
                     </tr>
                 </table>
+				<div class='select_buttons'>
+					<button
+						id="select_button_play"
+						class="select_button"
+						onclick = "javascript:onSelectButton('Play')">Play</button>
+					<button
+						id="select_button_add"
+						class="select_button"
+						onclick = "javascript:onSelectButton('Add')">Add</button>
+					<button
+						id="select_button_play"
+						class="select_button"
+						onclick = "javascript:onSelectButton('Shift')">Shift</button>
+					<button
+						id="select_button_ctrl"
+						class="select_button"
+						onclick = "javascript:onSelectButton('Ctrl')">Ctrl</button>
+
+				</div>
             </div>
         </div>
 

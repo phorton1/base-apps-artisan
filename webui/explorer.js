@@ -10,6 +10,10 @@ var dbg_track_load = 0;
 const LOAD_PER_REQUEST = 100;
 
 
+var explorer_inited = false;
+
+
+var cur_tree;
 var explorer_tree;
 var explorer_tracklist;
 var explorer_details;
@@ -111,8 +115,9 @@ function init_page_explorer()
 		{
 			// return myOnClick('tree', event, data)
 			var node = data.node;
-			deselectTree('explorer_tracklist');
 			update_explorer_ui(node);
+			deselectTree('explorer_tracklist');
+			cur_tree = explorer_tree;
 		},
 		lazyLoad: function(event, data)
 		{
@@ -150,6 +155,7 @@ function init_page_explorer()
 				url: library_url() + '/track_metadata?id=' + rec.id,
 				cache: true});
 			deselectTree('explorer_tree');
+			cur_tree = explorer_tracklist;
 			return true;
 		},
 		renderColumns: 	function(event, data)
@@ -223,6 +229,13 @@ function init_page_explorer()
 	explorer_details = $("#explorer_details").fancytree("getTree");
 
 	update_explorer_ui()
+	cur_tree = explorer_tree;
+
+	if (!explorer_inited)
+	{
+		$(".select_button").button();
+	}
+	explorer_inited = true;
 
 	display(dbg_explorer,1,"init_page_explorer() finished");
 }
@@ -510,91 +523,55 @@ function update_explorer_ui(node)
 	// Update the album pane of the explorer which in turn clears
 	// the old details and loads the tracks if any
 {
-	var rec;
-	var info1 = '';
-	var info2 = '';
-	var info3 = '';
-	var info4 = '';
-	var info5 = '';
-	var title = '';
-	var art_uri = '/webui/icons/artisan.png';
+	if (explorer_tracklist)
+	{
+		loading_tracklist++;
+		explorer_tracklist.getRootNode().removeChildren();
+	}
 
-	if (node != undefined)
+	if (node == undefined)
+	{
+		$('#explorer_folder_image').attr('src','/webui/icons/artisan.png');
+		$('#explorer_folder_title') .html('');
+		$('#explorer_folder_artist').html('');
+		$('#explorer_folder_genre') .html('');
+		$('#explorer_folder_year')  .html('');
+		$('#explorer_folder_path')  .html('');
+		explorer_details.getRootNode().removeChildren();
+	}
+	else
 	{
 		rec = node.data;
 
-		art_uri = rec.art_uri;
-		title = rec.TITLE;
-
+		var title = rec.TITLE;
 		if (rec.genre && (
 			rec.genre.startsWith('Dead') ||
 			rec.genre.startsWith('Beatles')))
 		{
 			title = rec.artist + ' - ' + title;
 		}
-
-		var error_string = 'no errors';
-		if (rec.errors)
+		else if (rec.dirtype != 'album')
 		{
-			for (var i=0; i<rec.errors.length; i++)
-			{
-				var level = rec.errors[i].level;
-				error_string += "<img src='/webui/icons/error_" + level + ".png' height='16px' width='16px'>";
-				error_string += rec.errors[i].msg + "<br>";
-			}
+			title = rec.dirtype + ' - ' + title;
 		}
 
-		info1 =
-			'type: ' + rec.dirtype + ' &nbsp;&nbsp ' +
-			(rec.year_str ? 'year: ' + rec.year_str + ' &nbsp;&nbsp ' : '') +
-			(rec.genre ? 'genre: ' + rec.genre + ' &nbsp;&nbsp ' : '') +
-			'id:' + rec.id + ' &nbsp;&nbsp; ';
-		info2 =
-			(rec.has_art ? 'has_art:'+rec.has_art : '') + ' &nbsp;&nbsp ' +
-			'error:' + rec.folder_error + ' &nbsp;&nbsp ' +
-			'high_folder_error:' + rec.highest_folder_error +  ' &nbsp;&nbsp ' +
-			'high_track_error:' + rec.highest_track_error +  ' &nbsp;&nbsp ';
-		info3 =
-			'parent:' + rec.parent_id + ' &nbsp;&nbsp ';
-		info4 =
-			rec.path;
-		info5 =
-			error_string;
-	}
+		$('#explorer_folder_image').attr('src',
+			rec.art_uri == '' ? '/webui/icons/no_image.png' :
+			rec.art_uri);
+		$('#explorer_folder_title') .html(title);
+		$('#explorer_folder_artist').html(rec.artist == ''   ? '' : 'Artist: ' + rec.artist);
+		$('#explorer_folder_genre') .html(rec.genre  == ''   ? '' : 'Genre: ' + rec.genre);
+		$('#explorer_folder_year')  .html(rec.year_str == '' ? '' : 'Year: ' + rec.year_str);
+		$('#explorer_folder_path')  .html(rec.path == ''     ? '' : 'Path: ' + rec.path);
 
-	$("#explorer_header_right").html('');
-	$("#explorer_header_left").html(title);
-	$('#explorer_album_image').attr('src',art_uri);
-	$('#explorer_album_info1').html(info1);
-	$('#explorer_album_info2').html(info2);
-	$('#explorer_album_info3').html(info3);
-	$('#explorer_album_info4').html(info4);
-	$('#explorer_album_info5').html(info5);
-
-	// update tracklist and details accordingly
-
-	if (explorer_tracklist)
-	{
-		loading_tracklist++;
-		explorer_tracklist.getRootNode().removeChildren();
-		if (rec != undefined)
-		{
-			display(dbg_explorer,1,"loading tracks for  " + rec.TITLE);
-			rec.loaded = 0;
-			rec.loading = loading_tracklist;
-			loadTracklist(rec);
-		}
-	}
-
-	if (rec == undefined)
-	{
-		explorer_details.getRootNode().removeChildren();
-	}
-	else
-	{
 		explorer_details.reload({
 			url: library_url() + '/folder_metadata?id=' + rec.id,
 			cache: true});
+
+		display(dbg_explorer,1,"loading tracks for  " + rec.TITLE);
+		rec.loaded = 0;
+		rec.loading = loading_tracklist;
+		loadTracklist(rec);
 	}
 
 }	// update_explorer_ui()

@@ -67,14 +67,26 @@ ul.fancytree-container
 }
 
 
+#explorer_folder_td		{ padding-top:2px; margin-left:20px; }
+#explorer_folder_title  { font-size:12pt;  margin-top:0px; margin-bottom:0px; font-weight:bold; }
+#explorer_folder_artist { font-size:10pt;  margin-top:0px; margin-bottom:0px;}
+#explorer_folder_genre  { font-size:10pt;  margin-top:0px; margin-bottom:0px;}
+#explorer_folder_year   { font-size:10pt;  margin-top:0px; margin-bottom:0px;}
+#explorer_folder_path   { font-size:8pt;   margin-top:4px; margin-bottom:0px;}
 
+.select_buttons
+{
+    display: flex;
+    justify-content: space-between;
+	padding-top: 12px;
+	padding-left:30px;
+	padding-right:30px;
+}
 
-#explorer_album_info1   { font-size:10pt; margin-top:0px; margin-bottom:0px; font-weight:bold; }
-#explorer_album_info2   { font-size:8pt;  margin-top:0px; margin-bottom:0px;}
-#explorer_album_info3   { font-size:8pt;  margin-top:0px; margin-bottom:0px;}
-#explorer_album_info4   { font-size:8pt;  margin-top:0px; margin-bottom:0px;}
-#explorer_album_info5   { font-size:8pt;  margin-top:0px; margin-bottom:0px;}
-
+.select_button
+{
+	width:60px;
+}
 
 
 
