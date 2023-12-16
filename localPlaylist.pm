@@ -412,7 +412,9 @@ sub initPlaylists
 	{
 		my $name = $def->{name};
 		my $exists = -f "$playlist_dir/$name.db" ? 1 : 0;
-		my $rec = get_record_db($playlist_dbh, "SELECT * FROM playlists WHERE id='$name'");
+		my $rec = get_record_db($playlist_dbh, "SELECT * FROM playlists WHERE id='$def->{id}'");
+
+		display($dbg_create,0,"checking($name) exists=$exists  rec="._def($rec));
 		if (!$rec || !$exists)
 		{
 			my $new_rec = createPlaylist($artisan_dbh,$def);

@@ -129,23 +129,18 @@ sub initPlaylist
 
 			my $named_dbh = db_connect($named_db);
 			return if !$named_dbh;
-			create_table($named_dbh,"pl_tracks");
+			create_table($named_dbh,"tracks");
 
 			my $position = 1;
-			my $first_track_id = '';
+			my $first_track = '';
 			for my $track (sort {$a->{position} <=> $b->{position}} @$tracks)
 			{
-				$first_track_id = $track->{id} if $position == 1;
-				my $pl_track = {
-					id => $track->{id},
-					album_id => $track->{album_title},
-					position => $position,
-					idx => $position };
-				$position++;
-
-				if (!insert_record_db($named_dbh,'pl_tracks',$pl_track))
+				$first_track ||= $track;
+				$track->{pl_idx} = $position;
+				$track->{position} = $position++;
+				if (!insert_record_db($named_dbh,'tracks',$track))
 				{
-					error("Could not insert pl_track($track->{title},$track->{id} in $named_db");
+					error("Could not insert track($track->{title},$track->{id} in $named_db");
 					return;
 				}
 			}
@@ -157,7 +152,7 @@ sub initPlaylist
 			if (@$tracks)
 			{
 				$playlist->{track_index} = 1;
-				$playlist->{track_id} = $first_track_id;
+				$playlist->{track_id} = $first_track->{id};
 			}
 
 			if (update_record_db($playlist_dbh,'playlists',$playlist,'id'))

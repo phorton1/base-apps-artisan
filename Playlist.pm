@@ -261,12 +261,11 @@ sub sortPlaylist
 			my $index = 1;
 			for my $rec (@$new_recs)
 			{
-				$first_track_id = $rec->{id} if $index == 1;
-
+				$first_track_id ||= $rec->{id};
 				$rec->{pl_idx} = $index++;
 				if (!insert_record_db($dbh,'tracks',$rec))
 				{
-					error("Could not insert rec($rec->{idx}) pos($rec->{position}} id($rec->{id}) album_id($rec->{album_id}) ".
+					error("Could not insert rec($rec->{pl_idx}) pos($rec->{position}} id($rec->{id}) album_id($rec->{album_id}) ".
 						  "into $this->{name}.db database");
 					last;
 				}
