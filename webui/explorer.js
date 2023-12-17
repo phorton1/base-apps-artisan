@@ -125,8 +125,7 @@ function init_page_explorer()
 		lazyLoad: function(event, data)
 		{
 			var node = data.node;
-			var test_bool = false; // node.title == 'Beatles';
-			addLoadFolder(0,node,test_bool);
+			addLoadFolder(node);
 			data.result =  [];
 		},
 	});
@@ -246,7 +245,7 @@ function init_page_explorer()
 function start_explorer_library()
 {
 	$.get(library_url() + "/dir" + '?id=0&mode=0&source=main',
-		function (result) { onLoadFolder(0,result) } );
+		function (result) { onLoadFolder(result) } );
 }
 
 
@@ -264,35 +263,13 @@ function saveDetailsExpanded(expanded,node)
 // incremental directory loading
 //---------------------------------------
 
-function addLoadFolder(level,node,load_children)
+function addLoadFolder(node)
 {
 	var rec = node.data;
 	var title = node.title;
-	display(dbg_folder_load,level,"addLoadFolder(" + load_children + ") " + rec.TITLE);
+	display(dbg_folder_load,0,"addLoadFolder(" + rec.TITLE + ")");
 
-	rec.load_level = level;
 	load_folders.push(node);
-
-	// push any existing children for recursive loading
-
-	if (load_children)
-	{
-		rec.load_children = true;
-		var children = node.getChildren();
-		if (children != undefined)
-		{
-			for (let i=0; i<children.length; i++)
-			{
-				var child = children[i];
-				var child_rec = child.data;
-				if (child_rec.dirtype != 'album' &&
-					child_rec.dirtype != 'playlist')
-				{
-					addLoadFolder(level+1,child,true);
-				}
-			}
-		}
-	}
 
 	if (load_folder_timer == undefined)
 		load_folder_timer = setTimeout(loadFolders,1);
@@ -313,34 +290,24 @@ function loadFolders()
 
 
 
-function addFolderNode(level,rec,load_children)
+function addFolderNode(rec)
 {
-	display(dbg_folder_load+1,level,"addFolderNode(" + load_children + ") " + rec.TITLE);
+	display(dbg_folder_load+1,3,"addFolderNode(" + rec.TITLE + ")");
 	rec.cache = true;
 	var parent = explorer_tree.getNodeByKey(rec.parent_id);
 	if (!parent)
 		parent = explorer_tree.getRootNode();
 	var node = parent.addNode(rec);
 
-	// push any newly loaded folders for recursive loading
-
-	if (load_children &&
-		rec.dirtype != 'album' &&
-		rec.dirtype != 'playlist' )
-	{
-		addLoadFolder(1,node,true);
-	}
 }
 
 
-function onLoadFolder(level,result,load_children)
+function onLoadFolder(result)
 {
-	if (load_children == undefined)
-		load_children = false;
-	display(dbg_folder_load,level,"onLoadFolder(" + load_children + ") length=" + result.length);
+	display(dbg_folder_load,2,"onLoadFolder() length=" + result.length);
 	for (var i=0; i<result.length; i++)
 	{
-		addFolderNode(level+1,result[i],load_children);
+		addFolderNode(result[i]);
 	}
 }
 
@@ -348,10 +315,9 @@ function onLoadFolder(level,result,load_children)
 function loadFolder(node)
 {
 	var rec = node.data;
-	var level = rec.load_level;
 	if (rec.loaded == undefined)
 		rec.loaded = 0;
-	display(dbg_folder_load,level,"loadFolder(" + rec.TITLE + ") loaded=" + rec.loaded + " num=" + rec.num_elements);
+	display(dbg_folder_load,1,"loadFolder(" + rec.TITLE + ") loaded=" + rec.loaded + " num=" + rec.num_elements);
 
 	if (rec.loaded >= rec.num_elements)
 	{
@@ -370,7 +336,7 @@ function loadFolder(node)
 			count: LOAD_PER_REQUEST },
 		success: function (result)
 		{
-			onLoadFolder(level,result,rec.load_children);
+			onLoadFolder(result);
 			rec.loaded += result.length;
 			loadFolder(node);
 		},
