@@ -24,12 +24,15 @@ use strict;
 use warnings;
 use threads;
 use threads::shared;
+use JSON;
 use Date::Format;
+use Error qw(:try);
 use artisanUtils;
 use Device;
 use DeviceManager;
 use httpUtils;
 use uiLibrary;
+use Queue;
 
 
 my $dbg_webui = 1;
@@ -68,7 +71,7 @@ my $SEND_MINIFIED_JS_AND_CSS = 0;
 
 sub web_ui
 {
-	my ($path_with_query) = @_;  # ,$headers,$post_xml) = @_;
+	my ($path_with_query,$post_data) = @_;
 	$path_with_query ||= 'artisan.html';
 
 
@@ -256,6 +259,27 @@ sub web_ui
 	elsif ($path =~ s/^library\///)
 	{
 		$response = uiLibrary::library_request($path,$params);
+	}
+
+	# queue request
+
+	elsif ($path =~ /^queue\/(add|play)/)
+	{
+		my $command = $1;
+
+		try
+		{
+			$params = decode_json($post_data);
+		}
+		catch Error with
+		{
+			my $ex = shift;   # the exception object
+			return http_error("Could not decode queue/$command json: $ex");
+		};
+
+		my $err = Queue::queueCommand($command,$params);
+		return http_error($err) if $err;
+		return http_header()."OK\r\n\r\n";
 	}
 
 	# unknown request

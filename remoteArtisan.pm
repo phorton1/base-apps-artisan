@@ -5,21 +5,20 @@
 # A pass through reference to a remote instance
 # of an Artisan locaLibrary.
 #
-# library requests to remote_artisan libraries
-# are already diverted to the other instance of
-# Artisan by using the js library_url() method
+# Reworked for queues, I started with getFolder()
+# Needs to be reworked again for HTML Renderers
 #
-# So this object only supports the following APIs
-# needed by the localRenderer:
+# API
 #
-#	getTrack($track_id)
-#	#	// getPlaylists()
-#	#	getPlaylist($id)
-#	#	getPlaylistTrack(
-#
-# I needed to move the Playlist APIs upto the library
-# to support this (no-one should be calling $playlist->
-# methods directly).
+#	getTrack
+#	getFolder
+#	- getTrackMetadata
+#	- getFolderMetadata
+#	getSubitems
+
+#   getPlaylist
+#	getPlaylists
+
 
 
 package remoteArtisan;
@@ -48,15 +47,29 @@ sub new
 }
 
 
+#---------------------------------------------
+# support for direct calls from webUI
+#---------------------------------------------
 
 sub getTrack
 {
 	my ($this,$id) = @_;
 	display($dbg_alib,0,"getTrack($id)");
-	my $obj = $this->remoteRequest("get_track?id=$id");
-	bless $obj,'Track' if $obj;
-	return $obj;
+	my $rec = $this->remoteRequest("get_track?id=$id");
+	my $track = Track->newFromHash($rec);
+	return $track;
 }
+
+sub getFolder
+{
+	my ($this,$id) = @_;
+	display($dbg_alib,0,"getFolder($id)");
+	my $rec = $this->remoteRequest("get_folder?id=$id");
+	my $track = Folder->newFromHash($rec);
+	return $track;
+}
+
+
 
 
 #	sub unused_getPlaylists
@@ -67,41 +80,42 @@ sub getTrack
 #	}
 #
 #
-#	sub getPlaylist
-#		# pass thru
-#	{
-#		my ($this,$id) = @_;
-#		display($dbg_alib,0,"getPlaylist($id)");
-#		my $obj = $this->remoteRequest("get_playlist?id=$id");
-#		bless $obj,'Playlist' if $obj;
-#		return $obj;
-#	}
-#
-#
-#	sub getPlaylistTrack
-#	{
-#	    my ($this,$id,$version,$mode,$index) = @_;
-#		display($dbg_alib,0,"getPlaylistTrack($id,$version,$mode,$index)");
-#		my $obj = $this->remoteRequest("get_playlist_track?id=$id&version=$version&mode=$mode&index=$index");
-#		bless $obj,'Playlist' if $obj;
-#		return $obj;
-#	}
-#
-#
-#	sub sortPlaylist
-#	{
-#	    my ($this,$id,$shuffle) = @_;
-#		display($dbg_alib,0,"sortPlaylist($id,$shuffle)");
-#		my $obj = $this->remoteRequest("shuffle_playlist?id=$id&shuffle=$shuffle");
-#		bless $obj,'Playlist' if $obj;
-#		return $obj;
-#	}
-#
+
+
+sub getPlaylist
+	# pass thru
+{
+	my ($this,$id) = @_;
+	display($dbg_alib,0,"getPlaylist($id)");
+	my $obj = $this->remoteRequest("get_playlist?id=$id");
+	bless $obj,'Playlist' if $obj;
+	return $obj;
+}
+
+
+sub getPlaylistTrack
+{
+    my ($this,$id,$version,$mode,$index) = @_;
+	display($dbg_alib,0,"getPlaylistTrack($id,$version,$mode,$index)");
+	my $obj = $this->remoteRequest("get_playlist_track?id=$id&version=$version&mode=$mode&index=$index");
+	bless $obj,'Playlist' if $obj;
+	return $obj;
+}
+
+
+sub sortPlaylist
+{
+    my ($this,$id,$shuffle) = @_;
+	display($dbg_alib,0,"sortPlaylist($id,$shuffle)");
+	my $obj = $this->remoteRequest("shuffle_playlist?id=$id&shuffle=$shuffle");
+	bless $obj,'Playlist' if $obj;
+	return $obj;
+}
+
+
 
 use JSON;
 use Error qw(:try);
-
-
 
 sub remoteRequest
 {

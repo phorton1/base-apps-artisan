@@ -341,7 +341,7 @@ sub handle_connection
 		my $path = $1;
 		$path ||= '';
 		$path =~ s/^\///;
-		$response = WebUI::web_ui($path);	# ,\%request_headers,$post_xml);
+		$response = WebUI::web_ui($path,$post_data);
 		$dbg_displayable = 0 if $request_path =~ /^\/webui\/icons\//;
 			# don't show Library /webui/icons/png files
 	}

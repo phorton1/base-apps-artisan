@@ -15,6 +15,7 @@ use artisanUtils;
 use Renderer;
 use Device;
 use DeviceManager;
+use Queue;
 use base qw(Renderer);
 
 my $dbg_lren = 0;
@@ -100,6 +101,7 @@ sub mpThread
 	display($dbg_mp,0,"mpThread() started");
 	$mp_running = 1;
 
+	my $queue = Queue::getQueue($this->{uuid});
 	my $last_update_time = time();
 
 	while (1)
@@ -161,12 +163,37 @@ sub mpThread
 					$this->{duration} = $duration * 1000;
 				}
 
-				if ($mp_state == $MP_STATE_STOPPED)
+				# in all cases start playing the queue if it needs_start
+
+				if ($queue->{needs_start})
 				{
-					if ($this->{playlist} &&
-						$this->{state} eq $RENDERER_STATE_PLAYING)
+					$queue->{needs_start} = 0;
+					my $track = $queue->getNextTrack();
+					if ($track)
 					{
-						$this->playlist_song($PLAYLIST_RELATIVE,1);
+						display(0,0,"starting queue(0) $track->{title}");
+						$this->play_track($track->{library_uuid},$track->{id});
+					}
+				}
+
+				elsif ($mp_state == $MP_STATE_STOPPED)
+				{
+					if ($this->{state} eq $RENDERER_STATE_PLAYING)
+					{
+						my $track = $queue->getNextTrack();
+						if ($track)
+						{
+							display(0,0,"next queue() $track->{title}");
+							$this->play_track($track->{library_uuid},$track->{id});
+						}
+						elsif ($this->{playlist}) 	# playlists currently wrap and never end
+						{
+							$this->playlist_song($PLAYLIST_RELATIVE,1);
+						}
+						else
+						{
+							$this->{state} = $RENDERER_STATE_STOPPED
+						}
 					}
 					else
 					{

@@ -58,8 +58,12 @@ function update_explorer()
 	// we need to update urls and re-load the page
 {
 	display(dbg_explorer,0,"update_explorer()");
-	explorer_tree.reload();
-	init_page_explorer();
+	cur_tree = explorer_tree;
+	explorer_tree.clear();
+	explorer_tracklist.clear();
+	update_explorer_ui()
+	start_explorer_library();
+	// init_page_explorer();
 }
 
 
@@ -67,10 +71,8 @@ function update_explorer()
 function deselectTree(id)
 	// unselect all items and remove the 'anchor'
 {
-	$('#' + id).find('.fancytree-selected')
-		.removeClass('fancytree-selected');
+	$('#' + id).fancytree("getTree").selectAll(false);
 	$('#' + id).fancytree("getTree").activeNode = undefined;
-
 }
 
 
@@ -95,7 +97,7 @@ function nodeType(node)
 
 function init_page_explorer()
 {
-	display(dbg_explorer,0,"init_page_explorer()");
+	display(dbg_explorer,0,"init_page_explorer(" + explorer_inited + ")");
 
 	// EXPLORER TREE
 	// nodata: 				false = don't add a dummy 'No Data' node
@@ -111,13 +113,14 @@ function init_page_explorer()
 		extensions: 		["multi"],
 		multi: 				{ mode: "sameParent" },
 		source: 			function() { return []; },
-		click:				function(event,data)
+		activate:			function(event,data)
 		{
 			// return myOnClick('tree', event, data)
 			var node = data.node;
 			update_explorer_ui(node);
 			deselectTree('explorer_tracklist');
 			cur_tree = explorer_tree;
+			return true;
 		},
 		lazyLoad: function(event, data)
 		{
@@ -129,8 +132,7 @@ function init_page_explorer()
 	});
 
 	explorer_tree = $("#explorer_tree").fancytree("getTree");
-	$.get(library_url() + "/dir" + '?id=0&mode=0&source=main',
-		function (result) { onLoadFolder(0,result) } );
+
 	if (IS_TOUCH)
 		init_touch('explorer_tree');
 
@@ -145,7 +147,7 @@ function init_page_explorer()
 		selectMode:		2,
 		extensions: 	["table","multi"],
 		table: 			{},
-		source: 		function() {  return []; },
+		source: 		function() { return []; },
 		click:  		function(event,data)
 		{
 			// return myOnClick('tracklist', event, data)
@@ -223,21 +225,28 @@ function init_page_explorer()
 				$tdList.eq(2).prop("colspan", 2);
 				$tdList.eq(1).addClass('explorer_details_section_label');
 			}
- 		},
+		},
 	});		// explorer_details
 
 	explorer_details = $("#explorer_details").fancytree("getTree");
 
-	update_explorer_ui()
+	// finish up
+
+	$(".select_button").button();
+
 	cur_tree = explorer_tree;
+	update_explorer_ui()
+	start_explorer_library();
 
-	if (!explorer_inited)
-	{
-		$(".select_button").button();
-	}
-	explorer_inited = true;
-
+	explorer_inited = true;	// unused
 	display(dbg_explorer,1,"init_page_explorer() finished");
+}
+
+
+function start_explorer_library()
+{
+	$.get(library_url() + "/dir" + '?id=0&mode=0&source=main',
+		function (result) { onLoadFolder(0,result) } );
 }
 
 
@@ -432,87 +441,69 @@ function onLoadTracks(result,loading)
 //--------------------------------------------------------------
 // selection handling
 //--------------------------------------------------------------
-// WIP
 
-var selection_sessions = [];
-var loaded_tracks = [];
-var selected_folders = [];
-var album_queue = [];
+var dbg_select = -1;
 
-
-function pushTrack(node,level)
+function onSelectButton(command)
 {
-	display(0,level+1,"pushTrack(" + node.data.TITLE + ")");
-	loaded_tracks.push(node);
-}
-
-function pushFolder(node,level)
-{
-	display(0,level+1,"pushFolder(" + nodeType(node) + ") " + nodeTitle(node));
-	folder_queue.push(node);
-}
-
-function pushAlbum(node,level)
-{
-	display(0,level+1,"pushAlbum(" + nodeType(node) + ") " + nodeTitle(node));
-	album_queue.push(node);
+	display(dbg_select,0,'onSelectButton(' + command + ')');
+	if (command == 'play')
+		doSelectCommand('play');
+	else if (command == 'add')
+		doSelectCommand('add');
 }
 
 
-function enqueuAll(main_node)
+function doSelectCommand(command)
 {
-	display(0,0,"enqueueAll(" + main_node + ")");
-	var tree = main_node.tree;
+	var tree_id = (cur_tree == explorer_tracklist) ?
+		'explorer_tracklist' : 'explorer_tree';
+
+	var tracks;
+	var folders;
+
+	display(dbg_select,0,'doSelectCommand(' + tree_id + ',' + command + ')');
+	var tree = cur_tree;
 	var selected = tree.getSelectedNodes();
 	for (let i=0; i<selected.length; i++)
 	{
 		var node = selected[i];
 		if (node.data.dirtype == undefined)
 		{
-			pushTrack(node,0);
+			display(dbg_select+1,1,'track ' + node.data.TITLE);
+			if (tracks == undefined)
+				tracks = [];
+			tracks.push(node.data.id);
 		}
 		else
 		{
-			enqueueFolder(node,0);
+			display(dbg_select+1,1,'folder ' + node.data.TITLE);
+			if (folders == undefined)
+				folders = [];
+			folders.push(node.data.id);
 		}
 	}
-}
 
+	var data_rec = {
+		update_id: update_id,
+		renderer_uuid: current_renderer.uuid,
+		library_uuid: current_library.uuid };
+	if (tracks != undefined)
+		data_rec.tracks = tracks.join(',');
+	if (folders != undefined)
+		data_rec.folders = folders.join(',');
+	var data = JSON.stringify(data_rec);
+	var url = '/webui/queue/' + command;
 
-function enqueueFolder(node,level)
-	// the rubber meets the road.
-	// This ties into the 'regular' directory loading process which is
-	// 		aynchrounous and can be happening simultaneously and now
-	// 		becomes aware that it must continue for other directories
-	//		and is not solely predicated on fancytree lazyload logic.
-{
-	var rec = node.data;
-	var type = rec.dirtype;
-	display(0,1+level,"enqueueFolder(" + type + ") " + node.title);
-	if (type == 'album')
+	display(dbg_select+1,1,'sending ' + url + "data=\n" + data);
+
+	$.post(url,data,function(result)
 	{
-		enqueuAlbum(node);
-	}
-	else
-	{
-	}
+		display(dbg_select+1,1,'doSelectCommand() success result=' + result)
+	});
+
+	deselectTree(tree_id);
 }
-
-
-function enqueueAlbum(node)
-	// except for the current selected Album, all
-	// would have to be loaded, and even then, the
-	// current tracklist could be in the process of
-	// asynchrounously loading, so we just go ahead
-	// and synchronously load the entire tracklist
-	// for the album in a single call.
-{
-}
-
-
-
-
-
 
 
 //---------------------------------------------------------------
@@ -526,7 +517,7 @@ function update_explorer_ui(node)
 	if (explorer_tracklist)
 	{
 		loading_tracklist++;
-		explorer_tracklist.getRootNode().removeChildren();
+		explorer_tracklist.clear();		// getRootNode().removeChildren();
 	}
 
 	if (node == undefined)
@@ -537,7 +528,9 @@ function update_explorer_ui(node)
 		$('#explorer_folder_genre') .html('');
 		$('#explorer_folder_year')  .html('');
 		$('#explorer_folder_path')  .html('');
-		explorer_details.getRootNode().removeChildren();
+
+		disable_button('select_button_add',true);
+		disable_button('select_button_play',true);
 	}
 	else
 	{
@@ -563,6 +556,9 @@ function update_explorer_ui(node)
 		$('#explorer_folder_genre') .html(rec.genre  == ''   ? '' : 'Genre: ' + rec.genre);
 		$('#explorer_folder_year')  .html(rec.year_str == '' ? '' : 'Year: ' + rec.year_str);
 		$('#explorer_folder_path')  .html(rec.path == ''     ? '' : 'Path: ' + rec.path);
+
+		disable_button('select_button_add',false);
+		disable_button('select_button_play',false);
 
 		explorer_details.reload({
 			url: library_url() + '/folder_metadata?id=' + rec.id,

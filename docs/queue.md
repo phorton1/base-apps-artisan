@@ -1,72 +1,110 @@
-#  The Queue, Selection, and Explorer Behavior
+#  Queues, Selection, and Explorer
 
-There is/will be a Queue for the Renderer.
+A Queue is list of items that are playing, and will play in a
+particular Renderer.
 
-The implementation is very complicated due to fancytree tree
-lazy loading, sequential selection sessions, and the fact
-that the Queue itself is moving.
+Queues are like Playlists in that they can be flat lists of
+Tracks, and can be Shuffled.
 
+Unlike Playlists, however, Queues have the following characteristics.
 
-Initial implementation
-
-- the UI maintains the Queue
-- the Queue is not persistent
-- no Shuffling or Sorting
-
-Later:
-
-- Shuffling and Sorting
-- Persistence per Renderer
+- the 0th item in the list is the currently playing item
+- as items play they are removed from the Queue
+- can contain Tracks from different Libraries
+- can contain Playlists
+- are maintained in Perl memory rather than in database files.
+- can be built from the Explorer UI by selecting and Adding or Playing selections
 
 
-## Requirements
+In this paradigm Playlists are 'Played' when a Home Menu Playlist Button is
+pressed by placed at the selected Playlist at the top of the Queue
 
-Much of this has to do with the Explorer tree and getting
-Tracks from it to the Queue while ma
-
-
-There are numerous, possibly conflicting, requirements
+In future incarnations Queues may possibly be able to be saved as
+new Playlists to a given Library, filterered to contain only Tracks
+from that Library.
 
 
 
+## Observations
 
- // There appear to be conflicting requirements.
-//
-// - clear the selection and return immediately from the double click
-//   or context menu (play) and (add) commands
-// - add tracks as soon as possible to the queue, especially in the
-//   case of (play) immediate.
-// - maintining responsiveness in the explorer tree
-//
-// especially when combined with the notions:
-//
-// - sequential selection sessions must remain in order
-// - the user may separately expand the tree, causing loads
-// - the difference between (add) and (play)
-// - the queue is moving on it's own as it is played.
-//
-// Ordering wise, Plays should come before Adds
-// User Loads should have priority over Selection Loads
-// This combined with Tracklist loading
-
-// It seems like things need to be done in chunks.
-//
-// - A Play selection has highest priority until the queue
-// 	 gets at least one Track from the selection and it
-//   starts playing.
-// - A user Tracklist has the next highest priority as
-//   they may want to proceed directly to selection and
-//   have explicitly selected an Album or Playlist.
-// - A user Expand has the next highest priority
-//
-// And THEN we still have to deal with persistence of Queues
-// per renderer ... yikes.
-
-// I think the persistence of the Queue is the lowest priority
-// and can be handled when everything settles down.
+- this design approach obviates the necessity that the UI loads
+  children folders or Tracklists, so the need for the explorer.js
+  code that does Recursive track loading is obviated and that should
+  be simplified.
+- for saveable Queues, we need to NOT delete the entire playlist directory
+  for localPlaylists when playlists.db goes away, and include the ability
+  to rebuild the playlists.db record for non-default Playlists from the
+  named.db file, with the idea that if I change the database structure I
+  explicitly remove the /plyalists subdirectory.
+- There is now a notion of a Playlist 'ending' when it has played all
+  of its tracks. Sorting a Playlists resets ITS pointer to ITS top.
+- There will need to be a UI command to Clear the Queue
+- Navigating do an item in the Queue effectivly shifts all of the
+  items above the new selection point off of the Queue.
+- the UI List (fancytree table) showing the Queue will allow Playlists
+  to be expanded and contracted, and show ITS Shuffle State, commands,
+  and current Track Index.
+- Queues will use the http POST method to send the selection from the
+  UI to the Perl.  The Queue will be modfied and sent back to the
+  UI via the update command.  Q
+- Queues will be Versioned like Playlists so that only one UI at
+  a time can add items to the list.  There will be a visible user
+  error in the unlikely event that a UI doesn't have the current
+  version of the Queue (for 1/2 second) when they add their selection
+  to the Queue.
 
 
+## Implementation Plan
 
+The Queue will be initially be somewhat intimately tied to the
+localRenderer.
+
+- DONT start by removing Playlists ability to be played
+- DONT start by removing recursive explorer.js directory loading
+
+Initial implementation will overload what the renderer track
+metadata to allow the Renderer to show the correct item in the
+Queue.
+
+- build the feature from the Explorer UI selection down to the
+  localRenderer first, so that the localRenderer can play selected
+  items and shift them out of the Queue as they are played.
+- Add new Perl File Queue.pm which will initially contain both the
+  HTTP handler AND the queue implementation.
+- possibly factor uiQueue.pm out of Queue.pm
+- Remove the explorer.js code that does recursive loadFolders()
+
+CHECKIN
+
+- figure out how to do this for HTML Renderers which will
+  now include the device_id in their uuid.
+
+CHECKIN
+
+- add the ability to Play a Playlist
+
+CHECKIN
+
+- create the Home Renderer UI
+
+
+## HTTP Command Syntax
+
+	/webui/queue/add|play
+
+Post Params
+
+	renderer_uuid
+	library_uuid
+
+	tracks = comma delimited list of track ids
+	folders = comma delimited list of folder ids
+	playlist = a playlist id
+
+Note that if a parent and child folder are both in
+the selection, the child folder will be filtered
+out so that only the parent folder is actually
+enqueued.
 
 
 
