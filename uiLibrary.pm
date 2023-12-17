@@ -154,6 +154,7 @@ sub library_request
 	return json_error("could not find library '$uuid'") if !$library;
 
 	# Remote request for another Artisan library
+    # To become supported in remoteArtisan as standard Library API
 
 	if ($library->{remote_artisan})
 	{
@@ -196,26 +197,6 @@ sub library_request
 		return json_header().json($metadata);
 	}
 
-	# following only used in webUI context menu
-	# which are not re-implemented yet ...
-
-	elsif ($path eq 'get_id_path')
-	{
-		# needs to be library agnostic
-
-		my @parts;
-		push @parts,'track_'.$params->{track_id};
-		my $track = $library->getTrack($params->{track_id});
-		my $parent_id = $track->{parent_id};
-		while (my $folder = $library->getFolder($parent_id))
-		{
-			# jquery doesn't want the 0th element
-			push @parts,$folder->{id} if $folder->{id};
-			$parent_id = $folder->{parent_id};
-		}
-
-		return json_header().json({id_path=>join('/',reverse @parts)});
-	}
 
 	#-----------------------------
 	# Playlists
