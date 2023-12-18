@@ -99,7 +99,8 @@ sub stopMP
 {
 	my ($this,$mp) = @_;
 	$mp->close() if $mp;
-	$this->{state} = $RENDERER_STATE_STOPPED;
+	$this->{state} = $RENDERER_STATE_STOPPED
+		if $this->{state} ne $RENDERER_STATE_INIT;
 	$this->{position} = 0;
 	$this->{duration} = 0;
 	delete $this->{metadata};
@@ -349,6 +350,11 @@ sub doCommand
 	my $error = '';
 	if ($command eq 'update')
 	{
+		# if they just added tracks, then we go from INIT to STOPPED
+
+		$this->{state} = $RENDERER_STATE_STOPPED
+			if $queue->{num_tracks} && $this->{state} eq $RENDERER_STATE_INIT;
+
 		$this->copyQueue($queue);
 	}
 	elsif ($command eq 'stop')
@@ -357,9 +363,9 @@ sub doCommand
 		{
 			warning(0,0,"doCommand(stop) in state $this->{state}")
 		}
-		else
+		elsif ($this->{state} eq $RENDERER_STATE_STOPPED)
 		{
-			# the 'stop' command clears the renderer,
+			# 2nd press of button clears the renderer,
 			# clearing the queue, metadata, and setting
 			# it back to RENDERER_STATE_INIT. The call
 			# to doMPCommand() will call stopMP() again
@@ -367,8 +373,13 @@ sub doCommand
 
 			$queue->clear();
 			$this->copyQueue($queue);
-			$this->stopMP();
 			$this->{state} = $RENDERER_STATE_INIT;
+			$this->stopMP();
+			doMPCommand('stop');
+		}
+		else
+		{
+			$this->stopMP();
 			doMPCommand('stop');
 		}
 	}

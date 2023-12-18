@@ -376,6 +376,9 @@ function update_renderer_ui()
 			state == 'PAUSED' ||
 			state == 'STOPPED' ? '>' : '||');
 
+		ele_set_inner_html('transport_stop',
+			state == 'STOPPED' ? 'O' : 'X');
+
 		disable_button('transport_prev_album',	no_tracks || no_earlier);
 		disable_button('transport_prev',		no_tracks || no_earlier);
 		disable_button('transport_play',		no_tracks);

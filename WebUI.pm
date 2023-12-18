@@ -249,7 +249,7 @@ sub web_ui
 		my $error = $renderer->doCommand($path,$params);
 		return json_error("renderer_request($path) error: $error")
 			if $error;
-		return json_header().json($renderer);
+		return json_header().my_encode_json($renderer);
 	}
 
 	# pass library requests to PM sub module
