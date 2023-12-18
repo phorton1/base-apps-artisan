@@ -7,6 +7,8 @@ package httpUtils;
 use strict;
 use warnings;
 use XML::Simple;
+use JSON;
+use Error qw(:try);
 use Data::Dumper;
 use artisanUtils;
 
@@ -48,7 +50,8 @@ BEGIN
 
         url_decode
 
-		json
+		my_encode_json
+		my_decode_json
 
 		parseXML
 		parseDIDL
@@ -165,13 +168,47 @@ sub json_error
 	my ($msg) = @_;
 	error($msg,1);
 	my $response = json_header();
-	$response .= json({error=>$msg});
+	$response .= my_encode_json({error=>$msg});
 	return $response;
 }
 
 
 
-sub json
+sub my_decode_json
+{
+	my ($json) = @_;
+	my $data = '';
+	try
+	{
+		$data = decode_json($json);
+	}
+	catch Error with
+	{
+		my $ex = shift;   # the exception object
+		error("Could not decode json: $ex");
+	};
+	return $data;
+}
+
+
+# sub my_encode_json
+# {
+# 	my ($data) = @_;
+# 	my $json = '';
+# 	try
+# 	{
+# 		$json = encode_json($data);
+# 	}
+# 	catch Error with
+# 	{
+# 		my $ex = shift;   # the exception object
+# 		error("Could not encode json: $ex");
+# 	};
+# 	return $json;
+# }
+
+
+sub my_encode_json
 	# return my json representation of an object
 {
 	my ($obj) = @_;
@@ -184,7 +221,7 @@ sub json
 		for my $ele (@$obj)
 		{
 			$response .= "," if (length($response));
-			$response .= json($ele)."\n";
+			$response .= my_encode_json($ele)."\n";
 		}
 		return "[". $response . "]";
 	}
@@ -201,7 +238,7 @@ sub json
 			if (ref($val))
 			{
 				display($dbg_json,0,"json recursing");
-				$val = json($val);
+				$val = my_encode_json($val);
 			}
 			else
 			{
@@ -219,9 +256,14 @@ sub json
 
 				$val =~ s/\\/\\\\/g;
 				$val =~ s/"/\\"/g;
-				$val = '"'.$val.'"' if $val !~ /^(true|false)$/;
-					# don't quote boolean values.
-					# they are provided in perl by specifically
+				$val = '"'.$val.'"'
+					if $val ne '0' &&
+					   $val !~ /^(true|false)$/ &&
+					   $val !~ /^[1-9]\d*$/;
+
+					# don't quote boolean or 'real' integer values
+					#	that are either 0 or dont start with 0
+					# true/false are provided in perl by specifically
 					# using the strings 'true' and 'false'
 			}
 

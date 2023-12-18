@@ -157,7 +157,7 @@ sub prefs_request
 	if ($param eq 'get')
 	{
 		my $response = json_header();
-		$response .= json(\%g_prefs);
+		$response .= my_encode_json(\%g_prefs);
 		return $response;
 	}
 
@@ -171,7 +171,7 @@ sub prefs_request
 		# set the prefs from the post_xml
 
 		my $response = json_header();
-		$response .= json(\%g_prefs);
+		$response .= my_encode_json(\%g_prefs);
 		return $response;
 	}
 
@@ -180,7 +180,7 @@ sub prefs_request
 		%g_prefs = @default_prefs;
 		write_prefs();
 		my $response = json_header();
-		$response .= json(\%g_prefs);
+		$response .= my_encode_json(\%g_prefs);
 		return $response;
 	}
 

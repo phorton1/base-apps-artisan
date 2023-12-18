@@ -27,6 +27,7 @@ use warnings;
 use threads;
 use threads::shared;
 use artisanUtils;
+use httpUtils;
 use LWP::UserAgent;
 use base qw(Library);
 
@@ -113,10 +114,6 @@ sub sortPlaylist
 }
 
 
-
-use JSON;
-use Error qw(:try);
-
 sub remoteRequest
 {
 	my ($this,$command) = @_;
@@ -127,17 +124,7 @@ sub remoteRequest
 	my $response = $ua->get($url);
 	return json_error("No response from get($url)") if !$response;
 	my $content = $response->content();
-	my $json = '';
-	try
-	{
-		$json = decode_json($content);
-	}
-	catch Error with
-	{
-		my $ex = shift;   # the exception object
-		error("Could not decode json: $ex");
-	};
-
+	my $json = my_json_decode($content);
 	display($dbg_alib,0,"remoteRequest returning json($json)");
 	return shared_clone($json);
 }

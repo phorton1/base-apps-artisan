@@ -176,7 +176,7 @@ sub library_request
 		my $id = $params->{id} || '';
 		my $track = $library->getTrack($id);
 		return json_error("could not find track '$id'") if !$track;
-		return json_header().json($track);
+		return json_header().my_encode_json($track);
 	}
 
 	# following two currently require a previously
@@ -187,14 +187,14 @@ sub library_request
 		my $id = $params->{id} || 0;
 		display($dbg_uilib,0,"library_track_metadata($id)");
 		my $metadata = $library->getTrackMetadata($id);
-		return json_header().json($metadata);
+		return json_header().my_encode_json($metadata);
 	}
 	elsif ($path eq 'folder_metadata')
 	{
 		my $id = $params->{id} || 0;
 		display($dbg_uilib,0,"library_folder_metadata($id)");
 		my $metadata = $library->getFolderMetadata($id);
-		return json_header().json($metadata);
+		return json_header().my_encode_json($metadata);
 	}
 
 
@@ -213,7 +213,7 @@ sub library_request
 				name => $playlist->{name},
 				uuid => $playlist->{uuid}, };
 		}
-		return json_header().json($result);
+		return json_header().my_encode_json($result);
 	}
 
 	# command that need a playlist
@@ -244,7 +244,7 @@ sub library_request
 				if !$playlist;
 		}
 
-		return json_header().json($playlist);
+		return json_header().my_encode_json($playlist);
 	}
 
 	#-----------------------------
@@ -356,7 +356,7 @@ sub library_dir_element
 
 	$rec->{icon} = "/webui/icons/error_$use_high.png";
 
-	return "\n".json($rec);
+	return "\n".my_encode_json($rec);
 }
 
 
@@ -392,7 +392,7 @@ sub library_tracklist
 
 		$response .= ',' if ($started);
 		$started = 1;
-		$response .= json($rec);
+		$response .= my_encode_json($rec);
 	}
 	$response .= ']';
 	return $response;

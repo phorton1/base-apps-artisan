@@ -24,9 +24,7 @@ use strict;
 use warnings;
 use threads;
 use threads::shared;
-use JSON;
 use Date::Format;
-use Error qw(:try);
 use artisanUtils;
 use Device;
 use DeviceManager;
@@ -227,7 +225,7 @@ sub web_ui
 			$data->{renderer} = $renderer;
 		}
 
-		return json_header().json($data);
+		return json_header().my_encode_json($data);
 
 	}
 
@@ -266,17 +264,9 @@ sub web_ui
 	elsif ($path =~ /^queue\/(.*)$/)
 	{
 		my $command = $1;
-
-		try
-		{
-			$params = decode_json($post_data);
-		}
-		catch Error with
-		{
-			my $ex = shift;   # the exception object
-			return http_error("Could not decode queue/$command json: $ex");
-		};
-
+		$params = my_decode_json($post_data);
+		return http_error("Could not decode json($post_data) for queue/$command")
+			if !$params;
 		my $err = Queue::queueCommand($command,$params);
 		return http_error($err) if $err;
 		return http_header()."OK\r\n\r\n";
@@ -303,7 +293,7 @@ sub getDeviceJson
 	return http_error("Could not get getDeviceJson($type,$uuid)")
 		if !$device;
 	my $response = json_header();
-	$response .= json($device);
+	$response .= my_encode_json($device);
 	return $response;
 }
 
@@ -343,7 +333,7 @@ sub getDevicesJson
 	my ($type) = @_;
 	my $result = getDevicesData($type);
 	my $response = json_header();
-	$response .= json($result);
+	$response .= my_encode_json($result);
 	return $response;
 }
 
