@@ -406,7 +406,7 @@ sub virtualPlaylistFolder
 	display($dbg_virt,0,"virtualPlaylistFolder($name)");
 
 	return Folder->newFromHash({
-		id => $name,
+		id => $def->{id},
 		parent_id => $ID_PLAYLISTS,
 		title => $name,
 		dirtype => 'playlist',
