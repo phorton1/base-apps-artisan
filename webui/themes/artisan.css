@@ -126,3 +126,20 @@ table
 	margin-right:12px;
 	text-align:right;
 }
+
+
+.transport_buttons,
+.select_buttons
+{
+    display: flex;
+    justify-content: space-between;
+	padding-top: 12px;
+	padding-left:30px;
+	padding-right:30px;
+}
+
+.transport_button,
+.select_button
+{
+	width:60px;
+}

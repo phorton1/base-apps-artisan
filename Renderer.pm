@@ -71,35 +71,15 @@ sub new
 		midLevel    => 0,
 		highLevel   => 0,
 
-	}));
+		position    => 0,
+		duration    => 0,
 
-	$this->init_state_vars();
+	}));
 
 	return $this;
 }
 
 
-
-sub init_state_vars
-{
-	my ($this) = @_;
-
-	# delete $this->{playlist};
-
-	$this->{position} = 0;
-	$this->{duration} = 0;
-	# $this->{playlist} = '';
-	$this->{metadata} = shared_clone({
-		artist      => '',
-		album_title => '',
-		genre       => '',
-		title       => '',
-		track_num   => '',
-		type        => '',
-		year_str    => '',
-		art_uri     => '',		# gotten from parent folder for webUI
-		pretty_size => '' }); 	# built in memory for webUI
-}
 
 
 1;

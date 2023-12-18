@@ -263,7 +263,7 @@ sub web_ui
 
 	# queue request
 
-	elsif ($path =~ /^queue\/(add|play)/)
+	elsif ($path =~ /^queue\/(.*)$/)
 	{
 		my $command = $1;
 

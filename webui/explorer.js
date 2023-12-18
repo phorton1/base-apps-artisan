@@ -451,7 +451,7 @@ function doSelectCommand(command)
 	}
 
 	var data_rec = {
-		update_id: update_id,
+		// VERSION update_id: update_id,
 		renderer_uuid: current_renderer.uuid,
 		library_uuid: current_library.uuid };
 	if (tracks != undefined)

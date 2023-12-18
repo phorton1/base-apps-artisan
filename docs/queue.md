@@ -21,7 +21,8 @@ pressed by placed at the selected Playlist at the top of the Queue
 
 In future incarnations Queues may possibly be able to be saved as
 new Playlists to a given Library, filterered to contain only Tracks
-from that Library.
+from that Library. Note that to save Playlists it will be necessary
+to Pause the Renderer after the 0th Add.
 
 
 
@@ -54,63 +55,55 @@ from that Library.
   to the Queue.
 
 
-## Implementation Plan
+## Implementation Done
 
-The Queue will be initially be somewhat intimately tied to the
-localRenderer.
+- starts with Explorer UI selection sending Post(/webui/queue/add|play)
+  with list of folder or trackids in post_data.
+- gets passed via HTTPServer and webUI to Queue::queueCommand(add|play)
+  which builds list of tracks and adds them to renderer specific Queue.
+- localRenderer modified to play from the queue if any tracks in it.
+- Removed the explorer.js code that does recursive loadFolders()
 
-- DONT start by removing Playlists ability to be played
-- DONT start by removing recursive explorer.js directory loading
+- implement transport next,prev controls on Queue
+- X shall stop and clear queue
 
-Initial implementation will overload what the renderer track
-metadata to allow the Renderer to show the correct item in the
-Queue.
 
-- build the feature from the Explorer UI selection down to the
-  localRenderer first, so that the localRenderer can play selected
-  items and shift them out of the Queue as they are played.
-- Add new Perl File Queue.pm which will initially contain both the
-  HTTP handler AND the queue implementation.
-- possibly factor uiQueue.pm out of Queue.pm
-- Remove the explorer.js code that does recursive loadFolders()
+## To Do
 
-CHECKIN
+- test/flush out support in remoteArtisan
+- remove current way of playing playlists (for a while)
+- Playlist Buttons to 'Play' Playlist(s) to Queue
+- Playlists have the ability to 'end' now
 
+
+The next steps kind of have to be completed in a chunk, and will require
+reworking the way I currently do playlists.
+
+This begs the question of 'Adding' a playlist to the Queue as opposed to play immediate.
+It is tempting to think of Playlists in explorer as the same thing, but they can also
+be thought of as initially-ordered lists of Tracks, without state.
+
+In any case, this change will require moving Playlist APIs consistenty to Libraries,
+and granting ownership of the Playlists to the Queue.
+
+Will probably want some changes to the webUI Renderer API to indicate
+that we are playing from the Queue or a Playlist within the Queue.
+
+- webUI Queue 'Tracklist'
+- sort and shuffle Queue verus Playlist (Transport Controls)
+- create the Home Renderer UI
 - figure out how to do this for HTML Renderers which will
   now include the device_id in their uuid.
-
-CHECKIN
-
-- add the ability to Play a Playlist
-
-CHECKIN
-
-- create the Home Renderer UI
-
-
-## HTTP Command Syntax
-
-	/webui/queue/add|play
-
-Post Params
-
-	renderer_uuid
-	library_uuid
-
-	tracks = comma delimited list of track ids
-	folders = comma delimited list of folder ids
-	playlist = a playlist id
-
-Note that if a parent and child folder are both in
-the selection, the child folder will be filtered
-out so that only the parent folder is actually
-enqueued.
+- multi-selection on touch devices
 
 
 
+## Future
 
-
-
+- I *might* want a repeat button on a track, or part of one, if I was learning a song
+  but generally 'repeat' is a lame notion and does not semantically fit in with a
+  Queue that empties itself.
+- Save as Playlist
 
 
 

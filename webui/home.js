@@ -213,6 +213,23 @@ function setPlaylist(uuid,id)
 // API - renderer_command() and update_renderer_onidle()
 //========================================================
 
+function queue_command(command)
+{
+	var data_rec = {
+		// VERSION update_id: update_id,
+		renderer_uuid: current_renderer.uuid };
+	var data = JSON.stringify(data_rec);
+	var url = '/webui/queue/' + command;
+
+	display(dbg_select+1,1,'sending ' + url + "data=\n" + data);
+
+	$.post(url,data,function(result)
+	{
+		display(dbg_select+1,1,'queue_command() success result=' + result)
+	});
+}
+
+
 function renderer_command(command,args)
 {
 	if (!current_renderer)
@@ -286,7 +303,7 @@ function init_renderer_pane()
 
 	renderer_slider = $('#renderer_slider');
 
-	$( "input[type=button]" ).button();
+	$(".transport_button").button();
 
 }
 
@@ -302,182 +319,134 @@ function on_slider_complete(event,ui)
 }
 
 
+// some semantics:
+//
+// The absence of a renderer is a short term situation at startup only
+// The renderers state is INIT, PLAYING, PAUSED, or STOPPED (and maybe TRANSIT for HTML_Renderer)
+// The Queue always exists.  It is empty on INIT and emptied on stop command.
+// The Transport Buttons are generally enabled if the Queue is not empty
+// The Metadata shows the track that is PLAYING or would be played if STOPPED or PAUSED
+
+
 function update_renderer_ui()
 {
 	display(dbg_loop,0,"renderer.update_renderer_ui()");
-	var disable_play_pause = true;
-	var disable_prevnext = true;
-	var stop_disabled = true;
-	var disable_slider = true;
-	var shuffle_on = false;
-
+	var metadata;
 	var state = '';
-	// var playlistName = 'Now Playing';
-	var rendererName = 'No Renderer Selected';
-	var playlistName = '';
+	var queue = '';
 
-	var art_uri = '/webui/icons/artisan.png';
-	var song_title = '';
-	var album_artist = '';
-	var album_title = '';
-	var album_track = '';
-	var song_genre = '';
+	// based on renderer
 
-	var play_pct = 0;
-	var position_str = '0:00';
-	var duration_str = '0:00';
-	var play_type_size = '';
-
-	var pause_button_label = ' > ';
-	var pause_button_on = 'renderer_control_off';
-
-
-	//-----------------------------------------------
-	// set the values from current renderer if any
-	//-----------------------------------------------
-	// start with the rendererName
-	// playlistName, and overall disable booleans
-
-	if (current_renderer)
+	if (!current_renderer)
 	{
-		disable_play_pause =
-			!current_renderer.duration ||
-			current_renderer.duration == '0';
+		ele_set_inner_html('renderer_header_left','');
+		ele_set_inner_html('renderer_header_right','no renderer');
+	}
+	else
+	{
 		state = current_renderer.state;
+		queue = current_renderer.queue;
+		metadata = current_renderer.metadata;
 
-		rendererName = current_renderer.name;
-		if (current_renderer.playlist)
-		{
-			disable_prevnext = false;
-			playlistName =
-				// current_renderer.playlist.num + '. ' +
-				current_renderer.playlist.name;
-			playlistName += '(' +
-				current_renderer.playlist.track_index + ',' +
-				current_renderer.playlist.num_tracks + ')';
-		}
-
-		// Display information about the Song in fields
-		// that just happen to be the same as fields in a Track,
-		// but gotten from the input didle.
-
-		var metadata = current_renderer.metadata;
-		if (metadata)
-		{
-			disable_slider = false;
-
-			if (metadata.art_uri)
-			{
-				art_uri = metadata.art_uri;
-			}
-			else
-			{
-				art_uri = '/webui/icons/no_image.png';
-			}
-			song_title = metadata.title ? decode_ampersands(metadata.title) : '&nbsp;';
-			album_artist = metadata.artist ? decode_ampersands(metadata.artist) : '&nbsp;'
-			album_title = metadata.album_title ? decode_ampersands(metadata.album_title) : '&nbsp;'
-			play_type_size = metadata.type ? metadata.type + ' &nbsp;&nbsp; ' : '';
-			play_type_size += metadata.pretty_size ? metadata.pretty_size : '';
-
-			if (metadata.track_num && metadata.track_num != "")
-			{
-				album_track = 'track: ' + metadata.track_num;
-			}
-
-			song_genre = '';
-			if (metadata.genre)
-			{
-				song_genre = decode_ampersands(metadata.genre);
-			}
-			if (metadata.year_str && metadata.year_str != "")
-			{
-				if (song_genre)
-				{
-					song_genre += ' | ';
-				}
-				song_genre += metadata.year_str;
-			}
-
-			if (!song_genre)
-			{
-				song_genre = '&nbsp;';
-			}
-		}
-
-		// Transport times and slider
-
-		if (state == 'PLAYING')
-		{
-			stop_disabled = false;
-			pause_button_label = ' || ';
-		}
-
-		if (state == 'PLAYING' ||
-			state == 'PAUSED')
-		{
-			duration_str = millis_to_duration(current_renderer.duration,false);
-			position_str = millis_to_duration(current_renderer.position,false);
-			if (current_renderer.duration>0)
-				play_pct = parseInt(current_renderer.position / current_renderer.duration  * 100);
-		}
-
-		// Shuffle and Repeat buttons
-
-		pause_button_on = (state == 'PAUSED') ? true : false;
+		ele_set_inner_html('renderer_header_left', state + " (" + queue.track_index + "/" + queue.num_tracks + ")");
+		ele_set_inner_html('renderer_header_right',
+			idle_count + " " + current_renderer.name);
 	}
 
-	//----------------------------------------
-	// Move the variables into the UI
-	//----------------------------------------
+	// based on queue
 
-
-	ele_set_inner_html('renderer_header_left',playlistName + ' &nbsp;&nbsp; ' + state);
-	ele_set_inner_html('renderer_header_right',"" +  + idle_count + " " + rendererName);
-
-	// What's Playing info and image
-
-	ele_set_inner_html('renderer_song_title',song_title);
-	ele_set_inner_html('renderer_album_artist',album_artist);
-	ele_set_inner_html('renderer_album_title',album_title);
-	ele_set_inner_html('renderer_album_track',album_track);
-	ele_set_inner_html('renderer_song_genre',song_genre);
-	if (ele_get_src('renderer_album_image') != art_uri)
+	if (!queue)
 	{
-		ele_set_src('renderer_album_image',art_uri);
+		ele_set_inner_html('transport_play','>');
+
+		disable_button('transport_prev_album',	true);
+		disable_button('transport_prev',		true);
+		disable_button('transport_play',		true);
+		disable_button('transport_stop',		true);
+		disable_button('transport_next',		true);
+		disable_button('transport_next_album',	true);
 	}
-
-
-	// Playback Controls
-
-	if (!in_slider)
+	else
 	{
-		display(dbg_loop,0,"renderer.update_renderer_ui(a)");
+		var no_tracks = queue.num_tracks == 0;
+		var no_earlier = queue.track_index == 0;
+		var no_later = queue.track_index >= queue.num_tracks;
 
-		renderer_slider.slider( disable_slider?'disable':'enable');
-		$('#renderer_slider').slider('value',play_pct);
+		ele_set_inner_html('transport_play',
+			state == 'PAUSED' ||
+			state == 'STOPPED' ? '>' : '||');
+
+		disable_button('transport_prev_album',	no_tracks || no_earlier);
+		disable_button('transport_prev',		no_tracks || no_earlier);
+		disable_button('transport_play',		no_tracks);
+		disable_button('transport_stop',		no_tracks);
+		disable_button('transport_next',		no_tracks || no_later);
+		disable_button('transport_next_album',	no_tracks || no_later);
 	}
 
-	ele_set_inner_html('renderer_position',position_str);
-	ele_set_inner_html('renderer_duration',duration_str);
-	ele_set_inner_html('renderer_play_type',play_type_size);
+	// based on metadata
+	// which is the current song playing
 
-	ele_set_value('renderer_button_play_pause',pause_button_label );
-	set_button_on('renderer_button_play_pause',pause_button_on);
+	if (!metadata)
+	{
+		ele_set_inner_html('renderer_song_title',	'');
+		ele_set_inner_html('renderer_album_artist',	'');
+		ele_set_inner_html('renderer_album_title',	'');
+		ele_set_inner_html('renderer_album_track',	'');
+		ele_set_inner_html('renderer_song_genre',	'');
+		ele_set_src('renderer_album_image', '/webui/icons/artisan.png');
 
-	// Enable/disable the buttons
+		renderer_slider.slider('disable')
+		$('#renderer_slider').slider('value',0);
+		ele_set_inner_html('renderer_position',		'');
+		ele_set_inner_html('renderer_duration',		'');
+		ele_set_inner_html('renderer_play_type',	'');
 
-	display(dbg_loop,0,"renderer.update_renderer_ui(1)");
+	}
+	else
+	{
+		ele_set_inner_html('renderer_song_title',	decode_ampersands(metadata.title));
+		ele_set_inner_html('renderer_album_artist', decode_ampersands(metadata.artist));
+		ele_set_inner_html('renderer_album_title',	decode_ampersands(metadata.album_title));
+		ele_set_inner_html('renderer_album_track',  metadata.tracknum != '' ?
+			'track: ' + metadata.tracknum : '');
 
-	disable_button('renderer_button_prev',disable_prevnext);
-	disable_button('renderer_button_play_pause',disable_play_pause);
-	disable_button('renderer_button_stop',stop_disabled);
-	disable_button('renderer_button_next',disable_prevnext);
+		var genre_year = metadata.genre ?
+			decode_ampersands(metadata.genre) : '';
+		if (metadata && metadata.year_str && metadata.year_str != "")
+		{
+			if (genre_year) genre_year += ' | ';
+			genre_year += metadata.year_str;
+		}
+		ele_set_inner_html('renderer_song_genre', genre_year);
 
-	display(dbg_loop,0,"renderer.update_renderer_ui(2)");
+		ele_set_src('renderer_album_image', metadata.art_uri ?
+			metadata.art_uri : '/webui/icons/no_image.png');
 
-	// update_playlist_ui();
-		// in playlist.js
+		ele_set_inner_html('renderer_play_type',
+			metadata.type + ' &nbsp;&nbsp; ' +  metadata.pretty_size);
+
+		ele_set_value('renderer_button_play_pause',
+			state == 'PLAYING' ? '||' : '>')
+			ele_set_inner_html('renderer_duration',
+				millis_to_duration(current_renderer.duration,false));
+
+		ele_set_inner_html('renderer_position',
+			millis_to_duration(current_renderer.position,false));
+
+		if (current_renderer.duration>0)
+		{
+			renderer_slider.slider('enable');
+			if (!in_slider)
+				$('#renderer_slider').slider('value',
+				parseInt(current_renderer.position / current_renderer.duration  * 100));
+		}
+		else
+		{
+			renderer_slider.slider('disable');
+			$('#renderer_slider').slider('value',0);
+		}
+	}
 
 	display(dbg_loop,0,"renderer.update_renderer_ui() returning");
 
@@ -521,7 +490,7 @@ function disable_button(id,disabled)
 
 
 
-function remove_leading_zeros(st)
+function unused_remove_leading_zeros(st)
 {
 	var pos = 0;
 	var len = st.length;
@@ -542,7 +511,7 @@ function remove_leading_zeros(st)
 }
 
 
-function remove_trailing_decimal(st)
+function unused_remove_trailing_decimal(st)
 {
 	var parts = st.split(".");
 	return parts[0];

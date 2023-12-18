@@ -74,21 +74,6 @@ ul.fancytree-container
 #explorer_folder_year   { font-size:10pt;  margin-top:0px; margin-bottom:0px;}
 #explorer_folder_path   { font-size:8pt;   margin-top:4px; margin-bottom:0px;}
 
-.select_buttons
-{
-    display: flex;
-    justify-content: space-between;
-	padding-top: 12px;
-	padding-left:30px;
-	padding-right:30px;
-}
-
-.select_button
-{
-	width:60px;
-}
-
-
 
 #explorer_details td,
 #explorer_tracklist td

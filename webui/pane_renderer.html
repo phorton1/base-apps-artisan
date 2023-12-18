@@ -54,41 +54,34 @@
 
         <!-- TRANSPORT CONTROLS -->
 
-        <table class="renderer_table" align='center'>
-            <tr>
-
-				<!-- this to become the volume control, disabled if max_vol == 0 -->
-
-                <td class="play_button" align="center">
-                    <input type="button"
-                        id="renderer_button_prev"
-                        value=" << "
-                        disabled
-                        onclick = "javascript:renderer_command('prev')">
-                </td>
-                <td class="play_button" align="center">
-                    <input type="button"
-                        id="renderer_button_play_pause"
-                        value=" > "
-                        disabled
-                        onclick = "javascript:renderer_command('play_pause')">
-                </td>
-                <td class="play_button" align="center">
-                    <input type="button"
-                        id="renderer_button_stop"
-                        value=" X "
-                        disabled
-                        onclick = "javascript:renderer_command('stop')">
-                </td>
-                <td class="play_button" align="center">
-                    <input type="button"
-                        id="renderer_button_next"
-                        value=" >> "
-                        disabled
-                        onclick = "javascript:renderer_command('next')">
-                </td>
-            </tr>
-        </table>
+		<div class='transport_buttons'>
+			<button
+				id="transport_prev_album"
+				class="transport_button"
+				onclick = "javascript:queue_command('prev_album')">|&lt;</button>
+			<button
+				id="transport_prev"
+				class="transport_button"
+				onclick = "javascript:queue_command('prev')">&lt;&lt;</button>
+			<button
+				id="transport_play"
+				class="transport_button"
+				disabled
+				onclick = "javascript:renderer_command('play_pause')">&lt</button>
+			<button
+				id="transport_stop"
+				class="transport_button"
+				disabled
+				onclick = "javascript:renderer_command('stop')">X</button>
+			<button
+				id="transport_next"
+				class="transport_button"
+				onclick = "javascript:queue_command('next')">&gt;&gt;</button>
+			<button
+				id="transport_next_album"
+				class="transport_button"
+				onclick = "javascript:queue_command('next_album')">&gt;|</button>
+		</div>
 
     </div>	<!-- why the extra div? -->
 

@@ -285,6 +285,8 @@ function decode_ampersands(encoded)
 	// into the actual display string. This *should*
 	// be safe to call multiple times ...
 {
+	return encoded;
+
 	var div = document.createElement('div');
 	div.innerHTML = encoded;
 	return div.firstChild.nodeValue;

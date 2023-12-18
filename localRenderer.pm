@@ -44,7 +44,7 @@ my @track_fields_to_renderer = qw(
 	genre
 	title
 	type
-	track_num
+	tracknum
 	year_str);
 
 
@@ -90,6 +90,22 @@ sub doMPCommand
 }
 
 
+sub stopMP
+	# When the queue reaches the end it 'stops', and
+	# the renderer goes to RENDERER_STATE_STOPPED.
+	# It can be 'restarted' by navigating to a previous
+	# track or album, or via the Play button which will
+	# start it over from the beginning.
+{
+	my ($this,$mp) = @_;
+	$mp->close() if $mp;
+	$this->{state} = $RENDERER_STATE_STOPPED;
+	$this->{position} = 0;
+	$this->{duration} = 0;
+	delete $this->{metadata};
+}
+
+
 sub mpThread
 	# handles all state changes
 {
@@ -118,8 +134,8 @@ sub mpThread
 
 				if ($mp_command eq 'stop')
 				{
-					$mp->close();
-					$this->{state} = $RENDERER_STATE_STOPPED;
+					$this->stopMP($mp);
+					$this->{state} = $RENDERER_STATE_INIT;
 				}
 				elsif ($mp_command eq 'pause')
 				{
@@ -150,7 +166,7 @@ sub mpThread
 			{
 				my $mp_state = $mp->{playState} || 0;
 
-				display($dbg_mp+1,0,"mp_state($mp_state) state($this->{state}) playlist($this->{playlist})");
+				display($dbg_mp+1,0,"mp_state($mp_state) state($this->{state})");
 
 				if ($this->{state} eq $RENDERER_STATE_PLAYING)
 				{
@@ -174,6 +190,10 @@ sub mpThread
 						display(0,0,"starting queue(0) $track->{title}");
 						$this->play_track($track->{library_uuid},$track->{id});
 					}
+					else
+					{
+						$this->stopMP($mp);
+					}
 				}
 
 				elsif ($mp_state == $MP_STATE_STOPPED)
@@ -192,12 +212,12 @@ sub mpThread
 						}
 						else
 						{
-							$this->{state} = $RENDERER_STATE_STOPPED
+							$this->stopMP($mp);
 						}
 					}
 					else
 					{
-						$this->{state} = $RENDERER_STATE_STOPPED
+						$this->stopMP($mp);
 					}
 				}
 			}
@@ -251,7 +271,6 @@ sub new
         maxBal  => 100,
 		transportURL => "http://$server_ip:$server_port/AVTransport",
         controlURL   => "http://$server_ip:$server_port/control",
-		playlist => '',
 	}));
 
 	if (1)
@@ -275,12 +294,24 @@ sub checkParam
 }
 
 
+sub copyQueue
+{
+	my ($this,$queue) = @_;
+	$this->{queue} = shared_clone({});
+	for my $key (keys %$queue)
+	{
+		next if $key eq 'tracks';
+		$this->{queue}->{$key} = $queue->{$key};
+	}
+}
+
+
 sub doCommand
 	# returns '' for success, or an error message
 	#
 	# Supports the following commands and arguments
 	#
-	#   update			- does nothing in localRenderer
+	#   update
 	#	stop
 	#   play_pause
 	#   next
@@ -313,20 +344,35 @@ sub doCommand
 	my ($this,$command,$params) = @_;
 	my $extra_dbg = $command eq 'update' ? 1 : 0;
     display_hash($dbg_lren + $extra_dbg,0,"doCommand($command)",$params);
+	my $queue = Queue::getQueue($this->{uuid});
 
 	my $error = '';
 	if ($command eq 'update')
 	{
-		# Now a NOP in the localRenderer
-		# $error = $this->update();
+		$this->copyQueue($queue);
 	}
 	elsif ($command eq 'stop')
 	{
-		warning(0,0,"doCommand(stop) in state $this->{state}")
-			if $this->{state} eq $RENDERER_STATE_INIT;
-		$this->init_state_vars();	 # in Renderer.pm
-		doMPCommand('stop');
+		if ($this->{state} eq $RENDERER_STATE_INIT)
+		{
+			warning(0,0,"doCommand(stop) in state $this->{state}")
+		}
+		else
+		{
+			# the 'stop' command clears the renderer,
+			# clearing the queue, metadata, and setting
+			# it back to RENDERER_STATE_INIT. The call
+			# to doMPCommand() will call stopMP() again
+			# in a few MS.
+
+			$queue->clear();
+			$this->copyQueue($queue);
+			$this->stopMP();
+			$this->{state} = $RENDERER_STATE_INIT;
+			doMPCommand('stop');
+		}
 	}
+
 	elsif ($command eq 'pause')
 	{
 		if ($this->{state} eq $RENDERER_STATE_PLAYING)
@@ -348,6 +394,11 @@ sub doCommand
 		elsif ($this->{state} eq $RENDERER_STATE_PAUSED)
 		{
 			doMPCommand('play');
+		}
+		elsif ($this->{state} eq $RENDERER_STATE_STOPPED)
+		{
+			$queue->restart();
+			$this->copyQueue($queue);
 		}
 		else
 		{
@@ -388,15 +439,15 @@ sub doCommand
 	# playlist commands
 	#-------------------------------------
 	# next and prev
-
-	elsif ($command eq 'next')
-	{
-		$error = $this->playlist_song($PLAYLIST_RELATIVE,1);
-	}
-	elsif ($command eq 'prev')
-	{
-		$error = $this->playlist_song($PLAYLIST_RELATIVE,-1);
-	}
+    #
+	# elsif ($command eq 'next')
+	# {
+	# 	$error = $this->playlist_song($PLAYLIST_RELATIVE,1);
+	# }
+	# elsif ($command eq 'prev')
+	# {
+	# 	$error = $this->playlist_song($PLAYLIST_RELATIVE,-1);
+	# }
 
 	# start a playlist on the current index of the playlist
 	# this command will trigger the creation of the
@@ -490,7 +541,7 @@ sub play_track
 		if !$track;
 
 	display($dbg_lren,1,"play_track($track->{path}) duration=$track->{duration}");
-
+	$this->{metadata} = shared_clone({});
 	for my $field (@track_fields_to_renderer)
 	{
 		$this->{metadata}->{$field} = $track->{$field};
