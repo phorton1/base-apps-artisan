@@ -404,12 +404,14 @@ function update_renderer_ui()
 		var no_earlier = queue.track_index == 0;
 		var no_later = queue.track_index >= queue.num_tracks;
 
-		if (playlist &&		// should always by synonymouse
+		if (playlist &&		// should always by synonymous
 			current_renderer.playing == RENDERER_PLAY_PLAYLIST)
 		{
+			// playlists wrap so earlier/later is true if there's
+			// more than one track
 			no_tracks = playlist.num_tracks == 0;
-			no_earlier = playlist.track_index <= 1;
-			no_later = playlist.track_index >= playlist.num_tracks + 1;
+			no_earlier = playlist.num_tracks <= 1;
+			no_later = playlist.num_tracks <= 1;
 			shuffle = playlist.shuffle;
 		}
 

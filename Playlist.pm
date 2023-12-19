@@ -187,6 +187,11 @@ sub getPlaylistTrack
 			$index = 1 if $index > $this->{num_tracks};
 			$index = $this->{num_tracks} if $index < 1;
 		}
+		elsif ($mode == $PLAYLIST_ALBUM_RELATIVE && $index)
+		{
+			$index = $this->incAlbum($playlists_dir,$index);
+			return if !$index;
+		}
 
 		$index = 1 if $index < 1;
 		$index = $this->{num_tracks} if $index>$this->{num_tracks};
@@ -223,6 +228,82 @@ sub getPlaylistTrack
 	return $this;
 }
 
+
+
+sub incAlbum
+	# find the next or previous album
+	# because playlists wrap, we sort of consider it an error
+	# to get back to the same track, and just return it ...
+{
+	my ($this,$playlists_dir,$inc) = @_;
+	display($dbg_pl+1,1,"incAlbum($inc)");
+
+	my $index = $this->{track_index};
+	my $orig_index = $index;
+	my $num_tracks = $this->{num_tracks};
+
+	my $named_db = "$playlists_dir/$this->{name}.db";
+	my $dbh = db_connect($named_db);
+	return if !$dbh;
+
+	my $rec = get_record_db($dbh,"SELECT * FROM tracks WHERE pl_idx='$index'");
+	my $album_id = albumId($rec);
+
+	if ($inc > 0)
+	{
+		$index ++;
+		$index = 1 if $index > $num_tracks;
+		return $index if $index == $orig_index;
+			# forward wrap considered new album
+
+		$rec = get_record_db($dbh,"SELECT * FROM tracks WHERE pl_idx='$index'");
+		while ($album_id eq albumId($rec))
+		{
+			$index ++;
+			$index = 1 if $index > $num_tracks;
+			return $index if $index == $orig_index;
+			$rec = get_record_db($dbh,"SELECT * FROM tracks WHERE pl_idx='$index'");
+		}
+
+		return $index;
+	}
+
+	# backwards
+
+	$index--;
+	$index = $num_tracks if $index == 0;
+	return $index if $index == $orig_index;
+
+	# go backwards until album changes or we wrap
+
+	$rec = get_record_db($dbh,"SELECT * FROM tracks WHERE pl_idx='$index'");
+	while ($album_id eq albumId($rec))
+	{
+		$index--;
+		$index = $num_tracks if $index == 0;
+		return $index if $index == $orig_index;
+		$rec = get_record_db($dbh,"SELECT * FROM tracks WHERE pl_idx='$index'");
+	}
+
+	# we are now at the end of a new album (guaranteed)
+	# go one past the beginning; we no longer look for endless loops
+
+	$album_id = albumId($rec);
+	while ($album_id eq albumId($rec))
+	{
+		$index--;
+		$index = $num_tracks if $index == 0;
+		# return $index if $index == $orig_index;
+		$rec = get_record_db($dbh,"SELECT * FROM tracks WHERE pl_idx='$index'");
+	}
+
+	# abd we know the album starts at the index+1 with wrapping
+
+	$index ++;
+	$index = 1 if $index == $num_tracks;
+	return $index;
+
+}
 
 
 sub sortPlaylist
