@@ -6,7 +6,21 @@
 	id='renderer_pane'
     class="ui-layout-north">
 
-    <!-- include section_header_bar.html id=renderer -->
+	<div class="header_bar header_text">
+		<div class="header_text">
+			<img
+				class="header_icon"
+				src="/webui/icons/artisan.png">
+			<span id="renderer_state"></span>
+			<span id="renderer_queue_state"
+				  class="header_text header_filler header_button"
+				  onclick="javascript:set_playing(RENDERER_PLAY_QUEUE)"></span>
+			<span id="renderer_playlist_state"
+				  class="header_text header_filler header_button"
+				  onclick="javascript:set_playing(RENDERER_PLAY_PLAYLIST)"></span>
+		</div>
+		<div id="renderer_status" class="header_text header_right"></div>
+	</div>
 
     <div
         id="renderer_body"
@@ -58,11 +72,11 @@
 			<button
 				id="transport_prev_album"
 				class="transport_button"
-				onclick = "javascript:queue_command('prev_album')">|&lt;</button>
+				onclick = "javascript:renderer_command('prev_album')">|&lt;</button>
 			<button
 				id="transport_prev"
 				class="transport_button"
-				onclick = "javascript:queue_command('prev')">&lt;&lt;</button>
+				onclick = "javascript:renderer_command('prev')">&lt;&lt;</button>
 			<button
 				id="transport_play"
 				class="transport_button"
@@ -76,11 +90,11 @@
 			<button
 				id="transport_next"
 				class="transport_button"
-				onclick = "javascript:queue_command('next')">&gt;&gt;</button>
+				onclick = "javascript:renderer_command('next')">&gt;&gt;</button>
 			<button
 				id="transport_next_album"
 				class="transport_button"
-				onclick = "javascript:queue_command('next_album')">&gt;|</button>
+				onclick = "javascript:renderer_command('next_album')">&gt;|</button>
 		</div>
 
     </div>	<!-- why the extra div? -->

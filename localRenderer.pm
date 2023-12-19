@@ -3,6 +3,11 @@
 # localRenderer.pm
 #---------------------------------------
 # See https://learn.microsoft.com/en-us/windows/win32/wmp/player-object
+#
+# Playing the Queue vs Playlist(s)
+#
+# A Renderer is playing on or the other of the current Queue
+# and a potential Playlist. The Queue can end, Playlists wrap.s
 
 package localRenderer;
 use strict;
@@ -184,6 +189,7 @@ sub mpThread
 
 				if ($queue->{needs_start})
 				{
+					$this->{playing} = $RENDERER_PLAY_QUEUE;
 					$queue->{needs_start} = 0;
 					my $track = $queue->getNextTrack();
 					if ($track)
@@ -201,19 +207,22 @@ sub mpThread
 				{
 					if ($this->{state} eq $RENDERER_STATE_PLAYING)
 					{
-						my $track = $queue->getNextTrack();
-						if ($track)
-						{
-							display(0,0,"next queue() $track->{title}");
-							$this->play_track($track->{library_uuid},$track->{id});
-						}
-						elsif ($this->{playlist}) 	# playlists currently wrap and never end
+						if ($this->{playing} == $RENDERER_PLAY_PLAYLIST)
 						{
 							$this->playlist_song($PLAYLIST_RELATIVE,1);
 						}
 						else
 						{
-							$this->stopMP($mp);
+							my $track = $queue->getNextTrack();
+							if ($track)
+							{
+								display(0,0,"next queue() $track->{title}");
+								$this->play_track($track->{library_uuid},$track->{id});
+							}
+							else
+							{
+								$this->stopMP($mp);
+							}
 						}
 					}
 					else
@@ -272,6 +281,7 @@ sub new
         maxBal  => 100,
 		transportURL => "http://$server_ip:$server_port/AVTransport",
         controlURL   => "http://$server_ip:$server_port/control",
+		playing => $RENDERER_PLAY_QUEUE,
 	}));
 
 	if (1)
@@ -315,6 +325,7 @@ sub doCommand
 	#   update
 	#	stop
 	#   play_pause
+	#
 	#   next
 	#   prev
 	#
@@ -344,7 +355,7 @@ sub doCommand
 {
 	my ($this,$command,$params) = @_;
 	my $extra_dbg = $command eq 'update' ? 1 : 0;
-    display_hash($dbg_lren + $extra_dbg,0,"doCommand($command)",$params);
+    display_hash($dbg_lren + $extra_dbg,0,"doCommand($command) playing($this->{playing})",$params);
 	my $queue = Queue::getQueue($this->{uuid});
 
 	my $error = '';
@@ -371,6 +382,8 @@ sub doCommand
 			# to doMPCommand() will call stopMP() again
 			# in a few MS.
 
+			delete $this->{playlist};
+			$this->{playing} = $RENDERER_PLAY_QUEUE;
 			$queue->clear();
 			$this->copyQueue($queue);
 			$this->{state} = $RENDERER_STATE_INIT;
@@ -406,6 +419,10 @@ sub doCommand
 		{
 			doMPCommand('play');
 		}
+		elsif ($this->{playing} == $RENDERER_PLAY_PLAYLIST)
+		{
+			$error = $this->playlist_song($PLAYLIST_RELATIVE,0);
+		}
 		elsif ($this->{state} eq $RENDERER_STATE_STOPPED)
 		{
 			$queue->restart();
@@ -435,6 +452,8 @@ sub doCommand
 		}
 	}
 
+	# Play song immediate outside of Queue/Playlist framework
+
 	elsif ($command eq 'play_song')
 	{
 		my $library_uuid = checkParam(\$error,$command,$params,'library_uuid');
@@ -445,21 +464,84 @@ sub doCommand
 		return $error;
 	}
 
+	#-------------------------------------
+	# transport commands
+	#-------------------------------------
+	# The Renderer can be playing the Queue AND/OR a Playlist.
+	# The following transport commands apply to the current
+	# thing that is playing.
+	#
+	# The Queue can End, but Playlists wrap.
+
+	elsif ($command eq 'set_playing')
+	{
+		my $playing = $params->{playing} || 0;
+		if ($this->{playing} != $playing)
+		{
+			$this->{playing} = $playing;
+			if ($playing == $RENDERER_PLAY_PLAYLIST)
+			{
+				$this->playlist_song($PLAYLIST_RELATIVE,0);
+			}
+			else
+			{
+				$queue->{started} = 0;
+				$queue->{needs_start} = 1;
+			}
+		}
+
+	}
+
+
+	elsif ($command eq 'next')
+	{
+		if ($this->{playing} == $RENDERER_PLAY_PLAYLIST)
+		{
+			$error = $this->playlist_song($PLAYLIST_RELATIVE,1);
+		}
+		else
+		{
+			$error = Queue::queueCommand($command,{renderer_uuid=>$this->{uuid}});
+		}
+	}
+	elsif ($command eq 'prev')
+	{
+		if ($this->{playing} == $RENDERER_PLAY_PLAYLIST)
+		{
+			$error = $this->playlist_song($PLAYLIST_RELATIVE,-1);
+		}
+		else
+		{
+			$error = Queue::queueCommand($command,{renderer_uuid=>$this->{uuid}});
+		}
+	}
+	elsif ($command eq 'next_album')
+	{
+		if ($this->{playing} == $RENDERER_PLAY_PLAYLIST)
+		{
+			$error = $this->playlist_song($PLAYLIST_ALBUM_RELATIVE,1);
+		}
+		else
+		{
+			$error = Queue::queueCommand($command,{renderer_uuid=>$this->{uuid}});
+		}
+	}
+	elsif ($command eq 'prev_album')
+	{
+		if ($this->{playing} == $RENDERER_PLAY_PLAYLIST)
+		{
+			$error = $this->playlist_song($PLAYLIST_ALBUM_RELATIVE,-11);
+		}
+		else
+		{
+			$error = Queue::queueCommand($command,{renderer_uuid=>$this->{uuid}});
+		}
+	}
+
 
 	#-------------------------------------
 	# playlist commands
 	#-------------------------------------
-	# next and prev
-    #
-	# elsif ($command eq 'next')
-	# {
-	# 	$error = $this->playlist_song($PLAYLIST_RELATIVE,1);
-	# }
-	# elsif ($command eq 'prev')
-	# {
-	# 	$error = $this->playlist_song($PLAYLIST_RELATIVE,-1);
-	# }
-
 	# start a playlist on the current index of the playlist
 	# this command will trigger the creation of the
 	# base_data/temp/Renderer/renderer_id/library_id/playlists.db file
@@ -478,6 +560,8 @@ sub doCommand
 
 		$this->{playlist} = $library->getPlaylist($playlist_id);
 		$error = $this->playlist_song($PLAYLIST_RELATIVE,0);
+
+		$this->{playing} = $RENDERER_PLAY_PLAYLIST;
 	}
 
 	# play a song by index within the current playlist

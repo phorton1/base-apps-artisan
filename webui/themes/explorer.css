@@ -2,6 +2,25 @@
  explorer.css
 ********************************************/
 
+
+
+.select_buttons
+{
+    display: flex;
+    justify-content: space-between;
+	padding-top: 12px;
+	padding-left:30px;
+	padding-right:30px;
+}
+
+.select_button
+{
+	width:60px;
+}
+
+
+
+
 table.fancytree-ext-table tbody tr td
 {
 	border:0px;

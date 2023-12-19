@@ -104,6 +104,60 @@
 
 /************ the 'renderer' pane ********************/
 
+.header_bar
+{
+	width:100%;
+	white-space: nowrap;
+    display: flex;
+	flex-wrap: nowrap;
+    justify-content: space-between;
+}
+
+.header_text
+{
+	font-size:14pt;
+	padding-top:3px;
+	color:#cccccc;
+	background:#444444;
+}
+
+.header_button
+{
+	padding:0;
+	margin-top:-5px;
+}
+
+.header_icon
+{
+	width:30px;
+	height:30px;
+	margin-left:4px;
+	margin-right:8px;
+	margin-top:-3px;
+	vertical-align:top;
+}
+
+.header_filler
+{
+	margin-left:20px;
+}
+
+.header_active
+{
+	color:#ffffff;
+	opacity:1 !important;
+	font-weight:bold;
+}
+
+
+.header_right
+{
+	margin-right:12px;
+}
+
+
+
+
 
 #renderer_full_album_image_td,
 #renderer_album_image_td
@@ -210,7 +264,6 @@
 .renderer_play_time      { font-size:10pt; }
 
 
-
 .renderer_table
 {
 	width:98%;
@@ -218,27 +271,18 @@
 }
 
 
-#renderer_button_unused1,
-#renderer_button_prev,
-#renderer_button_next,
-#renderer_button_stop,
-#renderer_button_play_pause,
-#renderer_button_shuffle,
-#renderer_button_unused2,
-#renderer_button_station_1,
-#renderer_button_station_2,
-#renderer_button_station_3,
-#renderer_button_station_4,
-#renderer_button_station_5,
-#renderer_button_station_6,
-#renderer_button_station_assign
+
+
+.transport_buttons
 {
-	font-weight:bold;
-	font-size:13pt;
-	height:40px;
+    display: flex;
+    justify-content: space-between;
+	padding-left:30px;
+	padding-right:30px;
 }
 
-.renderer_big_button
+.transport_button
 {
-	width:90px;
+	width:60px;
 }
+

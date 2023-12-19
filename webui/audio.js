@@ -11,7 +11,7 @@ var audio;
 
 //	const PLAYLIST_ABSOLUTE = 0;
 //	const PLAYLIST_RELATIVE = 1;
-
+//	const PLAYLIST_ALBUM_RELATIVE = 2;
 
 const RENDERER_STATE_NONE 		= 'NONE';
 const RENDERER_STATE_INIT		= 'INIT';

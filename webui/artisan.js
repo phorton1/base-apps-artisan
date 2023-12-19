@@ -107,7 +107,7 @@ $(function()
 
 	$('#renderer_pane_div').layout({
 		applyDemoStyles: true,
-		north__size:270, });
+		north__size:255, });
 
 	// Dynamic Initialization
 

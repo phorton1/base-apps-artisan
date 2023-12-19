@@ -39,6 +39,9 @@ var IS_IOS = false;
 var IS_TOUCH = false;
 var IS_DESKTOP = false;
 
+const RENDERER_PLAY_QUEUE = 0;
+const RENDERER_PLAY_PLAYLIST = 1;
+
 
 jQuery.ajaxSetup({async:false});
 

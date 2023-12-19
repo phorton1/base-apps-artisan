@@ -113,9 +113,8 @@ function init_page_explorer()
 		extensions: 		["multi"],
 		multi: 				{ mode: "sameParent" },
 		source: 			function() { return []; },
-		activate:			function(event,data)
+		click:				function(event,data)
 		{
-			// return myOnClick('tree', event, data)
 			var node = data.node;
 			update_explorer_ui(node);
 			deselectTree('explorer_tracklist');
@@ -149,7 +148,6 @@ function init_page_explorer()
 		source: 		function() { return []; },
 		click:  		function(event,data)
 		{
-			// return myOnClick('tracklist', event, data)
 			var node = data.node;
 			var rec = node.data;
 			explorer_details.reload({
@@ -158,6 +156,16 @@ function init_page_explorer()
 			deselectTree('explorer_tree');
 			cur_tree = explorer_tracklist;
 			return true;
+		},
+		dblclick:		function(event, data)
+		{
+			var node = data.node;
+			var rec = node.data;
+			explorer_tracklist.selectAll(false);
+			node.setSelected(true);
+			renderer_command('play_song',{
+				library_uuid: current_library.uuid,
+				track_id: rec.id});
 		},
 		renderColumns: 	function(event, data)
 		{

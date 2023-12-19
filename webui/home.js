@@ -304,6 +304,7 @@ function init_renderer_pane()
 	renderer_slider = $('#renderer_slider');
 
 	$(".transport_button").button();
+	$('.header_button').button();
 
 }
 
@@ -328,17 +329,29 @@ function on_slider_complete(event,ui)
 // The Metadata shows the track that is PLAYING or would be played if STOPPED or PAUSED
 
 
+function set_playing(play)
+{
+	renderer_command('set_playing?playing=' + play);
+}
+
+
+var last_playing = -1;
+
+
+
 function update_renderer_ui()
 {
 	display(dbg_loop,0,"renderer.update_renderer_ui()");
 	var metadata;
 	var state = '';
 	var queue = '';
+	var playlist = '';
 
 	// based on renderer
 
 	if (!current_renderer)
 	{
+		last_playing = -1;
 		ele_set_inner_html('renderer_header_left','');
 		ele_set_inner_html('renderer_header_right','no renderer');
 	}
@@ -346,11 +359,37 @@ function update_renderer_ui()
 	{
 		state = current_renderer.state;
 		queue = current_renderer.queue;
+		playlist = current_renderer.playlist;
 		metadata = current_renderer.metadata;
 
-		ele_set_inner_html('renderer_header_left', state + " (" + queue.track_index + "/" + queue.num_tracks + ")");
-		ele_set_inner_html('renderer_header_right',
+		ele_set_inner_html('renderer_state', state);
+		ele_set_inner_html('renderer_queue_state',
+			queue.num_tracks ?
+			"Q(" + (queue.track_index+1) + "/" + queue.num_tracks + ")" : '');
+		ele_set_inner_html('renderer_playlist_state',
+			playlist ? playlist.name + "(" + playlist.track_index + "/" + playlist.num_tracks + ")" : '');
+		ele_set_inner_html('renderer_status',
 			idle_count + " " + current_renderer.name);
+
+		if (last_playing != current_renderer.playing)
+		{
+			last_playing = current_renderer.playing;
+			if (current_renderer.playing == RENDERER_PLAY_PLAYLIST)
+			{
+				$('#renderer_queue_state').removeClass('header_active');
+				$('#renderer_queue_state').button('enable');
+				$('#renderer_playlist_state').addClass('header_active');
+				$('#renderer_playlist_state').button('disable');
+
+			}
+			else
+			{
+				$('#renderer_playlist_state').removeClass('header_active');
+				$('#renderer_playlist_state').button('enable');
+				$('#renderer_queue_state').addClass('header_active');
+				$('#renderer_queue_state').button('disable');
+			}
+		}
 	}
 
 	// based on queue
@@ -372,8 +411,17 @@ function update_renderer_ui()
 		var no_earlier = queue.track_index == 0;
 		var no_later = queue.track_index >= queue.num_tracks;
 
+		if (playlist &&
+			current_renderer.playing == RENDERER_PLAY_PLAYLIST)
+		{
+			no_tracks = playlist.num_tracks == 0;
+			no_earlier = playlist.track_index <= 1;
+			no_later = playlist.track_index >= playlist.num_tracks + 1;
+		}
+
 		ele_set_inner_html('transport_play',
 			state == 'PAUSED' ||
+			state == 'INIT' ||		// playlist in stopped state
 			state == 'STOPPED' ? '>' : '||');
 
 		ele_set_inner_html('transport_stop',
