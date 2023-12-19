@@ -284,7 +284,17 @@
 	width:60px;
 }
 
-.shuffle_button
+#transport_shuffle-button
 {
-	width:100px;
+	width:85px;
+	font-size:13pt;
 }
+
+.ui-menu-item-wrapper
+{
+	font-size:14pt;
+	padding-top: 14px !important;
+	height:36px !important;
+}
+
+

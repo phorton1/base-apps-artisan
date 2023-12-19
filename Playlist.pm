@@ -17,7 +17,8 @@
 #
 # The Tracks are kept in a named.db file a 'playlists' subdirectory relative to
 # the playlists.db file with an additional 'pl_idx' integer indicating its sorted
-# position within the current shuffle mode.
+# position within the current shuffle mode, which serves as a 'record number'
+# allowing us to retrieve a particular track_index in shuffled order.
 #
 # Each library has a set of database files representing its playlists.
 # for the localLibrary, the playlists.db file is in the $data_directory (/mp3s/_data),
@@ -295,10 +296,10 @@ sub random_album
 	# then, if a tracknum is provided, by that, and
 	# finally by the track title.
 {
-    my ($albums,$a,$b) = @_;
-    my $cmp = $albums->{$a->{album_id}} <=> $albums->{$b->{album_id}};
+    my ($albums,$aa,$bb) = @_;
+    my $cmp = $albums->{albumId($aa)} <=> $albums->{albumId($bb)};
     return $cmp if $cmp;
-    return $a->{position} <=> $b->{position};
+    return $aa->{position} <=> $bb->{position};
 }
 
 
@@ -333,10 +334,10 @@ sub sort_shuffle_tracks
         my %albums;
         for my $rec (@$old_recs)
         {
-			my $album_id = $rec->{album_id};
+			my $album_id = albumId($rec);
 			if (!$albums{$album_id})
 			{
-				$albums{ $album_id} = int(rand($this->{num_tracks} + 1));
+				$albums{$album_id} = int(rand($this->{num_tracks} + 1));
 				# display($dbg_sort,1,"setting albums($album_id}) to $albums{$album_id}");
 			}
 		}

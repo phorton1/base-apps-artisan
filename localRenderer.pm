@@ -580,35 +580,41 @@ sub doCommand
 
 	# sort/shuffle the playlist
 
-	elsif ($command eq 'shuffle_playlist')
+	elsif ($command eq 'shuffle')
 	{
-		my $shuffle = checkParam(\$error,$command,$params,'shuffle');
-		return $error if !defined($shuffle);
+		my $how = checkParam(\$error,$command,$params,'how');
+		return $error if !defined($how);
 
-		my $playlist = $this->{playlist};
-		return error("no playlist in doCommand($command)")
-			if !$playlist;
-
-		my $library_uuid = $playlist->{uuid};
-		my $library = findDevice($DEVICE_TYPE_LIBRARY,$library_uuid);
-		return error("Could not find library($library_uuid)")
-			if !$library;
-
-		my $pl_id = $playlist->{id};
-		display($dbg_lren,1,"calling library::sortPlaylist($library_uuid,$pl_id,$shuffle) name=$playlist->{name}");
-		my $new_pl = $library->sortPlaylist($pl_id,$shuffle);
-
-		if (!$new_pl)
+		if ($this->{playing} == $RENDERER_PLAY_PLAYLIST)
 		{
-			$error = "Could not sort playlist $playlist->{name}";
+			my $playlist = $this->{playlist};
+			return error("no playlist in doCommand($command)")
+				if !$playlist;
+
+			my $library_uuid = $playlist->{uuid};
+			my $library = findDevice($DEVICE_TYPE_LIBRARY,$library_uuid);
+			return error("Could not find library($library_uuid)")
+				if !$library;
+
+			my $pl_id = $playlist->{id};
+			display($dbg_lren,1,"calling library::sortPlaylist($library_uuid,$pl_id,$how) name=$playlist->{name}");
+			my $new_pl = $library->sortPlaylist($pl_id,$how);
+
+			if (!$new_pl)
+			{
+				$error = "Could not sort playlist $playlist->{name}";
+			}
+			else
+			{
+				display($dbg_lren,1,"new_playlist".Playlist::dbg_info($new_pl,2));
+				$this->{playlist} = $new_pl;
+				$error = $this->playlist_song($PLAYLIST_ABSOLUTE,1);
+			}
 		}
 		else
 		{
-			display($dbg_lren,1,"new_playlist".Playlist::dbg_info($new_pl,2));
-			$this->{playlist} = $new_pl;
-			$error = $this->playlist_song($PLAYLIST_ABSOLUTE,1);
+			$queue->shuffle($how);
 		}
-
 	}
 	else
 	{

@@ -69,10 +69,17 @@
         <!-- TRANSPORT CONTROLS -->
 
 		<div class='transport_buttons'>
-			<button
+
+			<select id="transport_shuffle" class="transport_shuffle">
+			  <option value="0">Off</option>
+			  <option value="1">Tracks</option>
+			  <option value="2">Albums</option>
+			</select>
+
+			<!-- button
 				id="transport_shuffle"
 				class="shuffle_button"
-				onclick = "javascript:transport_shuffle()">shuffle</button>
+				onclick = "javascript:transport_shuffle()">shuffle</button -->
 			<button
 				id="transport_prev_album"
 				class="transport_button"
@@ -112,6 +119,25 @@
 	id='renderer_tracklist'
     class="ui-layout-center">
 </div>
+
+
+<!--- shuffle dropdown div normally hidden -->
+
+<div id='shuffle_dropdown'>
+	<button
+		id='shuffle_button_off'
+		class="shuffle_button"
+		onclick="javascript:renderer_command('shuffle_playlist?shuffle=' + SHUFFLE_OFF)">Off</button>
+	<button
+		id='shuffle_button_tracks'
+		class="shuffle_button"
+		onclick="javascript:renderer_command('shuffle_playlist?shuffle=' + SHUFFLE_TRACKS)">Tracks</button>
+	<button
+		id='shuffle_button_albums'
+		class="shuffle_button"
+		onclick="javascript:renderer_command('shuffle_playlist?shuffle=' + SHUFFLE_ALBUMS)">Albums</button>
+</div>
+
 
 
 <!-- end of pane_renderer.html -->

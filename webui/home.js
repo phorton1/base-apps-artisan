@@ -282,10 +282,27 @@ function init_renderer_pane()
 	renderer_slider = $('#renderer_slider');
 
 	$(".transport_button").button();
-	$(".shuffle_button").button();
 	$('.header_button').button();
 
+	// use 'select' event to shuffle when they press a
+	// drop-down shuffle button, even if it's the same one
+
+	$('#transport_shuffle').selectmenu({
+		select: function( event, ui ) { onShuffleChanged(event,ui); }
+	});
+
+	// have to implement world-wide standard behavior for
+	// brain-dead jquery ... if you click outside of selectmenu
+	// it should just effing close ... another hour wasted.
+
+    $(document).on("click", function(event) {
+		if (!event.target.classList.contains("ui-selectmenu-text"))
+		{
+           $('#transport_shuffle').selectmenu('close');
+		}
+	});
 }
+
 
 
 function on_slider_complete(event,ui)
@@ -298,6 +315,14 @@ function on_slider_complete(event,ui)
 	return true;
 }
 
+
+
+function onShuffleChanged(event,ui)
+{
+	var how = ui.item.value;
+	display(0,0,"onShuffleChanged(" + how + ")");
+	renderer_command('shuffle?how=' + how );
+}
 
 
 function update_renderer_ui()
@@ -335,12 +360,15 @@ function update_renderer_ui()
 		if (last_playing != current_renderer.playing)
 		{
 			last_playing = current_renderer.playing;
+
+			var shuffle;
 			if (current_renderer.playing == RENDERER_PLAY_PLAYLIST)
 			{
 				$('#renderer_queue_state').removeClass('header_active');
 				$('#renderer_queue_state').button('enable');
 				$('#renderer_playlist_state').addClass('header_active');
 				$('#renderer_playlist_state').button('disable');
+				shuffle = playlist.shuffle;
 			}
 			else
 			{
@@ -348,7 +376,11 @@ function update_renderer_ui()
 				$('#renderer_playlist_state').button('enable');
 				$('#renderer_queue_state').addClass('header_active');
 				$('#renderer_queue_state').button('disable');
+				shuffle = queue.shuffle;
 			}
+
+			$('#transport_shuffle').val(shuffle);
+			$("#transport_shuffle").selectmenu("refresh");
 		}
 	}
 
@@ -358,6 +390,7 @@ function update_renderer_ui()
 	{
 		$('#transport_play').html('>');
 
+		$('#transport_shuffle').selectmenu('disable');
 		disable_button('#transport_prev_album',	true);
 		disable_button('#transport_prev',		true);
 		disable_button('#transport_play',		true);
@@ -371,12 +404,13 @@ function update_renderer_ui()
 		var no_earlier = queue.track_index == 0;
 		var no_later = queue.track_index >= queue.num_tracks;
 
-		if (playlist &&
+		if (playlist &&		// should always by synonymouse
 			current_renderer.playing == RENDERER_PLAY_PLAYLIST)
 		{
 			no_tracks = playlist.num_tracks == 0;
 			no_earlier = playlist.track_index <= 1;
 			no_later = playlist.track_index >= playlist.num_tracks + 1;
+			shuffle = playlist.shuffle;
 		}
 
 		$('#transport_play').html(
@@ -387,6 +421,7 @@ function update_renderer_ui()
 		$('#transport_stop').html(
 			state == RENDERER_STATE_STOPPED ? 'O' : 'X');
 
+		$('#transport_shuffle').selectmenu(no_tracks ? 'disable' : 'enable');
 		disable_button('#transport_prev_album',	no_tracks || no_earlier);
 		disable_button('#transport_prev',		no_tracks || no_earlier);
 		disable_button('#transport_play',		no_tracks);
@@ -412,7 +447,6 @@ function update_renderer_ui()
 		$('#renderer_position')		.html('');
 		$('#renderer_duration')		.html('');
 		$('#renderer_play_type')	.html('');
-
 	}
 	else
 	{

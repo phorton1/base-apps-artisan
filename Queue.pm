@@ -34,6 +34,7 @@ use artisanUtils;
 use DeviceManager;
 
 
+
 my $dbg_queue = -1;
 
 
@@ -355,11 +356,11 @@ sub incAlbum
 	{
 		$moved = 1;
 		my $track = $tracks->[$idx];
-		my $album_id = $track->{parent_id};
+		my $album_id = albumId($track);
 
 		$idx++;
 		$track = $tracks->[$idx];
-		while ($idx < $num && $track->{parent_id} eq $album_id)
+		while ($idx < $num && albumId($track) eq $album_id)
 		{
 			$idx++;
 			$track = $tracks->[$idx];
@@ -369,14 +370,14 @@ sub incAlbum
 	{
 		$moved = 1;
 		my $track = $tracks->[$idx];
-		my $album_id = $track->{parent_id};
+		my $album_id = albumId($track);
 
 		$idx--;
 		$track = $tracks->[$idx];
 
 		# find end of previous album
 
-		while ($idx && $track->{parent_id} eq $album_id)
+		while ($idx && albumId($track) eq $album_id)
 		{
 			$idx--;
 			$track = $tracks->[$idx];
@@ -384,10 +385,10 @@ sub incAlbum
 
 		# if its not the same album_id, find the beginning
 
-		if ($track->{parent_id} ne $album_id)
+		if (albumId($track) ne $album_id)
 		{
-			$album_id = $track->{parent_id};
-			while ($idx && $track->{parent_id} eq $album_id)
+			$album_id = albumId($track);
+			while ($idx && albumId($track) eq $album_id)
 			{
 				$idx--;
 				$track = $tracks->[$idx];
@@ -395,7 +396,7 @@ sub incAlbum
 
 			# and finally, if its a different album_id, bump $idx
 
-			$idx++ if $track->{parent_id} ne $album_id;
+			$idx++ if albumId($track) ne $album_id;
 		}
 	}
 
@@ -415,13 +416,100 @@ sub incAlbum
 
 
 sub restart
-	# restart the queue, which MAY need resorting
+	# restart the queue, which MAY need resorting by pl_idx
+	# which is different than re-shuffling
 {
 	my ($this) = @_;
 	display($dbg_queue,0,"restart()");
+
+	if ($this->{needs_sort})
+	{
+		$this->{needs_sort} = 0;
+		my $tracks = $this->{tracks};
+		my @new_tracks = (sort {$a->{pl_idx} <=> $b->{pl_idx}} @$tracks);
+		$this->{tracks} = [@new_tracks];
+		$this->{version}++;
+	}
 	$this->{track_index} = 0;
 	$this->{needs_start} = 1;
 	$this->{started} = 0;
+}
+
+
+
+sub random_album
+	# sorting within a random index of albums
+	# then, if a tracknum is provided, by that, and
+	# finally by the track title.
+{
+    my ($albums,$aa,$bb) = @_;
+    my $cmp = $albums->{albumId($aa)} <=> $albums->{albumId($bb)};
+    return $cmp if $cmp;
+    return $aa->{position} <=> $bb->{position};
+}
+
+
+
+sub shuffle
+{
+	my ($this,$how) = @_;
+	display($dbg_queue,0,"shuffle($how)");
+
+	my $old_recs = $this->{tracks};
+	my $new_recs = shared_clone([]);
+
+    if ($how == $SHUFFLE_TRACKS)
+    {
+        for my $rec (@$old_recs)
+        {
+            $rec->{pl_idx} = int(rand($this->{num_tracks} + 1));
+	    }
+		my $pl_idx = 0;
+        for my $rec (sort {$a->{pl_idx} <=> $b->{pl_idx}} @$old_recs)
+        {
+			$rec->{pl_idx} = $pl_idx++;
+            push @$new_recs,$rec;
+        }
+    }
+    elsif ($how == $SHUFFLE_ALBUMS)
+    {
+        my %albums;
+        for my $rec (@$old_recs)
+        {
+			my $album_id = albumId($rec);
+			if (!$albums{$album_id})
+			{
+				$albums{$album_id} = int(rand($this->{num_tracks} + 1));
+			}
+		}
+		my $pl_idx = 0;
+        for my $rec (sort {random_album(\%albums,$a,$b)} @$old_recs)
+        {
+			$rec->{pl_idx} = $pl_idx++;
+            push @$new_recs,$rec;
+		}
+    }
+
+	# sort the records by the DEFAULT SORT ORDER
+
+    else	# proper default sort order
+    {
+		my $pl_idx = 0;
+        for my $rec (sort {$a->{position} <=> $b->{position}} @$old_recs)
+        {
+			$rec->{pl_idx} = $pl_idx++;
+            push @$new_recs,$rec;
+        }
+    }
+
+	$this->{shuffle} = $how;
+	$this->{tracks} = $new_recs;
+	$this->{track_index} = 0;
+	$this->{started} = 0;
+	$this->{needs_start} = 1;
+	$this->{version} ++;
+   	display($dbg_queue,0,"shuffle($how) finished");
+
 }
 
 

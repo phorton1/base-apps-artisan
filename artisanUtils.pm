@@ -142,6 +142,8 @@ BEGIN
 		split_dir
 		compare_path_diff
 
+		albumId
+
 	);
 
 
@@ -151,6 +153,15 @@ BEGIN
 
 };
 
+
+sub albumId
+	# temporary location for method to use
+	# album_title, if it exists, or parent_id if not
+	# for sorting the Queue and Playlists by albums
+{
+	my ($rec) = @_;
+	return $rec->{album_title} || $rec->{parent_id};
+}
 
 #--------------------------
 # globals
