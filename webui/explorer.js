@@ -131,10 +131,6 @@ function init_page_explorer()
 
 	explorer_tree = $("#explorer_tree").fancytree("getTree");
 
-	if (IS_TOUCH)
-		init_touch('explorer_tree');
-
-
 	// EXPLORER TRACKLIST
 
 	display(dbg_explorer,1,"initializizing explorer tracklist");
@@ -183,9 +179,6 @@ function init_page_explorer()
 	});
 
 	explorer_tracklist = $("#explorer_tracklist").fancytree("getTree");
-	if (IS_TOUCH)
-		init_touch('explorer_tracklist');
-
 
 	// EXPLORER DETAILS
 

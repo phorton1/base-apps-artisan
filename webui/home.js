@@ -335,7 +335,7 @@ function update_renderer_ui()
 
 	// based on renderer
 
-	if (!current_renderer)
+	if (!current_renderer || !current_renderer.queue)
 	{
 		last_playing = -1;
 		$('#renderer_header_left').html('');
