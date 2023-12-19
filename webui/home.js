@@ -5,10 +5,10 @@
 var dbg_home = 0;
 var dbg_slider = 0;
 
-
+var renderer_slider;
 var in_slider = false;
 var last_song = '';
-var renderer_slider;
+var last_playing = -1;
 
 
 layout_defs['home'] = {
@@ -31,13 +31,6 @@ layout_defs['home'] = {
 		limit:600,
 		element_id:'#renderer_page_header_left',
 	},
-	//	east: {
-	//		size:200,
-	//		limit:900,
-	//		element_id:'#renderer_button_shuffle',
-	//		element_is_button:true,
-	//	},
-
 };
 
 
@@ -50,17 +43,13 @@ function init_page_home()
 	load_device_list(DEVICE_TYPE_RENDERER);
 	load_device_list(DEVICE_TYPE_LIBRARY);
 
-	// init_playlist_info();
 	init_renderer_pane();
 
 	$("#home_menu").accordion({
 		icons: false,
 		heightStyle: "fill",
-		classes: {
-		  "ui-accordion": "home_accordian"
-		}
+		classes: {  "ui-accordion": "home_accordian" }});
 
-		});
 	$('#prefs_div').buttonset();
 
 	create_numeric_pref(0,10,60,
@@ -83,6 +72,7 @@ function load_device_list(type)
 		function(result)
 	{
 		// add the local html_renderer
+
 		if (type == DEVICE_TYPE_RENDERER)
 			result.unshift({
 				name: html_renderer.name,
@@ -116,7 +106,7 @@ function selectDefaultDevice(type)
 }
 
 
-function selectDevice(type,uuid)	// handler
+function selectDevice(type,uuid)
 {
 	if (type == DEVICE_TYPE_RENDERER && uuid == 'html_renderer')
 	{
@@ -188,20 +178,10 @@ function init_playlists()
 }
 
 
+
 function setPlaylist(uuid,id)
-	// called by easy-ui event registration on the renderer_list
-	// when the user changes the current selection.
-	// Set the current renderer name and enable the buttons.
-	// We have to be careful about re-entrancy, so that we don't
-	// confuse the server.
 {
 	display(dbg_home,0,"setPlaylist("+name+")");
-	// the button is a radio button and I don't want it to be,
-	// so I have to explicitly uncheck it ... fix later
-	$('#playlist_' + id).prop('checked', false).button('refresh');
-
-
-	// hide_layout_panes();
 	renderer_command('set_playlist',{
 		library_uuid:uuid,
 		id: id});
@@ -210,10 +190,10 @@ function setPlaylist(uuid,id)
 
 
 //========================================================
-// API - renderer_command() and update_renderer_onidle()
+// API - unused_queue_command() and renderer_command()
 //========================================================
 
-function queue_command(command)
+function unused_queue_command(command)
 {
 	var data_rec = {
 		// VERSION update_id: update_id,
@@ -281,8 +261,6 @@ function renderer_command(command,args)
 
 
 
-
-
 //========================================================
 // RENDERER PANE (init and update)
 //========================================================
@@ -304,6 +282,7 @@ function init_renderer_pane()
 	renderer_slider = $('#renderer_slider');
 
 	$(".transport_button").button();
+	$(".shuffle_button").button();
 	$('.header_button').button();
 
 }
@@ -320,24 +299,6 @@ function on_slider_complete(event,ui)
 }
 
 
-// some semantics:
-//
-// The absence of a renderer is a short term situation at startup only
-// The renderers state is INIT, PLAYING, PAUSED, or STOPPED (and maybe TRANSIT for HTML_Renderer)
-// The Queue always exists.  It is empty on INIT and emptied on stop command.
-// The Transport Buttons are generally enabled if the Queue is not empty
-// The Metadata shows the track that is PLAYING or would be played if STOPPED or PAUSED
-
-
-function set_playing(play)
-{
-	renderer_command('set_playing?playing=' + play);
-}
-
-
-var last_playing = -1;
-
-
 
 function update_renderer_ui()
 {
@@ -352,8 +313,8 @@ function update_renderer_ui()
 	if (!current_renderer)
 	{
 		last_playing = -1;
-		ele_set_inner_html('renderer_header_left','');
-		ele_set_inner_html('renderer_header_right','no renderer');
+		$('#renderer_header_left').html('');
+		$('#renderer_header_right').html('no renderer');
 	}
 	else
 	{
@@ -362,13 +323,13 @@ function update_renderer_ui()
 		playlist = current_renderer.playlist;
 		metadata = current_renderer.metadata;
 
-		ele_set_inner_html('renderer_state', state);
-		ele_set_inner_html('renderer_queue_state',
+		$('#renderer_state').html(state);
+		$('#renderer_queue_state').html(
 			queue.num_tracks ?
 			"Q(" + (queue.track_index+1) + "/" + queue.num_tracks + ")" : '');
-		ele_set_inner_html('renderer_playlist_state',
+		$('#renderer_playlist_state').html(
 			playlist ? playlist.name + "(" + playlist.track_index + "/" + playlist.num_tracks + ")" : '');
-		ele_set_inner_html('renderer_status',
+		$('#renderer_status').html(
 			idle_count + " " + current_renderer.name);
 
 		if (last_playing != current_renderer.playing)
@@ -380,7 +341,6 @@ function update_renderer_ui()
 				$('#renderer_queue_state').button('enable');
 				$('#renderer_playlist_state').addClass('header_active');
 				$('#renderer_playlist_state').button('disable');
-
 			}
 			else
 			{
@@ -396,14 +356,14 @@ function update_renderer_ui()
 
 	if (!queue)
 	{
-		ele_set_inner_html('transport_play','>');
+		$('#transport_play').html('>');
 
-		disable_button('transport_prev_album',	true);
-		disable_button('transport_prev',		true);
-		disable_button('transport_play',		true);
-		disable_button('transport_stop',		true);
-		disable_button('transport_next',		true);
-		disable_button('transport_next_album',	true);
+		disable_button('#transport_prev_album',	true);
+		disable_button('#transport_prev',		true);
+		disable_button('#transport_play',		true);
+		disable_button('#transport_stop',		true);
+		disable_button('#transport_next',		true);
+		disable_button('#transport_next_album',	true);
 	}
 	else
 	{
@@ -419,20 +379,20 @@ function update_renderer_ui()
 			no_later = playlist.track_index >= playlist.num_tracks + 1;
 		}
 
-		ele_set_inner_html('transport_play',
-			state == 'PAUSED' ||
-			state == 'INIT' ||		// playlist in stopped state
-			state == 'STOPPED' ? '>' : '||');
+		$('#transport_play').html(
+			state == RENDERER_STATE_PAUSED ||
+			state == RENDERER_STATE_INIT ||		// playlist in stopped state
+			state == RENDERER_STATE_STOPPED ? '>' : '||');
 
-		ele_set_inner_html('transport_stop',
-			state == 'STOPPED' ? 'O' : 'X');
+		$('#transport_stop').html(
+			state == RENDERER_STATE_STOPPED ? 'O' : 'X');
 
-		disable_button('transport_prev_album',	no_tracks || no_earlier);
-		disable_button('transport_prev',		no_tracks || no_earlier);
-		disable_button('transport_play',		no_tracks);
-		disable_button('transport_stop',		no_tracks);
-		disable_button('transport_next',		no_tracks || no_later);
-		disable_button('transport_next_album',	no_tracks || no_later);
+		disable_button('#transport_prev_album',	no_tracks || no_earlier);
+		disable_button('#transport_prev',		no_tracks || no_earlier);
+		disable_button('#transport_play',		no_tracks);
+		disable_button('#transport_stop',		no_tracks);
+		disable_button('#transport_next',		no_tracks || no_later);
+		disable_button('#transport_next_album',	no_tracks || no_later);
 	}
 
 	// based on metadata
@@ -440,26 +400,26 @@ function update_renderer_ui()
 
 	if (!metadata)
 	{
-		ele_set_inner_html('renderer_song_title',	'');
-		ele_set_inner_html('renderer_album_artist',	'');
-		ele_set_inner_html('renderer_album_title',	'');
-		ele_set_inner_html('renderer_album_track',	'');
-		ele_set_inner_html('renderer_song_genre',	'');
-		ele_set_src('renderer_album_image', '/webui/icons/artisan.png');
+		$('#renderer_song_title')	.html('');
+		$('#renderer_album_artist')	.html('');
+		$('#renderer_album_title')	.html('');
+		$('#renderer_album_track')	.html('');
+		$('#renderer_song_genre')	.html('');
+		$('#renderer_album_image').attr('src','/webui/icons/artisan.png');
 
 		renderer_slider.slider('disable')
 		$('#renderer_slider').slider('value',0);
-		ele_set_inner_html('renderer_position',		'');
-		ele_set_inner_html('renderer_duration',		'');
-		ele_set_inner_html('renderer_play_type',	'');
+		$('#renderer_position')		.html('');
+		$('#renderer_duration')		.html('');
+		$('#renderer_play_type')	.html('');
 
 	}
 	else
 	{
-		ele_set_inner_html('renderer_song_title',	decode_ampersands(metadata.title));
-		ele_set_inner_html('renderer_album_artist', decode_ampersands(metadata.artist));
-		ele_set_inner_html('renderer_album_title',	decode_ampersands(metadata.album_title));
-		ele_set_inner_html('renderer_album_track',  metadata.tracknum != '' ?
+		$('#renderer_song_title')	.html(decode_ampersands(metadata.title));
+		$('#renderer_album_artist') .html(decode_ampersands(metadata.artist));
+		$('#renderer_album_title')	.html(decode_ampersands(metadata.album_title));
+		$('#renderer_album_track')  .html(metadata.tracknum != '' ?
 			'track: ' + metadata.tracknum : '');
 
 		var genre_year = metadata.genre ?
@@ -469,20 +429,20 @@ function update_renderer_ui()
 			if (genre_year) genre_year += ' | ';
 			genre_year += metadata.year_str;
 		}
-		ele_set_inner_html('renderer_song_genre', genre_year);
+		$('#renderer_song_genre').html(genre_year);
 
-		ele_set_src('renderer_album_image', metadata.art_uri ?
+		$('#renderer_album_image').attr('src', metadata.art_uri ?
 			metadata.art_uri : '/webui/icons/no_image.png');
 
-		ele_set_inner_html('renderer_play_type',
+		$('#renderer_play_type').html(
 			metadata.type + ' &nbsp;&nbsp; ' +  metadata.pretty_size);
 
-		ele_set_value('renderer_button_play_pause',
-			state == 'PLAYING' ? '||' : '>')
-			ele_set_inner_html('renderer_duration',
+		$('#renderer_button_play_pause').val(
+			state == RENDERER_STATE_PLAYING ? '||' : '>')
+			$('#renderer_duration').html(
 				millis_to_duration(current_renderer.duration,false));
 
-		ele_set_inner_html('renderer_position',
+		$('#renderer_position').html(
 			millis_to_duration(current_renderer.position,false));
 
 		if (current_renderer.duration>0)
@@ -510,64 +470,11 @@ function update_renderer_ui()
 // update_renderer_ui() utilities
 //--------------------------------------------
 
-function set_button_on(id,on)
+
+function disable_button(selector,disabled)
 {
-	var ele = document.getElementById(id);
-	if (ele)
-	{
-		$('#'+id).toggleClass('renderer_control_on',on);
-	}
+	$( selector).button( "option", "disabled", disabled );
 }
-
-
-function disable_button(id,disabled)
-	// in the ongoing litany of issues with jquery ui
-	// for some reason most important objects cannot
-	// be accessed by id when within firebug, but they
-	// seem to work ok outside of it ...
-{
-	var use_id = '#' + id;
-	display(dbg_loop,0,"disable_button(" + id + ")");
-
-	// a bunch of attempts
-	// most recently, set the class directly at least doesn't hang firebug
-
-	if ($(use_id))	 // .length)
-	{
-		$(use_id).button(disabled?'disable':'enable');
-	}
-	display(dbg_loop,0,"disable_button(" + id + ") finished");
-}
-
-
-
-function unused_remove_leading_zeros(st)
-{
-	var pos = 0;
-	var len = st.length;
-	while (pos<4 && pos<len)
-	{
-		var c = st.substr(pos,1);
-		if (c != '0' && c != ':')
-		{
-			break;
-		}
-		pos++;
-	}
-	if (pos)
-	{
-		st = st.substr(pos);
-	}
-	return st;
-}
-
-
-function unused_remove_trailing_decimal(st)
-{
-	var parts = st.split(".");
-	return parts[0];
-}
-
 
 function padZero(len,st0)
 {

@@ -9,19 +9,6 @@ var dbg_audio = 0;
 var audio;
 
 
-//	const PLAYLIST_ABSOLUTE = 0;
-//	const PLAYLIST_RELATIVE = 1;
-//	const PLAYLIST_ALBUM_RELATIVE = 2;
-
-const RENDERER_STATE_NONE 		= 'NONE';
-const RENDERER_STATE_INIT		= 'INIT';
-const RENDERER_STATE_STOPPED	= 'STOPPED';
-const RENDERER_STATE_TRANSIT	= 'TRANSIT';
-const RENDERER_STATE_PLAYING	= 'PLAYING';
-const RENDERER_STATE_PAUSED		= 'PAUSED';
-const RENDERER_STATE_ERROR		= 'ERROR';
-
-
 var html_renderer = {
 		name		: 'HTML Audio',
 		uuid		: 'html_renderer',

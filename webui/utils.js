@@ -1,18 +1,4 @@
 // utils.js
-// all this was about the stupid iPad anyways
-
-// So, we have to lamely IDENTIFY we are on IOS (iPad or an iPhone too probably)
-// so that we can lamely REIMPLEMENT Context menus to work on DoubleClicks on
-// only that platform.  Reading through the literature, the best, state of the art,
-// way to detect this problem is:
-//
-// 		- if the user agent contains 'iPad' or 'iPhone'
-//		- the platform iw 'MacIntel' and some heuristic about features
-//
-// The most popular heutistic seems to be to call
-//
-//    navigator.MaxTouchPoints and see if it's larger than 1 (or maybe == 5)
-
 
 
 var DEBUG_REMOTE = true;
@@ -33,14 +19,34 @@ var dbg_prefs = 0;
 var dbg_ios = 0;
 
 
+const RENDERER_STATE_NONE 		= 'NONE';
+const RENDERER_STATE_INIT		= 'INIT';
+const RENDERER_STATE_STOPPED	= 'STOPPED';
+const RENDERER_STATE_TRANSIT	= 'TRANSIT';
+const RENDERER_STATE_PLAYING	= 'PLAYING';
+const RENDERER_STATE_PAUSED		= 'PAUSED';
+const RENDERER_STATE_ERROR		= 'ERROR';
+
+const RENDERER_PLAY_QUEUE = 0;
+const RENDERER_PLAY_PLAYLIST = 1;
+
+const PLAYLIST_ABSOLUTE = 0;
+const PLAYLIST_RELATIVE = 1;
+const PLAYLIST_ALBUM_RELATIVE = 2;
+
+const SHUFFLE_NONE	 = 0;
+const SHUFFLE_TRACKS = 1;
+const SHUFFLE_ALBUMS = 2;
+
+
+
+
 var device_id = '';
 
 var IS_IOS = false;
 var IS_TOUCH = false;
 var IS_DESKTOP = false;
 
-const RENDERER_PLAY_QUEUE = 0;
-const RENDERER_PLAY_PLAYLIST = 1;
 
 
 jQuery.ajaxSetup({async:false});
@@ -58,7 +64,9 @@ const DEVICE_TYPE_LIBRARY = 'library';
 
 
 function init_utils()
-	// this method is currently supplied soley to lamely set IS_IOS
+	// this method is currently supplied soley to set
+	// IS_IOS, IS_TOUCH, and IS_DESKTOP
+	// which are currently not used.
 {
 	if (navigator.maxTouchPoints &&
 		navigator.maxTouchPoints > 1)
@@ -76,6 +84,7 @@ function init_utils()
 	IS_DESKTOP = !IS_TOUCH;
 	debug_remote(dbg_ios,0,"IS_IOS(" + IS_IOS + ") IS_TOUCH(" + IS_TOUCH + ") IS_DESKTOP(" + IS_DESKTOP + ")");
 }
+
 
 //---------------------------------------------
 // device_id
@@ -297,72 +306,6 @@ function decode_ampersands(encoded)
 
 
 
-
-//--------------------------------------
-// DOM utilities
-//--------------------------------------
-
-function unused_ele_set_display(id,value)
-{
-	var ele = document.getElementById(id);
-	if (ele)
-	{
-		ele.style.display = value;
-	}
-}
-
-
-function ele_set_inner_html(id,html)	// used a lot
-{
-	var ele = document.getElementById(id);
-	if (ele)
-	{
-		ele.innerHTML = html;
-	}
-}
-
-
-function ele_set_value(id,value)	// used once
-{
-	var ele = document.getElementById(id);
-	if (ele)
-	{
-		ele.value = value;
-	}
-}
-
-function ele_set_src(id,src)	//  used twice
-{
-	var ele = document.getElementById(id);
-	if (ele)
-	{
-		ele.src = src;
-	}
-}
-
-function ele_get_src(id)	//  used twice
-{
-	var src = '';
-	var ele = document.getElementById(id);
-	if (ele)
-	{
-		src = ele.src;
-	}
-	return src;
-}
-
-
-function unused_ele_set_class(id,className)
-{
-	var ele = document.getElementById(id);
-	if (ele)
-	{
-		ele.className = className;
-	}
-}
-
-
-
 //----------------------------------------
 // cookie utilities
 //----------------------------------------
@@ -406,16 +349,6 @@ function create_numeric_pref(min,med,max,var_name,spinner_id)
 			var value = parseInt($(this).spinner('value'));
 			window[var_name] = value;
 			setCookie(var_name,value,180);
-
-			// if (false && var_name == 'explorer_mode')
-			// {
-			// 	var tree = $('#explorer_tree').fancytree('getTree');
-			// 	tree.reload({
-			// 		url: "/webui/library/" + current_library['uuid'] + "/dir",
-			// 		data: {mode:explorer_mode, source:'numeric_pref'},
-			// 		cache: false,
-			// 	});
-			// }
 		},
 	});
 
@@ -459,27 +392,18 @@ function appendMenuButton(type, name, id, fxn, param1, param2)
 }
 
 
-
-
-
-
 function buildDeviceMenu(array, type)
 	// builds a set of buttons for the a list of devices in array
 	// typeis either 'library' or 'renderer'
 {
 	display(dbg_menu,0,"buildDeviceMenu(" + type + ")");
-
-	$('#' + type + '_menu').html('');
-		// remove existing buttons
-
+	$('#' + type + '_menu').html('');	// remove existing buttons
 	$.each(array , function(index, rec)
 	{
 		appendMenuButton(type, rec.name, rec.uuid, 'selectDevice', type, rec.uuid);
 	});
-
 	$('#' + type + '_menu').buttonset();
 }
-
 
 
 function buildPlaylistMenu(array)
@@ -487,17 +411,13 @@ function buildPlaylistMenu(array)
 	// typeis either 'library' or 'renderer'
 {
 	display(dbg_menu,0,"buildPlaylistMenu()");
-
-	$('#playlist_menu').html('');
-
+	$('#playlist_menu').html('');	// remove existing buttons
 	$.each(array , function(index, rec)
 	{
 		appendMenuButton('playlist', rec.name, rec.id, 'setPlaylist', rec.uuid, rec.id);
 	});
-
 	$('#playlist_menu').buttonset();
 }
-
 
 
 

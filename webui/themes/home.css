@@ -271,8 +271,6 @@
 }
 
 
-
-
 .transport_buttons
 {
     display: flex;
@@ -286,3 +284,7 @@
 	width:60px;
 }
 
+.shuffle_button
+{
+	width:100px;
+}
