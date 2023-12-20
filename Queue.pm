@@ -121,6 +121,17 @@ sub queueCommand
 		my $inc = $command eq 'next_album' ? 1 : -1;
 		$queue->incAlbum($inc);
 	}
+	elsif ($command eq 'play_track')
+	{
+		my $pl_idx = $post_params->{pl_idx};
+		return error("No pl_idx in Queue::play_track") if !defined($pl_idx);
+		$pl_idx = 0 if $pl_idx < 0;
+		$pl_idx = $queue->{num_tracks}-1 if $pl_idx > $queue->{num_tracks}-1;
+		$queue->{track_index} = $pl_idx;
+		$queue->{started} = 0;
+		$queue->{needs_start} = 1;
+	}
+
 	elsif ($command eq 'get_tracks')
 	{
 		# this wont work.
@@ -193,16 +204,33 @@ sub enqueue
 		}
 	}
 
-	# add the tracks to the queue
-	# if 'play' we insert them at the current track index, and if so
-	# they will will have a native position starting at 0, and will
-	# take over the pl_idx of the item at that position.
+	# Add adds the tracks at the end of the queue and Play
+	# inserts them into the queue at the current position
+	# so that they immediately start playing without upsetting
+	# the overall order of the current, possibly sorted, playlist.
+	#
+	# However, there is a difference between the 'ordinal' sort
+	# order and the order the tracks may be in at the moment of
+	# insertion for Play. THE NOMINAL ORDER OF TRACKS IS THE
+	# ORDER THEY WERE ADDED, OR PLAYED, and once sorted(Off),
+	# that transient order they happened to be in during the
+	# Play command can never be recreaated.
+	#
+	# A subsequent sort(Off) will put them in the order
+	# they were added or played, without regards for the
+	# fact that they were inserted in the middle of a
+	# sorted list.
+	#
+	# tracks are ALWAYS in the list in pl_idx order ..
 
 	my $num_tracks = scalar(@$tracks);
 
 	my $q_tracks = $queue->{tracks};
 	my $q_index = $queue->{track_index};
 	my $q_num = @$q_tracks;
+	my $pos = $q_num;
+		# nominal position - tracks always added at the end
+		# even if they happen to start playing immediately
 
 	display($dbg_queue,0,"$command $num_tracks tracks track_index($q_index)");
 
@@ -210,33 +238,23 @@ sub enqueue
 	{
 		# splice not implemented for shared arrays
 		# so first we work from the end of the array backwards
-		# - bumping all the positions
-		# - manually move the items from q_index to q_index+num_tracks
-		#   bumping their pl_idx's as we go
-		# we grab the last pl_idx that is moved to become the new
-		#   first one for the new tracks
+		# 	to the insert point, manually moving the items to
+		#   new slots passed the current end of the array
+		#   to make room for the new tracks, while bumping
+		#   their pl_idx's as we go
 
-		$queue->{needs_sort} = 1;
-			# the queue will no longer be in pl_idx order
-
-		my $pl_idx;
-		for (my $i=$q_num-1; $i>=0; $i--)
+		for (my $i=$q_num-1; $i>=$q_index; $i--)
 		{
 			my $track = $q_tracks->[$i];
-			$track->{position} += $num_tracks;
 			display(0,1,"track($i)=$track->{title}");
-			if ($i >= $q_index)
-			{
-				$pl_idx = $track->{pl_idx};
-				$track->{pl_idx} += $num_tracks;
-				display(0,2,"moving track($i) to ".($i + $num_tracks));
-				$q_tracks->[$i + $num_tracks] = $track;
-			}
+			$track->{pl_idx} += $num_tracks;
+			display(0,2,"moving track($i) to ".($i + $num_tracks));
+			$q_tracks->[$i + $num_tracks] = $track;
 		}
 
 		# then we assign the vacated slots to the new tracks
 
-		my $pos = 0;
+		my $pl_idx = $q_index;
 		for (my $i=0; $i<$num_tracks; $i++)
 		{
 			my $track = $tracks->[$i];
@@ -251,7 +269,7 @@ sub enqueue
 	else
 	{
 		push @$q_tracks,@$tracks;
-		my $pos = $q_num;
+
 		for (my $i=$q_num; $i<$q_num + $num_tracks; $i++)
 		{
 			my $track = $q_tracks->[$i];
@@ -448,15 +466,6 @@ sub restart
 {
 	my ($this) = @_;
 	display($dbg_queue,0,"restart()");
-
-	if ($this->{needs_sort})
-	{
-		$this->{needs_sort} = 0;
-		my $tracks = $this->{tracks};
-		my @new_tracks = (sort {$a->{pl_idx} <=> $b->{pl_idx}} @$tracks);
-		$this->{tracks} = [@new_tracks];
-		$this->{version}++;
-	}
 	$this->{track_index} = 0;
 	$this->{needs_start} = 1;
 	$this->{started} = 0;

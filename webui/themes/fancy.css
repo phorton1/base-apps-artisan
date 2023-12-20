@@ -21,7 +21,6 @@ ul.fancytree-container
 .fancytree-selected > td,
 .fancytree-partsel > td
 {
-	background: green !important;
 	background-color: #74992e !important;
 }
 

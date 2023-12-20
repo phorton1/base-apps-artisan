@@ -218,7 +218,7 @@ sub library_request
 
 	# command that need a playlist
 
-	elsif ($path =~ /^(get_playlist|get_playlist_track|shuffle_playlist)$/)
+	elsif ($path =~ /^(get_playlist|get_playlist_track|shuffle_playlist|get_playlist_tracks_sorted)$/)
 	{
 		my $id = $params->{id} || '';
 		return json_error("no playlist id in get_playiist")
@@ -242,6 +242,19 @@ sub library_request
 			$playlist = $playlist->sortPlaylist($shuffle);
 			return json_error("uiLibrary($library->{name}) could not sortPlaylist($shuffle)")
 				if !$playlist;
+		}
+		elsif ($path eq 'get_playlist_tracks_sorted')
+		{
+			my $start = $params->{start};
+			my $count = $params->{count};
+			return json_error("get_playlist_tracks_sorted undefined start("._def($start).") or count("._def($count).")")
+				if !defined($start) || !defined($count);
+
+			my $tracks = $playlist->getTracksSorted($start,$count);
+			return json_error("uiLibrary($library->{name}) could not getTracksSorted()")
+				if !$tracks;
+			return json_header().my_encode_json($tracks);
+				# note short return of $tracks, not $playlist
 		}
 
 		return json_header().my_encode_json($playlist);

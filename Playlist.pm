@@ -14,6 +14,7 @@
 #   track_index		- current track index within the playlist or 0 if no tracks
 #   track_id		- track_id corresponding to the track_index or '' if no tracksid
 #	version		    - version number is bumped on every sort and getPlaylistTrack index change.
+#   data_version    - data version is only bumped on sort (for reloading in UI)
 #
 # The Tracks are kept in a named.db file a 'playlists' subdirectory relative to
 # the playlists.db file with an additional 'pl_idx' integer indicating its sorted
@@ -362,6 +363,7 @@ sub sortPlaylist
 	$this->{track_index} = @$recs ? 1 : 0;
 	$this->{track_id} = $first_track_id;
 	$this->{version}++;
+	$this->{data_version}++;
 
 	display($dbg_pl,0,"sortPlaylist() returning".dbg_info($this,2));
 
@@ -467,6 +469,34 @@ sub saveToPlaylists
 }
 
 
+sub getTracksSorted
+{
+	my ($this,$start,$count) = @_;
+	display($dbg_pl,0,"getTrackSorted($start,$count)".dbg_info($this));
+	my $playlists_dir = getLibraryPlaylistsDir($this->{uuid});
+	return if !$playlists_dir;
+	my $db_name = "$playlists_dir/$this->{name}.db";
+	my $dbh = db_connect($db_name);
+	return 0 if !$dbh;
+
+	my $recs = [];
+	if ($start < $this->{num_tracks})
+	{
+		$count = $this->{num_tracks}-$start
+			if $start + $count >= $this->{num_tracks};
+
+		# change to 1 based and end
+		my $end = $start + $count;
+		$start++;
+
+		$recs = get_records_db($dbh,"SELECT * FROM tracks ".
+			"WHERE pl_idx>=$start and pl_idx<=$end ".
+			"ORDER BY pl_idx");
+	}
+
+	display($dbg_pl,0,"getTrackSorted() returning ".scalar(@$recs)." records");
+	return $recs;
+}
 
 
 

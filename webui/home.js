@@ -231,23 +231,21 @@ function init_home_tracklists()
 		extensions: 	["table","multi"],
 		table: 			{},
 		source: 		function() { return []; },
+		renderColumns: 	function(event, data)  { renderTracklistNode(event,data,1); },
 		dblclick:		function(event, data)		// move to the given track
 		{
 			var node = data.node;
 			var rec = node.data;
-			node.setSelected(true);
-		},
-		renderColumns: 	function(event, data)
-		{
-			var node = data.node;
-			var rec = node.data;
-			var $tdList = $(node.tr).find(">td");
+			queue_tracklist.selectAll(false);
 
-			$tdList.eq(0).text(rec.tracknum)	.addClass('tracklist_tracknum');
-			$tdList.eq(1).html(rec.TITLE)		.addClass('tracklist_title');
-			$tdList.eq(2).text(rec.album_title)	.addClass('tracklist_album');
-			$tdList.eq(3).text(rec.genre)		.addClass('tracklist_genre');
-			$tdList.eq(4).text(rec.year_str)	.addClass('tracklist_year');
+			var params = JSON.stringify({
+				pl_idx: rec.pl_idx,
+				renderer_uuid: current_renderer.uuid });
+			$.post('/webui/queue/play_track',params,function(result)
+			{
+				display(dbg_select+1,1,'queue_command() success result=' + result)
+			});
+
 		},
 	});
 
@@ -266,23 +264,13 @@ function init_home_tracklists()
 		extensions: 	["table","multi"],
 		table: 			{},
 		source: 		function() { return []; },
+		renderColumns: 	function(event, data)  { renderTracklistNode(event,data,0); },
 		dblclick:		function(event, data)		// move to the given track
 		{
 			var node = data.node;
 			var rec = node.data;
-			node.setSelected(true);
-		},
-		renderColumns: 	function(event, data)
-		{
-			var node = data.node;
-			var rec = node.data;
-			var $tdList = $(node.tr).find(">td");
-
-			$tdList.eq(0).text(rec.tracknum)	.addClass('tracklist_tracknum');
-			$tdList.eq(1).html(rec.TITLE)		.addClass('tracklist_title');
-			$tdList.eq(2).text(rec.album_title)	.addClass('tracklist_album');
-			$tdList.eq(3).text(rec.genre)		.addClass('tracklist_genre');
-			$tdList.eq(4).text(rec.year_str)	.addClass('tracklist_year');
+			playlist_tracklist.selectAll(false);
+			renderer_command('playlist_song',{index: rec.pl_idx});
 		},
 	});
 
@@ -291,9 +279,44 @@ function init_home_tracklists()
 }
 
 
+function renderTracklistNode(event,data,pl_offset)
+	// pl_offset is zero for playlists, which use 1 based indexes,
+	// and is one for the queue which uses 0 based indexes, so
+	// that we show the tracks starting at '1'
+{
+	var node = data.node;
+	var rec = node.data;
+	var $tdList = $(node.tr).find(">td");
+
+	var show_idx = rec.pl_idx + pl_offset;
+	$tdList.eq(0).html(show_idx)		.addClass('home_rownum');
+	$tdList.eq(1).html(rec.TITLE)		.addClass('tracklist_title');
+	$tdList.eq(2).text(rec.tracknum)	.addClass('home_tracknum');
+	$tdList.eq(3).text(rec.album_title)	.addClass('tracklist_album');
+	$tdList.eq(4).text(rec.genre)		.addClass('tracklist_genre');
+	$tdList.eq(5).text(rec.year_str)	.addClass('tracklist_year');
+}
+
 
 
 function update_home_tracklists()
+	// this method responible for reloading the tracklist(s)
+	// 		when versions or other info changes.
+	// it is also the logical place to update the
+	//      highlight for the currently playing track
+	//      for which will initially use 'selected' status
+	// later, selection versus current playing will be
+	//      different and we will need to allow the user
+	//      to scroll to different positions, perhaps
+	//      with an activity timer.
+	// it is still complicated due to incremental loading ..
+	//      the current playing track may not yet be in
+	//      the tree.  Therefore there are yet more
+	//      variables added to the tree,
+	//
+	//		my_show_index  = -1 if nothing to show
+	//      my_index_shown = -1 when needs showing
+	//
 {
 	var queue = current_renderer.queue;
 	if (!queue) return;		// not ready yet
@@ -320,7 +343,7 @@ function update_home_tracklists()
 	{
 		playlist_uiud = playlist.uuid;
 		playlist_id = playlist.id;
-		playlist_version = playlist.version;
+		playlist_version = playlist.data_version;
 	}
 
 	// QUEUE TRACKLIST
@@ -368,7 +391,7 @@ function update_home_tracklists()
 			var ajax_params = {
 				async: true,
 				method: 'GET',
-				url: "/webui/library/" + playlist_uuid + "/get_playlist_tracks_sorted", };
+				url: "/webui/library/" + playlist.uuid + "/get_playlist_tracks_sorted", };
 			var params = {
 				id:playlist_id, };
 
@@ -379,9 +402,64 @@ function update_home_tracklists()
 				params);
 		}
 	}
+
+	// update my_show_index for both trees as needed
+	// try to show it in the tree that is visible
+
+	if (queue.num_tracks)
+		queue_tracklist.my_show_index = queue.track_index;
+	if (playlist && playlist.num_tracks)
+		playlist_tracklist.my_show_index = playlist.track_index - 1;
+
+	var show_tree = current_renderer.playing == RENDERER_PLAY_PLAYLIST ?
+		playlist_tracklist : queue_tracklist;
+
+	var show = show_tree.my_show_index;
+	var shown = show_tree.my_index_shown;
+	if (shown != show && show < show_tree.count())
+	{
+		var children = show_tree.rootNode.children;
+		if (shown != -1)
+			children[shown].removeClass('current_track');	// setSelected(false)
+		var show_node = children[show];
+		show_node.addClass('current_track');	// setSelected(true);
+
+		// fancytree scrollIntoView() functions do not work ext-table
+		// the code assumes there is a <span> with the correct offsets,
+		// but in ext-table, its a <tr>.
+		//
+		// 		show_node.scrollIntoView(false);
+		// 		show_node.makeVisible({scrollIntoView: true});
+		//
+		// so, by digging, I came up with the objects to pass to
+		// found version of scrollIntoView()
+
+		var container = show_tree.$container;
+		var table = container[0];
+		scrollIntoView(show_node.tr,table.parentElement);
+		show_tree.my_index_shown = show;
+	}
 }
 
 
+
+function scrollIntoView(element, container)
+	// found this function at
+	// https://stackoverflow.com/questions/1805808/how-do-i-scroll-a-row-of-a-table-into-view-element-scrollintoview-using-jquery
+{
+	var containerTop = $(container).scrollTop();
+	var containerBottom = containerTop + $(container).height();
+	var elemTop = element.offsetTop;
+	var elemBottom = elemTop + $(element).height();
+	if (elemTop < containerTop)
+	{
+		$(container).scrollTop(elemTop);
+	}
+	else if (elemBottom > containerBottom)
+	{
+		$(container).scrollTop(elemBottom - $(container).height());
+	}
+}
 
 
 
@@ -395,11 +473,12 @@ function update_home_tracklists()
 
 function loadHomeTracklist(tree,num_elements,ajax_params,params)
 {
-	display(dbg_tl,0,"loadHomeTracklist(" + params.method + ") num(" + num_elements + ") " + params.url);
+	display(dbg_tl,0,"loadHomeTracklist(" + ajax_params.method + ") num(" + num_elements + ") " + ajax_params.url);
 	tree.my_load_counter++;		// stop any other loads on this tree
 	tree.my_num_loaded = 0;		// initialize for new load
 	tree.my_num_elements = num_elements;
-
+	tree.my_show_index = -1;
+	tree.my_index_shown = -1;
 	params.source = 'loadTracks';
 
 	loadHomeTracks(tree,tree.my_load_counter,ajax_params,params);
@@ -433,9 +512,11 @@ function loadHomeTracks(tree,counter,ajax_params,params)
 
 	ajax_params.success =  function (result)
 	{
-		onHomeLoadTracks(tree,counter,result);
-		tree.my_num_loaded += result.length;
-		loadHomeTracks(tree,counter,ajax_params,params);
+		if (onHomeLoadTracks(tree,counter,result))
+		{
+			tree.my_num_loaded += result.length;
+			loadHomeTracks(tree,counter,ajax_params,params);
+		}
 	};
 
 
@@ -461,10 +542,18 @@ function addHomeTrackNode(tree,counter,rec)
 function onHomeLoadTracks(tree,counter,result)
 {
 	display(dbg_tl,1,"onHomeLoadTracks(" + result.length + ")");
+	if (result.error)
+	{
+		rerror(result.error);
+		return false;
+	}
+
 	for (var i=0; counter==tree.my_load_counter && i<result.length; i++)
 	{
 		addHomeTrackNode(tree,counter,result[i]);
 	}
+
+	return true;
 }
 
 

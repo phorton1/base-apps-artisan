@@ -155,7 +155,7 @@ BEGIN
 
 
 sub albumId
-	# temporary location for method to use
+	# A method to create unique ids for albums
 	# album_title, if it exists, or parent_id if not
 	# for sorting the Queue and Playlists by albums
 {

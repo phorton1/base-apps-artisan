@@ -49,14 +49,21 @@ we get rid of the whole 'node' (0th td)
 	display:none !important;
 }
 
-
-.tracklist_icon  	{ width:16px; }	/* not used on home tracklists */
-.tracklist_tracknum	{ width:24px;	padding-left:2px; }
+.home_rownum		{ width:36px;	padding-left:2px; color:#aaaaaa !important; }		/* home only */
+.tracklist_icon  	{ width:16px; }							/* !home */
+.tracklist_tracknum	{ width:24px;	padding-left:2px; }		/* !home */
 .tracklist_title  	{ width:33%;	max-width:180px; padding-left:8px; }
 .tracklist_album  	{ width:33%; 	max-width:160px; padding-left:8px; }
+.home_tracknum		{ width:30px;	padding-left:8px; }		/* home only */
 .tracklist_genre  	{ width:33%; 	max-width:100px; padding-left:8px; }
 .tracklist_year  	{ width:60px; 	text-align:center; padding-right:4px; }
 
+
+
+.current_track > td
+{
+	background-color: #446688 !important;
+}
 
 
 /* end of tracklist.css */

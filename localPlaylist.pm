@@ -360,14 +360,15 @@ sub createPlaylist
 	db_disconnect($named_dbh);
 
 	my $rec = {
-		id		 	=> $def->{id},
-		uuid        => $this_uuid,
-		name		=> $name,
-		num_tracks  => $num_tracks,
-		shuffle	 	=> $SHUFFLE_NONE,
-		track_index => $num_tracks ? 1 : 0,
-		track_id	=> $first_track ? $first_track->{id} : '',
-		version	 	=> 1,
+		id		 	 => $def->{id},
+		uuid         => $this_uuid,
+		name		 => $name,
+		num_tracks   => $num_tracks,
+		shuffle	 	 => $SHUFFLE_NONE,
+		track_index  => $num_tracks ? 1 : 0,
+		track_id	 => $first_track ? $first_track->{id} : '',
+		version	 	 => 1,
+		data_version => 1,
 	};
 
 	display($dbg_create,0,"createPlaylist($name) finished");

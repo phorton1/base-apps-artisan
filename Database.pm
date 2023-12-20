@@ -72,14 +72,15 @@ our %artisan_field_defs = (
 	#------------------------------------
 
 	playlists => [
-		'id		 	 VARCHAR(128)',
-		'uuid        VARCHAR(128)',
-		'name		 VARCHAR(128)',
-		'num_tracks  INTEGER',
-		'shuffle	 INTEGER',
-		'track_index INTEGER',
-		'track_id	 VARCHAR(128)',
-		'version	 INTEGER',
+		'id		 	   VARCHAR(128)',
+		'uuid          VARCHAR(128)',
+		'name		   VARCHAR(128)',
+		'num_tracks    INTEGER',
+		'shuffle	   INTEGER',
+		'track_index   INTEGER',
+		'track_id	   VARCHAR(128)',
+		'version	   INTEGER',
+		'data_version  INTEGER',
 	],
 
     #------------------------------------

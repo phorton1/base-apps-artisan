@@ -149,6 +149,7 @@ sub initPlaylist
 
 			# reset the initial track_index and track_id
 
+			$playlist->{data_version}++;
 			if (@$tracks)
 			{
 				$playlist->{track_index} = 1;
@@ -245,15 +246,16 @@ sub createPlaylistsDB
 	{
 		display($dbg_rpl,2,"adding playlist($folder->{id},$folder->{title})");
 		my $playlist = {
-			id => $folder->{id},
-			uuid => $library->{uuid},
-			name => $folder->{title},
-			query => '',
-			num_tracks => $folder->{num_elements},
-			shuffle => 0,
-			track_index => 0,
-			track_id => '',
-			version => 0 };
+			id 		     => $folder->{id},
+			uuid 		 => $library->{uuid},
+			name 		 => $folder->{title},
+			query 		 => '',
+			num_tracks 	 => $folder->{num_elements},
+			shuffle 	 => 0,
+			track_index  => 0,
+			track_id 	 => '',
+			version 	 => 0,
+			data_version => 0};
 
 		return !error("Could not insert playlist($playlist->{id},$playlist->{name}) in $playlist_db")
 			if !insert_record_db($playlist_dbh,'playlists',$playlist);
