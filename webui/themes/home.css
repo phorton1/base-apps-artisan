@@ -4,7 +4,7 @@
 /* Contains styles used in page_home.html and children */
 
 
-/************** pane_home_menu.html ****************/
+/*-------- HOME MENU ---------*/
 
 .ui-accordion,
 .ui-accordion-header
@@ -57,8 +57,6 @@
 }
 
 
-
-
 #prefs_div
 {
 	font-size:20px;
@@ -101,8 +99,7 @@
 
 
 
-
-/************ the 'renderer' pane ********************/
+/*-------- RENDERER HEADER -------*/
 
 .header_bar
 {
@@ -157,7 +154,7 @@
 
 
 
-
+/*---------- RENDERER DISPLAY ------------*/
 
 #renderer_full_album_image_td,
 #renderer_album_image_td
@@ -201,7 +198,6 @@
 }
 
 
-
 #renderer_full_album_info_td
 #renderer_album_info_td
 {
@@ -222,7 +218,6 @@
 }
 
 
-
 #renderer_song_title     { font-size:15pt; font-weight:bold; margin-top:10px; margin-bottom:0px;}
 #renderer_album_artist   { font-size:11pt;                   margin-top:0px;  margin-bottom:0px;}
 #renderer_album_title    { font-size:13pt; font-weight:bold; margin-top:6px; margin-bottom:0px;}
@@ -236,6 +231,8 @@
 #renderer_full_song_genre     { font-size:12pt;                   margin-top:16px; margin-bottom:0px;}
 
 
+
+/*---------- RENDERER SLIDER --------------*/
 
 #renderer_slider_div
 {
@@ -264,11 +261,8 @@
 .renderer_play_time      { font-size:10pt; }
 
 
-.renderer_table
-{
-	width:98%;
-	margin-bottom:10px;
-}
+
+/*--------- TRANSPORT CONTROLS --------------*/
 
 
 .transport_buttons
@@ -298,3 +292,4 @@
 }
 
 
+/* end of home.css */

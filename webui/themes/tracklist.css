@@ -1,0 +1,62 @@
+/**********************************************************************
+ tracklist.css - common to page_home and page_explorer Trackliss
+***********************************************************************/
+
+.home_tracklist
+{
+	display: none;
+}
+
+#home_tracklist_div,
+#explorer_tracklist_div
+{
+	overflow-y:auto !important;
+}
+
+
+#queue_tracklist,
+#playlist_tracklist,
+#explorer_tracklist
+{
+	width:100%;
+	table-layout:fixed;
+}
+
+
+#queue_tracklist td,
+#playlist_tracklist td,
+#explorer_tracklist td
+{
+    overflow:hidden;
+	color:#ffffff;
+	background-color:#000000;
+	font-size:12pt;
+	vertical-align:middle !important;
+}
+
+
+/*
+#queue_tracklist .fancytree-node,
+#playlist_tracklist .fancytree-node,
+*/
+/*
+because home tracklists do not have icons,
+we get rid of the whole 'node' (0th td)
+*/
+
+#explorer_tracklist .fancytree-expander
+{
+	display:none !important;
+}
+
+
+.tracklist_icon  	{ width:16px; }	/* not used on home tracklists */
+.tracklist_tracknum	{ width:24px;	padding-left:2px; }
+.tracklist_title  	{ width:33%;	max-width:180px; padding-left:8px; }
+.tracklist_album  	{ width:33%; 	max-width:160px; padding-left:8px; }
+.tracklist_genre  	{ width:33%; 	max-width:100px; padding-left:8px; }
+.tracklist_year  	{ width:60px; 	text-align:center; padding-right:4px; }
+
+
+
+/* end of tracklist.css */

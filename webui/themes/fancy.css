@@ -1,0 +1,49 @@
+/*******************************************
+ fancy.css - fancytree stuff that comes last
+********************************************/
+
+
+table.fancytree-ext-table tbody tr td
+{
+	border:0px;
+}
+
+ul.fancytree-container
+{
+	background-color:#000000;
+	border: none;
+}
+
+
+/* selected color must come after normal color */
+
+.fancytree-selected > span.fancytree-title,
+.fancytree-selected > td,
+.fancytree-partsel > td
+{
+	background: green !important;
+	background-color: #74992e !important;
+}
+
+
+
+/*--------- DEVICE SPECIFIC CSS ----------*/
+/* Example of using a media query in the CSS to change one thing */
+/* We set bigger fonts in the tracklist and tree on mobile devices
+   as determined by anything with a width <= 1250 pix */
+
+@media (max-device-width: 1250px)
+{
+	#explorer_tree span,
+	#explorer_tracklist td
+	{
+		font-size:15pt;
+	}
+	#explorer_details td
+	{
+		font-size:13pt;
+	}
+}
+
+
+/* end of fancy.css */

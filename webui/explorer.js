@@ -76,20 +76,6 @@ function deselectTree(id)
 }
 
 
-function nodeTitle(node)
-{
-	return node.data.TITLE;
-}
-
-function nodeType(node)
-{
-	var type = node.data.dirtype;
-	if (type == undefined)
-		type = 'track';
-	return type;
-}
-
-
 
 //--------------------------------------
 // init_page_explorer()
@@ -179,6 +165,7 @@ function init_page_explorer()
 	});
 
 	explorer_tracklist = $("#explorer_tracklist").fancytree("getTree");
+	explorer_tracklist.my_load_counter = 0;
 
 	// EXPLORER DETAILS
 

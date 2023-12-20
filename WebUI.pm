@@ -177,19 +177,19 @@ sub web_ui
 		$Pub::Utils::CONSOLE->Attr($color);
 		print "REMOTE: ".url_decode($path)."\n";
 		$Pub::Utils::CONSOLE->Attr($Pub::Utils::DISPLAY_COLOR_NONE);
-		return html_header();
+		$response = html_header();
 	}
 
 	# device requests
 
 	elsif ($path =~ /^getDevices\/(renderer|library)$/)
 	{
-		return getDevicesJson($1);
+		$response = getDevicesJson($1);
 	}
 	elsif ($path =~ /^getDevice\/(renderer|library)-(.*)$/)
 	{
 		my ($singular,$uuid) = ($1,$2);
-		return getDeviceJson($singular,$uuid);
+		$response = getDeviceJson($singular,$uuid);
 	}
 
 
@@ -225,7 +225,7 @@ sub web_ui
 			$data->{renderer} = $renderer;
 		}
 
-		return json_header().my_encode_json($data);
+		$response = json_header().my_encode_json($data);
 
 	}
 
@@ -249,7 +249,7 @@ sub web_ui
 		my $error = $renderer->doCommand($path,$params);
 		return json_error("renderer_request($path) error: $error")
 			if $error;
-		return json_header().my_encode_json($renderer);
+		$response = json_header().my_encode_json($renderer);
 	}
 
 	# pass library requests to PM sub module
@@ -260,16 +260,39 @@ sub web_ui
 	}
 
 	# queue request
+	# note that get_tracks expects json return
+	# all others expect html 200 with OK
 
 	elsif ($path =~ /^queue\/(.*)$/)
 	{
 		my $command = $1;
-		$params = my_decode_json($post_data);
-		return http_error("Could not decode json($post_data) for queue/$command")
-			if !$params;
-		my $err = Queue::queueCommand($command,$params);
-		return http_error($err) if $err;
-		return http_header()."OK\r\n\r\n";
+		my $post_params = my_decode_json($post_data);
+		if (!$post_params)
+		{
+			error("Could not decode json($post_data)");
+			$response = $command eq 'get_tracks' ?
+				json_error("Could not decode json for queue/$command") :
+				http_error("Could not decode json for queue/$command");
+		}
+		else
+		{
+			my $rslt = Queue::queueCommand($command,$post_params);
+				# error for everything except get_tracks
+				# $tracks to be jsonified if get_tracks
+
+			if ($command eq 'get_tracks')
+			{
+				$response = $rslt ?
+					json_header().my_encode_json($rslt) :
+					json_error('Could not get tracks')
+			}
+			else
+			{
+				$response = $rslt ?
+					http_error($rslt) :
+					http_header()."OK\r\n";
+			}
+		}
 	}
 
 	# unknown request

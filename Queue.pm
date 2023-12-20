@@ -31,6 +31,7 @@ use warnings;
 use threads;
 use threads::shared;
 use artisanUtils;
+use httpUtils;
 use DeviceManager;
 
 
@@ -91,23 +92,24 @@ sub getNextTrack()
 
 
 sub queueCommand
-	# returns an error on failure, blank on success
-	# folders and tracks commands are disjoint and separate
+	# returns blank or error except for get_tracks
+	# which tracks to be jsonified and returned
 {
-	my ($command,$params) = @_;
-	display_hash($dbg_queue,0,"queueCommand($command)",$params);
+	my ($command,$post_params) = @_;
+	display_hash($dbg_queue,0,"queueCommand($command)",$post_params);
 
-	my $u_version = $params->{version};
+	my $u_version = $post_params->{version};
 	# return error("No version in queue/$command call") if !$u_version;
-	my $r_uuid = $params->{renderer_uuid};
+	my $r_uuid = $post_params->{renderer_uuid};
 	return error("No renderer_uuid in queue/$command call") if !$r_uuid;
 	my $renderer = findDevice($DEVICE_TYPE_RENDERER,$r_uuid);
 	return error("Could not find renderer $r_uuid") if !$renderer;
 
 	my $queue = getQueue($r_uuid);
+
 	if ($command eq 'add' || $command eq 'play')
 	{
-		return enqueue($command,$params,$queue);
+		return enqueue($command,$post_params,$queue);
 	}
 	elsif ($command eq 'next' || $command eq 'prev')
 	{
@@ -119,10 +121,35 @@ sub queueCommand
 		my $inc = $command eq 'next_album' ? 1 : -1;
 		$queue->incAlbum($inc);
 	}
+	elsif ($command eq 'get_tracks')
+	{
+		# this wont work.
+		# queue commands are using post
+		# and this has url params;
+
+		my $tracks = [];
+		my $start = $post_params->{start};
+		my $count = $post_params->{count};
+
+		if ($start < $queue->{num_tracks})
+		{
+			my $avail = $queue->{num_tracks} - $start;
+			$count = $avail if $count > $avail;
+			for (my $i=0; $i<$count; $i++)
+			{
+				my $rec = $queue->{tracks}->[$i + $start];
+				push @$tracks,$rec;
+			}
+		}
+
+		display($dbg_queue,2,"got ".scalar(@$tracks)." tracks for queue get_tracks json");
+		return $tracks;
+	}
 	else
 	{
-		return errror("unknown queue command '$command'");
+		return error("unknown queue command '$command'");
 	}
+
 	return '';
 }
 
@@ -135,9 +162,9 @@ sub enqueue
 	# returns an error on failure, blank on success
 	# folders and tracks commands are disjoint and separate
 {
-	my ($command,$params,$queue) = @_;
+	my ($command,$post_params,$queue) = @_;
 	display($dbg_queue,0,"enqueue($command)");
-	my $l_uuid = $params->{library_uuid};
+	my $l_uuid = $post_params->{library_uuid};
 	return error("No library_uuid in eneueue($command)")
 		if !$l_uuid;
 	my $library = findDevice($DEVICE_TYPE_LIBRARY,$l_uuid);
@@ -148,16 +175,16 @@ sub enqueue
 
 	my $tracks = [];
 
-	my $folders = $params->{folders};
+	my $folders = $post_params->{folders};
 	if ($folders)
 	{
-		my @ids = split(/,/,$params->{folders});
+		my @ids = split(/,/,$post_params->{folders});
 		$tracks = enqueueFolders($library,\@ids);
-		return if !$tracks;
+		return error("Could not enqueuFolders") if !$tracks;
 	}
-	else	# $params->{tracks} must be valid
+	else	# $post_params->{tracks} must be valid
 	{
-		my @ids = split(/,/,$params->{tracks});
+		my @ids = split(/,/,$post_params->{tracks});
 		for my $id (@ids)
 		{
 			my $track = $library->getTrack($id);
@@ -176,8 +203,6 @@ sub enqueue
 	my $q_tracks = $queue->{tracks};
 	my $q_index = $queue->{track_index};
 	my $q_num = @$q_tracks;
-
-
 
 	display($dbg_queue,0,"$command $num_tracks tracks track_index($q_index)");
 
@@ -255,6 +280,8 @@ sub enqueue
 			$i++;
 		}
 	}
+
+	return '';
 }
 
 

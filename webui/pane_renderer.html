@@ -1,6 +1,5 @@
 <!-- pane_renderer.html -->
 
-<!-- NOTE THE NESTED LAYOUT -->
 
 <div
 	id='renderer_pane'
@@ -111,33 +110,6 @@
     </div>	<!-- why the extra div? -->
 
 </div>  <!-- renderer_pane -->
-
-
-<!-- new renderer tracklist div -->
-
-<div
-	id='renderer_tracklist'
-    class="ui-layout-center">
-</div>
-
-
-<!--- shuffle dropdown div normally hidden -->
-
-<div id='shuffle_dropdown'>
-	<button
-		id='shuffle_button_off'
-		class="shuffle_button"
-		onclick="javascript:renderer_command('shuffle_playlist?shuffle=' + SHUFFLE_OFF)">Off</button>
-	<button
-		id='shuffle_button_tracks'
-		class="shuffle_button"
-		onclick="javascript:renderer_command('shuffle_playlist?shuffle=' + SHUFFLE_TRACKS)">Tracks</button>
-	<button
-		id='shuffle_button_albums'
-		class="shuffle_button"
-		onclick="javascript:renderer_command('shuffle_playlist?shuffle=' + SHUFFLE_ALBUMS)">Albums</button>
-</div>
-
 
 
 <!-- end of pane_renderer.html -->

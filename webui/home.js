@@ -3,12 +3,6 @@
 //--------------------------------------------------
 
 var dbg_home = 0;
-var dbg_slider = 0;
-
-var renderer_slider;
-var in_slider = false;
-var last_song = '';
-var last_playing = -1;
 
 
 layout_defs['home'] = {
@@ -37,7 +31,6 @@ layout_defs['home'] = {
 
 function init_page_home()
 {
-	last_song = '';
 	display(dbg_home,0,"init_page_home()");
 
 	load_device_list(DEVICE_TYPE_RENDERER);
@@ -55,6 +48,8 @@ function init_page_home()
 	create_numeric_pref(0,10,60,
 		'pref_error_mode',
 		'#pref_explorer_mode');
+
+	init_home_tracklists();
 
 	display(dbg_home,0,"init_page_home() done");
 }
@@ -189,9 +184,291 @@ function setPlaylist(uuid,id)
 
 
 
-//========================================================
-// API - unused_queue_command() and renderer_command()
-//========================================================
+//*********************************************************
+// Home Tracklists
+//*********************************************************
+// For each tracklist we need to keep track of what it
+// contains, versus what it should contain.
+// Queues are specific to Renderers.
+// Playlists are also specific by library_uuid and id.
+// Both are updated when their version chages.
+
+var dbg_tl = 0;
+
+
+var queue_tracklist;
+var playlist_tracklist;
+
+var tracklist_renderer_uuid = '';
+	// both tracklists are invalidated when the renderer changes
+var tracklist_queue_version = -1;
+var tracklist_playlist_uuid = '';
+var tracklist_playlist_id = '';
+var tracklist_playlist_version = -1;
+
+
+function invalidate_tracklists()
+	// when tracklist_renderer_uuid changes
+{
+	tracklist_queue_version = -1;
+	tracklist_playlist_uuid = '';
+	tracklist_playlist_id = '';
+	tracklist_playlist_version = -1;
+}
+
+
+
+function init_home_tracklists()
+{
+	// QUEUE TRACKLIST
+
+	display(dbg_explorer,1,"initializizing queue tracklist");
+
+	$("#queue_tracklist").fancytree({
+		nodata:			false,
+		scrollParent: 	$('#home_tracklist_div'),
+		selectMode:		2,
+		extensions: 	["table","multi"],
+		table: 			{},
+		source: 		function() { return []; },
+		dblclick:		function(event, data)		// move to the given track
+		{
+			var node = data.node;
+			var rec = node.data;
+			node.setSelected(true);
+		},
+		renderColumns: 	function(event, data)
+		{
+			var node = data.node;
+			var rec = node.data;
+			var $tdList = $(node.tr).find(">td");
+
+			$tdList.eq(0).text(rec.tracknum)	.addClass('tracklist_tracknum');
+			$tdList.eq(1).html(rec.TITLE)		.addClass('tracklist_title');
+			$tdList.eq(2).text(rec.album_title)	.addClass('tracklist_album');
+			$tdList.eq(3).text(rec.genre)		.addClass('tracklist_genre');
+			$tdList.eq(4).text(rec.year_str)	.addClass('tracklist_year');
+		},
+	});
+
+	queue_tracklist = $("#queue_tracklist").fancytree("getTree");
+	queue_tracklist.my_load_counter = 0;
+
+
+	// PLAYLIST_TRACKLIZT
+
+	display(dbg_explorer,1,"initializizing playlist tracklist");
+
+	$("#playlist_tracklist").fancytree({
+		nodata:			false,
+		scrollParent: 	$('#home_tracklist_div'),
+		selectMode:		2,
+		extensions: 	["table","multi"],
+		table: 			{},
+		source: 		function() { return []; },
+		dblclick:		function(event, data)		// move to the given track
+		{
+			var node = data.node;
+			var rec = node.data;
+			node.setSelected(true);
+		},
+		renderColumns: 	function(event, data)
+		{
+			var node = data.node;
+			var rec = node.data;
+			var $tdList = $(node.tr).find(">td");
+
+			$tdList.eq(0).text(rec.tracknum)	.addClass('tracklist_tracknum');
+			$tdList.eq(1).html(rec.TITLE)		.addClass('tracklist_title');
+			$tdList.eq(2).text(rec.album_title)	.addClass('tracklist_album');
+			$tdList.eq(3).text(rec.genre)		.addClass('tracklist_genre');
+			$tdList.eq(4).text(rec.year_str)	.addClass('tracklist_year');
+		},
+	});
+
+	playlist_tracklist = $("#playlist_tracklist").fancytree("getTree");
+	playlist_tracklist.my_load_counter = 0;
+}
+
+
+
+
+function update_home_tracklists()
+{
+	var queue = current_renderer.queue;
+	if (!queue) return;		// not ready yet
+
+	// redo everything if renderer changes
+
+	if (tracklist_renderer_uuid != current_renderer.uuid)
+	{
+		display(dbg_tl,0,"tracklist_renderer_uuid changed");
+		tracklist_renderer_uuid = current_renderer.uuid;
+		invalidate_tracklists();
+	}
+
+	// get the state from current_renderer
+
+	var queue_version = queue.version;
+
+	var playlist_uuid = '';
+	var playlist_id = '';
+	var playlist_version = -1;
+	var playlist = current_renderer.playlist;
+
+	if (playlist)
+	{
+		playlist_uiud = playlist.uuid;
+		playlist_id = playlist.id;
+		playlist_version = playlist.version;
+	}
+
+	// QUEUE TRACKLIST
+
+	if (tracklist_queue_version != queue_version)
+	{
+		display(dbg_tl,0,"queue_version changed from " + tracklist_queue_version + " to " + queue_version);
+		tracklist_queue_version = queue_version;
+		queue_tracklist.clear();
+
+		if (queue.num_tracks > 0)
+		{
+			var ajax_params = {
+				async: true,
+				method: 'POST',
+				url: "/webui/queue/get_tracks", };
+			var params = {
+				renderer_uuid:current_renderer.uuid, };
+
+			loadHomeTracklist(
+				queue_tracklist,
+				queue.num_tracks,
+				ajax_params,
+				params);
+		}
+	}
+
+	// PLAYLIST TRACKLIST
+
+	if (tracklist_playlist_uuid != playlist_uuid ||
+		tracklist_playlist_id != playlist_id ||
+		tracklist_playlist_version != playlist_version)
+	{
+		display(dbg_tl,0,"playlist changed from " +
+			tracklist_playlist_uuid + ":" + tracklist_playlist_id + ":" + tracklist_playlist_version + " to " +
+			playlist_uuid+":"+playlist_id+":"+playlist_version);
+
+		tracklist_playlist_uuid = playlist_uuid;
+		tracklist_playlist_id = playlist_id;
+		tracklist_playlist_version = playlist_version;
+		playlist_tracklist.clear();
+
+		if (playlist && playlist.num_tracks > 0)
+		{
+			var ajax_params = {
+				async: true,
+				method: 'GET',
+				url: "/webui/library/" + playlist_uuid + "/get_playlist_tracks_sorted", };
+			var params = {
+				id:playlist_id, };
+
+			loadHomeTracklist(
+				playlist_tracklist,
+				playlist.num_tracks,
+				ajax_params,
+				params);
+		}
+	}
+}
+
+
+
+
+
+//--------------------------------------
+// incremental tracklist loading
+//--------------------------------------
+// very similar code in explorer.js
+// one key factor is to stop any previous loads if a new load starts
+// 	   which is managed via tree.my_load_counter changing
+//     and passing it via parameter to the async loop.
+
+function loadHomeTracklist(tree,num_elements,ajax_params,params)
+{
+	display(dbg_tl,0,"loadHomeTracklist(" + params.method + ") num(" + num_elements + ") " + params.url);
+	tree.my_load_counter++;		// stop any other loads on this tree
+	tree.my_num_loaded = 0;		// initialize for new load
+	tree.my_num_elements = num_elements;
+
+	params.source = 'loadTracks';
+
+	loadHomeTracks(tree,tree.my_load_counter,ajax_params,params);
+}
+
+
+function loadHomeTracks(tree,counter,ajax_params,params)
+{
+	// if the counter has changed, the old load is now invalid
+
+	if (counter != tree.my_load_counter)
+		return;
+
+	// if we have loaded all the elements, we are done
+
+	if (tree.my_num_loaded >= tree.my_num_elements)
+		return;
+
+	params.start = tree.my_num_loaded;
+	params.count = LOAD_PER_REQUEST;
+	display(dbg_tl,1,"loadHomeTracks(" + params.start + "," + params.count + ")");
+
+	if (ajax_params.method == 'POST')
+	{
+		ajax_params.data = JSON.stringify(params);
+	}
+	else
+	{
+		ajax_params.data = params;
+	}
+
+	ajax_params.success =  function (result)
+	{
+		onHomeLoadTracks(tree,counter,result);
+		tree.my_num_loaded += result.length;
+		loadHomeTracks(tree,counter,ajax_params,params);
+	};
+
+
+	$.ajax(ajax_params);
+}
+
+
+
+function addHomeTrackNode(tree,counter,rec)
+{
+	if (counter == tree.my_load_counter)
+	{
+		rec.TITLE = rec.title;
+		delete rec.title;
+
+		display(dbg_tl,2,"addHomeTrackNode(" + rec.TITLE + ")");
+		var	parent = tree.getRootNode();
+		parent.addNode(rec);
+	}
+}
+
+
+function onHomeLoadTracks(tree,counter,result)
+{
+	display(dbg_tl,1,"onHomeLoadTracks(" + result.length + ")");
+	for (var i=0; counter==tree.my_load_counter && i<result.length; i++)
+	{
+		addHomeTrackNode(tree,counter,result[i]);
+	}
+}
+
+
+
 
 function unused_queue_command(command)
 {
@@ -210,347 +487,6 @@ function unused_queue_command(command)
 }
 
 
-function renderer_command(command,args)
-{
-	if (!current_renderer)
-	{
-		rerror("No current_renderer in renderer_command: " + what);
-		return;
-	}
 
-	if (current_renderer['uuid'] == 'html_renderer')
-	{
-		audio_command(command,args);
-		in_slider = false;
-		// in_playlist_slider = false;
-		// in_playlist_spinner = false;
-		update_renderer_ui();
-		return;
-	}
 
-	var cmd_args = '';
-	if (args != undefined)
-	{
-		for (key in args)
-		{
-			cmd_args += (cmd_args ? '&' : '?');
-			cmd_args += key + '=' + args[key];
-		}
-	}
-
-	$.get('/webui/renderer/' + current_renderer['uuid'] + '/' + command + cmd_args,
-
-		function(result)
-		{
-			if (result.error)
-			{
-				rerror('Error in renderer_command(' + command + '): ' + result.error);
-				current_renderer = false;
-			}
-			else
-			{
-				current_renderer = result;
-			}
-			in_slider = false;
-			// in_playlist_slider = false;
-			// in_playlist_spinner = false;
-			update_renderer_ui();
-		}
-	);
-}
-
-
-
-//========================================================
-// RENDERER PANE (init and update)
-//========================================================
-
-function init_renderer_pane()
-{
-	display(dbg_home,0,"init_renderer_pane()");
-
-	$( "#renderer_slider" ).slider({
-		disabled:true,
-		stop: function( event, ui ) {
-			on_slider_complete(event,ui);
-		},
-		start: function( event, ui ) {
-			in_slider = true;
-		},
-	});
-
-	renderer_slider = $('#renderer_slider');
-
-	$(".transport_button").button();
-	$('.header_button').button();
-
-	// use 'select' event to shuffle when they press a
-	// drop-down shuffle button, even if it's the same one
-
-	$('#transport_shuffle').selectmenu({
-		select: function( event, ui ) { onShuffleChanged(event,ui); }
-	});
-
-	// have to implement world-wide standard behavior for
-	// brain-dead jquery ... if you click outside of selectmenu
-	// it should just effing close ... another hour wasted.
-
-    $(document).on("click", function(event) {
-		if (!event.target.classList.contains("ui-selectmenu-text"))
-		{
-           $('#transport_shuffle').selectmenu('close');
-		}
-	});
-}
-
-
-
-function on_slider_complete(event,ui)
-	// sliders are in pct
-	// command is in millieseconds
-{
-	var millis = parseInt(ui.value * current_renderer.duration/100);
-	display(dbg_slider,0,"on_slider_complete(" + millis + ")");
-	renderer_command('seek',{position:millis});
-	return true;
-}
-
-
-
-function onShuffleChanged(event,ui)
-{
-	var how = ui.item.value;
-	display(0,0,"onShuffleChanged(" + how + ")");
-	renderer_command('shuffle?how=' + how );
-}
-
-
-function update_renderer_ui()
-{
-	display(dbg_loop,0,"renderer.update_renderer_ui()");
-	var metadata;
-	var state = '';
-	var queue = '';
-	var playlist = '';
-
-	// based on renderer
-
-	if (!current_renderer || !current_renderer.queue)
-	{
-		last_playing = -1;
-		$('#renderer_header_left').html('');
-		$('#renderer_header_right').html('no renderer');
-	}
-	else
-	{
-		state = current_renderer.state;
-		queue = current_renderer.queue;
-		playlist = current_renderer.playlist;
-		metadata = current_renderer.metadata;
-
-		$('#renderer_state').html(state);
-		$('#renderer_queue_state').html(
-			queue.num_tracks ?
-			"Q(" + (queue.track_index+1) + "/" + queue.num_tracks + ")" : '');
-		$('#renderer_playlist_state').html(
-			playlist ? playlist.name + "(" + playlist.track_index + "/" + playlist.num_tracks + ")" : '');
-		$('#renderer_status').html(
-			idle_count + " " + current_renderer.name);
-
-		if (last_playing != current_renderer.playing)
-		{
-			last_playing = current_renderer.playing;
-
-			var shuffle;
-			if (current_renderer.playing == RENDERER_PLAY_PLAYLIST)
-			{
-				$('#renderer_queue_state').removeClass('header_active');
-				$('#renderer_queue_state').button('enable');
-				$('#renderer_playlist_state').addClass('header_active');
-				$('#renderer_playlist_state').button('disable');
-				shuffle = playlist.shuffle;
-			}
-			else
-			{
-				$('#renderer_playlist_state').removeClass('header_active');
-				$('#renderer_playlist_state').button('enable');
-				$('#renderer_queue_state').addClass('header_active');
-				$('#renderer_queue_state').button('disable');
-				shuffle = queue.shuffle;
-			}
-
-			$('#transport_shuffle').val(shuffle);
-			$("#transport_shuffle").selectmenu("refresh");
-		}
-	}
-
-	// based on queue
-
-	if (!queue)
-	{
-		$('#transport_play').html('>');
-
-		$('#transport_shuffle').selectmenu('disable');
-		disable_button('#transport_prev_album',	true);
-		disable_button('#transport_prev',		true);
-		disable_button('#transport_play',		true);
-		disable_button('#transport_stop',		true);
-		disable_button('#transport_next',		true);
-		disable_button('#transport_next_album',	true);
-	}
-	else
-	{
-		var no_tracks = queue.num_tracks == 0;
-		var no_earlier = queue.track_index == 0;
-		var no_later = queue.track_index >= queue.num_tracks;
-
-		if (playlist &&		// should always by synonymous
-			current_renderer.playing == RENDERER_PLAY_PLAYLIST)
-		{
-			// playlists wrap so earlier/later is true if there's
-			// more than one track
-			no_tracks = playlist.num_tracks == 0;
-			no_earlier = playlist.num_tracks <= 1;
-			no_later = playlist.num_tracks <= 1;
-			shuffle = playlist.shuffle;
-		}
-
-		$('#transport_play').html(
-			state == RENDERER_STATE_PAUSED ||
-			state == RENDERER_STATE_INIT ||		// playlist in stopped state
-			state == RENDERER_STATE_STOPPED ? '>' : '||');
-
-		$('#transport_stop').html(
-			state == RENDERER_STATE_STOPPED ? 'O' : 'X');
-
-		$('#transport_shuffle').selectmenu(no_tracks ? 'disable' : 'enable');
-		disable_button('#transport_prev_album',	no_tracks || no_earlier);
-		disable_button('#transport_prev',		no_tracks || no_earlier);
-		disable_button('#transport_play',		no_tracks);
-		disable_button('#transport_stop',		no_tracks);
-		disable_button('#transport_next',		no_tracks || no_later);
-		disable_button('#transport_next_album',	no_tracks || no_later);
-	}
-
-	// based on metadata
-	// which is the current song playing
-
-	if (!metadata)
-	{
-		$('#renderer_song_title')	.html('');
-		$('#renderer_album_artist')	.html('');
-		$('#renderer_album_title')	.html('');
-		$('#renderer_album_track')	.html('');
-		$('#renderer_song_genre')	.html('');
-		$('#renderer_album_image').attr('src','/webui/icons/artisan.png');
-
-		renderer_slider.slider('disable')
-		$('#renderer_slider').slider('value',0);
-		$('#renderer_position')		.html('');
-		$('#renderer_duration')		.html('');
-		$('#renderer_play_type')	.html('');
-	}
-	else
-	{
-		$('#renderer_song_title')	.html(decode_ampersands(metadata.title));
-		$('#renderer_album_artist') .html(decode_ampersands(metadata.artist));
-		$('#renderer_album_title')	.html(decode_ampersands(metadata.album_title));
-		$('#renderer_album_track')  .html(metadata.tracknum != '' ?
-			'track: ' + metadata.tracknum : '');
-
-		var genre_year = metadata.genre ?
-			decode_ampersands(metadata.genre) : '';
-		if (metadata && metadata.year_str && metadata.year_str != "")
-		{
-			if (genre_year) genre_year += ' | ';
-			genre_year += metadata.year_str;
-		}
-		$('#renderer_song_genre').html(genre_year);
-
-		$('#renderer_album_image').attr('src', metadata.art_uri ?
-			metadata.art_uri : '/webui/icons/no_image.png');
-
-		$('#renderer_play_type').html(
-			metadata.type + ' &nbsp;&nbsp; ' +  metadata.pretty_size);
-
-		$('#renderer_button_play_pause').val(
-			state == RENDERER_STATE_PLAYING ? '||' : '>')
-			$('#renderer_duration').html(
-				millis_to_duration(current_renderer.duration,false));
-
-		$('#renderer_position').html(
-			millis_to_duration(current_renderer.position,false));
-
-		if (current_renderer.duration>0)
-		{
-			renderer_slider.slider('enable');
-			if (!in_slider)
-				$('#renderer_slider').slider('value',
-				parseInt(current_renderer.position / current_renderer.duration  * 100));
-		}
-		else
-		{
-			renderer_slider.slider('disable');
-			$('#renderer_slider').slider('value',0);
-		}
-	}
-
-	display(dbg_loop,0,"renderer.update_renderer_ui() returning");
-
-}	// update_renderer_ui()
-
-
-
-
-//--------------------------------------------
-// update_renderer_ui() utilities
-//--------------------------------------------
-
-
-function disable_button(selector,disabled)
-{
-	$( selector).button( "option", "disabled", disabled );
-}
-
-function padZero(len,st0)
-{
-	var st = "" + st0;
-	if (st.length < len)
-		st = "0" + st;
-	return st;
-}
-
-
-function millis_to_duration(millis,precise)
-{
-	millis = parseInt(millis);
-	var secs = parseInt(parseInt(millis)/1000);
-	millis = millis - secs * 1000;
-
-	var mins = parseInt(secs/60);
-	secs = secs - mins * 60;
-
-	var hours = parseInt(mins/60);
-	mins = mins - hours * 60;
-
-    var retval = '';
-	if (hours > 0 || precise)
-	{
-		if (precise)
-			hours = padZero(2,hours);
-		retval += hours + ":";
-	}
-
-	if (precise)
-		mins = padZero(2,mins);
-	retval += mins + ":";
-	retval += padZero(2,secs);
-
-	if (precise)
-		retval += "." + padZero(3,millis);
-
-	return retval;
-}
-
-
-// END OF renderer.js
+// END OF home.js

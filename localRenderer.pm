@@ -8,6 +8,14 @@
 #
 # A Renderer is playing on or the other of the current Queue
 # and a potential Playlist. The Queue can end, Playlists wrap.s
+#
+# As currently implemented, an 'immediate' play (single song)
+# has the effect of replacing the item in the current Queue/Playlist.
+# if the song ends, or if they they hit >> forward from there, they go to
+# the next song in the Queue/Playlist. If they hit << they play the song
+# that was previously playing.  This behavior is 'ok', as is the fact
+# that we start songs from the beginning when a playlist is interrupted
+# and then restarted ... minor details for another day.
 
 package localRenderer;
 use strict;
@@ -325,9 +333,28 @@ sub doCommand
 	#   update
 	#	stop
 	#   play_pause
+	#   seek
+	#		position => ms
+	#
+	#   play_song =>
+	#		library_uuid => uuid
+	#		track_id => id
+	#
+	#	set_playing
+	#		playing=$RENDERER_PLAY_XXX
 	#
 	#   next
 	#   prev
+	#	next_album
+	#	prev_album
+	#
+	#   set_playlist
+	#		library_uuid => uuid
+	#       id => playlist_id
+	#	playlist_song
+	#		index => index to use
+	#	shuffle
+	#		how => $SHUFFLE_XXX  (0,1,2)
 	#
 	#	mute 0 or 1		- not implemented yet
 	#	loud 0 or 1
@@ -338,20 +365,7 @@ sub doCommand
 	#	midLevel 0..100
 	#	highLevel 0..100
 	#		value =>
-	#   seek
-	#		position => ms
-	#
-	#   play_song =>
-	#		library_uuid => uuid
-	#		track_id => id
-	#
-	#   set_playlist
-	#		library_uuid => uuid
-	#       id => playlist_id
-	#	playlist_song
-	#		index => index to use
-	#	shuffle_playlist
-	#		shuffle => 0,1,2
+
 {
 	my ($this,$command,$params) = @_;
 	my $extra_dbg = $command eq 'update' ? 1 : 0;

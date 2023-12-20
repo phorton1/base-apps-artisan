@@ -1,7 +1,14 @@
 /*******************************************
  explorer.css
 ********************************************/
+/* ALBUM INFO TOP PANE */
 
+#explorer_folder_td		{ padding-top:2px; margin-left:20px; }
+#explorer_folder_title  { font-size:12pt;  margin-top:0px; margin-bottom:0px; font-weight:bold; }
+#explorer_folder_artist { font-size:10pt;  margin-top:0px; margin-bottom:0px;}
+#explorer_folder_genre  { font-size:10pt;  margin-top:0px; margin-bottom:0px;}
+#explorer_folder_year   { font-size:10pt;  margin-top:0px; margin-bottom:0px;}
+#explorer_folder_path   { font-size:8pt;   margin-top:4px; margin-bottom:0px;}
 
 
 .select_buttons
@@ -20,27 +27,14 @@
 
 
 
+/* EXPLORER TREE */
 
-table.fancytree-ext-table tbody tr td
-{
-	border:0px;
-}
-
-ul.fancytree-container
-{
-	background-color:#000000;
-	border: none;
-}
-
-
-#explorer_tracklist_div,
 #explorer_tree_div
 {
 	overflow-y:auto !important;
 }
 
 
-#explorer_tracklist,
 #explorer_tree
 {
 	width:100%;
@@ -48,8 +42,7 @@ ul.fancytree-container
 }
 
 
-#explorer_tree span,
-#explorer_tracklist td
+#explorer_tree span
 {
     overflow:hidden;
 	color:#ffffff;
@@ -58,63 +51,17 @@ ul.fancytree-container
 }
 
 
-/* selected color must come after normal color */
-
-.fancytree-selected > span.fancytree-title,
-.fancytree-selected > td,
-.fancytree-partsel > td
-{
-	background: green !important;
-	background-color: #74992e !important;
-}
 
 
 
-/* There is a vestigial right column available in the tree */
-
-.explorer_tree_num
-{
-    text-align:right;
-    padding-right:3px;
-	width:45px;
-	display:table-cell;
-}
-
-.explorer_tree_num_column
-{
-	display:block;
-}
 
 
-#explorer_folder_td		{ padding-top:2px; margin-left:20px; }
-#explorer_folder_title  { font-size:12pt;  margin-top:0px; margin-bottom:0px; font-weight:bold; }
-#explorer_folder_artist { font-size:10pt;  margin-top:0px; margin-bottom:0px;}
-#explorer_folder_genre  { font-size:10pt;  margin-top:0px; margin-bottom:0px;}
-#explorer_folder_year   { font-size:10pt;  margin-top:0px; margin-bottom:0px;}
-#explorer_folder_path   { font-size:8pt;   margin-top:4px; margin-bottom:0px;}
+/* EXPLORER DETAILS */
 
-
-#explorer_details td,
-#explorer_tracklist td
+#explorer_details td
 {
 	vertical-align:middle !important;
 }
-
-
-#explorer_tracklist .fancytree-expander
-{
-	display:none !important;
-}
-
-
-.tracklist_icon  	{ width:16px; max-width:16px; }
-.tracklist_tracknum	{ width:24px; max-width:24px;  padding-left:2px; }
-.tracklist_title  	{ width: 33%; min-width:160px; padding-left:8px; }
-.tracklist_album  	{ width: 25%; min-width:120px;  padding-left:8px; }
-.tracklist_genre  	{ min-width:50px;  padding-left:8px; }
-.tracklist_year  	{ min-width:20px;  text-align:center;}
-
-
 
 
 #explorer_details_div
@@ -124,19 +71,16 @@ ul.fancytree-container
 }
 
 
-
-/* it was necessary to get rid of the min-height:20px from
-   jquery/fancytree-2.38.3/skin-themeroller/ui.fancytree.css:372
-   in order to make the details lines more compact */
-
 #explorer_details span
+/*
+	it was necessary to get rid of the min-height:20px from
+	jquery/fancytree-2.38.3/skin-themeroller/ui.fancytree.css:372
+	in order to make the details lines more compact
+*/
 {
 	min-height:0px !important;
 }
 
-
-
-/* there is no actual styling for explorer_details_rvalue */
 
 .explorer_details_icon    { width:16px; !important;  }
 .explorer_details_lvalue  { width:45px; overflow:hidden; }
@@ -148,24 +92,6 @@ ul.fancytree-container
 	icon: auto;
 }
 
-
-
-/* Example of using a media query in the CSS to change one thing */
-/* We set bigger fonts in the tracklist and tree on mobile devices
-   as determined by anything with a width <= 1250 pix */
-
-@media (max-device-width: 1250px)
-{
-	#explorer_tree span,
-	#explorer_tracklist td
-	{
-		font-size:15pt;
-	}
-	#explorer_details td
-	{
-		font-size:13pt;
-	}
-}
 
 
 /* end of explorer.css */

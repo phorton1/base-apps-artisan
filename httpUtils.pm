@@ -68,7 +68,7 @@ sub http_error
 {
 	my ($msg) = @_;
 	error($msg,1);
-	return http_header({ status_code => 400 });
+	return http_header({ status_code => 400 }).$msg."\r\n";
 }
 
 
