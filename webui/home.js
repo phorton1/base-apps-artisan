@@ -330,24 +330,10 @@ function update_home_tracklists()
 		invalidate_tracklists();
 	}
 
-	// get the state from current_renderer
-
-	var queue_version = queue.version;
-
-	var playlist_uuid = '';
-	var playlist_id = '';
-	var playlist_version = -1;
-	var playlist = current_renderer.playlist;
-
-	if (playlist)
-	{
-		playlist_uiud = playlist.uuid;
-		playlist_id = playlist.id;
-		playlist_version = playlist.data_version;
-	}
 
 	// QUEUE TRACKLIST
 
+	var queue_version = queue.version;
 	if (tracklist_queue_version != queue_version)
 	{
 		display(dbg_tl,0,"queue_version changed from " + tracklist_queue_version + " to " + queue_version);
@@ -371,7 +357,20 @@ function update_home_tracklists()
 		}
 	}
 
+
 	// PLAYLIST TRACKLIST
+
+	var playlist_uuid = '';
+	var playlist_id = '';
+	var playlist_version = -1;
+	var playlist = current_renderer.playlist;
+	if (playlist)
+	{
+		playlist_uiud = playlist.uuid;
+		playlist_id = playlist.id;
+		playlist_version = playlist.data_version;
+	}
+
 
 	if (tracklist_playlist_uuid != playlist_uuid ||
 		tracklist_playlist_id != playlist_id ||

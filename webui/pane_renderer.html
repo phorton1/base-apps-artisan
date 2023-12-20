@@ -69,16 +69,6 @@
 
 		<div class='transport_buttons'>
 
-			<select id="transport_shuffle" class="transport_shuffle">
-			  <option value="0">Off</option>
-			  <option value="1">Tracks</option>
-			  <option value="2">Albums</option>
-			</select>
-
-			<!-- button
-				id="transport_shuffle"
-				class="shuffle_button"
-				onclick = "javascript:transport_shuffle()">shuffle</button -->
 			<button
 				id="transport_prev_album"
 				class="transport_button"
@@ -105,6 +95,13 @@
 				id="transport_next_album"
 				class="transport_button"
 				onclick = "javascript:renderer_command('next_album')">&gt;|</button>
+
+			<select id="transport_shuffle" class="transport_shuffle">
+			  <option value="0">Off</option>
+			  <option value="1">Tracks</option>
+			  <option value="2">Albums</option>
+			</select>
+
 		</div>
 
     </div>	<!-- why the extra div? -->
