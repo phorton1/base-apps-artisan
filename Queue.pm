@@ -64,7 +64,8 @@ sub new
 	display($dbg_queue,0,"new Queue($renderer_uuid}");
 	my $this = shared_clone({
 		version => 0,
-		renderer_uuid => $renderer_uuid });
+		renderer_uuid => $renderer_uuid,
+		needs_start => 0 });
 	bless $this,$class;
 	$this->clear();
 	$master_queue->{$renderer_uuid} = $this;
@@ -72,76 +73,82 @@ sub new
 }
 
 
-sub getNextTrack()
+sub queue_error
 {
-	my ($this) = @_;
-	display($dbg_queue,0,"getNextTrack($this->{started},$this->{num_tracks},$this->{track_index}");
-
-	my $track = '';
-	my $tracks = $this->{tracks};
-	if ($this->{track_index} < $this->{num_tracks})
-	{
-		$this->{track_index}++ if $this->{started};
-		$track = $tracks->[$this->{track_index}];
-	}
-	$this->{started} = 1;
-	display($dbg_queue,0,"getNextTrack($this->{started},$this->{num_tracks},$this->{track_index}) returning track=".($track ? $track->{title} : 'undef'));
-	return $track;
+	my ($rslt,$msg) = @_;
+	$rslt->{error} = error($msg,1);
+	return $rslt;
 }
 
 
-
 sub queueCommand
-	# returns blank or error except for get_tracks
-	# which tracks to be jsonified and returned
+	# returns a hash that *may* contain an error,
+	# a single track, a list of tracks, and/or a
+	# copy of the queue
+	#
+	# 	error => implies an error
+	#   queue => returned for most commands that change the queue
+	#   tracks => subset of tracks returned for get_tracks($start,$count)
+	#   track => the track after a next, prev, that returns a track
 {
 	my ($command,$post_params) = @_;
-	display_hash($dbg_queue,0,"queueCommand($command)",$post_params);
+	my $dbg = $command eq 'get_queue' ? $dbg_queue + 2 : $dbg_queue;
+	display_hash($dbg,0,"queueCommand($command)",$post_params);
 
-	my $u_version = $post_params->{version};
-	# return error("No version in queue/$command call") if !$u_version;
+	my $rslt = {};
+
 	my $r_uuid = $post_params->{renderer_uuid};
-	return error("No renderer_uuid in queue/$command call") if !$r_uuid;
-	my $renderer = findDevice($DEVICE_TYPE_RENDERER,$r_uuid);
-	return error("Could not find renderer $r_uuid") if !$renderer;
+	return queue_error($rslt,"No renderer_uuid in queue/$command call")
+		if !$r_uuid;
+
+	# html_renderers are allowed to establish a queue even
+	# though there is currently no Device associated with them.
+	# $renderer is not used, it is just a safety check.
+
+	if ($r_uuid !~ /^html_renderer/)
+	{
+		my $renderer = findDevice($DEVICE_TYPE_RENDERER,$r_uuid);
+		return queue_error($rslt,"Could not find renderer $r_uuid")
+			if !$renderer;
+	}
 
 	my $queue = getQueue($r_uuid);
-
 	if ($command eq 'add' || $command eq 'play')
 	{
-		return enqueue($command,$post_params,$queue);
+		$queue->enqueue($rslt,$command,$post_params);
 	}
 	elsif ($command eq 'next' || $command eq 'prev')
 	{
 		my $inc = $command eq 'next' ? 1 : -1;
-		$queue->incTrack($inc);
+		$queue->incTrack($rslt,$inc);
 	}
 	elsif ($command eq 'next_album' || $command eq 'prev_album')
 	{
 		my $inc = $command eq 'next_album' ? 1 : -1;
-		$queue->incAlbum($inc);
+		$queue->incAlbum($rslt,$inc);
 	}
 	elsif ($command eq 'play_track')
 	{
 		my $pl_idx = $post_params->{pl_idx};
-		return error("No pl_idx in Queue::play_track") if !defined($pl_idx);
-		$pl_idx = 0 if $pl_idx < 0;
-		$pl_idx = $queue->{num_tracks}-1 if $pl_idx > $queue->{num_tracks}-1;
-		$queue->{track_index} = $pl_idx;
-		$queue->{started} = 0;
-		$queue->{needs_start} = 1;
+		if (!defined($pl_idx))
+		{
+			queue_error($rslt,"No pl_idx in Queue::play_track");
+		}
+		else
+		{
+			$pl_idx = 0 if $pl_idx < 0;
+			$pl_idx = $queue->{num_tracks}-1 if $pl_idx > $queue->{num_tracks}-1;
+			$queue->{track_index} = $pl_idx;
+			$queue->{needs_start}++;
+			$rslt->{track} = $queue->{tracks}->[$pl_idx];
+		}
 	}
 
 	elsif ($command eq 'get_tracks')
 	{
-		# this wont work.
-		# queue commands are using post
-		# and this has url params;
-
-		my $tracks = [];
+		$rslt = { tracks=>[] };
 		my $start = $post_params->{start};
 		my $count = $post_params->{count};
-
 		if ($start < $queue->{num_tracks})
 		{
 			my $avail = $queue->{num_tracks} - $start;
@@ -149,19 +156,46 @@ sub queueCommand
 			for (my $i=0; $i<$count; $i++)
 			{
 				my $rec = $queue->{tracks}->[$i + $start];
-				push @$tracks,$rec;
+				push @{$rslt->{tracks}},$rec;
 			}
 		}
+		display($dbg_queue,2,"got ".scalar(@{$rslt->{tracks}})." tracks for queue get_tracks json");
+	}
 
-		display($dbg_queue,2,"got ".scalar(@$tracks)." tracks for queue get_tracks json");
-		return $tracks;
+	# support for html_renderers
+
+	elsif ($command eq 'get_queue')
+	{
+		# no-op - returns queue below
+	}
+	elsif ($command eq 'clear')
+	{
+		$queue->clear();
+	}
+	elsif ($command eq 'restart')
+	{
+		$queue->restart($rslt);
+	}
+	elsif ($command eq 'shuffle')
+	{
+		my $how = $post_params->{how};
+		if (!defined($how))
+		{
+			queue_error($rslt,"No how defined in queue_command(shuffle)");
+		}
+		else
+		{
+			$queue->shuffle($rslt,$how);
+		}
 	}
 	else
 	{
-		return error("unknown queue command '$command'");
+		queue_error($rslt,"unknown queue command '$command'");
 	}
 
-	return '';
+	$rslt->{queue} = $queue->copyMinusTracks()
+		if !$rslt->{error};
+	return $rslt;
 }
 
 
@@ -170,16 +204,16 @@ sub queueCommand
 #-----------------------------------------------------
 
 sub enqueue
-	# returns an error on failure, blank on success
+	# returns 1 success, sets $$error otherwise
 	# folders and tracks commands are disjoint and separate
 {
-	my ($command,$post_params,$queue) = @_;
+	my ($this,$rslt,$command,$post_params) = @_;
 	display($dbg_queue,0,"enqueue($command)");
 	my $l_uuid = $post_params->{library_uuid};
-	return error("No library_uuid in eneueue($command)")
+	return queue_error($rslt,"No library_uuid in eneueue($command)")
 		if !$l_uuid;
 	my $library = findDevice($DEVICE_TYPE_LIBRARY,$l_uuid);
-	return error("Could not find library $l_uuid in eneueue($command)")
+	return queue_error($rslt,"Could not find library $l_uuid in eneueue($command)")
 		if !$library;
 
 	# gather the tracks to be added
@@ -190,8 +224,8 @@ sub enqueue
 	if ($folders)
 	{
 		my @ids = split(/,/,$post_params->{folders});
-		$tracks = enqueueFolders($library,\@ids);
-		return error("Could not enqueuFolders") if !$tracks;
+		$tracks = enqueueFolders($rslt,$library,\@ids);
+		return '' if !$tracks;
 	}
 	else	# $post_params->{tracks} must be valid
 	{
@@ -199,7 +233,10 @@ sub enqueue
 		for my $id (@ids)
 		{
 			my $track = $library->getTrack($id);
-			return error("Could not find track($id)") if !$track;
+			if (!$track)
+			{
+				return queue_error($rslt,"Could not find track($id)");
+			}
 			push @$tracks,$track;
 		}
 	}
@@ -225,8 +262,8 @@ sub enqueue
 
 	my $num_tracks = scalar(@$tracks);
 
-	my $q_tracks = $queue->{tracks};
-	my $q_index = $queue->{track_index};
+	my $q_tracks = $this->{tracks};
+	my $q_index = $this->{track_index};
 	my $q_num = @$q_tracks;
 	my $pos = $q_num;
 		# nominal position - tracks always added at the end
@@ -264,7 +301,8 @@ sub enqueue
 			$q_tracks->[$i + $q_index] = $track;
 		}
 
-		$queue->{needs_start} = 1;
+		$rslt->{track} = $q_tracks->[$q_index];
+		$this->{needs_start}++;
 	}
 	else
 	{
@@ -280,15 +318,17 @@ sub enqueue
 		}
 
 		# Add does not immediately start playing
-		$queue->{needs_start} = 1 if $command eq 'play';
+		if ($command eq 'play')
+		{
+			$this->{needs_start}++;
+			$rslt->{track} = $q_tracks->[0];
+		}
 	}
 
+	$this->{num_tracks} += $num_tracks;
+	$this->{version}++;
 
-	$queue->{num_tracks} += $num_tracks;
-	$queue->{started} = 0 if $queue->{needs_start};
-	$queue->{version}++;
-
-	display($dbg_queue,0,"Queue(V_$queue->{version}) num($queue->{num_tracks}) idx($queue->{track_index}) needs_start($queue->{needs_start})");
+	display($dbg_queue,0,"Queue($this->{version}) num($this->{num_tracks}) idx($this->{track_index}) needs_start($this->{needs_start})");
 	if ($dbg_queue < 0)
 	{
 		my $i = 0;
@@ -299,15 +339,16 @@ sub enqueue
 		}
 	}
 
-	return '';
+	return 1;
 }
+
 
 
 sub enqueueFolders
 	# Note that folders can contain both Albums/Playlists and Subfolders
 	# and that we do them in the order returned by getSubItems()
 {
-	my ($library,$ids,$tracks,$visited) = @_;
+	my ($rslt,$library,$ids,$tracks,$visited) = @_;
 	display($dbg_queue,0,"enqueueFolders(".scalar(@$ids).")");
 
 	$tracks ||= [];
@@ -319,24 +360,25 @@ sub enqueueFolders
 		{
 			$visited->{$id} = 1;
 			my $folder = $library->getFolder($id);
-			return !error("Could not get folder($id)") if !$folder;
+			return queue_error($rslt,"Could not get folder($id)")
+				if !$folder;
 
 			if ($folder->{dirtype} eq 'album' ||
 				$folder->{dirtype} eq 'playlist')
 			{
 				my $folder_tracks = $library->getSubitems('tracks',$folder->{id},0,9999999);
-				return !error("Could not get folder_tracks($id)") if !$folder_tracks;
+				return !queue_error($rslt,"Could not get folder_tracks($id)") if !$folder_tracks;
 				display($dbg_queue,1,"enquing ".scalar(@$folder_tracks)." from folder$folder->{title}");
 				push @$tracks,@$folder_tracks;
 			}
 			else
 			{
 				my $sub_folders = $library->getSubitems('folders',$folder->{id},0,9999999);
-				return !error("Could not get sub_folders($id)") if !$sub_folders;
+				return !queue_error($rslt,"Could not get sub_folders($id)") if !$sub_folders;
 				for my $sub_folder (@$sub_folders)
 				{
 					display($dbg_queue+1,1,"enquing subfolder($folder->{title})");
-					my $rslt = enqueueFolders($library,[$sub_folder->{id}],$tracks,$visited);
+					my $rslt = enqueueFolders($rslt,$library,[$sub_folder->{id}],$tracks,$visited);
 					return if !$rslt;
 				}
 			}
@@ -352,12 +394,24 @@ sub enqueueFolders
 # Queue Object
 #--------------------------------------------------
 
+sub copyMinusTracks
+{
+	my ($this) = @_;
+	# return the queue minus the tracks
+	my $rslt = {};
+	for my $key (keys %$this)
+	{
+		next if $key eq 'tracks';
+		$rslt->{$key} = $this->{$key};
+	}
+	return $rslt;
+}
+
+
 sub clear
 {
 	my ($this) = @_;
 	$this->{version}++;
-	$this->{started} = 0;
-	$this->{needs_start} = 0;
 	$this->{track_index} = 0;
 	$this->{num_tracks} = 0;
 	$this->{shuffle} = $SHUFFLE_NONE;
@@ -367,29 +421,39 @@ sub clear
 
 sub incTrack
 {
-	my ($this,$inc) = @_;
+	my ($this,$rslt,$inc) = @_;
 	display($dbg_queue,0,"incTrack($this->{renderer_uuid},$this->{num_tracks},$this->{track_index},$this->{version}) inc=$inc");
 	my $new_idx = $this->{track_index} + $inc;
 
 	if ($new_idx >= 0 && $new_idx <= $this->{num_tracks})
 	{
 		$this->{track_index} = $new_idx;
-		$this->{needs_start} = 1;
-		$this->{started} = 0;
+
+		# anytime needs start is set to 1,
+		# we we will set the track into the result
+		# for the html_renderer ..
+
+		$this->{needs_start}++;
+		if ($new_idx < $this->{num_tracks})
+		{
+			$rslt->{track} = $this->{tracks}->[$new_idx];
+		}
 		display($dbg_queue,0,"incTrack($inc) returning idx($new_idx)");
 	}
 	else
 	{
-		return error("new_idx($new_idx) out of range in incTrack($inc)");
+		queue_error($rslt,"new_idx($new_idx) out of range in incTrack($inc)");
 	}
 }
+
 
 
 sub incAlbum
 	# backwards will go to beginning of album if there is no other album
 	# forwards will stop the queue if there is no other album
+	# prh - should have an error param for boundry conditions ...
 {
-	my ($this,$inc) = @_;
+	my ($this,$rslt,$inc) = @_;
 	display($dbg_queue,0,"incAlbum($this->{renderer_uuid},$this->{num_tracks},$this->{track_index},V_$this->{version}) inc=$inc");
 
 	my $tracks = $this->{tracks};
@@ -444,12 +508,19 @@ sub incAlbum
 			$idx++ if albumId($track) ne $album_id;
 		}
 	}
+	else
+	{
+		queue_error($rslt,"idx out of range in incAlbum($inc)");
+	}
 
 	if ($moved)
 	{
 		$this->{track_index} = $idx;
-		$this->{needs_start} = 1;
-		$this->{started} = 0;
+		$this->{needs_start}++;
+		if ($idx < $this->{num_tracks})
+		{
+			$rslt->{track} = $this->{tracks}->[$idx];
+		}
 		display($dbg_queue,0,"incAlbum($inc) returning idx($idx)");
 	}
 	else
@@ -464,11 +535,15 @@ sub restart
 	# restart the queue, which MAY need resorting by pl_idx
 	# which is different than re-shuffling
 {
-	my ($this) = @_;
-	display($dbg_queue,0,"restart()");
-	$this->{track_index} = 0;
-	$this->{needs_start} = 1;
-	$this->{started} = 0;
+	my ($this,$rslt) = @_;
+	$this->{track_index} = 0
+		if $this->{track_index} >= $this->{num_tracks};
+	$this->{needs_start}++;
+	if ($this->{num_tracks})
+	{
+		$rslt->{track} = $this->{tracks}->[$this->{track_index}];
+	}
+	display($dbg_queue,0,"restart($this->{track_index}) needs_start($this->{needs_start})");
 }
 
 
@@ -488,7 +563,7 @@ sub random_album
 
 sub shuffle
 {
-	my ($this,$how) = @_;
+	my ($this,$rslt,$how) = @_;
 	display($dbg_queue,0,"shuffle($how)");
 
 	my $old_recs = $this->{tracks};
@@ -541,9 +616,12 @@ sub shuffle
 	$this->{shuffle} = $how;
 	$this->{tracks} = $new_recs;
 	$this->{track_index} = 0;
-	$this->{started} = 0;
-	$this->{needs_start} = 1;
+	$this->{needs_start}++;
 	$this->{version} ++;
+	if ($this->{num_tracks})
+	{
+		$rslt->{track} = $this->{tracks}->[0];
+	}
    	display($dbg_queue,0,"shuffle($how) finished");
 
 }

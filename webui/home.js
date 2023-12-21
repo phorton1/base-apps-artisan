@@ -103,7 +103,7 @@ function selectDefaultDevice(type)
 
 function selectDevice(type,uuid)
 {
-	if (type == DEVICE_TYPE_RENDERER && uuid == 'html_renderer')
+	if (type == DEVICE_TYPE_RENDERER && uuid.startsWith('html_renderer'))
 	{
 		onSelectDevice(type,uuid,html_renderer);
 		return;
@@ -214,6 +214,11 @@ function invalidate_tracklists()
 	tracklist_playlist_uuid = '';
 	tracklist_playlist_id = '';
 	tracklist_playlist_version = -1;
+	if (queue_tracklist)
+		queue_tracklist.clear();
+	if (playlist_tracklist)
+		playlist_tracklist.clear();
+
 }
 
 
@@ -238,14 +243,26 @@ function init_home_tracklists()
 			var rec = node.data;
 			queue_tracklist.selectAll(false);
 
-			var params = JSON.stringify({
-				pl_idx: rec.pl_idx,
-				renderer_uuid: current_renderer.uuid });
-			$.post('/webui/queue/play_track',params,function(result)
-			{
-				display(dbg_select+1,1,'queue_command() success result=' + result)
-			});
+			// we must let the html renderer do this command
+			// so that it gets the track from the result
 
+			if (current_renderer.uuid.startsWith('html_renderer'))
+			{
+				audio_command('play_track',{pl_idx:rec.pl_idx});
+			}
+			else
+			{
+				var params = JSON.stringify({
+					pl_idx: rec.pl_idx,
+					renderer_uuid: current_renderer.uuid });
+				$.post('/webui/queue/play_track',params,function(result)
+				{
+					if (result.error)
+					{
+						rerror(result.error);
+					}
+				});
+			}
 		},
 	});
 
@@ -343,21 +360,21 @@ function update_home_tracklists()
 	//      my_index_shown = -1 when needs showing
 	//
 {
-	var queue = current_renderer.queue;
-	if (!queue) return;		// not ready yet
 
 	// redo everything if renderer changes
 
 	if (tracklist_renderer_uuid != current_renderer.uuid)
 	{
-		display(dbg_tl,0,"tracklist_renderer_uuid changed");
+		display(dbg_tl,0,"tracklist_renderer_uuid changed from " +
+			tracklist_renderer_uuid + " to " + current_renderer.uuid);
 		tracklist_renderer_uuid = current_renderer.uuid;
 		invalidate_tracklists();
 	}
 
-
 	// QUEUE TRACKLIST
 
+	var queue = current_renderer.queue;
+	if (!queue) return;		// not ready yet
 	var queue_version = queue.version;
 	if (tracklist_queue_version != queue_version)
 	{
@@ -372,6 +389,7 @@ function update_home_tracklists()
 				method: 'POST',
 				url: "/webui/queue/get_tracks", };
 			var params = {
+				field:'tracks',
 				renderer_uuid:current_renderer.uuid, };
 
 			loadHomeTracklist(
@@ -516,6 +534,7 @@ function loadHomeTracklist(tree,num_elements,ajax_params,params)
 	params.source = 'loadTracks';
 
 	loadHomeTracks(tree,tree.my_load_counter,ajax_params,params);
+	display(dbg_tl,0,"returning from loadHomeTracklist");
 }
 
 
@@ -546,15 +565,27 @@ function loadHomeTracks(tree,counter,ajax_params,params)
 
 	ajax_params.success =  function (result)
 	{
-		if (onHomeLoadTracks(tree,counter,result))
+		if (result.error)
 		{
-			tree.my_num_loaded += result.length;
+			rerror(result.error);
+		}
+		else
+
+		// currently both results are flat lists of tracks
+		// which should be changed to tracks => []
+		// for more iot-like approach to handling json results
+
+		var pass = params.field ? result[params.field] : result;
+		if (onHomeLoadTracks(tree,counter,pass))
+		{
+			tree.my_num_loaded += pass.length;
 			loadHomeTracks(tree,counter,ajax_params,params);
 		}
 	};
 
 
 	$.ajax(ajax_params);
+	display(dbg_tl,1,"returning from loadHomeTracks(" + params.start + "," + params.count + ")");
 }
 
 
@@ -583,7 +614,7 @@ function addHomeTrackNode(tree,counter,rec)
 		//				 this was the only thing that effing worked
 
 
-		display(dbg_tl,2,"addHomeTrackNode(" + rec.TITLE + ")");
+		display(dbg_tl+1,2,"addHomeTrackNode(" + rec.TITLE + ")");
 		var	parent = tree.getRootNode();
 		var node = parent.addNode(rec);
 
@@ -619,21 +650,6 @@ function onHomeLoadTracks(tree,counter,result)
 
 
 
-function unused_queue_command(command)
-{
-	var data_rec = {
-		// VERSION update_id: update_id,
-		renderer_uuid: current_renderer.uuid };
-	var data = JSON.stringify(data_rec);
-	var url = '/webui/queue/' + command;
-
-	display(dbg_select+1,1,'sending ' + url + "data=\n" + data);
-
-	$.post(url,data,function(result)
-	{
-		display(dbg_select+1,1,'queue_command() success result=' + result)
-	});
-}
 
 
 

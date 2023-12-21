@@ -260,39 +260,13 @@ sub web_ui
 	}
 
 	# queue request
-	# note that get_tracks expects json return
-	# all others expect html 200 with OK
 
 	elsif ($path =~ /^queue\/(.*)$/)
 	{
 		my $command = $1;
 		my $post_params = my_decode_json($post_data);
-		if (!$post_params)
-		{
-			error("Could not decode json($post_data)");
-			$response = $command eq 'get_tracks' ?
-				json_error("Could not decode json for queue/$command") :
-				http_error("Could not decode json for queue/$command");
-		}
-		else
-		{
-			my $rslt = Queue::queueCommand($command,$post_params);
-				# error for everything except get_tracks
-				# $tracks to be jsonified if get_tracks
-
-			if ($command eq 'get_tracks')
-			{
-				$response = $rslt ?
-					json_header().my_encode_json($rslt) :
-					json_error('Could not get tracks')
-			}
-			else
-			{
-				$response = $rslt ?
-					http_error($rslt) :
-					http_header()."OK\r\n";
-			}
-		}
+		my $rslt = Queue::queueCommand($command,$post_params);
+		$response = json_header().my_encode_json($rslt);
 	}
 
 	# unknown request

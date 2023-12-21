@@ -5,7 +5,7 @@ var DEBUG_REMOTE = true;
 	// This variable turns on certain output from mobile devices
 	// as I am trying to figure out scaling, rotation, etc.
 
-var DISPLAY_REMOTE = false;
+var DISPLAY_REMOTE = true;
 	// if this is set to true, all display() and error() calls
 	// will additionally GET /webui/debug_output/msg to display
 	// on the Perl Console.   It is very slow, and adds a lot
@@ -18,8 +18,6 @@ var dbg_menu = 0;
 var dbg_prefs = 0;
 var dbg_ios = 0;
 
-
-const RENDERER_STATE_NONE 		= 'NONE';
 const RENDERER_STATE_INIT		= 'INIT';
 const RENDERER_STATE_STOPPED	= 'STOPPED';
 const RENDERER_STATE_TRANSIT	= 'TRANSIT';

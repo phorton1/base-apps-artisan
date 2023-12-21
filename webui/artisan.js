@@ -82,14 +82,15 @@ $(function()
 	debug_environment();
 
 	init_utils();
-		// sets 'IS_IOS'
+	init_device_id()
+	init_audio();
 
 	WITH_SWIPE = true;
 		// turn WITH_SWIPE on for testing on laptop
 
 	// explorer_mode = getCookie('explorer_mode') || 0;
 
-	init_audio();
+
 
 	// STATIC LAYOUT
 

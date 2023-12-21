@@ -446,15 +446,35 @@ function doSelectCommand(command)
 		data_rec.tracks = tracks.join(',');
 	if (folders != undefined)
 		data_rec.folders = folders.join(',');
-	var data = JSON.stringify(data_rec);
-	var url = '/webui/queue/' + command;
 
 	display(dbg_select+1,1,'sending ' + url + "data=\n" + data);
 
-	$.post(url,data,function(result)
+	// must be passed to html_renderer for needs_start
+	// it's synchronous in either case ...
+
+	if (current_renderer.uuid.startsWith('html_renderer'))
 	{
-		display(dbg_select+1,1,'doSelectCommand() success result=' + result)
-	});
+		audio_command(command,data_rec);
+	}
+	else
+	{
+		var url = '/webui/queue/' + command;
+		var data = JSON.stringify(data_rec);
+		$.post(url,data,function(result)
+		{
+			if (result.error)
+			{
+				rerror(result.error);
+			}
+			else if (result.queue &&
+					 current_renderer.uuid.startsWith('html_renderer'))
+			{
+				current_renderer.queue = result.queue;
+			}
+
+			display(dbg_select+1,1,'doSelectCommand() success result=' + result)
+		});
+	}
 
 	deselectTree(tree_id);
 }

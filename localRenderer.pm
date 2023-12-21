@@ -113,7 +113,7 @@ sub stopMP
 	my ($this,$mp) = @_;
 	$mp->close() if $mp;
 	$this->{state} = $RENDERER_STATE_STOPPED
-		if $this->{state} ne $RENDERER_STATE_INIT;
+		if $this->{state} ne  $RENDERER_STATE_INIT;
 	$this->{position} = 0;
 	$this->{duration} = 0;
 	delete $this->{metadata};
@@ -132,6 +132,7 @@ sub mpThread
 	$mp_running = 1;
 
 	my $queue = Queue::getQueue($this->{uuid});
+	my $q_needs_start = $queue->{needs_start};
 	my $last_update_time = time();
 
 	while (1)
@@ -149,7 +150,6 @@ sub mpThread
 				if ($mp_command eq 'stop')
 				{
 					$this->stopMP($mp);
-					$this->{state} = $RENDERER_STATE_INIT;
 				}
 				elsif ($mp_command eq 'pause')
 				{
@@ -193,16 +193,17 @@ sub mpThread
 					$this->{duration} = $duration * 1000;
 				}
 
-				# in all cases start playing the queue if it needs_start
+				# in all cases start playing the queue if
+				# needs_start changes
 
-				if ($queue->{needs_start})
+				if ($q_needs_start != $queue->{needs_start})
 				{
+					$q_needs_start = $queue->{needs_start};
 					$this->{playing} = $RENDERER_PLAY_QUEUE;
-					$queue->{needs_start} = 0;
-					my $track = $queue->getNextTrack();
+					my $track = $queue->{tracks}->[$queue->{track_index}];
 					if ($track)
 					{
-						display(0,0,"starting queue(0) $track->{title}");
+						display(0,0,"queue needs_start($q_needs_start} ($queue->{track_index}) $track->{title}");
 						$this->play_track($track->{library_uuid},$track->{id});
 					}
 					else
@@ -221,16 +222,8 @@ sub mpThread
 						}
 						else
 						{
-							my $track = $queue->getNextTrack();
-							if ($track)
-							{
-								display(0,0,"next queue() $track->{title}");
-								$this->play_track($track->{library_uuid},$track->{id});
-							}
-							else
-							{
-								$this->stopMP($mp);
-							}
+							my $rslt = Queue::queueCommand('next',{renderer_uuid=>$this->{uuid}});
+							$this->stopMP($mp) if $rslt->{error};
 						}
 					}
 					else
@@ -398,7 +391,8 @@ sub doCommand
 
 			delete $this->{playlist};
 			$this->{playing} = $RENDERER_PLAY_QUEUE;
-			$queue->clear();
+			Queue::queueCommand('clear',{renderer_uuid=>$this->{uuid}});
+				# never fails
 			$this->copyQueue($queue);
 			$this->{state} = $RENDERER_STATE_INIT;
 			$this->stopMP();
@@ -439,7 +433,8 @@ sub doCommand
 		}
 		elsif ($this->{state} eq $RENDERER_STATE_STOPPED)
 		{
-			$queue->restart();
+			Queue::queueCommand('restart',{renderer_uuid=>$this->{uuid}});
+				# never fails
 			$this->copyQueue($queue);
 		}
 		else
@@ -499,8 +494,7 @@ sub doCommand
 			}
 			else
 			{
-				$queue->{started} = 0;
-				$queue->{needs_start} = 1;
+				$queue->{needs_start}++;
 			}
 		}
 
@@ -515,7 +509,8 @@ sub doCommand
 		}
 		else
 		{
-			$error = Queue::queueCommand($command,{renderer_uuid=>$this->{uuid}});
+			my $rslt = Queue::queueCommand($command,{renderer_uuid=>$this->{uuid}});
+			$error = $rslt->{error};
 		}
 	}
 	elsif ($command eq 'prev')
@@ -526,7 +521,8 @@ sub doCommand
 		}
 		else
 		{
-			$error = Queue::queueCommand($command,{renderer_uuid=>$this->{uuid}});
+			my $rslt = Queue::queueCommand($command,{renderer_uuid=>$this->{uuid}});
+			$error = $rslt->{error};
 		}
 	}
 	elsif ($command eq 'next_album')
@@ -537,7 +533,8 @@ sub doCommand
 		}
 		else
 		{
-			$error = Queue::queueCommand($command,{renderer_uuid=>$this->{uuid}});
+			my $rslt = Queue::queueCommand($command,{renderer_uuid=>$this->{uuid}});
+			$error = $rslt->{error};
 		}
 	}
 	elsif ($command eq 'prev_album')
@@ -548,7 +545,8 @@ sub doCommand
 		}
 		else
 		{
-			$error = Queue::queueCommand($command,{renderer_uuid=>$this->{uuid}});
+			my $rslt = Queue::queueCommand($command,{renderer_uuid=>$this->{uuid}});
+			$error = $rslt->{error};
 		}
 	}
 
@@ -627,7 +625,10 @@ sub doCommand
 		}
 		else
 		{
-			$queue->shuffle($how);
+			my $rslt = Queue::queueCommand('shuffle',{
+				renderer_uuid=>$this->{uuid},
+				shuffle=>$how});
+			$error = $rslt->{error};
 		}
 	}
 	else

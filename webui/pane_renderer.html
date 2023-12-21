@@ -13,10 +13,10 @@
 			<span id="renderer_state"></span>
 			<span id="renderer_queue_state"
 				  class="header_text header_filler header_button"
-				  onclick="javascript:renderer_command('set_playing?playing='+RENDERER_PLAY_QUEUE)"></span>
+				  onclick="javascript:renderer_command('set_playing',{playing:RENDERER_PLAY_QUEUE})"></span>
 			<span id="renderer_playlist_state"
 				  class="header_text header_filler header_button"
-				  onclick="javascript:renderer_command('set_playing?playing='+RENDERER_PLAY_PLAYLIST)"></span>
+				  onclick="javascript:renderer_command('set_playing',{playing:RENDERER_PLAY_PLAYLIST})"></span>
 		</div>
 		<div id="renderer_status" class="header_text header_right"></div>
 	</div>
@@ -97,9 +97,9 @@
 				onclick = "javascript:renderer_command('next_album')">&gt;|</button>
 
 			<select id="transport_shuffle" class="transport_shuffle">
-			  <option value="0">Off</option>
-			  <option value="1">Tracks</option>
-			  <option value="2">Albums</option>
+				<option value="0">Off</option>
+				<option value="1">Tracks</option>
+				<option value="2">Albums</option>
 			</select>
 
 		</div>
