@@ -108,14 +108,14 @@ Other Issues:
 - I can only imagine how this is going to get back on the Car Stereo in the Android version.
 
 
-## Fucking iPad
+## Stupid iPad
 
 Safari sucks.  Apple sucks.  IOS sucks.
 
 At least swipes seem to work.
 
 The contextmenu event is not supported.
-I looked into fixing it for 1/2 day.  It's a fucked idea.
+I looked into fixing it for 1/2 day.  It's a bad idea.
 
 Double clicking zooms on element with no dbl click handler,
 which is realy awkward to get out of once it happens.

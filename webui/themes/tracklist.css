@@ -23,6 +23,8 @@
 }
 
 
+#queue_tracklist span.fancytree-title,
+#playlist_tracklist span.fancytree-title,
 #queue_tracklist td,
 #playlist_tracklist td,
 #explorer_tracklist td
@@ -39,17 +41,14 @@
 #queue_tracklist .fancytree-node,
 #playlist_tracklist .fancytree-node,
 */
-/*
-because home tracklists do not have icons,
-we get rid of the whole 'node' (0th td)
-*/
-
+#queue_tracklist .fancytree-expander,
+#playlist_tracklist .fancytree-expander,
 #explorer_tracklist .fancytree-expander
 {
 	display:none !important;
 }
 
-.home_rownum		{ width:36px;	padding-left:2px; color:#aaaaaa !important; }		/* home only */
+.home_rownum		{ margin:0px; /* padding-left:2px;*/  color:#aaaaaa !important; }		/* home only */
 .tracklist_icon  	{ width:16px; }							/* !home */
 .tracklist_tracknum	{ width:24px;	padding-left:2px; }		/* !home */
 .tracklist_title  	{ width:33%;	max-width:180px; padding-left:8px; }
@@ -57,7 +56,6 @@ we get rid of the whole 'node' (0th td)
 .home_tracknum		{ width:30px;	padding-left:8px; }		/* home only */
 .tracklist_genre  	{ width:33%; 	max-width:100px; padding-left:8px; }
 .tracklist_year  	{ width:60px; 	text-align:center; padding-right:4px; }
-
 
 
 .current_track > td

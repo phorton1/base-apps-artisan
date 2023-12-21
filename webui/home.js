@@ -287,9 +287,34 @@ function renderTracklistNode(event,data,pl_offset)
 	var node = data.node;
 	var rec = node.data;
 	var $tdList = $(node.tr).find(">td");
-
 	var show_idx = rec.pl_idx + pl_offset;
-	$tdList.eq(0).html(show_idx)		.addClass('home_rownum');
+
+	// For the life of me, I could not figure out WHY
+	// this tracklist has problems with scrolling because
+	// the node.span.offsetHeight and Width are 0 ...
+	// One would think that just adding the node would
+	// be sufficient.
+	//
+	//It's not a visibility issue ... it's visible.
+	//
+	// 		$tdList.eq(0).css('height', '100px');
+	// 		$tdList.eq(0).css('width', '100px');
+	//
+	// or any variations of trying to set the height
+	// in CSS did not work.
+	//
+	// But adding an icon makes it have a small
+	// width and height and so it works ...
+
+
+	// Ad-hoc (bogus) solution - set the 'title' to pl_idx
+	// and deal with fancyTree's compulsion to take over td0.
+	// We add a style .. but that's not good enough cuz
+	// the inner things are in spans
+
+	$tdList.eq(0)						.addClass('home_rownum');
+
+	// $tdList.eq(0).html(show_idx)		.addClass('home_rownum');
 	$tdList.eq(1).html(rec.TITLE)		.addClass('tracklist_title');
 	$tdList.eq(2).text(rec.tracknum)	.addClass('home_tracknum');
 	$tdList.eq(3).text(rec.album_title)	.addClass('tracklist_album');
@@ -433,9 +458,19 @@ function update_home_tracklists()
 		// so, by digging, I came up with the objects to pass to
 		// found version of scrollIntoView()
 
-		var container = show_tree.$container;
-		var table = container[0];
-		scrollIntoView(show_node.tr,table.parentElement);
+		// this was actually the 'addNode not giving any width or height' bug
+		// I'm keeping the (false) case JIC
+
+		if (true)
+		{
+			show_node.scrollIntoView(false);
+		}
+		else
+		{
+			var container = show_tree.$container;
+			var table = container[0];
+			scrollIntoView(show_node.tr,table.parentElement);
+		}
 		show_tree.my_index_shown = show;
 	}
 }
@@ -529,11 +564,37 @@ function addHomeTrackNode(tree,counter,rec)
 	if (counter == tree.my_load_counter)
 	{
 		rec.TITLE = rec.title;
-		delete rec.title;
+
+		// bogus solution - let fancytree have td0 and the 'title',
+		// which we assign to our row number (pl_idx)
+
+		rec.title = rec.pl_idx;
+		rec.icon = false;
+			// needed for bogus solution
+
+		// otherwise, the following did not help or make any difference
+		// to get the node to think it has a height ...
+		//
+		// 		rec.folder = false;
+		// 		delete rec.title;
+		// 		delete rec.type;
+		// 		rec.key = rec.id;
+		// 		rec.icon = '/webui/icons/error_0.png',
+		//				 this was the only thing that effing worked
+
 
 		display(dbg_tl,2,"addHomeTrackNode(" + rec.TITLE + ")");
 		var	parent = tree.getRootNode();
-		parent.addNode(rec);
+		var node = parent.addNode(rec);
+
+		// Nor these:
+		//
+		//		parent.addChildren(rec);
+		// 		var $tdList = $(node.tr).find(">td");
+		// 		$tdList.eq(0).css('height', '100px');
+		// 		$tdList.eq(0).css('width', '100px');
+		//
+		// I think I might have been better off just using a table ..
 	}
 }
 
