@@ -5,7 +5,7 @@ var DEBUG_REMOTE = true;
 	// This variable turns on certain output from mobile devices
 	// as I am trying to figure out scaling, rotation, etc.
 
-var DISPLAY_REMOTE = true;
+var DISPLAY_REMOTE = false;
 	// if this is set to true, all display() and error() calls
 	// will additionally GET /webui/debug_output/msg to display
 	// on the Perl Console.   It is very slow, and adds a lot
@@ -36,30 +36,41 @@ const SHUFFLE_NONE	 = 0;
 const SHUFFLE_TRACKS = 1;
 const SHUFFLE_ALBUMS = 2;
 
+const DEVICE_TYPE_RENDERER = 'renderer';
+const DEVICE_TYPE_LIBRARY = 'library';
 
 
 
-var device_id = '';
+jQuery.ajaxSetup({async:false});
+	// global async jquery Ajax setup
+
+
+//-------------------------------------------
+// important global variables and methods
+//-------------------------------------------
+
+var DEVICE_ID = '';
 
 var IS_IOS = false;
 var IS_TOUCH = false;
 var IS_DESKTOP = false;
 
+var current_renderer = false;
+var current_library = false;
 
-
-jQuery.ajaxSetup({async:false});
-
-
-window.onerror = function(message, source, lineNumber, colno, err)
-	// this will report 'unhandled exceptions' via my error() method
+function library_url()
 {
-	error(source + ":" + lineNumber + ": " + message,1);
-};
+	var host = current_library.remote_artisan ?
+		'http://' + current_library.ip + ':' + current_library.port : '';
+	var url =  host + "/webui/library/" + current_library['uuid'];
+	// display(0,0,"library url=" + url);
+	return url;
+}
 
 
-const DEVICE_TYPE_RENDERER = 'renderer';
-const DEVICE_TYPE_LIBRARY = 'library';
-
+//---------------------------------------------
+// initialization
+//---------------------------------------------
 
 function init_utils()
 	// this method is currently supplied soley to set
@@ -84,10 +95,6 @@ function init_utils()
 }
 
 
-//---------------------------------------------
-// device_id
-//---------------------------------------------
-
 function init_device_id()
 	// random 8 hex digit string device id
 	// stored to localStorage. returns ''
@@ -95,25 +102,25 @@ function init_device_id()
 {
 	try
 	{
-		device_id = localStorage.getItem('device_id');
-		if (device_id == undefined || !device_id)
+		DEVICE_ID = localStorage.getItem('device_id');
+		if (DEVICE_ID == undefined || !DEVICE_ID)
 		{
-			device_id = random32Hex();
-			display(0,0,"create new device_id=" + device_id);
-			localStorage.setItem('device_id', device_id);
+			DEVICE_ID = random32Hex();
+			display(0,0,"create new device_id=" + DEVICE_ID);
+			localStorage.setItem('device_id', DEVICE_ID);
 		}
 		else
 		{
-			display(0,0,"got existing device_id=" + device_id);
+			display(0,0,"got existing device_id=" + DEVICE_ID);
 		}
 	}
 	catch (SecurityError)
 	{
 		error(SecurityError);
-		device_id = '';
+		DEVICE_ID = '';
 	}
 
-	return device_id;
+	return DEVICE_ID;
 }
 
 
@@ -132,6 +139,13 @@ function random16Hex()
 //---------------------------------------------
 // display utilities
 //---------------------------------------------
+
+window.onerror = function(message, source, lineNumber, colno, err)
+	// this will report 'unhandled exceptions' via my error() method
+{
+	error(source + ":" + lineNumber + ": " + message,1);
+};
+
 
 function my_alert(title,msg)
 {
@@ -207,7 +221,6 @@ function debug_remote(level,indent,msg,call_level)
 }
 
 
-
 function caller(call_level)
 {
 	var stack = (new Error).stack.split("\n");
@@ -231,7 +244,6 @@ function caller(call_level)
 	while (caller.length<20) {caller += ' '; }
 	return caller;
 }
-
 
 
 //--------------------------------------
@@ -267,9 +279,12 @@ dialog.prototype =
 // misc utilities
 //--------------------------------------
 
-
-function commaJoin(array) { return array.join(','); }
+function commaJoin(array)
 	// to display parameter list in display() headers
+{
+	return array.join(',');
+}
+
 
 function prettyBytes(bytes)
 {
@@ -289,7 +304,6 @@ function prettyBytes(bytes)
 }
 
 
-
 function decode_ampersands(encoded)
 	// convert strings with double escaped ampersands
 	// into the actual display string. This *should*
@@ -302,6 +316,33 @@ function decode_ampersands(encoded)
 	return div.firstChild.nodeValue;
 }
 
+
+function toggleFullScreen()
+{
+	var doc = window.document;
+	var docEl = doc.documentElement;
+	var requestFullScreen =
+		docEl.requestFullscreen ||
+		docEl.mozRequestFullScreen ||
+		docEl.webkitRequestFullscreen ||
+		docEl.msRequestFullscreen;
+	var cancelFullScreen =
+		doc.exitFullscreen ||
+		doc.mozCancelFullScreen ||
+		doc.webkitExitFullscreen ||
+		doc.msExitFullscreen;
+	if(!doc.fullscreenElement &&
+	   !doc.mozFullScreenElement &&
+	   !doc.webkitFullscreenElement &&
+	   !doc.msFullscreenElement)
+	{
+		requestFullScreen.call(docEl);
+	}
+	else
+	{
+		cancelFullScreen.call(doc);
+	}
+}
 
 
 //----------------------------------------
@@ -353,7 +394,6 @@ function create_numeric_pref(min,med,max,var_name,spinner_id)
 	var value = window[var_name];
 	$(spinner_id).spinner('value',value);
 }
-
 
 
 function appendMenuButton(type, name, id, fxn, param1, param2)
@@ -416,7 +456,6 @@ function buildPlaylistMenu(array)
 	});
 	$('#playlist_menu').buttonset();
 }
-
 
 
 // end of utils.js

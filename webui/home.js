@@ -56,7 +56,6 @@ function init_page_home()
 
 
 
-
 //-----------------------------------
 // Device Lists
 //-----------------------------------
@@ -78,7 +77,6 @@ function load_device_list(type)
 		selectDefaultDevice(type);
 	});
 }
-
 
 
 function selectDefaultDevice(type)
@@ -173,7 +171,6 @@ function init_playlists()
 }
 
 
-
 function setPlaylist(uuid,id)
 {
 	display(dbg_home,0,"setPlaylist("+name+")");
@@ -205,22 +202,6 @@ var tracklist_queue_version = -1;
 var tracklist_playlist_uuid = '';
 var tracklist_playlist_id = '';
 var tracklist_playlist_version = -1;
-
-
-function invalidate_tracklists()
-	// when tracklist_renderer_uuid changes
-{
-	tracklist_queue_version = -1;
-	tracklist_playlist_uuid = '';
-	tracklist_playlist_id = '';
-	tracklist_playlist_version = -1;
-	if (queue_tracklist)
-		queue_tracklist.clear();
-	if (playlist_tracklist)
-		playlist_tracklist.clear();
-
-}
-
 
 
 function init_home_tracklists()
@@ -341,6 +322,24 @@ function renderTracklistNode(event,data,pl_offset)
 
 
 
+//-------------------------------------------------
+// update_home_tracklists()
+//-------------------------------------------------
+
+function invalidate_tracklists()
+	// when tracklist_renderer_uuid changes
+{
+	tracklist_queue_version = -1;
+	tracklist_playlist_uuid = '';
+	tracklist_playlist_id = '';
+	tracklist_playlist_version = -1;
+	if (queue_tracklist)
+		queue_tracklist.clear();
+	if (playlist_tracklist)
+		playlist_tracklist.clear();
+
+}
+
 function update_home_tracklists()
 	// this method responible for reloading the tracklist(s)
 	// 		when versions or other info changes.
@@ -355,12 +354,9 @@ function update_home_tracklists()
 	//      the current playing track may not yet be in
 	//      the tree.  Therefore there are yet more
 	//      variables added to the tree,
-	//
-	//		my_show_index  = -1 if nothing to show
-	//      my_index_shown = -1 when needs showing
-	//
+	// my_show_index  = -1 if nothing to show
+	// my_index_shown = -1 when needs showing
 {
-
 	// redo everything if renderer changes
 
 	if (tracklist_renderer_uuid != current_renderer.uuid)
@@ -371,7 +367,7 @@ function update_home_tracklists()
 		invalidate_tracklists();
 	}
 
-	// QUEUE TRACKLIST
+	// UPDATE QUEUE TRACKLIST
 
 	var queue = current_renderer.queue;
 	if (!queue) return;		// not ready yet
@@ -401,7 +397,7 @@ function update_home_tracklists()
 	}
 
 
-	// PLAYLIST TRACKLIST
+	// UPDATE PLAYLIST TRACKLIST
 
 	var playlist_uuid = '';
 	var playlist_id = '';
@@ -445,6 +441,7 @@ function update_home_tracklists()
 		}
 	}
 
+	// HIGHLIGHT CURRENT TRACK
 	// update my_show_index for both trees as needed
 	// try to show it in the tree that is visible
 
@@ -466,18 +463,9 @@ function update_home_tracklists()
 		var show_node = children[show];
 		show_node.addClass('current_track');	// setSelected(true);
 
-		// fancytree scrollIntoView() functions do not work ext-table
-		// the code assumes there is a <span> with the correct offsets,
-		// but in ext-table, its a <tr>.
-		//
-		// 		show_node.scrollIntoView(false);
-		// 		show_node.makeVisible({scrollIntoView: true});
-		//
-		// so, by digging, I came up with the objects to pass to
-		// found version of scrollIntoView()
-
+		// fancytree scrollIntoView() functions did not work ext-table.
 		// this was actually the 'addNode not giving any width or height' bug
-		// I'm keeping the (false) case JIC
+		// I'm keeping the (false) case JIC I want different alignment, etc
 
 		if (true)
 		{
@@ -583,7 +571,6 @@ function loadHomeTracks(tree,counter,ajax_params,params)
 		}
 	};
 
-
 	$.ajax(ajax_params);
 	display(dbg_tl,1,"returning from loadHomeTracks(" + params.start + "," + params.count + ")");
 }
@@ -612,7 +599,6 @@ function addHomeTrackNode(tree,counter,rec)
 		// 		rec.key = rec.id;
 		// 		rec.icon = '/webui/icons/error_0.png',
 		//				 this was the only thing that effing worked
-
 
 		display(dbg_tl+1,2,"addHomeTrackNode(" + rec.TITLE + ")");
 		var	parent = tree.getRootNode();
@@ -648,10 +634,4 @@ function onHomeLoadTracks(tree,counter,result)
 }
 
 
-
-
-
-
-
-
-// END OF home.js
+// end of home.js

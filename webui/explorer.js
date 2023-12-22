@@ -277,7 +277,6 @@ function loadFolders()
 }
 
 
-
 function addFolderNode(rec)
 {
 	display(dbg_folder_load+1,3,"addFolderNode(" + rec.TITLE + ")");
@@ -388,7 +387,6 @@ function onLoadTracks(result,loading)
 		addTrackNode(result[i],loading);
 	}
 }
-
 
 
 
@@ -545,3 +543,6 @@ function update_explorer_ui(node)
 	}
 
 }	// update_explorer_ui()
+
+
+// end of explorer.js

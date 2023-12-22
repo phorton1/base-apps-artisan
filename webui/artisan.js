@@ -6,35 +6,20 @@ var dbg_popup 	 = 1;
 var dbg_loop     = 1;
 var dbg_swipe    = 1;
 
-var current_renderer = false;
-var current_library = false;
-
-function library_url()
-{
-	var host = current_library.remote_artisan ?
-		'http://' + current_library.ip + ':' + current_library.port : '';
-	var url =  host + "/webui/library/" + current_library['uuid'];
-	display(0,0,"library url=" + url);
-	return url;
-}
-
 
 var WITH_SWIPE = false;
 	// If it is true, then a swipe event handler will be added to
 	// the element specified in the layout_def that will close or
 	// open the relevant pane(s).
-
 var REFRESH_TIME = 600;
 
 var default_page = 'home';
 var current_page = ''
 var layout_defs = {};
-
-var update_id = 1;
-
 var explorer_mode = 0;
 var idle_timer = null;
 var idle_count = 0;
+var update_id = 1;
 
 
 display(dbg_load,0,"artisan.js loaded");
@@ -183,11 +168,6 @@ function idle_loop()
 }
 
 
-function onUpdateError()
-{
-
-}
-
 
 function updateLibraries(libraries)
 	// called if 'update' returns libraries, which is
@@ -226,38 +206,6 @@ function updateLibraries(libraries)
 		if (set_current)
 			selectDefaultDevice('library');
 	}
-}
-
-
-
-
-function toggleFullScreen()
-{
-	var doc = window.document;
-	var docEl = doc.documentElement;
-	var requestFullScreen =
-		docEl.requestFullscreen ||
-		docEl.mozRequestFullScreen ||
-		docEl.webkitRequestFullscreen ||
-		docEl.msRequestFullscreen;
-	var cancelFullScreen =
-		doc.exitFullscreen ||
-		doc.mozCancelFullScreen ||
-		doc.webkitExitFullscreen ||
-		doc.msExitFullscreen;
-	if(!doc.fullscreenElement &&
-	   !doc.mozFullScreenElement &&
-	   !doc.webkitFullscreenElement &&
-	   !doc.msFullscreenElement)
-	{
-		requestFullScreen.call(docEl);
-	}
-	else
-	{
-		cancelFullScreen.call(doc);
-	}
-
-	// hide_layout_panes();
 }
 
 
@@ -577,3 +525,6 @@ function onswipe(event, direction, distance, duration, fingerCount, fingerData)
 		}
 	}
 }
+
+
+// end of artisan.js

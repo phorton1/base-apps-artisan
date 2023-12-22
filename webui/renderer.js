@@ -10,57 +10,6 @@ var last_song = '';
 var last_playing = -1;
 
 
-function renderer_command(command,args)
-{
-	if (!current_renderer)
-	{
-		rerror("No current_renderer in renderer_command: " + what);
-		return;
-	}
-
-	if (current_renderer['uuid'].startsWith('html_renderer'))
-	{
-		audio_command(command,args);
-		in_slider = false;
-		update_renderer_ui();
-		return;
-	}
-
-	var cmd_args = '';
-	if (args != undefined)
-	{
-		for (key in args)
-		{
-			cmd_args += (cmd_args ? '&' : '?');
-			cmd_args += key + '=' + args[key];
-		}
-	}
-
-	$.get('/webui/renderer/' + current_renderer['uuid'] + '/' + command + cmd_args,
-
-		function(result)
-		{
-			if (result.error)
-			{
-				rerror('Error in renderer_command(' + command + '): ' + result.error);
-				current_renderer = false;
-			}
-			else
-			{
-				current_renderer = result;
-			}
-			in_slider = false;
-			update_renderer_ui();
-		}
-	);
-}
-
-
-
-//========================================================
-// RENDERER PANE (init and update)
-//========================================================
-
 function init_renderer_pane()
 {
 	display(dbg_home,0,"init_renderer_pane()");
@@ -101,6 +50,60 @@ function init_renderer_pane()
 
 
 
+//------------------------------------
+// renderer_command()
+//------------------------------------
+
+function renderer_command(command,args)
+{
+	if (!current_renderer)
+	{
+		rerror("No current_renderer in renderer_command: " + what);
+		return;
+	}
+	if (current_renderer['uuid'].startsWith('html_renderer'))
+	{
+		audio_command(command,args);
+		in_slider = false;
+		update_renderer_ui();
+		return;
+	}
+
+	var cmd_args = '';
+	if (args != undefined)
+	{
+		for (key in args)
+		{
+			cmd_args += (cmd_args ? '&' : '?');
+			cmd_args += key + '=' + args[key];
+		}
+	}
+
+	$.get('/webui/renderer/' + current_renderer['uuid'] + '/' + command + cmd_args,
+
+		function(result)
+		{
+			if (result.error)
+			{
+				rerror('Error in renderer_command(' + command + '): ' + result.error);
+				current_renderer = false;
+			}
+			else
+			{
+				current_renderer = result;
+			}
+			in_slider = false;
+			update_renderer_ui();
+		}
+	);
+}
+
+
+
+//------------------------------------
+// event handlers
+//------------------------------------
+
 function on_slider_complete(event,ui)
 	// sliders are in pct
 	// command is in millieseconds
@@ -129,6 +132,11 @@ function onShuffleChanged(event,ui)
 }
 
 
+
+//------------------------------------
+// update_renderer_ui()
+//------------------------------------
+
 function update_renderer_ui()
 {
 	display(dbg_loop,0,"renderer.update_renderer_ui()");
@@ -137,7 +145,7 @@ function update_renderer_ui()
 	var queue = '';
 	var playlist = '';
 
-	// based on renderer
+	// BASED ON RENDERER
 
 	if (!current_renderer || !current_renderer.queue)
 	{
@@ -187,13 +195,16 @@ function update_renderer_ui()
 				$('#queue_tracklist').css('display','block');
 			}
 
+			// we make onShuffleChanged ignore the event if its
+			// because we are changing the value
+
 			ignore_shuffle_change = true;
 			$('#transport_shuffle').val(shuffle);
 			$("#transport_shuffle").selectmenu("refresh");
 		}
 	}
 
-	// based on queue
+	// BASED ON QUEUE
 
 	if (!queue)
 	{
@@ -241,7 +252,7 @@ function update_renderer_ui()
 		disable_button('#transport_next_album',	no_tracks || no_later);
 	}
 
-	// based on metadata
+	// BASED ON METADATA
 	// which is the current song playing
 
 	if (!metadata)
@@ -304,6 +315,8 @@ function update_renderer_ui()
 		}
 	}
 
+	// UPDATE HOME TRACKLISTS
+
 	update_home_tracklists();
 	ignore_shuffle_change = false;
 
@@ -317,7 +330,6 @@ function update_renderer_ui()
 //--------------------------------------------
 // update_renderer_ui() utilities
 //--------------------------------------------
-
 
 function disable_button(selector,disabled)
 {
@@ -365,4 +377,4 @@ function millis_to_duration(millis,precise)
 }
 
 
-// END OF renderer.js
+// end of renderer.js

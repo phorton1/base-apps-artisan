@@ -3,6 +3,7 @@
 
 
 var dbg_audio = 0;
+var dbg_queue = 0;
 
 var audio;
 
@@ -57,7 +58,7 @@ function init_audio()
 
 	// Set a unique semi-persistent uuid and get a Queue from Perl
 
-	html_renderer.uuid = 'html_renderer_' + device_id;
+	html_renderer.uuid = 'html_renderer_' + DEVICE_ID;
 	queue_command('get_queue');
 
 	// if inited with a queue, set state STOPPED instead of init
@@ -71,10 +72,6 @@ function init_audio()
 		{ onMediaEnded(event); } );
 }
 
-
-
-
-var dbg_queue = 0;
 
 function queue_command(command,params)
 	// remember that these POSTS are synchronous
@@ -125,7 +122,9 @@ function queue_command(command,params)
 
 
 
-
+//-------------------------------------------
+// audio_command()
+//-------------------------------------------
 
 function audio_command(command,args)
 {
@@ -331,30 +330,9 @@ function audio_command(command,args)
 }
 
 
-
-
-function play_song_local(library_uuid,track_id)
-{
-	init_html_renderer(RENDERER_STATE_TRANSIT);
-	$.get(library_url() + '/get_track?id=' + track_id,
-	function(result)
-	{
-		if (result.error)
-		{
-			rerror('Error in play_song_local(): ' + result.error);
-		}
-		else
-		{
-			track_to_html_renderer(result);
-			audio.src = html_renderer.path;
-			$('#audio_player_title').html(html_renderer.metadata.title);
-			$('#explorer_folder_image').attr('src',html_renderer.metadata.art_uri);
-			html_renderer.state = RENDERER_STATE_PLAYING;
-		}
-	});
-}
-
-
+//-----------------------------------------------
+// methods
+//-----------------------------------------------
 
 function track_to_html_renderer(track)
 {
@@ -385,50 +363,29 @@ function track_to_html_renderer(track)
 	}
 
 	html_renderer.path = path;
-
 }
 
 
-function set_local_playlist(library_uuid,playlist_id)
+function play_song_local(library_uuid,track_id)
 {
 	init_html_renderer(RENDERER_STATE_TRANSIT);
-	$.get(library_url()  + '/get_playlist' +
-		  '?id=' + playlist_id,
-
+	$.get(library_url() + '/get_track?id=' + track_id,
 	function(result)
 	{
 		if (result.error)
 		{
-			rerror('Error in set_local_playlist(' + library_uuid + ',' + playlist_id + '): ' + result.error);
+			rerror('Error in play_song_local(): ' + result.error);
 		}
 		else
 		{
-			html_renderer.playlist = result;
-			var track_id = result.track_id;
-			if (track_id == undefined || !track_id)
-			{
-				rerror("No track_id(" + track_id + ") in set_local_playlist(" + library_uuid + ',' + playlist_id + ")");
-			}
-			else
-			{
-				play_song_local(library_uuid,track_id);
-			}
+			track_to_html_renderer(result);
+			audio.src = html_renderer.path;
+			$('#audio_player_title').html(html_renderer.metadata.title);
+			$('#explorer_folder_image').attr('src',html_renderer.metadata.art_uri);
+			html_renderer.state = RENDERER_STATE_PLAYING;
 		}
 	});
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 function playlist_song(mode,inc)
@@ -470,7 +427,6 @@ function playlist_song(mode,inc)
 }
 
 
-
 function playlist_shuffe(how)
 {
 	var playlist = html_renderer.playlist;
@@ -507,8 +463,33 @@ function playlist_shuffe(how)
 }
 
 
+function set_local_playlist(library_uuid,playlist_id)
+{
+	init_html_renderer(RENDERER_STATE_TRANSIT);
+	$.get(library_url()  + '/get_playlist' +
+		  '?id=' + playlist_id,
 
-
+	function(result)
+	{
+		if (result.error)
+		{
+			rerror('Error in set_local_playlist(' + library_uuid + ',' + playlist_id + '): ' + result.error);
+		}
+		else
+		{
+			html_renderer.playlist = result;
+			var track_id = result.track_id;
+			if (track_id == undefined || !track_id)
+			{
+				rerror("No track_id(" + track_id + ") in set_local_playlist(" + library_uuid + ',' + playlist_id + ")");
+			}
+			else
+			{
+				play_song_local(library_uuid,track_id);
+			}
+		}
+	});
+}
 
 
 function onMediaEnded(event)
@@ -526,38 +507,6 @@ function onMediaEnded(event)
 		}
 	}
 }
-
-
-// It is interesting that the audio appears to cache the audio data.
-// Playing the same song twice does not get it twice from me.
-//
-//  Trying ---> SET HTTPServer::$SINGLE_THREAD to 0!!
-//
-//      If the HTTP Server is single threaded.
-//		the audio player can wait to read the bytes of a long song
-//      so any ui that involves a web hit stop working
-//
-// However, there are several problems.
-//
-//	Partial buffering ...
-//
-//      The slider fails miserably if you move it past the amount
-//      that is buffered ... jumps to the next song.
-//
-//		Bad Starting Position
-//
-//			I have seen cases where the audio
-//			on a re-play starts in the middle of the song, and
-//      	the audio.currentTime starts at 0 ... hmmm ...
-//
-//  Solutions:
-//
-//  	I think I need a way to really clear the audio cache
-//		and reget it on every replay.
-
-
-
-
 
 
 // end of audio.js
