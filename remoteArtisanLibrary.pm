@@ -58,27 +58,53 @@ sub new
 # the library *may* be a remoteArtisanLibrary, at least one
 # call through to the remote library MUST be supported.
 
+use HTTP::Request;
+use Data::Dumper;
+
 sub getQueueTracks
 {
 	my ($this,$rslt,$post_params) = @_;
-	display($dbg_alib,0,"getQueueTracks($this->{name}) at $this->{ip}:$this->{port}");
+	display_hash($dbg_alib,0,"getQueueTracks($this->{name}) at $this->{ip}:$this->{port}",$post_params);
 	my $url = "http://$this->{ip}:$this->{port}/webui/library/$this->{uuid}/get_queue_tracks";
 	display($dbg_alib,1,"url=$url");
+
+	my $request_content = my_encode_json($post_params);
+	my $req = HTTP::Request->new(POST => $url);
+	$req->content_type('application/json');
+	$req->content_length(length($request_content));
+	$req->content($request_content);
+
+	print Dumper($req);
+
+	display_hash(0,0,"request",$req);
+	display_hash(0,0,"headers",$req->{_headers});
+
 	my $ua = LWP::UserAgent->new();
-	my $response = $ua->post($url,$post_params);
-	return json_error("No response from get($url)") if !$response;
-	my $content = $response->content();
-	my $json = my_decode_json($content);
-	if (!$json)
+	my $response = $ua->request($req);
+
+
+	my $json = '';
+	if (!$response)
 	{
-		$rslt->{error} = "getQueueTracks() Could not decode json result";
+		$rslt->{error} = error("getQueueTracks() no reponse from $url");
 	}
-	elsif ($json->{error})
+	else
 	{
-		error($json->{error});
-		$rslt->{error} = $json->{error};
-		$json = '';
+		my $content = $response->content();
+		display(0,0,"got content=$content");
+		$json = my_decode_json($content);
+		if (!$json)
+		{
+			$rslt->{error} = error("getQueueTracks() Could not decode json result");
+		}
+		elsif ($json->{error})
+		{
+			error($json->{error});
+			$rslt->{error} = $json->{error};
+			$json = '';
+		}
 	}
+
 	display_hash($dbg_alib,0,"getQueueTracks returning",$json);
 	return $json;
 }

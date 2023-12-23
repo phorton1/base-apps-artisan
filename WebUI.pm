@@ -257,6 +257,7 @@ sub web_ui
 	elsif ($path =~ s/^library\///)
 	{
 		my $post_params = $path eq 'get_queue_tracks' ? my_decode_json($post_data) : '';
+		display_hash(0,0,"decoded post_params",$post_params) if $path eq 'get_queue_tracks';
 		$response = uiLibrary::library_request($path,$params,$post_params);
 	}
 
