@@ -116,9 +116,6 @@ sub getQueueTracks
 
 
 
-#-------------------------------------------
-# support for calls from localRenderer
-#-------------------------------------------
 
 sub getTrack
 {
@@ -138,6 +135,47 @@ sub getFolder
 	return $track;
 }
 
+
+#	sub unused_getPlaylists
+#	{
+#		my ($this) = @_;
+#		display($dbg_alib,0,"getPlaylists()");
+#		return $this->remoteRequest("get_playlists");
+#	}
+
+
+
+sub getPlaylist
+	# pass thru
+{
+	my ($this,$id) = @_;
+	display($dbg_alib,0,"getPlaylist($id)");
+	my $obj = $this->remoteRequest("get_playlist?id=$id");
+	bless $obj,'Playlist' if $obj;
+	return $obj;
+}
+
+
+sub getPlaylistTrack
+{
+    my ($this,$id,$version,$mode,$index) = @_;
+	display($dbg_alib,0,"getPlaylistTrack($id,$version,$mode,$index)");
+	my $obj = $this->remoteRequest("get_playlist_track?id=$id&version=$version&mode=$mode&index=$index");
+	bless $obj,'Playlist' if $obj;
+	return $obj;
+}
+
+
+sub sortPlaylist
+{
+    my ($this,$id,$shuffle) = @_;
+	display($dbg_alib,0,"sortPlaylist($id,$shuffle)");
+	my $obj = $this->remoteRequest("shuffle_playlist?id=$id&shuffle=$shuffle");
+	bless $obj,'Playlist' if $obj;
+	return $obj;
+}
+
+
 sub remoteRequest
 {
 	my ($this,$command) = @_;
@@ -153,7 +191,6 @@ sub remoteRequest
 	return shared_clone($json);
 
 }
-
 
 
 1;
