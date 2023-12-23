@@ -68,7 +68,7 @@ sub getQueueTracks
 	my $response = $ua->post($url,$post_params);
 	return json_error("No response from get($url)") if !$response;
 	my $content = $response->content();
-	my $json = my_json_decode($content);
+	my $json = my_decode_json($content);
 	if (!$json)
 	{
 		$rslt->{error} = "getQueueTracks() Could not decode json result";
@@ -159,7 +159,7 @@ sub getQueueTracks
 #		my $response = $ua->get($url);
 #		return json_error("No response from get($url)") if !$response;
 #		my $content = $response->content();
-#		my $json = my_json_decode($content);
+#		my $json = my_decode_json($content);
 #		display($dbg_alib,0,"remoteRequest returning json($json)");
 #		return shared_clone($json);
 #	}
