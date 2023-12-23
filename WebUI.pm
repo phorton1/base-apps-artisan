@@ -256,7 +256,8 @@ sub web_ui
 
 	elsif ($path =~ s/^library\///)
 	{
-		$response = uiLibrary::library_request($path,$params);
+		my $post_params = $path eq 'get_queue_tracks' ? my_decode_json($post_data) : '';
+		$response = uiLibrary::library_request($path,$params,$post_params);
 	}
 
 	# queue request
@@ -317,8 +318,8 @@ sub getDevicesData
 
 		$use_device->{local} = 'true'
 			if $device->{local};
-		$use_device->{artisan_remote} = 'true'
-			if $device->{artisan_remote};
+		$use_device->{remote_artisan} = 'true'
+			if $device->{remote_artisan};
 
 		# temporary kludge to handle remoteLibrary initialization
 

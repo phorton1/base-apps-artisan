@@ -86,7 +86,7 @@ function library_url(library_uuid)
 	// list) so every caller MUST check for that and report
 	// an error appropriately.
 	//
-	// Notices artisan_remote libraries and prepends the
+	// Notices remote_artisan libraries and prepends the
 	// server_ip:server_port host to the address.
 {
 	var button = document.getElementById('library_' + library_uuid);
@@ -97,7 +97,7 @@ function library_url(library_uuid)
 	}
 	var rec = button.rec;		// should always be there
 	var host = '';
-	if (rec.artisan_remote)
+	if (rec.remote_artisan)
 		host = 'http://' + rec.ip + ":" + rec.port;
 
 	var url =  host + "/webui/library/" + library_uuid;

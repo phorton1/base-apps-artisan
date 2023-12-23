@@ -202,6 +202,8 @@ sub queueCommand
 #-----------------------------------------------------
 # enqueuing
 #-----------------------------------------------------
+# Special support for remoteArtisanLibrary passes the enqueue
+# request to the
 
 sub enqueue
 	# returns 1 success, sets $$error otherwise
@@ -210,6 +212,7 @@ sub enqueue
 	my ($this,$rslt,$command,$post_params) = @_;
 	display($dbg_queue,0,"enqueue($command)");
 	my $l_uuid = $post_params->{library_uuid};
+
 	return queue_error($rslt,"No library_uuid in eneueue($command)")
 		if !$l_uuid;
 	my $library = findDevice($DEVICE_TYPE_LIBRARY,$l_uuid);
@@ -219,26 +222,13 @@ sub enqueue
 	# gather the tracks to be added
 
 	my $tracks = [];
-
-	my $folders = $post_params->{folders};
-	if ($folders)
+	if ($library->{remote_artisan})
 	{
-		my @ids = split(/,/,$post_params->{folders});
-		$tracks = enqueueFolders($rslt,$library,\@ids);
-		return '' if !$tracks;
+		$tracks = $library->getQueueTracks($rslt,$post_params);
 	}
-	else	# $post_params->{tracks} must be valid
+	else
 	{
-		my @ids = split(/,/,$post_params->{tracks});
-		for my $id (@ids)
-		{
-			my $track = $library->getTrack($id);
-			if (!$track)
-			{
-				return queue_error($rslt,"Could not find track($id)");
-			}
-			push @$tracks,$track;
-		}
+		$tracks = getQueueTracks($rslt,$library,$post_params);
 	}
 
 	# Add adds the tracks at the end of the queue and Play
@@ -343,13 +333,41 @@ sub enqueue
 }
 
 
+sub getQueueTracks
+{
+	my ($rslt,$library,$post_params) = @_;
+	my $tracks = [];
+	my $folders = $post_params->{folders};
+	if ($folders)
+	{
+		my @ids = split(/,/,$post_params->{folders});
+		$tracks = getQueueFolders($rslt,$library,\@ids);
+		return '' if !$tracks;
+	}
+	else	# $post_params->{tracks} must be valid
+	{
+		my @ids = split(/,/,$post_params->{tracks});
+		for my $id (@ids)
+		{
+			my $track = $library->getTrack($id);
+			if (!$track)
+			{
+				return queue_error($rslt,"Could not find track($id)");
+			}
+			push @$tracks,$track;
+		}
+	}
+	return $tracks;
+}
 
-sub enqueueFolders
+
+
+sub getQueueFolders
 	# Note that folders can contain both Albums/Playlists and Subfolders
 	# and that we do them in the order returned by getSubItems()
 {
 	my ($rslt,$library,$ids,$tracks,$visited) = @_;
-	display($dbg_queue,0,"enqueueFolders(".scalar(@$ids).")");
+	display($dbg_queue,0,"getQueueFolders(".scalar(@$ids).")");
 
 	$tracks ||= [];
 	$visited ||= {};
@@ -378,7 +396,7 @@ sub enqueueFolders
 				for my $sub_folder (@$sub_folders)
 				{
 					display($dbg_queue+1,1,"enquing subfolder($folder->{title})");
-					my $rslt = enqueueFolders($rslt,$library,[$sub_folder->{id}],$tracks,$visited);
+					my $rslt = getQueueFolders($rslt,$library,[$sub_folder->{id}],$tracks,$visited);
 					return if !$rslt;
 				}
 			}

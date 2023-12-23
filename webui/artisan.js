@@ -185,7 +185,7 @@ function updateLibraries(libraries)
 		if (!exists && library.online != '')
 		{
 			any_changed = true;
-			appendMenuButton('library', library.name, library.uuid, 'selectDevice', 'library', library.uuid);
+			appendMenuButton('library', library.name, library.uuid, 'selectDevice', 'library', library.uuid, library);
 		}
 		else if (exists && library.online == '')
 		{

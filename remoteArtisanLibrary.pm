@@ -19,7 +19,7 @@
 # even calling THIS Artisan at all, it calls directly to the OTHER
 # artisan for any library/ requests.
 #
-# The only thing that is important is that we register the device,
+# The most important thing that is important is that we register the device,
 # keep track of it, and feed it back to the UI. We also map folder.jpg
 # urls for these, like we do for localLibrary, in localRenderer.pm.
 
@@ -51,11 +51,42 @@ sub new
 }
 
 
-#	#---------------------------------------------
-#	# support for direct calls from webUI
-#	#---------------------------------------------
-#	# This is no longer needed.
-#
+#---------------------------------------------
+# support for direct calls from Queue
+#---------------------------------------------
+# To the degree that the Queue lives on THIS machine, and
+# the library *may* be a remoteArtisanLibrary, at least one
+# call through to the remote library MUST be supported.
+
+sub getQueueTracks
+{
+	my ($this,$rslt,$post_params) = @_;
+	display($dbg_alib,0,"getQueueTracks($this->{name}) at $this->{ip}:$this->{port}");
+	my $url = "http://$this->{ip}:$this->{port}/webui/library/$this->{uuid}/get_queue_tracks";
+	display($dbg_alib,1,"url=$url");
+	my $ua = LWP::UserAgent->new();
+	my $response = $ua->post($url,$post_params);
+	return json_error("No response from get($url)") if !$response;
+	my $content = $response->content();
+	my $json = my_json_decode($content);
+	if (!$json)
+	{
+		$rslt->{error} = "getQueueTracks() Could not decode json result";
+	}
+	elsif ($json->{error})
+	{
+		error($json->{error});
+		$rslt->{error} = $json->{error};
+		$json = '';
+	}
+	display_hash($dbg_alib,0,"getQueueTracks returning",$json);
+	return $json;
+}
+
+
+
+
+
 #	sub getTrack
 #	{
 #		my ($this,$id) = @_;
