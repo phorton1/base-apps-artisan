@@ -426,18 +426,22 @@ function update_home_tracklists()
 
 		if (playlist && playlist.num_tracks > 0)
 		{
-			var ajax_params = {
-				async: true,
-				method: 'GET',
-				url: "/webui/library/" + playlist.uuid + "/get_playlist_tracks_sorted", };
-			var params = {
-				id:playlist_id, };
+			var url = library_url(playlist.uuid);
+			if (url)
+			{
+				var ajax_params = {
+					async: true,
+					method: 'GET',
+					url: url + "/get_playlist_tracks_sorted", };
+				var params = {
+					id:playlist_id, };
 
-			loadHomeTracklist(
-				playlist_tracklist,
-				playlist.num_tracks,
-				ajax_params,
-				params);
+				loadHomeTracklist(
+					playlist_tracklist,
+					playlist.num_tracks,
+					ajax_params,
+					params);
+			}
 		}
 	}
 
