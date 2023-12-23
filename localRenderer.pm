@@ -629,7 +629,7 @@ sub doCommand
 		{
 			my $rslt = Queue::queueCommand('shuffle',{
 				renderer_uuid=>$this->{uuid},
-				shuffle=>$how});
+				how=>$how});
 			$error = $rslt->{error};
 		}
 	}

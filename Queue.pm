@@ -36,7 +36,7 @@ use DeviceManager;
 
 
 
-my $dbg_queue = -1;
+my $dbg_queue = 0;
 
 
 my $master_queue:shared = shared_clone({});

@@ -55,11 +55,10 @@ sub new
 # support for direct calls from Queue
 #---------------------------------------------
 # To the degree that the Queue lives on THIS machine, and
-# the library *may* be a remoteArtisanLibrary, at least one
+# the library *may* be a remoteArtisanLibrary, certain
 # call through to the remote library MUST be supported.
 
 use HTTP::Request;
-# use Data::Dumper;
 
 sub getQueueTracks
 {
@@ -74,10 +73,6 @@ sub getQueueTracks
 	$req->content_length(length($request_content));
 	$req->content($request_content);
 
-	# print Dumper($req);
-	# display_hash(0,0,"request",$req);
-	# display_hash(0,0,"headers",$req->{_headers});
-
 	my $ua = LWP::UserAgent->new();
 	my $response = $ua->request($req);
 
@@ -89,7 +84,7 @@ sub getQueueTracks
 	else
 	{
 		my $content = $response->content();
-		display(0,0,"got content=$content");
+		# display(0,0,"got content=$content");
 		my $json = my_decode_json($content);
 		if (!$json)
 		{
@@ -106,94 +101,59 @@ sub getQueueTracks
 		}
 		else
 		{
-			$tracks = $json->{tracks};
+			$tracks = shared_clone([]);
+			for my $rec (@{$json->{tracks}})
+			{
+				my $track = Track->newFromHash($rec);
+				push @$tracks,$track;
+			}
 		}
 	}
 
-	display_hash($dbg_alib,0,"getQueueTracks returning ",($tracks ? scalar(@$tracks)." tracks" : 'undef') );
+	display_hash($dbg_alib,0,"getQueueTracks returning $tracks=".($tracks ? (scalar(@$tracks)." tracks") : 'undef') );
 	return $tracks;
 }
 
 
 
+#-------------------------------------------
+# support for calls from localRenderer
+#-------------------------------------------
 
+sub getTrack
+{
+	my ($this,$id) = @_;
+	display($dbg_alib,0,"getTrack($id)");
+	my $rec = $this->remoteRequest("get_track?id=$id");
+	my $track = Track->newFromHash($rec);
+	return $track;
+}
 
-#	sub getTrack
-#	{
-#		my ($this,$id) = @_;
-#		display($dbg_alib,0,"getTrack($id)");
-#		my $rec = $this->remoteRequest("get_track?id=$id");
-#		my $track = Track->newFromHash($rec);
-#		return $track;
-#	}
-#
-#	sub getFolder
-#	{
-#		my ($this,$id) = @_;
-#		display($dbg_alib,0,"getFolder($id)");
-#		my $rec = $this->remoteRequest("get_folder?id=$id");
-#		my $track = Folder->newFromHash($rec);
-#		return $track;
-#	}
-#
-#
-#
-#
-#	#	sub unused_getPlaylists
-#	#	{
-#	#		my ($this) = @_;
-#	#		display($dbg_alib,0,"getPlaylists()");
-#	#		return $this->remoteRequest("get_playlists");
-#	#	}
-#	#
-#	#
-#
-#
-#	sub getPlaylist
-#		# pass thru
-#	{
-#		my ($this,$id) = @_;
-#		display($dbg_alib,0,"getPlaylist($id)");
-#		my $obj = $this->remoteRequest("get_playlist?id=$id");
-#		bless $obj,'Playlist' if $obj;
-#		return $obj;
-#	}
-#
-#
-#	sub getPlaylistTrack
-#	{
-#	    my ($this,$id,$version,$mode,$index) = @_;
-#		display($dbg_alib,0,"getPlaylistTrack($id,$version,$mode,$index)");
-#		my $obj = $this->remoteRequest("get_playlist_track?id=$id&version=$version&mode=$mode&index=$index");
-#		bless $obj,'Playlist' if $obj;
-#		return $obj;
-#	}
-#
-#
-#	sub sortPlaylist
-#	{
-#	    my ($this,$id,$shuffle) = @_;
-#		display($dbg_alib,0,"sortPlaylist($id,$shuffle)");
-#		my $obj = $this->remoteRequest("shuffle_playlist?id=$id&shuffle=$shuffle");
-#		bless $obj,'Playlist' if $obj;
-#		return $obj;
-#	}
-#
-#
-#	sub remoteRequest
-#	{
-#		my ($this,$command) = @_;
-#		display($dbg_alib,0,"remoteRequest($command)");
-#		my $url = "http://$this->{ip}:$this->{port}/webui/library/$this->{uuid}/$command";
-#		display($dbg_alib,1,"url=$url");
-#		my $ua = LWP::UserAgent->new();
-#		my $response = $ua->get($url);
-#		return json_error("No response from get($url)") if !$response;
-#		my $content = $response->content();
-#		my $json = my_decode_json($content);
-#		display($dbg_alib,0,"remoteRequest returning json($json)");
-#		return shared_clone($json);
-#	}
+sub getFolder
+{
+	my ($this,$id) = @_;
+	display($dbg_alib,0,"getFolder($id)");
+	my $rec = $this->remoteRequest("get_folder?id=$id");
+	my $track = Folder->newFromHash($rec);
+	return $track;
+}
+
+sub remoteRequest
+{
+	my ($this,$command) = @_;
+	display($dbg_alib,0,"remoteRequest($command)");
+	my $url = "http://$this->{ip}:$this->{port}/webui/library/$this->{uuid}/$command";
+	display($dbg_alib,1,"url=$url");
+	my $ua = LWP::UserAgent->new();
+	my $response = $ua->get($url);
+	return json_error("No response from get($url)") if !$response;
+	my $content = $response->content();
+	my $json = my_decode_json($content);
+	display($dbg_alib,0,"remoteRequest returning json($json)");
+	return shared_clone($json);
+
+}
+
 
 
 1;

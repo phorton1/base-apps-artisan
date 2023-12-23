@@ -22,7 +22,7 @@ use WebUI;
 
 my $dbg_http = 0;
 	#  0 == lifecycle
-my $dbg_post = 0;
+my $dbg_post = 1;
 	#  0 == show POST data
 my $dbg_art = 1;
 	# 0 == debug get_art() method
