@@ -334,8 +334,16 @@ function audio_command(command,args)
 // methods
 //-----------------------------------------------
 
-function track_to_html_renderer(track)
+function track_to_html_renderer(library_uuid,track)
 {
+	var button = document.getElementById('library_' + library_uuid);
+	if (!button)
+	{
+		rerror("library " + library_uuid + " is not online!");
+		return false;
+	}
+	var rec = button.rec;
+
 	html_renderer['position'] = 0;
 	html_renderer['duration'] = track['duration'];
 
@@ -344,32 +352,39 @@ function track_to_html_renderer(track)
 		album_title : track['album_title'],
 		genre       : track['genre'],
 		title       : track['title'],
-		track_num   : track['track_num'],
+		tracknum   : track['tracknum'],
 		type        : track['type'],
 		year_str    : track['year_str'],
 		art_uri     : track['art_uri'],
-		pretty_size : prettyBytes(track['size']) };
+		pretty_size : prettyBytes(track['size']),
+		library_uuid : library_uuid };
+
+	// tracks from playlists will not include the library_uuid?
 
 	// create the media path for our localLibrary
 
 	var path = track['path'];
-	if (current_library.local || current_library.remote_artisan)
+	if (rec.local || rec.remote_artisan)
 	{
-		var ip = current_library.ip;
-		var port = current_library.port;
-		var host = 'http://' + ip + ':' + port;
+		var ip = rec.ip;
+		var port = rec.port;
+		var host = rec.remote_artisan ? 'http://' + ip + ':' + port : '';
 		path = host + "/media/" + track['id'] + '.' + track['type'];
 		html_renderer.metadata.art_uri = host + '/get_art/' + track['parent_id'] + '/folder.jpg';
 	}
 
 	html_renderer.path = path;
+	return true;
 }
 
 
 function play_song_local(library_uuid,track_id)
 {
 	init_html_renderer(RENDERER_STATE_TRANSIT);
-	$.get(library_url() + '/get_track?id=' + track_id,
+	var url = library_url(library_uuid);
+	if (!url) return;
+
+	$.get(url + '/get_track?id=' + track_id,
 	function(result)
 	{
 		if (result.error)
@@ -378,11 +393,13 @@ function play_song_local(library_uuid,track_id)
 		}
 		else
 		{
-			track_to_html_renderer(result);
-			audio.src = html_renderer.path;
-			$('#audio_player_title').html(html_renderer.metadata.title);
-			$('#explorer_folder_image').attr('src',html_renderer.metadata.art_uri);
-			html_renderer.state = RENDERER_STATE_PLAYING;
+			if (track_to_html_renderer(library_uuid,result))
+			{
+				audio.src = html_renderer.path;
+				$('#audio_player_title').html(html_renderer.metadata.title);
+				$('#explorer_folder_image').attr('src',html_renderer.metadata.art_uri);
+				html_renderer.state = RENDERER_STATE_PLAYING;
+			}
 		}
 	});
 }
@@ -397,12 +414,14 @@ function playlist_song(mode,inc)
 	library_uuid = playlist.uuid;
 	playlist_id = playlist.id;
 
-	$.get(library_url()  + '/get_playlist_track' +
+	var url = library_url(library_uuid);
+	if (!url) return;
+
+	$.get(url + '/get_playlist_track' +
 	  '?version=' + playlist.version +
 	  '&id=' + playlist_id +
 	  '&mode=' + mode +
 	  '&index=' + inc,
-
 	function(result)
 	{
 		if (result.error)
@@ -436,10 +455,12 @@ function playlist_shuffe(how)
 	library_uuid = playlist.uuid;
 	playlist_id = playlist.id;
 
-	$.get(library_url() + '/shuffle_playlist' +
+	var url = library_url(library_uuid);
+	if (!url) return;
+
+	$.get(url + + '/shuffle_playlist' +
 	  '?id=' + playlist_id +
 	  '&shuffle=' + how,
-
 	function(result)
 	{
 		if (result.error)
@@ -466,9 +487,11 @@ function playlist_shuffe(how)
 function set_local_playlist(library_uuid,playlist_id)
 {
 	init_html_renderer(RENDERER_STATE_TRANSIT);
-	$.get(library_url()  + '/get_playlist' +
-		  '?id=' + playlist_id,
+	var url = library_url(library_uuid);
+	if (!url) return;
 
+	$.get(url  + '/get_playlist' +
+		  '?id=' + playlist_id,
 	function(result)
 	{
 		if (result.error)

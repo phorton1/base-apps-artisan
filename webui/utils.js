@@ -58,13 +58,63 @@ var IS_DESKTOP = false;
 var current_renderer = false;
 var current_library = false;
 
-function library_url()
+// function library_url()
+// {
+// 	var host = current_library.remote_artisan ?
+// 		'http://' + current_library.ip + ':' + current_library.port : '';
+// 	var url =  host + "/webui/library/" + current_library['uuid'];
+// 	// display(0,0,"library url=" + url);
+// 	return url;
+// }
+
+
+
+function current_library_url()
+	// called from explorer.js and home.js, by anybody who wants
+	// to do a /webui/library request to the current_library.
+	//
+	// Will NEVER return '' because it is only called for the
+	// current_library which is ALWAYS online and in the list
 {
-	var host = current_library.remote_artisan ?
-		'http://' + current_library.ip + ':' + current_library.port : '';
-	var url =  host + "/webui/library/" + current_library['uuid'];
-	// display(0,0,"library url=" + url);
+	return library_url(current_library.uuid);
+}
+
+function library_url(library_uuid)
+	// Called for every access to /webui/library/***
+	//
+	// May return '' if library is not online (in the device
+	// list) so every caller MUST check for that and report
+	// an error appropriately.
+	//
+	// Notices artisan_remote libraries and prepends the
+	// server_ip:server_port host to the address.
+{
+	var button = document.getElementById('library_' + library_uuid);
+	if (!button)
+	{
+		rerror("library " + library_uuid + " is not online!");
+		return '';
+	}
+	var rec = button.rec;		// should always be there
+	var host = '';
+	if (rec.artisan_remote)
+		host = 'http://' + rec.ip + ":" + rec.port;
+
+	var url =  host + "/webui/library/" + library_uuid;
 	return url;
+}
+
+
+function getLibraryName(library_uuid)
+{
+	var button = document.getElementById('library_' + library_uuid);
+	if (!button)
+	{
+		rerror("library " + library_uuid + " is not online!");
+		return '';
+	}
+	var rec = button.rec;		// should always be there
+	return rec.name;
 }
 
 
@@ -396,7 +446,7 @@ function create_numeric_pref(min,med,max,var_name,spinner_id)
 }
 
 
-function appendMenuButton(type, name, id, fxn, param1, param2)
+function appendMenuButton(type, name, id, fxn, param1, param2, rec)
 {
 	display(dbg_menu,1,"appendMenuButton(" + commaJoin([type, name, id, fxn, param1, param2]) + ")" );
 
@@ -408,6 +458,8 @@ function appendMenuButton(type, name, id, fxn, param1, param2)
     input.id = use_id;
 	input.name = type + '_button';
     input.value = use_id;
+	if (rec != undefined)
+		input.rec = rec;
 
     var label = document.createElement('label')
     var text = document.createTextNode(name);
@@ -438,7 +490,7 @@ function buildDeviceMenu(array, type)
 	$('#' + type + '_menu').html('');	// remove existing buttons
 	$.each(array , function(index, rec)
 	{
-		appendMenuButton(type, rec.name, rec.uuid, 'selectDevice', type, rec.uuid);
+		appendMenuButton(type, rec.name, rec.uuid, 'selectDevice', type, rec.uuid, rec);
 	});
 	$('#' + type + '_menu').buttonset();
 }

@@ -191,8 +191,25 @@ $artisan_perl_dir = "./" if $artisan_perl_dir eq '/';
 # print "0=$0\n";
 # print "perl_dir=$artisan_perl_dir\n";
 
+
 our $program_name = 'Artisan Perl';
-our $this_uuid = '56657273-696f-6e34-4d41-' . $ENV{COMPUTERNAME};	# '20231112feed';
+
+# From SSDP's point of view, there are very few constraints on the
+# the structure of a uuid, although almost everyone uses the standard
+#
+#	56657273-696f-6e34-4d41-20231112feed
+#
+# dash deliminted hex character format. We use our own format
+# which includes human readable names.
+#
+# However, there is at least one constraints on how WE use the uuid.
+# Because they are sent back to us via HTTP requests, we don't want
+# them to include spaces, or else those will get encoded as %20 by HTTP
+# making our lookups more complicated.
+
+our $this_uuid = $program_name."-".$ENV{COMPUTERNAME};
+$this_uuid =~ s/\s//g;		# remove ' ' from $program name
+# OLD: $this_uuid = '56657273-696f-6e34-4d41-' . $ENV{COMPUTERNAME};	# '20231112feed';
 
 our $mp3_dir = "/mp3s";
 our $mp3_dir_RE = '\/mp3s';

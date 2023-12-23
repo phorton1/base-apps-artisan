@@ -313,7 +313,7 @@ sub updateDevice
 
 		$device = $type eq $DEVICE_TYPE_LIBRARY ?
 			$dev->{name} =~ /Artisan/ ?
-				remoteArtisan->new($dev) :
+				remoteArtisanLibrary->new($dev) :
 				remoteLibrary->new($dev) :
 			remoteRenderer->new($dev);
 
@@ -381,7 +381,7 @@ sub updateDevice
 	# There are only two kinds of devices here:
 	# remoteLibraries and remoteArtisans.
 	#
-	# We simply notify remoteArtisan on any changes and it just works.
+	# We simply notify remote_artisan Library on any changes and it just works.
 	# But for WMP we can only notify immediately if going offline.
 	# Otherwise we have to do the $WMP_PLAYLIST_KLUDGE
 

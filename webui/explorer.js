@@ -133,7 +133,7 @@ function init_page_explorer()
 			var node = data.node;
 			var rec = node.data;
 			explorer_details.reload({
-				url: library_url() + '/track_metadata?id=' + rec.id,
+				url: current_library_url() + '/track_metadata?id=' + rec.id,
 				cache: true});
 			deselectTree('explorer_tree');
 			cur_tree = explorer_tracklist;
@@ -232,7 +232,7 @@ function init_page_explorer()
 
 function start_explorer_library()
 {
-	$.get(library_url() + "/dir" + '?id=0&mode=0&source=main',
+	$.get(current_library_url() + "/dir" + '?id=0&mode=0&source=main',
 		function (result) { onLoadFolder(result) } );
 }
 
@@ -314,7 +314,7 @@ function loadFolder(node)
 
 	$.ajax({
 		async: true,
-		url: library_url() + "/dir",
+		url: current_library_url() + "/dir",
 		data: {
 			id: rec.id,
 			mode: 0,
@@ -346,7 +346,7 @@ function loadTracklist(rec)
 
 	$.ajax({
 		async: true,
-		url: library_url() + "/tracklist",
+		url: current_library_url() + "/tracklist",
 		data: {
 			id: rec.id,
 			source: 'loadTracklist',
@@ -533,7 +533,7 @@ function update_explorer_ui(node)
 		disable_button('select_button_play',false);
 
 		explorer_details.reload({
-			url: library_url() + '/folder_metadata?id=' + rec.id,
+			url: current_library_url() + '/folder_metadata?id=' + rec.id,
 			cache: true});
 
 		display(dbg_explorer,1,"loading tracks for  " + rec.TITLE);

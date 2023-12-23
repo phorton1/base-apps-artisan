@@ -272,7 +272,9 @@ sub new
 	my $this = $class->SUPER::new({
 		local => 1,
 		uuid  => $this_uuid,
-		name  => $program_name });
+		name  => $program_name,
+		ip    => $server_ip,		# unused, added for consistency
+		port  => $server_port, });
 	bless $this,$class;
 
 	mergeHash($this, shared_clone({
@@ -663,9 +665,10 @@ sub play_track
 		$this->{metadata}->{$field} = $track->{$field};
 	}
 	$this->{metadata}->{pretty_size} = prettyBytes($track->{size});
+	$this->{metadata}->{library_uuid} = $library_uuid;
 
-	# special handling for local library
-	# get the art from the parent folder
+	# special handling for Artisan servers
+	# get the art from the parent folder by fully qualified ip:port
 
 	my $path = $track->{path};
 	if ($library->{local} || $library->{remote_artisan})

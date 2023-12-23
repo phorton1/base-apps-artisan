@@ -311,7 +311,14 @@ sub getDevicesData
 			type => $device->{type},
 			uuid => $device->{uuid},
 			name => $device->{name},
+			ip   => $device->{ip},
+			port => $device->{port},
 			online => $device->{online} };
+
+		$use_device->{local} = 'true'
+			if $device->{local};
+		$use_device->{artisan_remote} = 'true'
+			if $device->{artisan_remote};
 
 		# temporary kludge to handle remoteLibrary initialization
 

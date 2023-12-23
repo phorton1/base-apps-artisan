@@ -155,11 +155,12 @@ sub library_request
 
 	# Remote request for another Artisan library
     # To become supported in remoteArtisan as standard Library API
+    #
+	#	if ($library->{remote_artisan})
+	#	{
+	#		return remoteArtisanRequest($library,$path,$params);
+	#	}
 
-	if ($library->{remote_artisan})
-	{
-		return remoteArtisanRequest($library,$path,$params);
-	}
 
 	# handle request
 
@@ -412,32 +413,32 @@ sub library_tracklist
 }
 
 
-#-------------------------------------------------------
-# remoteArtisanRequest
-#-------------------------------------------------------
-
-use LWP::UserAgent;
-
-
-my $dbg_remote = 0;
-
-sub remoteArtisanRequest
-{
- 	my ($library,$path,$params) = @_;
- 	my $args = '';
- 	for my $key (keys %$params)
- 	{
- 		$args .= $args ? '&' : '?';
- 		$args .= "$key=$params->{$key}";
- 	}
- 	my $url = "http://$library->{ip}:$library->{port}/webui/library/$library->{uuid}/$path$args";
- 	display($dbg_remote,0,"remoteArtisanRequest($url)");
- 	my $ua = LWP::UserAgent->new();
- 	my $response = $ua->get($url);
- 	return json_error("No response from get($url)") if !$response;
- 	display($dbg_remote,0,"response=".length($response->as_string())." bytes");
- 	return $response->as_string();
-}
+#	#-------------------------------------------------------
+#	# remoteArtisanRequest
+#	#-------------------------------------------------------
+#
+#	use LWP::UserAgent;
+#
+#
+#	my $dbg_remote = 0;
+#
+#	sub remoteArtisanRequest
+#	{
+#	 	my ($library,$path,$params) = @_;
+#	 	my $args = '';
+#	 	for my $key (keys %$params)
+#	 	{
+#	 		$args .= $args ? '&' : '?';
+#	 		$args .= "$key=$params->{$key}";
+#	 	}
+#	 	my $url = "http://$library->{ip}:$library->{port}/webui/library/$library->{uuid}/$path$args";
+#	 	display($dbg_remote,0,"remoteArtisanRequest($url)");
+#	 	my $ua = LWP::UserAgent->new();
+#	 	my $response = $ua->get($url);
+#	 	return json_error("No response from get($url)") if !$response;
+#	 	display($dbg_remote,0,"response=".length($response->as_string())." bytes");
+#	 	return $response->as_string();
+#	}
 
 
 

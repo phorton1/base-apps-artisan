@@ -274,9 +274,13 @@ function update_renderer_ui()
 	{
 		$('#renderer_song_title')	.html(decode_ampersands(metadata.title));
 		$('#renderer_album_artist') .html(decode_ampersands(metadata.artist));
+
 		$('#renderer_album_title')	.html(decode_ampersands(metadata.album_title));
-		$('#renderer_album_track')  .html(metadata.tracknum != '' ?
-			'track: ' + metadata.tracknum : '');
+
+		var track_info = 'Library: ' + getLibraryName(metadata.library_uuid);
+		if (metadata.tracknum != undefined && metadata.tracknum != '')
+			track_info += ' &nbsp; Album Track: ' + metadata.tracknum;
+		$('#renderer_album_track')  .html(track_info);
 
 		var genre_year = metadata.genre ?
 			decode_ampersands(metadata.genre) : '';
