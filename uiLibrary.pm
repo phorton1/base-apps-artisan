@@ -148,6 +148,8 @@ sub library_request
 		if $path !~ s/^(.*?)\///;
 	my $uuid = $1;
 
+	display(0,0,"path2=$path");
+
 	# Get the Library
 
 	my $library = findDevice($DEVICE_TYPE_LIBRARY,$uuid);
@@ -263,7 +265,7 @@ sub library_request
 		my $tracks = Queue::getQueueTracks($rslt,$library,$post_params);
 		return return json_error($rslt->{error})
 			if $rslt->{error};
-		return json_header().my_encode_json($tracks);
+		return json_header().my_encode_json({tracks => $tracks});
 	}
 
 	#-----------------------------

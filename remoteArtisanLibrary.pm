@@ -59,7 +59,7 @@ sub new
 # call through to the remote library MUST be supported.
 
 use HTTP::Request;
-use Data::Dumper;
+# use Data::Dumper;
 
 sub getQueueTracks
 {
@@ -74,16 +74,14 @@ sub getQueueTracks
 	$req->content_length(length($request_content));
 	$req->content($request_content);
 
-	print Dumper($req);
-
-	display_hash(0,0,"request",$req);
-	display_hash(0,0,"headers",$req->{_headers});
+	# print Dumper($req);
+	# display_hash(0,0,"request",$req);
+	# display_hash(0,0,"headers",$req->{_headers});
 
 	my $ua = LWP::UserAgent->new();
 	my $response = $ua->request($req);
 
-
-	my $json = '';
+	my $tracks = '';
 	if (!$response)
 	{
 		$rslt->{error} = error("getQueueTracks() no reponse from $url");
@@ -92,21 +90,28 @@ sub getQueueTracks
 	{
 		my $content = $response->content();
 		display(0,0,"got content=$content");
-		$json = my_decode_json($content);
+		my $json = my_decode_json($content);
 		if (!$json)
 		{
 			$rslt->{error} = error("getQueueTracks() Could not decode json result");
 		}
 		elsif ($json->{error})
 		{
-			error($json->{error});
-			$rslt->{error} = $json->{error};
+			$rslt->{error} = error($json->{error});
 			$json = '';
+		}
+		elsif (!$json->{tracks})
+		{
+			$rslt->{error} = error("No Tracks returned from $url");
+		}
+		else
+		{
+			$tracks = $json->{tracks};
 		}
 	}
 
-	display_hash($dbg_alib,0,"getQueueTracks returning",$json);
-	return $json;
+	display_hash($dbg_alib,0,"getQueueTracks returning ",($tracks ? scalar(@$tracks)." tracks" : 'undef') );
+	return $tracks;
 }
 
 

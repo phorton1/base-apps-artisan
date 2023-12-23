@@ -336,7 +336,7 @@ sub enqueue
 sub getQueueTracks
 {
 	my ($rslt,$library,$post_params) = @_;
-	display_hash(0,0,"getQueueTracks post_params",$post_params);
+	display_hash($dbg_queue+1,0,"getQueueTracks post_params",$post_params);
 	my $tracks = [];
 	my $folders = $post_params->{folders};
 	if ($folders)
