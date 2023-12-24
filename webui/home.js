@@ -81,8 +81,8 @@ function load_device_list(type)
 
 function selectDefaultDevice(type)
 {
-	var last_cookie = 'last_' + type;
-	var last_uuid = getCookie(last_cookie);
+	var last_key = 'last_' + type;
+	var last_uuid = getStorage(last_key);
 	var found = document.getElementById(type + '_' + last_uuid );
 	if (!found)
 	{
@@ -128,7 +128,7 @@ function onSelectDevice(type,uuid,result)
 
 	window[cur_name] = result;
 	$('#' + type +  '_' + uuid).prop('checked', true).button('refresh');
-	setCookie('last_'+type,uuid,180);
+	putStorage('last_'+type,uuid);
 
 	if (type == DEVICE_TYPE_LIBRARY)
 	{

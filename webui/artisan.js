@@ -59,9 +59,8 @@ $(function()
 {
 	display(dbg_load,0,"START LOADING ARTISAN");
 
-	clearCookies();
-
 	// debug_environment();
+	// clearStorage();
 
 	init_utils();
 	init_device_id()

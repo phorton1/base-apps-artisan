@@ -150,27 +150,17 @@ function init_device_id()
 	// stored to localStorage. returns ''
 	// if localStorage not enabled.
 {
-	try
+	DEVICE_ID = getStorage('device_id');
+	if (!DEVICE_ID)
 	{
-		DEVICE_ID = localStorage.getItem('device_id');
-		if (DEVICE_ID == undefined || !DEVICE_ID)
-		{
-			DEVICE_ID = random32Hex();
-			display(0,0,"create new device_id=" + DEVICE_ID);
-			localStorage.setItem('device_id', DEVICE_ID);
-		}
-		else
-		{
-			display(0,0,"got existing device_id=" + DEVICE_ID);
-		}
+		DEVICE_ID = random32Hex();
+		debug_remote(0,0,"create new device_id=" + DEVICE_ID);
+		putStorage('device_id', DEVICE_ID);
 	}
-	catch (SecurityError)
+	else
 	{
-		error(SecurityError);
-		DEVICE_ID = '';
+		debug_remote(0,0,"got existing device_id=" + DEVICE_ID);
 	}
-
-	return DEVICE_ID;
 }
 
 
@@ -396,29 +386,53 @@ function toggleFullScreen()
 
 
 //----------------------------------------
-// cookie utilities
+// storage utilities
 //----------------------------------------
 
-function setCookie(cname, cvalue, exdays)
+
+function getStorage(key)
 {
-    var d = new Date();
-    d.setTime(d.getTime() + (exdays*24*60*60*1000));
-    var expires = "expires="+d.toUTCString() + ";";
-    document.cookie = cname + "=" + cvalue + ";" + expires + "path=/; SameSite=Strict;";
+	var value = '';
+	try
+	{
+		value = localStorage.getItem(key);
+		if (value == undefined)
+			value = '';
+	}
+	catch (SecurityError)
+	{
+		error(SecurityError);
+	}
+
+	return value;
 }
 
-function getCookie(cname)
+function putStorage(key,value)
 {
-    var name = cname + "=";
-    var ca = document.cookie.split(';');
-    for(var i=0; i<ca.length; i++) {
-        var c = ca[i];
-        while (c.charAt(0)==' ') c = c.substring(1);
-        if (c.indexOf(name) != -1) return c.substring(name.length, c.length);
-    }
-    return "";
+	try
+	{
+		localStorage.setItem(key,value);
+	}
+	catch (SecurityError)
+	{
+		error(SecurityError);
+	}
+	return value;
 }
 
+function clearStorage()
+	// clears all local storage
+	// use removeITem for individual items
+{
+	try
+	{
+		localStorage.clear();
+	}
+	catch (SecurityError)
+	{
+		error(SecurityError);
+	}
+}
 
 
 //-------------------------------------------------
