@@ -5,6 +5,8 @@
 var dbg_explorer = 1;
 var dbg_folder_load = 0;
 var dbg_track_load = 0;
+var dbg_select = -1;
+var dbg_multi = 0;
 
 
 const LOAD_PER_REQUEST = 100;
@@ -101,11 +103,31 @@ function init_page_explorer()
 		source: 			function() { return []; },
 		click:				function(event,data)
 		{
-			var node = data.node;
-			update_explorer_ui(node);
 			deselectTree('explorer_tracklist');
 			cur_tree = explorer_tree;
-			return true;
+			var node = data.node;
+			var rec = node.data;
+
+			// use the icon as an expander
+			// otherwise, do normal activation
+
+			if (data.targetType == 'icon' &&
+				rec.dirtype != 'album' &&
+				rec.dirtype != 'playlist' )
+			{
+				node.setExpanded(!node.isExpanded());
+				return false;
+			}
+			else
+			{
+				update_explorer_ui(node);
+				if (IS_TOUCH)
+				{
+					doCtrlSelect(node,'explorer_tree');
+					return false;
+				}
+				return true;
+			}
 		},
 		lazyLoad: function(event, data)
 		{
@@ -116,6 +138,9 @@ function init_page_explorer()
 	});
 
 	explorer_tree = $("#explorer_tree").fancytree("getTree");
+	if (IS_TOUCH)
+		init_touch('explorer_tree');
+
 
 	// EXPLORER TRACKLIST
 
@@ -137,6 +162,11 @@ function init_page_explorer()
 				cache: true});
 			deselectTree('explorer_tree');
 			cur_tree = explorer_tracklist;
+			if (IS_TOUCH)
+			{
+				doCtrlSelect(node,'explorer_tracklist');
+				return false;
+			}
 			return true;
 		},
 		dblclick:		function(event, data)
@@ -166,6 +196,9 @@ function init_page_explorer()
 
 	explorer_tracklist = $("#explorer_tracklist").fancytree("getTree");
 	explorer_tracklist.my_load_counter = 0;
+	if (IS_TOUCH)
+		init_touch('explorer_tracklist');
+
 
 	// EXPLORER DETAILS
 
@@ -220,6 +253,8 @@ function init_page_explorer()
 	// finish up
 
 	$(".select_button").button();
+	if (!IS_TOUCH)
+		$('#select_button_ctrl').css('display','none');
 
 	cur_tree = explorer_tree;
 	update_explorer_ui()
@@ -243,6 +278,56 @@ function saveDetailsExpanded(expanded,node)
 	var title = rec.TITLE;
 	// alert((expanded ? "expand " : "collapse") + title);
 	explorer_details['expanded_' + title] = expanded;
+}
+
+
+
+function onSelectButton(command)
+{
+	display(dbg_select,0,'onSelectButton(' + command + ')');
+	if (command == 'play')
+		doSelectCommand('play');
+	else if (command == 'add')
+		doSelectCommand('add');
+	else if (command == 'ctrl')
+	{
+		$('#select_button_ctrl').toggleClass('ui-state-active');
+	}
+}
+
+
+function doCtrlSelect(node,tree_id)
+{
+	var is_sel = node.isSelected();
+	var ctrl = $('#select_button_ctrl').hasClass('ui-state-active');
+	display(dbg_multi+1,0,"doCtrlSelect(" + tree_id +") " +  node.data.TITLE + ") is_sel(" + is_sel + ") ctrl(" + ctrl + ")");
+	if (!ctrl) deselectTree(tree_id);
+	node.setSelected(!is_sel);
+}
+
+
+function multiTouchSelect(is_tree,top1,top2)
+{
+	display(dbg_multi,0,"multiTouchSelect(" + is_tree + ") top1(" + top1 + ") top2(" + top2 + ")");
+	var tree = is_tree ? explorer_tree : explorer_tracklist;
+
+	// deselect the other tree, and if ctrl button not pressed,
+	// deslect this one as well ..
+
+	deselectTree(is_tree ? 'explorer_tracklist' : 'explorer_tree');
+	if (!$('#select_button_ctrl').hasClass('ui-state-active'))
+		deselectTree(is_tree ? 'explorer_tree' : 'explorer_tracklist');
+
+	tree.visit(function (node) {
+		var top = is_tree ?
+			node.li.offsetTop :
+			node.tr.offsetTop;
+		if (top >= top1 && top <= top2)
+		{
+			node.setSelected(true);
+		}
+
+	});
 }
 
 
@@ -394,16 +479,6 @@ function onLoadTracks(result,loading)
 // selection handling
 //--------------------------------------------------------------
 
-var dbg_select = -1;
-
-function onSelectButton(command)
-{
-	display(dbg_select,0,'onSelectButton(' + command + ')');
-	if (command == 'play')
-		doSelectCommand('play');
-	else if (command == 'add')
-		doSelectCommand('add');
-}
 
 
 function doSelectCommand(command)

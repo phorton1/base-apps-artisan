@@ -33,14 +33,28 @@ ul.fancytree-container
 
 @media (max-device-width: 1250px)
 {
+	#queue_tracklist span.fancytree-title,
+	#playlist_tracklist span.fancytree-title,
+	#queue_tracklist td,
+	#playlist_tracklist td,
 	#explorer_tree span,
 	#explorer_tracklist td
 	{
-		font-size:15pt;
+		font-size:16pt;
 	}
 	#explorer_details td
 	{
 		font-size:13pt;
+	}
+
+	img.fancytree-icon
+	{
+		width:24px;
+		height:24px;
+	}
+	.tracklist_icon
+	{
+		width:24px;
 	}
 }
 

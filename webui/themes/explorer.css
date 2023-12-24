@@ -3,25 +3,57 @@
 ********************************************/
 /* ALBUM INFO TOP PANE */
 
-#explorer_folder_td		{ padding-top:2px; margin-left:20px; }
-#explorer_folder_title  { font-size:12pt;  margin-top:0px; margin-bottom:0px; font-weight:bold; }
-#explorer_folder_artist { font-size:10pt;  margin-top:0px; margin-bottom:0px;}
-#explorer_folder_genre  { font-size:10pt;  margin-top:0px; margin-bottom:0px;}
-#explorer_folder_year   { font-size:10pt;  margin-top:0px; margin-bottom:0px;}
-#explorer_folder_path   { font-size:8pt;   margin-top:4px; margin-bottom:0px;}
+#explorer_top_div
+{
+    display: flex;
+	/* width:100%; */
+    /* justify-content: space-between; */
+    justify-content: space-_between;
+}
+
+#explorer_folder_image
+{
+	vertical-align:top;
+	padding-top:5px;
+	padding-left:5px;
+	padding-right:10px;
+	height:85px;
+	width:85px;
+}
+
+#explorer_folder_span
+{
+	padding-top:2px;
+	margin-left:0px;
+	overflow:hidden;
+	flex-grow: 1.0;
+}
+
+#explorer_buttons_span
+{
+	padding-right:5px;
+	/* text-align:right; */
+	/* justify-content: flex-end; */
+}
+
+
+#explorer_folder_title  { wrap:none; height:20px; overflow:hidden; font-size:12pt; margin-top:0px; margin-bottom:0px; font-weight:bold; }
+#explorer_folder_artist { wrap:none; height:16px; overflow:hidden; font-size:10pt; margin-top:4px; margin-bottom:0px;}
+#explorer_folder_genre  { wrap:none; height:16px; overflow:hidden; font-size:10pt; margin-top:0px; margin-bottom:0px;}
+#explorer_folder_year   { wrap:none; height:16px; overflow:hidden; font-size:10pt; margin-top:0px; margin-bottom:0px;}
+#explorer_folder_path   { wrap:none; height:12px; overflow:hidden; font-size:8pt;  margin-top:4px; margin-bottom:0px;}
 
 
 .select_buttons
 {
     display: flex;
+	flex-direction: column;
     justify-content: space-between;
-	padding-top: 12px;
-	padding-left:30px;
-	padding-right:30px;
 }
 
 .select_button
 {
+	margin-top: 5px;
 	width:60px;
 }
 

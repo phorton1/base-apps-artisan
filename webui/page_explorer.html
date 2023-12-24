@@ -42,33 +42,20 @@
 
             <!-- folder info -->
 
-            <div>
+            <div id="explorer_top_div">
+				<img
+					id="explorer_folder_image"
+					src="/webui/icons/artisan.png" >
 
-                <table width='100%'>
-                    <tr>
-                        <td width='5%'>
-                            <img
-                                id="explorer_folder_image"
-                                style="
-                                    vertical-align:top;
-                                    padding-top:5px;
-                                    padding-left:5px;
-                                    padding-right:10px;
-                                    height:85px;
-                                    width:85px;"
-                                src="/webui/icons/artisan.png" >
-                        </td>
+				<span id="explorer_folder_span">
+					<div id="explorer_folder_title"></div>
+					<div id="explorer_folder_artist"></div>
+					<div id="explorer_folder_genre"></div>
+					<div id="explorer_folder_year"></div>
+					<div id="explorer_folder_path"></div>
+				</span>
 
-                        <td id="explorer_folder_td">
-                            <p id="explorer_folder_title"></p>
-                            <p id="explorer_folder_artist"></p>
-                            <p id="explorer_folder_genre"></p>
-                            <p id="explorer_folder_year"></p>
-                            <p id="explorer_folder_path"></p>
-                        </td>
-                    </tr>
-                </table>
-				<div class='select_buttons'>
+				<span id="explorer_buttons_span" class='select_buttons'>
 					<button
 						id="select_button_play"
 						class="select_button"
@@ -78,14 +65,10 @@
 						class="select_button"
 						onclick = "javascript:onSelectButton('add')">Add</button>
 					<button
-						id="select_button_play"
-						class="select_button"
-						onclick = "javascript:onSelectButton('shift')">Shift</button>
-					<button
 						id="select_button_ctrl"
 						class="select_button"
 						onclick = "javascript:onSelectButton('ctrl')">Ctrl</button>
-				</div>
+				</span>
             </div>
         </div>
 

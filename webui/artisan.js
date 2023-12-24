@@ -59,27 +59,33 @@ $(function()
 {
 	display(dbg_load,0,"START LOADING ARTISAN");
 
-	WITH_SWIPE =
-		( 'ontouchstart' in window ) ||
-	    ( navigator.maxTouchPoints > 0 ) ||
-	    ( navigator.msMaxTouchPoints > 0 );
+	clearCookies();
 
-	debug_environment();
+	// debug_environment();
 
 	init_utils();
 	init_device_id()
 	init_audio();
 
-	WITH_SWIPE = true;
+	WITH_SWIPE = IS_TOUCH;
+	//	WITH_SWIPE = true;
 		// turn WITH_SWIPE on for testing on laptop
 
 	// explorer_mode = getCookie('explorer_mode') || 0;
 
 
-
 	// STATIC LAYOUT
+	// layout tricks for IS_TOUCH are sporadically placed
 
 	$('.artisan_menu_item').button();
+
+	if (IS_TOUCH)
+	{
+		var explorer_east = layout_defs['explorer']['east'];
+		explorer_east['size'] = 160;
+		explorer_east['limit'] = 2000;
+	}
+
 
 	create_layout('home');
 	create_layout('explorer');
@@ -89,7 +95,7 @@ $(function()
 
 	$('#explorer_center_div').layout({
 		applyDemoStyles: true,
-		north__size:140, });
+		north__size: IS_TOUCH ? 115 : 100, });
 
 	$('#renderer_pane_div').layout({
 		applyDemoStyles: true,
@@ -104,6 +110,9 @@ $(function()
 
 	setTimeout(idle_loop, REFRESH_TIME);
 	set_page(default_page);
+
+	// close the explorer_details pane for IS_TOUCH
+	// it can be swiped open
 
 	display(dbg_load,0,"FINISHED LOADING ARTISAN");
 });

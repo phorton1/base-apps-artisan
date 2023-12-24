@@ -8,7 +8,10 @@
 // and particularly delving into jquery/fancytree internals.
 
 
-var dbg_touch = 0;
+var dbg_touch = 1;
+
+var WITH_TOUCH = true;
+	// init_touch() will be called if IS_TOUCH and this
 var PREVENT_DEFAULT = false;
 
 display(dbg_touch,0,"touch.js loaded");
@@ -16,10 +19,17 @@ display(dbg_touch,0,"touch.js loaded");
 
 
 const cur_touches = [];
+var touch_target1 = false;
+	// first two-touch touch-end target
 
+//-----------------------------------
+// main
+//-----------------------------------
 
 function init_touch(id)
 {
+	if (!WITH_TOUCH)
+		return;
 	display(dbg_touch,0,"init_touch(" + id + ")");
 
 	var ele = document.getElementById(id);
@@ -38,6 +48,56 @@ function init_touch(id)
 
 
 
+function debugTouch(start,end)
+{
+	display(dbg_touch+1,1,"start " +
+		"page(" + start.pageX + "," + start.pageY + ") " +
+		"client(" + start.clientX + "," + start.clientY + ")" +
+		"target(" + start.target + ")");
+	display(dbg_touch+1,1,"end   " +
+		"page(" + end.pageX + "," + end.pageY + ") " +
+		"client(" + end.clientX + "," + end.clientY + ")" +
+		"target(" + end.target + ")");
+}
+
+
+function handleDoubleTouich(touch_target1,touch_target2)
+	// if the two targets are in the same tree, do the multi-select
+	// explorer_tree targets are <spans>, tracklist are td's
+{
+	if (touch_target1.tagName == touch_target2.tagName)
+	{
+		// put them in top down order
+
+		display(dbg_touch+1,0,"tagName(" + touch_target1.tagName + ") one(" +
+			touch_target1.offsetTop + ") two(" +
+			touch_target2.offsetTop + ")");
+		if (touch_target2.offsetTop < touch_target1.offsetTop)
+		{
+			var temp = touch_target1;
+			touch_target1 = touch_target2;
+			touch_target2 = temp;
+		}
+
+		// call explorer.js multiSelect()
+
+		multiTouchSelect(
+			touch_target1.tagName == 'SPAN',
+			touch_target1.offsetTop,
+			touch_target2.offsetTop);
+	}
+	else
+	{
+		display(dbg_touch+1,0,"ignoring double touch to different target types");
+	}
+}
+
+
+
+//-----------------------------------
+// event handlers
+//-----------------------------------
+
 function touchStart(evt)
 {
 	if (PREVENT_DEFAULT)
@@ -47,7 +107,7 @@ function touchStart(evt)
 	{
 		var len = cur_touches.length;
 		const touch = touches[i];
-		display(dbg_touch,0,"-->(" + len + ") touchStart(" + i + ":" + touch.identifier + ")");
+		display(dbg_touch+1,0,"-->(" + len + ") touchStart(" + i + ":" + touch.identifier + ")");
 		cur_touches.push(copyTouch(touch));
 	}
 }
@@ -64,28 +124,15 @@ function touchMove(evt)
 		const idx = touchById(touch.identifier);
 		if (idx >= 0)
 		{
-			display(dbg_touch,0,"touchMove(" + i + "=" + idx + ":" + touch.identifier + ") = " + touch.clientX + "," + touch.clientY);
+			display(dbg_touch+1,0,"touchMove(" + i + "=" + idx + ":" + touch.identifier + ") = " + touch.clientX + "," + touch.clientY);
 			cur_touches.splice(idx, 1, copyTouch(touches[i])); // swap in the new touch record
 		}
 		else
 		{
-			display(dbg_touch,"No idx in touchMove");
+			error("No idx in touchMove");
 		}
 	}
 }
-
-
-
-function debugTouch(start,end)
-{
-	display(dbg_touch,1,"start " +
-		"page(" + start.pageX + "," + start.pageY + ") " +
-		"client(" + start.clientX + "," + start.clientY + ")");
-	display(dbg_touch,1,"end   " +
-		"page(" + end.pageX + "," + end.pageY + ") " +
-		"client(" + end.clientX + "," + end.clientY + ")");
-}
-
 
 
 function touchEnd(evt)
@@ -99,14 +146,37 @@ function touchEnd(evt)
 		let idx = touchById(touch.identifier);
 		if (idx >= 0)
 		{
-			const cur_touch = cur_touches[idx];
-			display(dbg_touch,0,"<--(" + idx + ") touchEnd(" + i + ":" + touch.identifier + ")");
-			debugTouch(cur_touch,touch);
+			const prev_touch = cur_touches[idx];
+			display(dbg_touch+1,0,"<--(" + idx + ") touchEnd(" + i + ":" + touch.identifier + ")");
+			debugTouch(prev_touch,touch);
+
+			// if ending touch with two points, we consider it a multi-selection.
+			// I notice that prev_touch always has target=undefined, presumably
+			// because the initial touch is not resolved to a node. The current
+			// touch DOES have a target, but even so, that means that we must wait
+			// for both touches to end before considering for multi-selection.
+
+			if (cur_touches.length == 2)
+			{
+				touch_target1 = touch.target;
+				display(dbg_touch,0,"touch_target1(" + touch_target1 + ") html=" + touch_target1.innerHTML);
+			}
+			else
+			{
+				if (touch_target1)
+				{
+					var touch_target2 = touch.target;
+					display(dbg_touch,0,"touch_target2(" + touch_target2 + ") html=" + touch_target2.innerHTML);
+					handleDoubleTouich(touch_target1,touch_target2);
+				}
+				touch_target1 = false;
+			}
+
 			cur_touches.splice(idx, 1); // remove it; we're done
 		}
 		else
 		{
-			display(dbg_touch,0,"No idx in touchEnd");
+			error("No idx in touchEnd");
 		}
 	}
 }
@@ -123,14 +193,14 @@ function touchCancel(evt)
 		let idx = touchById(touch.identifier);
 		if (idx >= 0)
 		{
-			const cur_touch = cur_touches[idx];
-			display(dbg_touch,0,"<--(" + idx + ") touchCancel(" + i + ":" + touch.identifier + ")");
-			debugTouch(cur_touch,touch);
+			const prev_touch = cur_touches[idx];
+			display(dbg_touch+1,0,"<--(" + idx + ") touchCancel(" + i + ":" + touch.identifier + ")");
+			debugTouch(prev_touch,touch);
 			cur_touches.splice(idx, 1); // remove it; we're done
 		}
 		else
 		{
-			display(dbg_touch,0,"No idx in touchEnd");
+			error("No idx in touchEnd");
 		}
 	}
 }
@@ -162,7 +232,7 @@ function touchById(id)
 
 
 //------------------------------------------------------
-// Simgle versus Double click handling
+// UNUSED OLD CODE: Simgle versus Double click handling
 //------------------------------------------------------
 // We needed to wait and THEN call the default behavior
 // A faincytree Mouse Event looks something like this:
