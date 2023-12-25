@@ -31,6 +31,9 @@ ul.fancytree-container
 /* We set bigger fonts in the tracklist and tree on mobile devices
    as determined by anything with a width <= 1250 pix */
 
+/* following applies to iPad AND phone */
+
+
 @media (max-device-width: 1250px)
 {
 	#queue_tracklist span.fancytree-title,
@@ -57,6 +60,77 @@ ul.fancytree-container
 		width:24px;
 	}
 }
+
+
+/* following only applies to phone in landscape mode - make Renderer smaller */
+
+@media (max-device-height: 400px)
+{
+	#renderer_album_image_td
+	{
+		width:85px;
+	}
+
+	#renderer_album_image
+	{
+		margin-top:2px;
+		margin-left:2px;
+		margin-right:5px;
+		margin-bottom:0px;
+		padding:0px;
+	}
+
+	#renderer_album_image
+	{
+		height:80px;
+		width:80px;
+	}
+
+	#renderer_album_info_td
+	{
+		vertical-align:top;
+		overflow:hidden;
+		padding-left:2px;
+	}
+
+	#renderer_album_info_div
+	{
+		height:55px;
+	}
+
+	#renderer_song_title     { font-size:10pt; margin-top: 0px; }
+	#renderer_album_artist   { font-size:7pt; }
+	#renderer_album_title    { font-size:7pt; margin-top:0px;}
+	#renderer_album_track    { font-size:5pt; }
+	#renderer_song_genre     { font-size:5pt; margin-top:0px;}
+
+	#renderer_slider_div
+	{
+		height:32px;
+	}
+
+
+	#renderer_slider
+	{
+		height:6px;
+		margin-top:2px;
+		margin-left:8px;
+		margin-right:10px;
+``}
+
+	#renderer_play_type 	 { font-size:7pt; }
+	.renderer_play_time      { font-size:7pt; }
+
+	.transport_buttons
+	{
+		padding:0;
+		padding-left:10;
+		padding-right:10;
+		margin:0;
+	}
+
+}
+
 
 
 /* end of fancy.css */

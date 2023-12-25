@@ -61,44 +61,64 @@ $(function()
 
 	// debug_environment();
 	// clearStorage();
+	// explorer_mode = getCookie('explorer_mode') || 0;
 
 	init_utils();
 	init_device_id()
 	init_audio();
 
 	WITH_SWIPE = IS_TOUCH;
-	//	WITH_SWIPE = true;
-		// turn WITH_SWIPE on for testing on laptop
-
-	// explorer_mode = getCookie('explorer_mode') || 0;
-
+	// WITH_SWIPE = true;
+	// can turn WITH_SWIPE on for testing on laptop
 
 	// STATIC LAYOUT
-	// layout tricks for IS_TOUCH are sporadically placed
 
 	$('.artisan_menu_item').button();
 
+	// LAYOUT TRICKS for IS_TOUCH and more
+	// for the phone in landscape orientation
+
+	var is_phone_landscape = screen.height < 400;
+		// this must match the @media (max-device-height: 400px) in fancy.css
+
 	if (IS_TOUCH)
 	{
+		// we turn of the explorer details pane on both iPad and phone
+		// by setting limit to a high number (2000) and use a smaller
+		// default size when it is open. On the landscape_phone we shrink
+		// the home menu and explorer tree size too.
+
+		// THERE IS A CURRENT BUG THAT THE HOME MENU GOES BLANK ON
+		// THE PHONE AFTER SELECTING A LARGE (xmas) PLAYLIST
+
 		var explorer_east = layout_defs['explorer']['east'];
 		explorer_east['size'] = 160;
 		explorer_east['limit'] = 2000;
-	}
 
+		if (is_phone_landscape)
+		{
+			var home_west = layout_defs['home']['west'];
+			home_west['size'] = 140;
+			var explorer_west = layout_defs['explorer']['west'];
+			explorer_west['size'] = 200;
+		}
+	}
 
 	create_layout('home');
 	create_layout('explorer');
 
 	// NESTED LAYOUTS
 	// The explorer and home 'center' divs are themselves laid out here
+	// We make the explorer album info pane smaller for IS_TOUCH
+	// and the renderer_pane is specifically resized for is_phone_landscape
 
-	$('#explorer_center_div').layout({
+	$('#explorer_center_div').layout({		// height of album info pane
 		applyDemoStyles: true,
 		north__size: IS_TOUCH ? 115 : 100, });
 
-	$('#renderer_pane_div').layout({
+	$('#renderer_pane_div').layout({		// height of renderer pane
 		applyDemoStyles: true,
-		north__size:255, });
+		north__size : is_phone_landscape ? 164 : 255, });
 
 	// Dynamic Initialization
 
@@ -109,9 +129,6 @@ $(function()
 
 	setTimeout(idle_loop, REFRESH_TIME);
 	set_page(default_page);
-
-	// close the explorer_details pane for IS_TOUCH
-	// it can be swiped open
 
 	display(dbg_load,0,"FINISHED LOADING ARTISAN");
 });
