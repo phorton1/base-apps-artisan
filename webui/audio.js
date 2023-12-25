@@ -458,7 +458,7 @@ function playlist_shuffe(how)
 	var url = library_url(library_uuid);
 	if (!url) return;
 
-	$.get(url + + '/shuffle_playlist' +
+	$.get(url + '/shuffle_playlist' +
 	  '?id=' + playlist_id +
 	  '&shuffle=' + how,
 	function(result)
@@ -490,7 +490,7 @@ function set_local_playlist(library_uuid,playlist_id)
 	var url = library_url(library_uuid);
 	if (!url) return;
 
-	$.get(url  + '/get_playlist' +
+	$.get(url + '/get_playlist' +
 		  '?id=' + playlist_id,
 	function(result)
 	{
