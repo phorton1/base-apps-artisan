@@ -156,7 +156,6 @@
 
 /*---------- RENDERER DISPLAY ------------*/
 
-#renderer_full_album_image_td,
 #renderer_album_image_td
 {
 	vertical-align:top;
@@ -168,13 +167,6 @@
 	width:170px;
 }
 
-#renderer_full_album_image_td
-{
-	width:270px;
-}
-
-
-#renderer_full_album_image,
 #renderer_album_image
 {
 	margin-top:10px;
@@ -190,15 +182,6 @@
 	width:160px;
 }
 
-#renderer_full_album_image
-{
-	height:240px;
-	width:240px;
-	padding-left:8px;
-}
-
-
-#renderer_full_album_info_td
 #renderer_album_info_td
 {
 	vertical-align:top;
@@ -212,23 +195,11 @@
 	overflow:hidden;
 }
 
-#renderer_full_album_info_div
-{
-	overflow:hidden;
-}
-
-
 #renderer_song_title     { font-size:15pt; font-weight:bold; margin-top:10px; margin-bottom:0px;}
 #renderer_album_artist   { font-size:11pt;                   margin-top:0px;  margin-bottom:0px;}
 #renderer_album_title    { font-size:13pt; font-weight:bold; margin-top:6px; margin-bottom:0px;}
 #renderer_album_track    { font-size:10pt;                   margin-top:0px;  margin-bottom:0px;}
 #renderer_song_genre     { font-size:11pt;                   margin-top:6px; margin-bottom:0px;}
-
-#renderer_full_song_title     { font-size:20pt; font-weight:bold; margin-top:12px; margin-left:12px;  margin-bottom:0px;}
-#renderer_full_album_artist   { font-size:17pt;                   margin-top:25px; margin-bottom:0px;}
-#renderer_full_album_title    { font-size:18pt; font-weight:bold; margin-top:16; margin-bottom:0px;}
-#renderer_full_album_track    { font-size:14pt;                   margin-top:0px;  margin-bottom:0px;}
-#renderer_full_song_genre     { font-size:12pt;                   margin-top:16px; margin-bottom:0px;}
 
 
 
