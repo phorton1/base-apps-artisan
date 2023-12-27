@@ -59,7 +59,7 @@ $(function()
 {
 	display(dbg_load,0,"START LOADING ARTISAN");
 
-	// debug_environment();
+	debug_environment();
 	// clearStorage();
 	// explorer_mode = getCookie('explorer_mode') || 0;
 
@@ -76,17 +76,17 @@ $(function()
 	$('.artisan_menu_item').button();
 
 	// LAYOUT TRICKS for IS_TOUCH and more
-	// for the phone in landscape orientation
+	// use_small_renderer for the phone in landscape
+	// orientation or rPi 12V monitor
 
-	var is_phone_landscape = screen.height < 400;
+	var use_small_renderer = screen.height <= 800;
 		// this must match the @media (max-device-height: 400px) in fancy.css
 
 	if (IS_TOUCH)
 	{
-		// we turn of the explorer details pane on both iPad and phone
+		// we turn off the explorer details pane on both iPad and phone
 		// by setting limit to a high number (2000) and use a smaller
-		// default size when it is open. On the landscape_phone we shrink
-		// the home menu and explorer tree size too.
+		// default size when it is open.
 
 		// THERE IS A CURRENT BUG THAT THE HOME MENU GOES BLANK ON
 		// THE PHONE AFTER SELECTING A LARGE (xmas) PLAYLIST
@@ -94,14 +94,17 @@ $(function()
 		var explorer_east = layout_defs['explorer']['east'];
 		explorer_east['size'] = 160;
 		explorer_east['limit'] = 2000;
+	}
 
-		if (is_phone_landscape)
-		{
-			var home_west = layout_defs['home']['west'];
-			home_west['size'] = 140;
-			var explorer_west = layout_defs['explorer']['west'];
-			explorer_west['size'] = 200;
-		}
+	// When we use the small renderer, we also shrink
+	// the home menu and explorer tree size too.
+
+	if (use_small_renderer)
+	{
+		var home_west = layout_defs['home']['west'];
+		home_west['size'] = 140;
+		var explorer_west = layout_defs['explorer']['west'];
+		explorer_west['size'] = 200;
 	}
 
 	create_layout('home');
@@ -118,7 +121,7 @@ $(function()
 
 	$('#renderer_pane_div').layout({		// height of renderer pane
 		applyDemoStyles: true,
-		north__size : is_phone_landscape ? 164 : 255, });
+		north__size : use_small_renderer ? 164 : 255, });
 
 	// Dynamic Initialization
 

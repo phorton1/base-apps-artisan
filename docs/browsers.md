@@ -44,6 +44,12 @@ Safari on iPad
 - ua(Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.1.1 Safari/605.1.15)
 
 
+Chromium on rPi with 12V HDMI monitor
+
+- platform(Linux x86_64)
+- appVersion(5.0 (X11; CrOS x86_64 14541.0.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36)
+- ua(Mozilla/5.0 (X11; CrOS x86_64 14541.0.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36)
+
 The platform/ua/appVersion all appear to overlap.  I'm not sure how much useful information
 can be derived from these.
 
@@ -93,6 +99,13 @@ Safari on iPad:
 -ratio(2)
 -orientation(landscape-primary)		screen(834,1112) iwindow(1112,753) owindow(1112,834) body(1112,753)
 -orientation(portrait-primary)		screen(834,1112) iwindow(834,1031) owindow(834,1112) body(834,1031)
+
+Chromium on rPi with 12V HDMI monitor
+
+- ratio(1)
+- orientation(landscape-primary)	screen(800,600) iwindow(735,456) owindow(735,533) body(735,456)
+
+
 
 
 ### Summary of Device Scaling / Orientation
