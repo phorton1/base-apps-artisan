@@ -44,7 +44,7 @@ my $dbg_msearch = 0;  # 0;
 my $dbg_responses = 0;
 	#  0 == general response header
 	# -1 == individual responses that are sent
-my $dbg_search = 1;
+my $dbg_search = 0;
 	# 0 = show a header when search message sent
 my $dbg_alive = 1;
 	# 0 = show a header when alive messages sent
@@ -302,7 +302,7 @@ sub run
 
 						if ($send_reply)
 						{
-							display($dbg_msearch,0,"M-SEARCH($message->{ST}) MX($message->{MX}) from $peer_ip:$peer_port",0,$Pub::Utils::win_color_light_green);
+							display($dbg_msearch,0,"M-SEARCH($message->{ST}) MX($message->{MX}) from $peer_ip:$peer_port",0,$UTILS_COLOR_LIGHT_GREEN);
 							send_responses($this,
 								# $sock,
 								$recv_sock,
@@ -347,7 +347,7 @@ sub run
 						# check for invalid (timed out) devices on every search
 
 					$send_search = 0;
-					display($dbg_search,0,"sendSearch()",0,$Pub::Utils::win_color_light_cyan);
+					display($dbg_search,0,"sendSearch()",0,$UTILS_COLOR_LIGHT_CYAN);
 					my $msg = search_msg();
 
 					# OK, weirdness, to get WMP on THIS machine to respond, I

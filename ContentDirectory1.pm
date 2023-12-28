@@ -246,7 +246,7 @@ sub search_directory
     # no longer using #filter
 {
     my ($xml,$peer_ip_addr) = @_;
-    display($dbg_search,0,"SEARCH()",0,$Pub::Utils::win_color_light_magenta);
+    display($dbg_search,0,"SEARCH()",0,$UTILS_COLOR_LIGHT_MAGENTA);
 
 	# upnp:class derivedfrom "object.item.audioItem" and @refID exists false
 	# upnp:class derivedfrom "object.container.playlistContainer" and @refID exists false
@@ -450,7 +450,7 @@ sub currently_unused_create_sql_expr
 sub browse_directory
 {
     my ($xml,$peer_ip_addr) = @_;
-	display($dbg_browse,0,"BROWSE()",0,$Pub::Utils::win_color_light_cyan);
+	display($dbg_browse,0,"BROWSE()",0,$UTILS_COLOR_LIGHT_CYAN);
 
     my ($id, $start, $count, $flag) =
         get_xml_params($xml,'Browse',qw(

@@ -172,12 +172,12 @@ sub web_ui
 	elsif ($path =~ s/^debug_output\///)
 	{
 		my $color = $path =~ /^ERROR/ ?
-			$Pub::Utils::DISPLAY_COLOR_ERROR :
-			$Pub::Utils::win_color_light_green;
+			$DISPLAY_COLOR_ERROR :
+			$UTILS_COLOR_LIGHT_GREEN;
 
-		$Pub::Utils::CONSOLE->Attr($color);
+		Pub::Utils::_setColor($color);
 		print "REMOTE: ".url_decode($path)."\n";
-		$Pub::Utils::CONSOLE->Attr($Pub::Utils::DISPLAY_COLOR_NONE);
+		Pub::Utils::_setColor($DISPLAY_COLOR_NONE);
 		$response = html_header();
 	}
 
