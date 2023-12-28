@@ -1064,13 +1064,13 @@ sub get_meta_data
 		$track->{dirty} = 1;
 		if ($track->{exists})
 		{
-			display($dbg_changes,1,"metadata($meta_changed) changed for $track->{name}");
+			display($dbg_changes,1,"metadata($meta_changed) changed for $track->{title}");
 			bump_stat("meta_data_changed");
 		}
 	}
 	else
 	{
-		display($dbg_changes+1,1,"metadata unchanged for $track->{name}");
+		display($dbg_changes+1,1,"metadata unchanged for $track->{title}");
 		bump_stat("meta_data_unchanged");
 	}
 
