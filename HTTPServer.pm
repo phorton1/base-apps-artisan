@@ -500,7 +500,7 @@ sub ServerDesc
 {
 
 	# my $use_friendly = $program_name;
-	my $use_friendly = "Artisan($ENV{COMPUTERNAME})";
+	my $use_friendly = "Artisan(".getMachineId().")";
 
 
 	my $xml = <<EOXML;

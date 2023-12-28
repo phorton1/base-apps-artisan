@@ -234,18 +234,26 @@ mkdir $temp_dir if !-d $temp_dir;
 our $server_port = '8091';
 our $server_ip = '';
 
-my $ip_text = `ipconfig /all`;
-if ($ip_text !~ /^.*?IPv4 Address.*?:\s*(.*)$/im)
+if (is_win())
 {
-	error("Could not determine IP Address!")
-		# This is inline display() call in body of package!
+	my $ip_text = `ipconfig /all`;
+	if ($ip_text !~ /^.*?IPv4 Address.*?:\s*(.*)$/im)
+	{
+		error("Could not determine IP Address!")
+			# This is inline display() call in body of package!
+	}
+	else
+	{
+		$server_ip = $1;
+		$server_ip =~ s/\(.*\)//;	# remove (Preferred)
+		$server_ip =~ s/\s//g;
+	}
 }
 else
 {
-	$server_ip = $1;
-	$server_ip =~ s/\(.*\)//;	# remove (Preferred)
-	$server_ip =~ s/\s//g;
+	$server_ip = '10.237.50.152';
 }
+
 
 
 # Scanning files/albums can result in numerous
