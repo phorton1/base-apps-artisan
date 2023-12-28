@@ -123,7 +123,7 @@ else
 # so that local devices come first
 
 addDevice(new localLibrary());
-addDevice(new localRenderer()) if !is_win();
+addDevice(new localRenderer()) if is_win();
 # DeviceManager::read_device_cache();
 
 
