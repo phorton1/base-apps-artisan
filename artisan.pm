@@ -34,7 +34,8 @@ use warnings;
 use threads;
 use threads::shared;
 use Error qw(:try);
-use Win32::Console;
+use Pub::Utils;
+use if is_win, 'Win32::Console';
 use Time::HiRes qw(sleep time);
 use artisanUtils;
 use artisanPrefs;
@@ -43,13 +44,13 @@ use HTTPServer;
 use Database;
 use DatabaseMain;
 use DeviceManager;
-use localRenderer;
+use if is_win, 'localRenderer';
 use localLibrary;
 use localPlaylist;
 use remoteLibrary;
 use remoteRenderer;
 use remoteArtisanLibrary;
-use Pub::Utils;
+
 use sigtrap 'handler', \&onSignal, 'normal-signals';
 
 Pub::Utils::initUtils(1);
@@ -76,7 +77,7 @@ sub onSignal
 
 my $CONSOLE_IN;
 
-if (!$AS_SERVICE)
+if (!$AS_SERVICE && !is_win())
 {
 	$CONSOLE_IN = Win32::Console->new(STD_INPUT_HANDLE);
 	$CONSOLE_IN->Mode(ENABLE_MOUSE_INPUT | ENABLE_WINDOW_INPUT );
@@ -119,7 +120,7 @@ else
 # so that local devices come first
 
 addDevice(new localLibrary());
-addDevice(new localRenderer());
+addDevice(new localRenderer()) if !is_win();
 # DeviceManager::read_device_cache();
 
 

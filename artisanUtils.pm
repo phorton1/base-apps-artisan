@@ -19,7 +19,7 @@ use Sys::Hostname;
 use Pub::Utils qw(!:win_only);
 
 
-my $USE_MINI_LIBRARY_FOR_ANDROID = 0;
+my $USE_MINI_LIBRARY = 0;
 
 
 our $system_update_id:shared = 1;
@@ -207,17 +207,17 @@ our $program_name = 'Artisan Perl';
 # them to include spaces, or else those will get encoded as %20 by HTTP
 # making our lookups more complicated.
 
-our $this_uuid = $program_name."-".$ENV{COMPUTERNAME};
+our $this_uuid = $program_name."-".getMachineId();
 $this_uuid =~ s/\s//g;		# remove ' ' from $program name
 # OLD: $this_uuid = '56657273-696f-6e34-4d41-' . $ENV{COMPUTERNAME};	# '20231112feed';
 
 our $mp3_dir = "/mp3s";
 our $mp3_dir_RE = '\/mp3s';
 
-if ($USE_MINI_LIBRARY_FOR_ANDROID)
+if ($USE_MINI_LIBRARY)
 {
-	$mp3_dir = "/mp3s_mini_android";
-	$mp3_dir_RE = '\/mp3s_mini_android';
+	$mp3_dir = "/mp3s_mini";
+	$mp3_dir_RE = '\/mp3s_mini';
 }
 
 
