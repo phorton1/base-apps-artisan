@@ -303,9 +303,17 @@ sub run
 						if ($send_reply)
 						{
 							display($dbg_msearch,0,"M-SEARCH($message->{ST}) MX($message->{MX}) from $peer_ip:$peer_port",0,$UTILS_COLOR_LIGHT_GREEN);
+
+							# regarding rPi returning undef $bytes from $recv_sock->mcast_send
+							# 	in send_responses()
+							# this is the only call to send_responses.
+							# Note that we have an actual $sock that we just read from.
+							# Maybe if we just call send on that instead of trying to use
+							# mcast_send?
+
 							send_responses($this,
-								# $sock,
-								$recv_sock,
+								$sock,	# testing
+								# $recv_sock,	# working
 								$peer_ip,
 								$peer_port,
 								$message->{ST},
@@ -456,6 +464,8 @@ sub send_byebye
 sub send_responses
 	# Send responses to a specific client over the 'recieve'
 	# multicast socket on which we received an M_SEARCH request.
+	# Since the socket here
+
 {
 	my ($this,
 		$sock,
@@ -501,11 +511,25 @@ sub send_responses
 				return;
 			}
 
-			my $bytes = $sock->mcast_send(
-				$data,
-				$destination_ip.":".$destination_port);
+			my $bytes;
 
-			display($dbg_responses+1,1,"send to $destination_ip:$destination_port rslt=$bytes");
+			if (0)	# original, working code with $recv_sock in call
+			{
+				$bytes = $sock->mcast_send(
+					$data,
+					$destination_ip.":".$destination_port);
+			}
+			elsif (0)	# no workee on windows with selected $sock in call
+			{
+				$bytes = $sock->send($data)
+			}
+			else		# try hand coded _mcast_send method on $recv_sock ...
+			{
+				$bytes = _mcast_send( $sock, $data, "$destination_ip:$destination_port" );
+			}
+
+
+			display($dbg_responses,1,"send to $destination_ip:$destination_port rslt=$bytes");
 			if ($bytes != length($data))
 			{
 				warning(0,0,"Could only mcast_send($bytes/".length($data)." bytes to $destination_ip:$destination_port");
@@ -650,6 +674,7 @@ sub _mcast_send
     my $dest_addr = sockaddr_in( $port, inet_aton( $addr ) );
     my $bytes = send( $sock, $msg, 0, $dest_addr );
     # print "Sent $bytes bytes\n";
+	return $bytes;
 }
 
 
