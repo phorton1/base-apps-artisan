@@ -77,10 +77,13 @@ sub onSignal
 
 my $CONSOLE_IN;
 
-if (!$AS_SERVICE && !is_win())
+if (!$AS_SERVICE && is_win())
 {
-	$CONSOLE_IN = Win32::Console->new(STD_INPUT_HANDLE);
-	$CONSOLE_IN->Mode(ENABLE_MOUSE_INPUT | ENABLE_WINDOW_INPUT );
+	$CONSOLE_IN = Win32::Console->new(
+		Win32::Console::STD_INPUT_HANDLE());
+	$CONSOLE_IN->Mode(
+		Win32::Console::ENABLE_MOUSE_INPUT() |
+		Win32::Console::ENABLE_WINDOW_INPUT() );
 }
 
 
@@ -176,6 +179,9 @@ AFTER_EXCEPTION:
 					$event[0] == 1) # key event
 				{
 					my $char = $event[5];
+
+					# print "got event down(" . $event[1] . ") char(" . $event[5] . ")\n";
+
 					if ($char == 3)        # char = 0x03
 					{
 						display($dbg_main,0,"exiting Artisan on CTRL-C");
@@ -200,9 +206,9 @@ AFTER_EXCEPTION:
 					}
 					elsif ($event[1] == 1)       # key down
 					{
-						if ($CONSOLE && $char == 4)            # CTRL-D
+						if ($Pub::Utils::CONSOLE && $char == 4)            # CTRL-D
 						{
-							$CONSOLE->Cls();    # clear the screen
+							$Pub::Utils::CONSOLE->Cls();    # clear the screen
 						}
 						elsif (chr($char) eq 'a')
 						{
