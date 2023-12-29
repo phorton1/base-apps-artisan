@@ -1,8 +1,27 @@
-package Audio::Play::MPG123;
+#--------------------------------------
+# myMPG123.pm
+#--------------------------------------
+# Copied and modified from https://metacpan.org/pod/Audio::Play::MPG123.pm
+# Also see the manpage for mpg123 executable at https://linux.die.net/man/1/mpg123
+#
+# Credit and respect to Marc Lehmann <schmorp@schmorp.de>..
+#
+# The mpg123 execuatable supports a number of commands that I would like to
+# use that were not available in the module as published on CPAN.
+# Denormalizing it also makes my installation process easier and
+# gives me an opportunity to add commaents, etc, in my own style.
+#
+# Basically it works by opening a process for the mpg123 executable
+# using the -R command line parameter, capturing its STDOUT and
+# allowing commands to be sent to it via it's STDIN. I will not
+# pretend to understand how this Perl code works. My rework
+# will be somewhat different, more clunky, but understandable
+# to me.
 
+
+package myMPG123;
 use strict 'subs';
 use Carp;
-
 require Exporter;
 use Fcntl;
 use IPC::Open3;
@@ -10,7 +29,7 @@ use Cwd;
 use File::Spec;
 use Errno qw(EAGAIN EINTR);
 
-BEGIN { $^W=0 } # I'm fed up with bogus and unnecessary warnings nobody can turn off.
+BEGIN { $^W=0 } # turn off bogus and unnecessary warnings
 
 @ISA = qw(Exporter);
 
@@ -25,6 +44,8 @@ $VERSION = '0.63';
 $MPG123 = "mpg123";
 
 $OPT_AUTOSTAT = 1;
+
+
 
 sub new {
    my $class = shift;
@@ -201,149 +222,51 @@ for my $field (qw(title artist album year comment genre state url
 sub error { shift->{err} }
 
 1;
-__END__
 
-=head1 NAME
 
-Audio::Play::MPG123 - a frontend to mpg123 version 0.59r and beyond.
 
-=head1 SYNOPSIS
-
-  use Audio::Play::MPG123;
-
-  $player = new Audio::Play::MPG123;
-  $player->load("kult.mp3");
-  print $player->artist,"\n";
-  $player->poll(1) until $player->state == 0;
-
-  $player->load("http://x.y.z/kult.mp3");
-
-  # see also mpg123sh from the tarball
-
-=head1 DESCRIPTION
-
-This is a frontend to the mpg123 player. It works by starting an external
-mpg123 process with the C<-R> option and feeding commands to it.
-
-While the standard mpg123 player can be used to play back mp3's using
-this module you will encounter random deadlocks, due to bugs in its
-communication code. Also, many features (like C<statfreq>) only work with
-the included copy of mpg123, so better use that one before deciding that
-this module is broken.
-
-(In case you wonder, the mpg123 author is not interested in including
-these fixes and enhancements into mpg123).
-
-=head2 METHODS
-
-Most methods can be either BLOCKING (they wait until they get an answer,
-which usually takes half a mpeg frame of playing time), NONBLOCKING (the
-functions return as soon as they send their message, which is usallly
-instant) or CACHING (the method returns some cached data which only gets
-refreshed by an asynchronous STAT event or an explicit call to C<state>).
-
-=over 4
-
-=item new [parameter => value, ...]
-
-This creates a new player object and also starts the mpg123 process. New
-supports the following parameters:
-
-   mpg123args      an arrayreg with additional arguments for the mpg123 process
-
-=item load(<path or url>) [BLOCKING]
-
-Immediately loads the specified file (or url, http:// and file:/// forms
-supported) and starts playing it. If you really want to play a file with
-a name starting with C<file://> or C<http://> then consider prefixing all
-your paths with C<file:///>. Returns a true status when the song could be
-started, false otherwise.
-
-=item stat [BLOCKING]
-
-This can be used to poll the player for it's current state (playing mode,
-frame position &c). As every other function that requires communication
-with mpg123, it might take up to one frame delay until the answer returns.
-Using C<statfreq> and infrequent calls to C<poll> is often a better
-strategy.
-
-=item pause [BLOCKING]
-
-Pauses or unpauses the song. C<state> (or C<paused>) can be used to find
-out about the current mode.
-
-=item paused [CACHING]
-
-Returns the opposite of C<state>, i.e. zero when something is playing
-and non-zero when the player is stopped or paused.
-
-=item jump [BLOCKING]
-
-Jumps to the specified frame of the song. If the number is prefixed with
-"+" or "-", the jump is relative, otherweise it is absolute.
-
-=item stop [BLOCKING]
-
-Stops the currently playing song and unloads it.
-
-=item statfreq(rate) [NONBLOCKING]
-
-Sets the rate at which automatic frame updates are sent by mpg123. C<0>
-turns it off, everything else is the average number of frames between
-updates.  This can be a floating pount value, i.e.
-
- $player->statfreq(0.5/$player->tpf);
-
-will set two updates per second (one every half a second).
-
-=item state [CACHING]
-
-Returns the current state of the player:
-
- 0  stopped, not playing anything
- 1  paused, song loaded but not playing
- 2  playing, song loaded and playing
-
-=item poll(<wait>) [BLOCKING or NONBLOCKING]
-
-Parses all outstanding events and status information. If C<wait> is zero
-it will only parse as many messages as are currently in the queue, if it
-is one it will wait until at least one event occured.
-
-This can be used to wait for the end of a song, for example. This function
-should be called regularly, since mpg123 will stop playing when it can't
-write out events because the perl program is no longer listening...
-
-=item title artist album year comment genre url type layer samplerate mode mode_extension bpf frame channels copyrighted error_protected title artist album year comment genre emphasis bitrate extension [CACHING]
-
-These accessor functions return information about the loaded
-song. Information about the C<artist>, C<album>, C<year>, C<comment> or
-C<genre> might not be available and will be returned as C<undef>.
-
-The accessor function C<frame> returns a reference to an array containing
-the frames played, frames left, seconds played, and seconds left in this
-order. Seconds are returned as floating point numbers.
-
-=item tpf [CACHING]
-
-Returns the "time per frame", i.e. the time in seconds for one frame. Useful with the C<jump>-method:
-
- $player->jump (60/$player->tpf);
-
-Jumps to second 60.
-
-=item IN
-
-Returns the input filehandle from the mpg123 player. This can be used for selects() or poll().
-
-=back
-
-=head1 AUTHOR
-
-Marc Lehmann <schmorp@schmorp.de>.
-
-=head1 SEE ALSO
-
-perl(1).
-
-=cut
+# Full list of commands available in my version of the mpg123 executable
+# installed to an rPi with
+# to STDIN when started with -R, obtained by typing "help" after
+# executing >mpg123 -R from a linux terminal.
+#
+#	HELP/H: command listing (LONG/SHORT forms), command case insensitve
+#	LOAD/L <trackname>: load and start playing resource <trackname>
+#	LOADPAUSED/LP <trackname>: load but do not start playing resource <trackname>
+#	LOADLIST/LL <entry> <url>: load a playlist from given <url>, and display its entries, optionally load and play one of these specificed by the integer <entry> (<0: just list, 0: play last track, >0:play track with that position in list)
+#	PAUSE/P: pause playback
+#	STOP/S: stop playback (closes file)
+#	JUMP/J <frame>|<+offset>|<-offset>|<[+|-]seconds>s: jump to mpeg frame <frame> or change position by offset, same in seconds if number followed by "s"
+#	VOLUME/V <percent>: set volume in % (0..100...); float value
+#	MUTE: turn on software mute in output
+#	UNMUTE: turn off software mute in output
+#	RVA off|(mix|radio)|(album|audiophile): set rva mode
+#	EQ/E <channel> <band> <value>: set equalizer value for frequency band 0 to 31 on channel 1 (left) or 2 (right) or 3 (both)
+#	EQFILE <filename>: load EQ settings from a file
+#	SHOWEQ: show all equalizer settings (as <channel> <band> <value> lines in a SHOWEQ block (like TAG))
+#	SEEK/K <sample>|<+offset>|<-offset>: jump to output sample position <samples> or change position by offset
+#	SCAN: scan through the file, building seek index
+#	SAMPLE: print out the sample position and total number of samples
+#	FORMAT: print out sampling rate in Hz and channel count
+#	SEQ <bass> <mid> <treble>: simple eq setting...
+#	PITCH <[+|-]value>: adjust playback speed (+0.01 is 1 % faster)
+#	SILENCE: be silent during playback (no progress info, opposite of PROGRESS)
+#	PROGRESS: turn on progress display (opposite of SILENCE)
+#	STATE: Print auxiliary state info in several lines (just try it to see what info is there).
+#	TAG/T: Print all available (ID3) tag info, for ID3v2 that gives output of all collected text fields, using the ID3v2.3/4 4-character names. NOTE: ID3v2 data will be deleted on non-forward seeks.
+#	   The output is multiple lines, begin marked by "@T {", end by "@T }".
+#	   ID3v1 data is like in the @I info lines (see below), just with "@T" in front.
+#	   An ID3v2 data field is introduced via ([ ... ] means optional):
+#	    @T ID3v2.<NAME>[ [lang(<LANG>)] desc(<description>)]:
+#	   The lines of data follow with "=" prefixed:
+#	    @T =<one line of content in UTF-8 encoding>
+#	meaning of the @S stream info:
+#	S <mpeg-version> <layer> <sampling freq> <mode(stereo/mono/...)> <mode_ext> <framesize> <stereo> <copyright> <error_protected> <emphasis> <bitrate> <extension> <vbr(0/1=yes/no)>
+#	The @I lines after loading a track give some ID3 info, the format:
+#	     @I ID3:artist  album  year  comment genretext
+#	    where artist,album and comment are exactly 30 characters each, year is 4 characters, genre text unspecified.
+#	    You will encounter "@I ID3.genre:<number>" and "@I ID3.track:<number>".
+#	    Then, there is an excerpt of ID3v2 info in the structure
+#	     @I ID3v2.title:Blabla bla Bla
+#	    for every line of the "title" data field. Likewise for other fields (author, album, etc).
+#
