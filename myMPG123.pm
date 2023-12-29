@@ -23,35 +23,25 @@
 #     - remove Exporter stuff ... it doesn't export anything.
 #     - add 'my' to $MPG123
 #     - add "no warnings 'once';" to start_mpg123()
+# (3) don't get (or like too much) the use of custom
+#     symbols.  Changing them to hash members.
+
 
 package myMPG123;
 use strict;
 use warnings;
-# use strict 'subs';
-use Carp;
-# require Exporter;
 use Fcntl;
 use IPC::Open3;
 use Cwd;
 use File::Spec;
 use Errno qw(EAGAIN EINTR);
+use artisanUtils;
 
-BEGIN { $^W=0 } # turn off bogus and unnecessary warnings
 
-#	@ISA = qw(Exporter);
-#
-#	@_consts = qw();
-#	@_funcs = qw();
-#
-#	@EXPORT = @_consts;
-#	@EXPORT_OK = @_funcs;
-#	%EXPORT_TAGS = (all => [@_consts,@_funcs], constants => \@_consts);
-#	$VERSION = '0.63';
+my $dbg123 = 0;
+
 
 my $MPG123 = "mpg123";
-
-# $OPT_AUTOSTAT = 1;
-   # I have no idea why this is here.
 
 
 #---------------------------------------------
@@ -60,73 +50,88 @@ my $MPG123 = "mpg123";
 
 sub new
 {
-   my $class = shift;
-   my $self = bless { @_ }, $class;
-   $self->start_mpg123(@{$self->{mpg123args} || []});
-   $self;
+	my $class = shift;
+	my $this = bless {}, $class;
+	$this->start_mpg123();
+	return $this;
 }
 
 
 sub start_mpg123
 {
-   my $self = shift;
-   local *DEVNULL;
-   open DEVNULL, ">/dev/null" or die "/dev/null: $!";
-   no warnings 'once';
-   $self->{r} = local *MPG123_READER;
-   $self->{w} = local *MPG123_WRITER;
-   $self->{pid} = open3($self->{w},$self->{r},">&DEVNULL",$MPG123,'-R','--aggressive',@_,'');
-   die "Unable to start $MPG123" unless $self->{pid};
-   fcntl $self->{r}, F_SETFL, O_NONBLOCK;
-   fcntl $self->{r}, F_SETFD, FD_CLOEXEC;
-   $self->parse(qr/^\@?R (\S+)/,1) or die "Error during player startup: $self->{err}\n";
-   $self->{version}=$1;
+	my $this = shift;
+	display($dbg123,0,"start_mpg123()");
+
+	local *DEVNULL;
+	open DEVNULL, ">/dev/null" or die "/dev/null: $!";
+	no warnings 'once';
+	$this->{r} = local *MPG123_READER;
+	$this->{w} = local *MPG123_WRITER;
+	$this->{pid} = open3($this->{w},$this->{r},">&DEVNULL",$MPG123,'-R','--aggressive',@_,'');
+	if (!$this->{pid})
+	{
+		error("Unable to start $MPG123");
+		return;
+	}
+	fcntl $this->{r}, F_SETFL, O_NONBLOCK;
+	fcntl $this->{r}, F_SETFD, FD_CLOEXEC;
+	if (!$this->parse(qr/^\@?R (\S+)/,1))
+	{
+		error("Unable to start MPG123: $this->{err}");
+		return;
+	}
+	$this->{version} = $1;
+	display($dbg123,0,"start_mpg123() returning version($this->{version}");
 }
 
 
 sub stop_mpg123
 {
-   my $self = shift;
-   if (delete $self->{pid}) {
-      print {$self->{w}} "Q\n";
-      close $self->{w};
-      close $self->{r};
-   }
+	my $this = shift;
+	display($dbg123,0,"stop_mpg123()");
+	if (delete $this->{pid})
+	{
+		print {$this->{w}} "Q\n";
+		close $this->{w};
+		close $this->{r};
+	}
+	display($dbg123,0,"stop_mpg123() finished");
 }
 
 
 #--------------------------------------------
+
 # state accessors
 #--------------------------------------------
 
-sub error
-   # is this an API method, or is it called magically
-   # from within the code somehow?
-{
-   shift->{err}
-}
+# sub error
+#    # is this an API method, or is it called magically
+#    # from within the code somehow?
+# {
+#    shift->{err}
+# }
 
 
 
-sub paused
-   # I don't call this
-{
-   2 - $_[0]{state};
-}
+# sub paused
+#    # I don't call this
+# {
+#    2 - $_[0]{state};
+# }
 
 
-sub IN
-   # I don't call this
-{
-   $_[0]->{r};
-}
+# sub IN
+#    # I don't call this
+# {
+#    $_[0]->{r};
+# }
 
 
 sub tpf
    # in my experience, this tpf (seconds per frame) is off by a factor of 2
 {
-   my $self = shift;
-   $self->{tpf};
+	my $this = shift;
+	return $this->{tpf};
 }
 
 
@@ -137,65 +142,86 @@ sub tpf
 
 sub line
 {
-   my $self = shift;
-   my $wait = shift;
-   while() {
-      return $1 if $self->{buf} =~ s/^([^\n]*)\n+//;
-      my $len = sysread $self->{r},$self->{buf},4096,length($self->{buf});
-      # telescope the most frequent event, very useful for slow machines
-      $self->{buf} =~ s/^(?:\@F[^\n]*\n)+(?=\@F)//s;
-      if (defined $len || ($! != EAGAIN && $! != EINTR)) {
-         die "connection to mpg123 process lost: $!\n" if $len == 0;
-      } else {
-         if ($wait) {
-            my $v = ""; vec($v,fileno($self->{r}),1)=1;
-            select ($v, undef, undef, 60);
-         } else {
-            return ();
-         }
-      }
-   }
+	my ($this,$wait) = @_;
+	while()
+	{
+		return $1 if $this->{buf} =~ s/^([^\n]*)\n+//;
+		my $len = sysread $this->{r},$this->{buf},4096,length($this->{buf});
+		# telescope the most frequent event, very useful for slow machines
+		$this->{buf} =~ s/^(?:\@F[^\n]*\n)+(?=\@F)//s;
+		if (defined $len || ($! != EAGAIN && $! != EINTR))
+		{
+			error("connection to mpg123 process lost: $!")
+				if $len == 0;
+		}
+		else
+		{
+			if ($wait)
+			{
+				my $v = ""; vec($v,fileno($this->{r}),1)=1;
+				select ($v, undef, undef, 60);
+			}
+			else
+			{
+				return ();
+			}
+		}
+	}
 }
+
 
 
 sub parse
 {
-   my $self = shift;
-   my $re   = shift;
-   my $wait = shift;
-   while (my $line = $self->line ($wait)) {
-      if ($line =~ /^\@F (.*)$/) {
-         $self->{frame}=[split /\s+/,$1];
-         # sno rno tim1 tim2
-      } elsif ($line =~ /^\@S (.*)$/) {
-         @{$self}{qw(type layer samplerate mode mode_extension
-                     bpf channels copyrighted error_protected
-                     emphasis bitrate extension lsf)}=split /\s+/,$1;
-         $self->{tpf} = ($self->{layer}>1 ? 1152 : 384) / $self->{samplerate};
-         $self->{tpf} *= 0.5 if $self->{lsf};
-         $self->{state} = 2;
-      } elsif ($line =~ /^\@I ID3:(.{30})(.{30})(.{30})(....)(.{30})(.*)$/) {
-         $self->{title}=$1;   $self->{artist}=$2;
-         $self->{album}=$3;   $self->{year}=$4;
-         $self->{comment}=$5; $self->{genre}=$6;
-         $self->{$_} =~ s/\s+$// for qw(title artist album year comment genre);
-      } elsif ($line =~ /^\@I (.*)$/) {
-         $self->{title}=$1;
-         delete @{$self}{qw(artist album year comment genre)}
-      } elsif ($line =~ /^\@P (\d+)(?: (\S+))?$/) {
-         $self->{state} = $1;
-         # 0 = stopped, 1 = paused, 2 = continued
-      } elsif ($line =~ /^\@E (.*)$/) {
-         $self->{err}=$1;
-         return ();
-      } elsif ($line !~ $re) {
-         $self->{err}="Unknown response: $line";
-         return ();
-      }
-      return $line if $line =~ $re;
-   }
-   delete $self->{err};
-   return ();
+	my ($this,$re,$wait) = @_;
+
+	while (my $line = $this->line ($wait))
+	{
+		if ($line =~ /^\@F (.*)$/)
+		{
+			$this->{frame} = [split /\s+/,$1];
+			# sno rno tim1 tim2
+		}
+		elsif ($line =~ /^\@S (.*)$/)
+		{
+			@{$this}{qw(type layer samplerate mode mode_extension
+						bpf channels copyrighted error_protected
+						emphasis bitrate extension lsf)}=split /\s+/,$1;
+			$this->{tpf} = ($this->{layer}>1 ? 1152 : 384) / $this->{samplerate};
+			$this->{tpf} *= 0.5 if $this->{lsf};
+			$this->{state} = 2;
+		}
+		elsif ($line =~ /^\@I ID3:(.{30})(.{30})(.{30})(....)(.{30})(.*)$/)
+		{
+			$this->{title}=$1;   $this->{artist}=$2;
+			$this->{album}=$3;   $this->{year}=$4;
+			$this->{comment}=$5; $this->{genre}=$6;
+			$this->{$_} =~ s/\s+$// for qw(title artist album year comment genre);
+		}
+		elsif ($line =~ /^\@I (.*)$/)
+		{
+			$this->{title}=$1;
+			delete @{$this}{qw(artist album year comment genre)}
+		}
+		elsif ($line =~ /^\@P (\d+)(?: (\S+))?$/)
+		{
+			$this->{state} = $1;
+			# 0 = stopped, 1 = paused, 2 = continued
+		}
+		elsif ($line =~ /^\@E (.*)$/)
+		{
+			$this->{err}=$1;
+			return ();
+		}
+		elsif ($line !~ $re)
+		{
+			$this->{err}="Unknown response: $line";
+			return ();
+		}
+		return $line if $line =~ $re;
+	}
+	delete $this->{err};
+	return ();
 }
 
 
@@ -205,13 +231,13 @@ sub parse
 
 sub canonicalize_url
 {
-   my $self = shift;
-   my $url  = shift;
-   if ($url !~ m%^http://%) {
-      $url =~ s%^file://[^/]*/%%;
-      $url = fastcwd."/".$url unless $url =~ /^\//;
-   }
-   $url;
+	my ($this,$url) = @_;
+	if ($url !~ m%^http://%)
+	{
+		$url =~ s%^file://[^/]*/%%;
+		$url = fastcwd."/".$url unless $url =~ /^\//;
+	}
+	return $url;
 }
 
 
@@ -225,85 +251,93 @@ sub canonicalize_url
 
 sub poll
 {
-   my $self = shift;
-   my $wait = shift;
-   $self->parse(qr//,1) if $wait;
-   $self->parse(qr/^X\0/,0);
+	my ($this,$wait) = @_;
+	$this->parse(qr//,1) if $wait;
+	$this->parse(qr/^X\0/,0);
 }
 
 
 sub load
 {
-   my $self = shift;
-   my $url  = $self->canonicalize_url(shift);
-   $self->{url} = $url;
-   if ($url !~ /^http:/ && !-f $url) {
-      $self->{err} = "No such file or directory: $url";
-      return ();
-   }
-   print {$self->{w}} "LOAD $url\n";
-   delete @{$self}{qw(frame type layer samplerate mode mode_extension bpf lsf
-                      channels copyrighted error_protected title artist album
-                      year comment genre emphasis bitrate extension)};
-   $self->parse(qr{^\@[SP]\s},1);
-   return $self->{state};
+	my ($this,$url) = @_;
+	display($dbg123,0,"load($url)");
+	$url  = $this->canonicalize_url($url);
+	$this->{url} = $url;
+	if ($url !~ /^http:/ && !-f $url)
+	{
+		$this->{err} = "No such file or directory: $url";
+		return ();
+	}
+	print {$this->{w}} "LOAD $url\n";
+	delete @{$this}{qw(frame type layer samplerate mode mode_extension bpf lsf
+					   channels copyrighted error_protected title artist album
+					   year comment genre emphasis bitrate extension)};
+	$this->parse(qr{^\@[SP]\s},1);
+	display($dbg123,0,"load() returning state($this->{state})");
+	return $this->{state};
 }
 
 
+
 sub stat
+	# I don't call this. Maybe I should
 {
-   my $self = shift;
-   return unless $self->{state};
-   print {$self->{w}} "STAT\n";
-   $self->parse(qr{^\@F},1);
+   my $this = shift;
+   return unless $this->{state};
+   print {$this->{w}} "STAT\n";
+   $this->parse(qr{^\@F},1);
 }
 
 
 sub pause
 {
-   my $self = shift;
-   print {$self->{w}} "PAUSE\n";
-   $self->parse(qr{^\@P},1);
+   my $this = shift;
+   display($dbg123,0,"pause in state($this->{state})");
+   print {$this->{w}} "PAUSE\n";
+   $this->parse(qr{^\@P},1);
 }
 
 
 
 sub jump
 {
-   my $self = shift;
-   print {$self->{w}} "JUMP $_[0]\n";
+   my ($this,$arg) = @_;
+   display($dbg123,0,"jump($arg)");
+   print {$this->{w}} "JUMP $arg\n";
 }
 
 
 sub statfreq
+	# I don't call this. Maybe I should
 {
-   my $self = shift;
-   print {$self->{w}} "STATFREQ $_[0]\n";
+   my ($this,$arg) = @_;
+   print {$this->{w}} "STATFREQ $arg\n";
 }
 
 
 sub stop
 {
-   my $self = shift;
-   print {$self->{w}} "STOP\n";
-   $self->parse(qr{^\@P},1);
+   my $this = shift;
+   print {$this->{w}} "STOP\n";
+   $this->parse(qr{^\@P},1);
 }
 
 
+# I use direct hash members rather than named symbols
 
 # I think this inline code somehow creates a bunch of 'fields'
-# on the $self object.
+# on the $this object.
 #
 # Is there a reason this inline Perl code comes near the
 # end of the file, or before error() ?
 
-for my $field (qw(title artist album year comment genre state url
-                  type layer samplerate mode mode_extension bpf frame
-                  channels copyrighted error_protected title artist album
-                  year comment genre emphasis bitrate extension))
-{
-  *{$field} = sub { $_[0]{$field} };
-}
+#	for my $field (qw(title artist album year comment genre state url
+#	                  type layer samplerate mode mode_extension bpf frame
+#	                  channels copyrighted error_protected title artist album
+#	                  year comment genre emphasis bitrate extension))
+#	{
+#	  *{$field} = sub { $_[0]{$field} };
+#	}
 
 
 

@@ -16,11 +16,11 @@
 # (1) There's a SERIOUS PROBLEM with this thread. It stops
 #     sometimes, maybe coincident with trying to resolve
 #     a remote library, or the end of another thread.
-#     Output to STDOUT?    
+#     Output to STDOUT?
 #
-# (2) frame->[3] is never returning non-zero, so we can't 
-#     calc the duration correctly and use the track's metadata 
-#     duration as a kludge. Might have to do with HTTP Server 
+# (2) frame->[3] is never returning non-zero, so we can't
+#     calc the duration correctly and use the track's metadata
+#     duration as a kludge. Might have to do with HTTP Server
 #     and non-ranged requests.
 #
 # (3) Can seek forward, but not backwards. mpg123 jump() method
@@ -148,7 +148,7 @@ sub mpThread
 	my $mp = myMPG123->new();
 	display($dbg_mp,0,"mpThread() started");
 	$mp_running = 1;
-	
+
 	my $last_weird = 0;
 
 	while (1)
@@ -185,12 +185,13 @@ sub mpThread
 				{
 					my $mp_position = $1;
 					my $seconds = $mp_position/1000;
-					my $secs_per_frame = $mp->tpf;
-						# seconds per frame, for some reason, is off by factor of 2
-					my $frame = 2 * $seconds / $secs_per_frame;
-					display($dbg_mp+1,2,"doing set_position($mp_position)=frame($frame)");
-					$mp->jump($frame);
-					$mp->poll(1);
+					# my $secs_per_frame = $mp->tpf;
+					# 	# seconds per frame, for some reason, is off by factor of 2
+					# my $frame = 2 * $seconds / $secs_per_frame;
+					# display($dbg_mp+1,2,"doing set_position($mp_position)=frame($frame)");
+					# $mp->jump($frame);
+					$mp->jump($seconds."s");
+					# $mp->poll(1);
 				}
 				elsif ($mp_command =~ /^play,(.*)$/)
 				{
@@ -206,27 +207,27 @@ sub mpThread
 			}
 			else
 			{
-				$mp->poll(0);
-				my $mp_state = $mp->state;
+				# $mp->poll(0);
+				my $mp_state = $mp->{state};
 
 				display($dbg_mp+1,0,"mp_state($mp_state) state($renderer->{state})")
 					if defined($mp_state);	# not available at init
 
 				if ($renderer->{state} eq $RENDERER_STATE_PLAYING)
 				{
-					my $frame_data = $mp->frame;
+					my $frame_data = $mp->{frame};
 						# frames_played, frames_remaining, secs_played, secs_remaining
-						
+
 					if ($frame_data)
 					{
 						my $secs = $frame_data->[2];
 						my $remain = $frame_data->[3];
-						$renderer->{position} = $secs * 1000;			
-						
+						$renderer->{position} = $secs * 1000;
+
 						# WEIRDNESS: for some mp3s, $remain is always '0.00'
 						# in which case we revert to use the metadata duration ..
-						
-						if (defined($remain) && $remain ne '0.00')	
+
+						if (defined($remain) && $remain ne '0.00')
 						{
 							# how I expect it to work
 							my $total = $secs + $remain;
