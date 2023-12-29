@@ -162,7 +162,11 @@ sub stream_media
 			display($dbg_stream,1,"Doing Range request from $from_byte to $to_byte = $content_len bytes");
 		}
 
-
+		my $send_it = 
+			$headers->{USER_AGENT} &&
+			$headers->{USER_AGENT} =~ /^mpg123/ ? 1 : 0;
+		# MOD for linux mpg123 - send the bytes, not just the headers
+			
 		# OK, so what seems to work is that if we DONT get a range request,
 		# we JUST return the headers, telling them to Accept-Ranges, then
 		# they call us back with another ranged request ?!?!
@@ -236,7 +240,7 @@ sub stream_media
 		}
 		return if ($method eq 'HEAD' || !$content_len);
 			# This is the way I remember it working
-		return if !$is_ranged;
+		return if !$send_it && !$is_ranged;
 			# This is apparently the way it works.
 			# See above comment
 

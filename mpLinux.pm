@@ -8,6 +8,25 @@
 # Abstract the linux MPG123 Media Player for localRenderer.
 # Counterpart to mpWin.pm for the rPi.
 #
+# Had to add special handling to HTTPServer for mpg123 to
+# serve the entire file (not just headers).
+#
+# PROBLEMS:
+#
+# (1) There's a SERIOUS PROBLEM with this thread. It stops
+#     sometimes, maybe coincident with trying to resolve
+#     a remote library, or the end of another thread.
+#     Output to STDOUT?    
+#
+# (2) frame->[3] is never returning non-zero, so we can't 
+#     calc the duration correctly and use the track's metadata 
+#     duration as a kludge. Might have to do with HTTP Server 
+#     and non-ranged requests.
+#
+# (3) Can seek forward, but not backwards. mpg123 jump() method
+#     acts funny.
+#
+#
 # EXPORTS
 #	$mp_running boolean
 #
@@ -58,7 +77,8 @@ use strict;
 use warnings;
 use threads;
 use threads::shared;
-use Audio::Play::MPG123;
+# use Audio::Play::MPG123;
+use myMPG123;
 use Time::HiRes qw(sleep);
 use artisanUtils;
 use Renderer;
@@ -124,14 +144,18 @@ sub mpThread
 	# handles all state changes
 {
 	my ($renderer) = @_;
-	my $mp = Audio::Play::MG123->new();
+	# my $mp = Audio::Play::MPG123->new();
+	my $mp = myMPG123->new();
 	display($dbg_mp,0,"mpThread() started");
 	$mp_running = 1;
+	
+	my $last_weird = 0;
 
 	while (1)
 	{
 		if (!$quitting)
 		{
+			$mp->poll(0);
 			my $mp_command = shift @$mp_command_queue;
 			if ($mp_command)
 			{
@@ -164,8 +188,9 @@ sub mpThread
 					my $secs_per_frame = $mp->tpf;
 						# seconds per frame, for some reason, is off by factor of 2
 					my $frame = 2 * $seconds / $secs_per_frame;
-					display($dbg_mp+1,2,"doing set_position($mp_position)");
+					display($dbg_mp+1,2,"doing set_position($mp_position)=frame($frame)");
 					$mp->jump($frame);
+					$mp->poll(1);
 				}
 				elsif ($mp_command =~ /^play,(.*)$/)
 				{
@@ -173,26 +198,54 @@ sub mpThread
 					display($dbg_mp+1,2,"doing play($url)");
 					$mp->load($url);
 					$renderer->{state} = $RENDERER_STATE_PLAYING;
+					# while (!$mp->state)
+					# {
+					#	$mp->poll(1);
+					# }
 				}
 			}
 			else
 			{
+				$mp->poll(0);
 				my $mp_state = $mp->state;
 
-				display($dbg_mp+1,0,"mp_state($mp_state) state($renderer->{state})");
+				display($dbg_mp+1,0,"mp_state($mp_state) state($renderer->{state})")
+					if defined($mp_state);	# not available at init
 
 				if ($renderer->{state} eq $RENDERER_STATE_PLAYING)
 				{
-					my $frame_data = $mp->frame();
+					my $frame_data = $mp->frame;
 						# frames_played, frames_remaining, secs_played, secs_remaining
-					my $secs = $frame_data->[2];
-					my $remain = $frame_data->[3];
-					my $total = $secs + $remain;
-					$renderer->{position} = $secs * 1000;
-					$renderer->{duration} = $total * 1000;
+						
+					if ($frame_data)
+					{
+						my $secs = $frame_data->[2];
+						my $remain = $frame_data->[3];
+						$renderer->{position} = $secs * 1000;			
+						
+						# WEIRDNESS: for some mp3s, $remain is always '0.00'
+						# in which case we revert to use the metadata duration ..
+						
+						if (defined($remain) && $remain ne '0.00')	
+						{
+							# how I expect it to work
+							my $total = $secs + $remain;
+							$renderer->{duration} = $total * 1000;
+						}
+						elsif (time() ne $last_weird)	# kludge
+						{
+							$last_weird = time();
+							$frame_data ||= ['undef'];
+							display($dbg_mp,0,"weirdness frame_data(".
+								join(',',@$frame_data).")");
+							$renderer->{duration} = $renderer->{metadata}->{duration}
+								if $renderer->{metadata};
+						}
+					}
 				}
 
-				$renderer->checkMPStart($mp,$mp_state == $MP_STATE_STOPPED ? 1 : 0);
+				$renderer->checkMPStart($mp,$mp_state == $MPG123_STATE_STOPPED ? 1 : 0)
+					if defined($mp_state);
 			}
 
 			sleep($dbg_mp < 0 ? 1 : 0.1);
