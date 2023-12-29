@@ -270,8 +270,65 @@ followed by old fileClient xfer of main pm direcotry.
 
 CHECKING THIS FILE IN (Artisan totally checked in)
 
+The USB drive plugged into rPi is mounted as
+
+	/media/pi/USB_16
+
+and the mp3s directory on it can probably be had at
+
+	/media/pi/USB_16/mp3s
+
+To start with, however, was able to copy it to /mp3s
+with a bunch of sudo mkdirs, chmod 0777, chown, and
+an explicit cp -r command from a terminal window.
+
+### Installed additional Perl Libraries
+
+see /zip/_rpi/_setup/rPi_Setup.docx
 
 
+### Needed changes
+
+The following stuff is not valid on linux:
+
+- artisanUtils.pm way of getting server IP by calling Windows ip_config.exe
+- ENABLE_MOUSE_INPUT at artisan.pm line 83
+- STD_INPUT_HANDLE at artisan.pm 82
+- ENABLE_WINDOW_INPUT
+- something about block or sub at artisan.pm 231
+
+All of that fixed, and a few more minor things, got as far as SSDP
+having errors not being able to call $sock->mcast_send() which returns
+undefined $bytes.  But the ipAdress thing needs to be solved first.
+
+I will start by just making it a constant (modify source on the
+rPi now). ABLE TO HIT SERVER, BRING UP UI, EXPLORE, and PLAY A SONG!!
+
+
+
+The sock->mcast_send that is returning undef $bytes appears to have
+worked, to the degree that I can see the rPi device in Windows Explorer
+Network as see it from SSDP in Artisan running on the windows machine,
+and can even open its library.
+
+I wonder if Windows Artisan will see it?
+
+
+It does, and in fact, after I changed SSDP::sendResponses() to use
+the selected $sock and my hand written _mcast_send(), it works on
+both platforms.
+
+In fact, at this point, the only thing not working for sure
+is getting the ipAddress of the device.
+
+In fact, if I added:
+
+- the ability to get the ipAddress
+- a preference for the location of the library
+- a service descriptor ala myIOTServer and fileServer
+
+I could just boot the machine, open a browser, and it
+would be effectively working (over HDMI or rPi audio).
 
 
 

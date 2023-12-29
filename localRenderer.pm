@@ -22,9 +22,9 @@ use strict;
 use warnings;
 use threads;
 use threads::shared;
-use Win32::OLE;
-use Time::HiRes qw(sleep);
 use artisanUtils;
+use if is_win, 'mpWin';
+use if !is_win, 'mpLinux';
 use Renderer;
 use Device;
 use DeviceManager;
@@ -32,19 +32,6 @@ use Queue;
 use base qw(Renderer);
 
 my $dbg_lren = 0;
-my $dbg_mp = 0;
-
-Win32::OLE::prhSetThreadNum(1);
-	# I found this old fix in my own build, under /src/wx/Win32_OLE.
-	# This prevents threads from crashing on return (i.e. in HTTPServer
-	# 	connections) by setting a flag into my version of Win32::OLE
-	# 	that causees it to short return from it's AtExit() method,
-	# 	not deleting anything. Otherwise threads get messed up.
-	# Presumably everytinng is deleted when the main Perl interpreter
-	# 	realy exits.
-	# I *may* not have needed to enclose $mp in a loop, but it's
-	#	done now so I'm not changing it!
-
 
 # fields that get moved from a track to the renderer
 # art_uri will be gotten from parent if not available
@@ -61,202 +48,58 @@ my @track_fields_to_renderer = qw(
 	year_str);
 
 
-#------------------------------------------------------------------
-# Media Player COM object
-#------------------------------------------------------------------
-# Has to be wrapped in it's own thread and communicated with
-# via shared memory variables
-
-my $MP_STATE_STOPPED 		= 1; 	# Playback of the current media item is stopped.
-my $MP_STATE_PAUSED 		= 2; 	# Playback of the current media item is paused. When a media item is paused, resuming playback begins from the same location.
-my $MP_STATE_PLAYING 		= 3; 	# The current media item is playing.
-my $MP_STATE_SCANFORWARD 	= 4; 	# The current media item is fast forwarding.
-my $MP_STATE_SCANREVERSE 	= 5; 	# The current media item is fast rewinding.
-my $MP_STATE_BUFFERING 		= 6; 	# The current media item is getting additional data from the server.
-my $MP_STATE_WAITING 		= 7; 	# Connection is established, but the server is not sending data. Waiting for session to begin.
-my $MP_STATE_MEDIAENDED 	= 8; 	# Media item has completed playback.
-my $MP_STATE_TRANSITIONING	= 9; 	# Preparing new media item.
-my $MP_STATE_READY 			= 10; 	# Ready to begin playing.
-my $MP_STATE_RECONNECTING 	= 11; 	# Reconnecting to stream.
-
-
-my $mp_running:shared = 0;
-my $mp_command_queue:shared = shared_clone([]);
-	# stop
-	# pause
-	# play,optional_url
-	# set_position,millis
-
-
 sub running
+	# returns $mp_running as exported by mpXXX.pm
 {
 	my ($this) = @_;
 	return $mp_running;
 }
 
 
-sub doMPCommand
+sub checkMPStart
+	# called from mpXXX.pm in idle loop to see
+	# if a new song needs to start playing
 {
-	my ($command) = @_;
-	display($dbg_mp,0,"doMPCommand($command)");
-	push @$mp_command_queue,$command;
-}
-
-
-sub stopMP
-	# When the queue reaches the end it 'stops', and
-	# the renderer goes to RENDERER_STATE_STOPPED.
-	# It can be 'restarted' by navigating to a previous
-	# track or album, or via the Play button which will
-	# start it over from the beginning.
-{
-	my ($this,$mp) = @_;
-	$mp->close() if $mp;
-	$this->{state} = $RENDERER_STATE_STOPPED
-		if $this->{state} ne  $RENDERER_STATE_INIT;
-	$this->{position} = 0;
-	$this->{duration} = 0;
-	delete $this->{metadata};
-}
-
-
-sub mpThread
-	# handles all state changes
-{
-	my ($this) = @_;
-	my $mp = Win32::OLE->new('WMPlayer.OCX');
-	my $controls = $mp->{controls};
-	my $settings = $mp->{settings};
-	$settings->{autoStart} = 0;
-	display($dbg_mp,0,"mpThread() started");
-	$mp_running = 1;
-
+	my ($this,$mp,$stopped) = @_;
 	my $queue = Queue::getQueue($this->{uuid});
-	my $q_needs_start = $queue->{needs_start};
-	my $last_update_time = time();
 
-	while (1)
+	# in all cases start playing the queue if
+	# needs_start changes
+
+	if ($this->{q_needs_start} != $queue->{needs_start})
 	{
-		if (!$quitting)
+		$this->{q_needs_start} = $queue->{needs_start};
+		$this->{playing} = $RENDERER_PLAY_QUEUE;
+		my $track = $queue->{tracks}->[$queue->{track_index}];
+		if ($track)
 		{
-			my $mp_command = shift @$mp_command_queue;
-			if ($mp_command)
-			{
-				display($dbg_mp,1,"doing command '$mp_command'");
-
-				# there is no $controls->stop() method
-				# instead you 'close()' the current media file
-
-				if ($mp_command eq 'stop')
-				{
-					$this->stopMP($mp);
-				}
-				elsif ($mp_command eq 'pause')
-				{
-					$controls->pause();
-					$this->{state} = $RENDERER_STATE_PAUSED;
-				}
-				elsif ($mp_command eq 'play')
-				{
-					$controls->play();
-					$this->{state} = $RENDERER_STATE_PLAYING;
-				}
-				elsif ($mp_command =~ /^set_position,(.*)$/)
-				{
-					my $mp_position = $1;
-					display($dbg_mp+1,2,"doing set_position($mp_position)");
-					$controls->{currentPosition} = $mp_position/1000;
-				}
-				elsif ($mp_command =~ /^play,(.*)$/)
-				{
-					my $url = $1;
-					display($dbg_mp+1,2,"doing play($url)");
-					$mp->{URL} = $url;
-					$controls->play();
-					$this->{state} = $RENDERER_STATE_PLAYING;
-				}
-			}
-			else
-			{
-				my $mp_state = $mp->{playState} || 0;
-
-				display($dbg_mp+1,0,"mp_state($mp_state) state($this->{state})");
-
-				if ($this->{state} eq $RENDERER_STATE_PLAYING)
-				{
-					my $media = $mp->{currentMedia};
-					my $position = $controls->{currentPosition};
-					my $duration = $media ? $media->{duration} : 0;
-					$position ||= 0;
-					$duration ||= 0;
-					$this->{position} = $position * 1000;
-					$this->{duration} = $duration * 1000;
-				}
-
-				# in all cases start playing the queue if
-				# needs_start changes
-
-				if ($q_needs_start != $queue->{needs_start})
-				{
-					$q_needs_start = $queue->{needs_start};
-					$this->{playing} = $RENDERER_PLAY_QUEUE;
-					my $track = $queue->{tracks}->[$queue->{track_index}];
-					if ($track)
-					{
-						display(0,0,"queue needs_start($q_needs_start} ($queue->{track_index}) $track->{title}");
-						$this->play_track($track->{library_uuid},$track->{id});
-					}
-					else
-					{
-						$this->stopMP($mp);
-					}
-				}
-
-				elsif ($mp_state == $MP_STATE_STOPPED)
-				{
-					if ($this->{state} eq $RENDERER_STATE_PLAYING)
-					{
-						if ($this->{playing} == $RENDERER_PLAY_PLAYLIST)
-						{
-							$this->playlist_song($PLAYLIST_RELATIVE,1);
-						}
-						else
-						{
-							my $rslt = Queue::queueCommand('next',{renderer_uuid=>$this->{uuid}});
-							$this->stopMP($mp) if $rslt->{error};
-						}
-					}
-					else
-					{
-						$this->stopMP($mp);
-					}
-				}
-			}
-
-			sleep($dbg_mp < 0 ? 1 : 0.1);
-		}
-		elsif ($mp_running)
-		{
-			display($dbg_mp,0,"suspending mpThread");
-			$mp->close();
-			$controls = undef;
-			$settings = undef;
-			$mp = undef;
-			$mp_running = 0;
-			display($dbg_mp,0,"mpThread suspended");
+			display(0,0,"queue needs_start($this->{q_needs_start}} ($queue->{track_index}) $track->{title}");
+			$this->play_track($track->{library_uuid},$track->{id});
 		}
 		else
 		{
-			sleep(1);
+			stopMP($this,$mp);
 		}
 	}
-
-	# never gets here
-	$mp->close();
-	$controls = undef;
-	$settings = undef;
-	$mp = undef;
-	display($dbg_mp,0,"mpThread() ended");
+	elsif ($stopped)
+	{
+		if ($this->{state} eq $RENDERER_STATE_PLAYING)
+		{
+			if ($this->{playing} == $RENDERER_PLAY_PLAYLIST)
+			{
+				$this->playlist_song($PLAYLIST_RELATIVE,1);
+			}
+			else
+			{
+				my $rslt = Queue::queueCommand('next',{renderer_uuid=>$this->{uuid}});
+				stopMP($this,$mp) if $rslt->{error};
+			}
+		}
+		else
+		{
+			stopMP($this,$mp);
+		}
+	}
 }
 
 
@@ -287,11 +130,11 @@ sub new
 		playing => $RENDERER_PLAY_QUEUE,
 	}));
 
-	if (1)
-	{
-		my $thread = threads->create(\&mpThread,$this);
-		$thread->detach();
-	}
+	my $queue = Queue::getQueue($this->{uuid});
+	$this->{q_needs_start} = $queue->{needs_start};
+
+	my $thread = threads->create(\&mpThread,$this);
+	$thread->detach();
 
 	return $this;
 }
@@ -397,12 +240,12 @@ sub doCommand
 				# never fails
 			$this->copyQueue($queue);
 			$this->{state} = $RENDERER_STATE_INIT;
-			$this->stopMP();
+			stopMP($this);
 			doMPCommand('stop');
 		}
 		else
 		{
-			$this->stopMP();
+			stopMP($this);
 			doMPCommand('stop');
 		}
 	}

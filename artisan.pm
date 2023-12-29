@@ -44,7 +44,7 @@ use HTTPServer;
 use Database;
 use DatabaseMain;
 use DeviceManager;
-use if is_win, 'localRenderer';
+use localRenderer;
 use localLibrary;
 use localPlaylist;
 use remoteLibrary;
@@ -123,8 +123,7 @@ else
 # so that local devices come first
 
 addDevice(new localLibrary());
-addDevice(new localRenderer()) if is_win();
-# DeviceManager::read_device_cache();
+addDevice(new localRenderer());
 
 
 # (3) HTTP SERVER - establishes $server_ip
