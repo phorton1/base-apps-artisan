@@ -14,15 +14,22 @@
 # Basically it works by opening a process for the mpg123 executable
 # using the -R command line parameter, capturing its STDOUT and
 # allowing commands to be sent to it via it's STDIN. I will not
-# pretend to understand how this Perl code works. My rework
-# will be somewhat different, more clunky, but understandable
-# to me.
-
+# pretend to understand how this Perl code works. My rework will
+# be somewhat different, more clunky, but understandable to me
+#
+# (1) start by changing squiggle styles, adding comments, and
+# 	  regrouping all of the "commands" into one part of the source.
+# (2) add full use strict and use warnings & get no errors in Komodo
+#     - remove Exporter stuff ... it doesn't export anything.
+#     - add 'my' to $MPG123
+#     - add "no warnings 'once';" to start_mpg123()
 
 package myMPG123;
-use strict 'subs';
+use strict;
+use warnings;
+# use strict 'subs';
 use Carp;
-require Exporter;
+# require Exporter;
 use Fcntl;
 use IPC::Open3;
 use Cwd;
@@ -31,33 +38,41 @@ use Errno qw(EAGAIN EINTR);
 
 BEGIN { $^W=0 } # turn off bogus and unnecessary warnings
 
-@ISA = qw(Exporter);
+#	@ISA = qw(Exporter);
+#
+#	@_consts = qw();
+#	@_funcs = qw();
+#
+#	@EXPORT = @_consts;
+#	@EXPORT_OK = @_funcs;
+#	%EXPORT_TAGS = (all => [@_consts,@_funcs], constants => \@_consts);
+#	$VERSION = '0.63';
 
-@_consts = qw();
-@_funcs = qw();
+my $MPG123 = "mpg123";
 
-@EXPORT = @_consts;
-@EXPORT_OK = @_funcs;
-%EXPORT_TAGS = (all => [@_consts,@_funcs], constants => \@_consts);
-$VERSION = '0.63';
-
-$MPG123 = "mpg123";
-
-$OPT_AUTOSTAT = 1;
+# $OPT_AUTOSTAT = 1;
+   # I have no idea why this is here.
 
 
+#---------------------------------------------
+# ctor, start, and stop the module
+#---------------------------------------------
 
-sub new {
+sub new
+{
    my $class = shift;
    my $self = bless { @_ }, $class;
    $self->start_mpg123(@{$self->{mpg123args} || []});
    $self;
 }
 
-sub start_mpg123 {
+
+sub start_mpg123
+{
    my $self = shift;
    local *DEVNULL;
    open DEVNULL, ">/dev/null" or die "/dev/null: $!";
+   no warnings 'once';
    $self->{r} = local *MPG123_READER;
    $self->{w} = local *MPG123_WRITER;
    $self->{pid} = open3($self->{w},$self->{r},">&DEVNULL",$MPG123,'-R','--aggressive',@_,'');
@@ -68,7 +83,9 @@ sub start_mpg123 {
    $self->{version}=$1;
 }
 
-sub stop_mpg123 {
+
+sub stop_mpg123
+{
    my $self = shift;
    if (delete $self->{pid}) {
       print {$self->{w}} "Q\n";
@@ -77,7 +94,49 @@ sub stop_mpg123 {
    }
 }
 
-sub line {
+
+#--------------------------------------------
+# state accessors
+#--------------------------------------------
+
+sub error
+   # is this an API method, or is it called magically
+   # from within the code somehow?
+{
+   shift->{err}
+}
+
+
+
+sub paused
+   # I don't call this
+{
+   2 - $_[0]{state};
+}
+
+
+sub IN
+   # I don't call this
+{
+   $_[0]->{r};
+}
+
+
+sub tpf
+   # in my experience, this tpf (seconds per frame) is off by a factor of 2
+{
+   my $self = shift;
+   $self->{tpf};
+}
+
+
+
+#---------------------------------------------
+# line() and parse()
+#---------------------------------------------
+
+sub line
+{
    my $self = shift;
    my $wait = shift;
    while() {
@@ -98,7 +157,9 @@ sub line {
    }
 }
 
-sub parse {
+
+sub parse
+{
    my $self = shift;
    my $re   = shift;
    my $wait = shift;
@@ -137,14 +198,13 @@ sub parse {
    return ();
 }
 
-sub poll {
-   my $self = shift;
-   my $wait = shift;
-   $self->parse(qr//,1) if $wait;
-   $self->parse(qr/^X\0/,0);
-}
 
-sub canonicalize_url {
+#---------------------------------------------
+# utilities
+#---------------------------------------------
+
+sub canonicalize_url
+{
    my $self = shift;
    my $url  = shift;
    if ($url !~ m%^http://%) {
@@ -154,7 +214,26 @@ sub canonicalize_url {
    $url;
 }
 
-sub load {
+
+
+#----------------------------------------------
+# commands
+#----------------------------------------------
+# poll() is not a command, per-se. It just calls
+# parse() with some magic.  All the other commands
+# print something to the process and then call parse().
+
+sub poll
+{
+   my $self = shift;
+   my $wait = shift;
+   $self->parse(qr//,1) if $wait;
+   $self->parse(qr/^X\0/,0);
+}
+
+
+sub load
+{
    my $self = shift;
    my $url  = $self->canonicalize_url(shift);
    $self->{url} = $url;
@@ -170,56 +249,63 @@ sub load {
    return $self->{state};
 }
 
-sub stat {
+
+sub stat
+{
    my $self = shift;
    return unless $self->{state};
    print {$self->{w}} "STAT\n";
    $self->parse(qr{^\@F},1);
 }
 
-sub pause {
+
+sub pause
+{
    my $self = shift;
    print {$self->{w}} "PAUSE\n";
    $self->parse(qr{^\@P},1);
 }
 
-sub paused {
-   2 - $_[0]{state};
-}
 
-sub jump {
+
+sub jump
+{
    my $self = shift;
    print {$self->{w}} "JUMP $_[0]\n";
 }
 
-sub statfreq {
+
+sub statfreq
+{
    my $self = shift;
    print {$self->{w}} "STATFREQ $_[0]\n";
 }
 
-sub stop {
+
+sub stop
+{
    my $self = shift;
    print {$self->{w}} "STOP\n";
    $self->parse(qr{^\@P},1);
 }
 
-sub IN {
-   $_[0]->{r};
-}
 
-sub tpf {
-   my $self = shift;
-   $self->{tpf};
-}
+
+# I think this inline code somehow creates a bunch of 'fields'
+# on the $self object.
+#
+# Is there a reason this inline Perl code comes near the
+# end of the file, or before error() ?
 
 for my $field (qw(title artist album year comment genre state url
                   type layer samplerate mode mode_extension bpf frame
                   channels copyrighted error_protected title artist album
-                  year comment genre emphasis bitrate extension)) {
+                  year comment genre emphasis bitrate extension))
+{
   *{$field} = sub { $_[0]{$field} };
 }
 
-sub error { shift->{err} }
+
 
 1;
 
