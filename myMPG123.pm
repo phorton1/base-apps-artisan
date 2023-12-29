@@ -211,6 +211,7 @@ sub parse
 		elsif ($line =~ /^\@E (.*)$/)
 		{
 			$this->{err}=$1;
+			error($this->{err});
 			return ();
 		}
 		elsif ($line !~ $re)
