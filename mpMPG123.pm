@@ -85,7 +85,7 @@ use artisanUtils;
 use Renderer;
 
 
-my $dbg_mp = 0;
+my $dbg_mp = -1;
 
 
 BEGIN
@@ -183,6 +183,7 @@ sub mpThread
 				{
 					my $url = $1;
 					display($dbg_mp+1,2,"doing play($url)");
+					$url = mapLocalUrl($url);
 					$mp->load($url);
 					$renderer->{state} = $RENDERER_STATE_PLAYING;
 				}
@@ -243,6 +244,26 @@ sub mpThread
 	$mp->stop();
 	$mp = undef;
 	display($dbg_mp,0,"mpThread() ended");
+}
+
+
+
+use DeviceManager;
+
+sub mapLocalUrl
+{
+	my ($url) = @_;
+	if ($url =~ /http:\/\/$server_ip:$server_port\/media\/(.*)\.mp3/)
+	{
+		my $track_id = $1;
+		my $track = $local_library->getTrack($track_id);
+		if ($track)
+		{
+			 $url = "$mp3_dir/$track->{path}";
+			 display($dbg_mp,0,"mapped to $url");
+		}
+	}
+	return $url;
 }
 
 

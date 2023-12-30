@@ -31,7 +31,7 @@ my $dbg123 = 0;
 
 
 my $MPG123 = "mpg123";
-
+my $connected = 0;
 
 #---------------------------------------------
 # ctor, start, and stop the module
@@ -71,6 +71,7 @@ sub start_mpg123
 	}
 	$this->{version} = $1;
 	display($dbg123,0,"start_mpg123() returning version($this->{version}");
+	$connected = 1;
 }
 
 
@@ -164,6 +165,7 @@ sub parse
 		{
 			$this->{err}=$1;
 			error($this->{err});
+			$connected = 0 if $this->{err} =~ /connection to mpg123 process lost/;
 			return ();
 		}
 		elsif ($line !~ $re)
@@ -205,6 +207,7 @@ sub canonicalize_url
 sub poll
 {
 	my ($this,$wait) = @_;
+	return if !$connected;
 	$this->parse(qr//,1) if $wait;
 	$this->parse(qr/^X\0/,0);
 }
@@ -213,6 +216,7 @@ sub poll
 sub load
 {
 	my ($this,$url) = @_;
+	return 0 if !$connected;
 	display($dbg123,0,"load($url)");
 	$url  = $this->canonicalize_url($url);
 	$this->{url} = $url;
@@ -236,6 +240,7 @@ sub stat
 	# I don't call this. Maybe I should
 {
    my $this = shift;
+   return if !$connected;
    return unless $this->{state};
    print {$this->{w}} "STAT\n";
    $this->parse(qr{^\@F},1);
@@ -245,6 +250,7 @@ sub stat
 sub pause
 {
    my $this = shift;
+   return if !$connected;
    display($dbg123,0,"pause in state($this->{state})");
    print {$this->{w}} "PAUSE\n";
    $this->parse(qr{^\@P},1);
@@ -255,6 +261,7 @@ sub pause
 sub jump
 {
    my ($this,$arg) = @_;
+   return if !$connected;
    display($dbg123,0,"jump($arg)");
    print {$this->{w}} "JUMP $arg\n";
 }
@@ -264,6 +271,7 @@ sub statfreq
 	# I don't call this. Maybe I should
 {
    my ($this,$arg) = @_;
+   return if !$connected;
    print {$this->{w}} "STATFREQ $arg\n";
 }
 
@@ -271,6 +279,7 @@ sub statfreq
 sub stop
 {
    my $this = shift;
+   return if !$connected;
    print {$this->{w}} "STOP\n";
    $this->parse(qr{^\@P},1);
 }
