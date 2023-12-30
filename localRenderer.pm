@@ -26,8 +26,8 @@ use artisanUtils;
 # use mpWin on windows
 # use mpHTML on linux
 use if is_win, 'mpWin';
-use if !is_win, 'mpHTML';
-# use if !is_win, 'mpLinux';
+# use if !is_win, 'mpHTML';
+use if !is_win, 'mpLinux';
 # old MPG123 based mp *almost* worked
 use Renderer;
 use Device;

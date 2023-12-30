@@ -68,6 +68,11 @@ display($dbg_main,0,"server_ip($server_ip) server_port($server_port)");
 sub onSignal
 {
     my ($sig) = @_;
+    if ($sig eq 'PIPE')
+    {
+		warning(0,0,"got SIG$sig");
+		return;
+	}
     LOG(-1,"main terminating on SIG$sig");
 	$quitting = 1;
 	sleep(3);
