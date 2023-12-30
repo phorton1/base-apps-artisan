@@ -140,8 +140,11 @@ $(function()
 
 $( window ).resize(function()
 {
-	display(dbg_layout,0,"$(window) resize(" + current_page + ") called");
-	resize_layout(current_page);
+	if (current_page != '')
+	{
+		display(dbg_layout,0,"$(window) resize(" + current_page + ") called");
+		resize_layout(current_page);
+	}
 });
 
 

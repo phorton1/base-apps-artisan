@@ -347,7 +347,10 @@ and controlled from other devices.
 
 I subsequently tried the mpHTML.pm approach below, but in
 the end decided to go forward with the MPG123 solution on
-the rPi.
+the rPi using by mapping http://$surver_ip:$server_port urls
+to direct local file paths to address the 'can't slider backwards'
+issue.
+
 
 
 ### mpHTML.pm
@@ -375,21 +378,19 @@ terminations on the rPi.  I added a warning, and a return in
 artisan.pm handle_signals(), but I have not seen it called since,
 so I don't really know what caused the problem.
 
+I still get problems where the system won't exit on CTRL-C,
+and/or fails on startup (probably during mpg123 process
+creation coincident with a network access like getting
+LENOVO2 WMP 'fake' playlists).
+
 
 
 ## TO_DO
 
-- mpMPG123.pm to use files on local http://$surver_ip:$server_port urls
-  to address 'can't slider backwards' issue
-
-- 'layout element not found' error on rPi
-
 - Volume Control
-
 - MP3s directory (preference or hardwired)
 - rPi server IP issue
 - rPi service
-
 - USB Audio Sound device solution for rPi (hook up to PA?)
 
 At which point I could theoretically hook it up to the PA
