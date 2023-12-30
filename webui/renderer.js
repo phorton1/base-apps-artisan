@@ -183,6 +183,7 @@ function update_renderer_ui()
 				shuffle = playlist.shuffle;
 				$('#queue_tracklist').css('display','none');
 				$('#playlist_tracklist').css('display','block');
+				playlist_tracklist.my_index_shown = -1;
 			}
 			else
 			{
@@ -193,6 +194,7 @@ function update_renderer_ui()
 				shuffle = queue.shuffle;
 				$('#playlist_tracklist').css('display','none');
 				$('#queue_tracklist').css('display','block');
+				queue_tracklist.my_index_shown = -1;
 			}
 
 			// we make onShuffleChanged ignore the event if its
