@@ -520,7 +520,7 @@ sub send_responses
 			#		$destination_ip.":".$destination_port);
 
 			my	$bytes = _mcast_send( $sock, $data, "$destination_ip:$destination_port" );
-			display($dbg_responses,2,"send to $destination_ip:$destination_port rslt=$bytes");
+			display($dbg_responses+2,2,"send to $destination_ip:$destination_port rslt=$bytes");
 			if ($bytes != length($data))
 			{
 				warning(0,0,"Could only mcast_send($bytes/".length($data)." bytes to $destination_ip:$destination_port");
