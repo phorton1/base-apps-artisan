@@ -11,11 +11,13 @@ use Time::HiRes qw(sleep time);
 use IO::Socket;
 use IO::Socket::INET;
 use IO::Socket::Multicast qw(:all);
-	# Uses my own multicase implementation for send_socket
+	# Uses my own multicase implementation _mcast_send(). first
 	# because I could not figure out how to do bi-directional
 	# communications with the base IO::Socket::Multicast socket
 	# as needed for M-SEARCH. IO::Socket::Multicase ONLY sends
-	# or receives, but for M-SEARCH you need both!
+	# or receives, but for M-SEARCH you need both!  Then
+	# additionally because IO::SocketMulticast::mcast_send()
+	# did not work on the rPi.
 use artisanUtils;
 use DeviceManager;
 
@@ -511,25 +513,14 @@ sub send_responses
 				return;
 			}
 
-			my $bytes;
+			# OLD code with $recv_sock in call
+			#
+			#	my $bytes = $sock->mcast_send(
+			#		$data,
+			#		$destination_ip.":".$destination_port);
 
-			if (0)	# original, working code with $recv_sock in call
-			{
-				$bytes = $sock->mcast_send(
-					$data,
-					$destination_ip.":".$destination_port);
-			}
-			elsif (0)	# no workee on windows with selected $sock in call
-			{
-				$bytes = $sock->send($data)
-			}
-			else		# try hand coded _mcast_send method on $recv_sock ...
-			{
-				$bytes = _mcast_send( $sock, $data, "$destination_ip:$destination_port" );
-			}
-
-
-			display($dbg_responses,1,"send to $destination_ip:$destination_port rslt=$bytes");
+			my	$bytes = _mcast_send( $sock, $data, "$destination_ip:$destination_port" );
+			display($dbg_responses,2,"send to $destination_ip:$destination_port rslt=$bytes");
 			if ($bytes != length($data))
 			{
 				warning(0,0,"Could only mcast_send($bytes/".length($data)." bytes to $destination_ip:$destination_port");
