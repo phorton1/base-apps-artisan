@@ -124,7 +124,7 @@ my $mp_command_queue:shared = shared_clone([]);
 
 sub doMPCommand
 {
-	my ($command) = @_;
+	my ($renderer,$command) = @_;
 	display($dbg_mp,0,"doMPCommand($command)");
 	push @$mp_command_queue,$command;
 }

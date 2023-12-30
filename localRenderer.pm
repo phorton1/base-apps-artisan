@@ -23,8 +23,12 @@ use warnings;
 use threads;
 use threads::shared;
 use artisanUtils;
+# use mpWin on windows
+# use mpHTML on linux
 use if is_win, 'mpWin';
-use if !is_win, 'mpLinux';
+use if !is_win, 'mpHTML';
+# use if !is_win, 'mpLinux';
+# old MPG123 based mp *almost* worked
 use Renderer;
 use Device;
 use DeviceManager;
@@ -32,6 +36,9 @@ use Queue;
 use base qw(Renderer);
 
 my $dbg_lren = 0;
+my $dbg_hren = 0;
+	# html renderer specific
+
 
 # fields that get moved from a track to the renderer
 # art_uri will be gotten from parent if not available
@@ -95,7 +102,10 @@ sub checkMPStart
 				stopMP($this,$mp) if $rslt->{error};
 			}
 		}
-		else
+
+		# called without $mp from HTML_RENDERER, this prevents
+		# us from clearing the meta data on a restart ...
+		elsif ($mp)
 		{
 			stopMP($this,$mp);
 		}
@@ -138,6 +148,7 @@ sub new
 
 	return $this;
 }
+
 
 
 sub checkParam
@@ -213,6 +224,47 @@ sub doCommand
 	my $error = '';
 	if ($command eq 'update')
 	{
+		# Special Handling for HTML Audio 'device'
+
+		my $mp = $this->{html_audio};
+		if ($mp)
+		{
+			my $state = $params->{html_audio_state} || '';
+			my $version = $params->{html_audio_version} || 0;
+			my $position = $params->{html_audio_position} || 0;
+			my $duration = $params->{html_audio_duration} || 0;
+
+			display($dbg_hren+1,0,"HTML_AUDIO UPDATE($state) V($version) pos($position) dur($duration)");
+
+			# the position and duration are relatively
+			# intelligently handled, so, at least for now,
+			# we just set em'
+
+			$this->{position} = $position;
+			$this->{duration} = $duration;
+
+			# We clear the command and updazte the renderer's state
+			# after a given command once the version number is 'acknowledged'.
+			# This handles all state changes EXCEPT if a song ends in the JS.
+
+			if ($mp->{command} && $version >= $mp->{version})	# command ACK
+			{
+				display($dbg_hren,1,"clearing command $mp->{command}");
+				$mp->{command} = '';
+				$this->{state} = $state;
+			}
+
+			# The tricky part is understanding the difference between
+			# the JS stopping from a stop command, versus stopping from
+			# a end event.  Therefore we only checkMPStart() on the ELSE
+			# from a command.
+
+			else
+			{
+				$this->checkMPStart(undef,$state eq $RENDERER_STATE_STOPPED ? 1 : 0);
+			}
+		}
+
 		# if they just added tracks, then we go from INIT to STOPPED
 
 		$this->{state} = $RENDERER_STATE_STOPPED
@@ -241,12 +293,12 @@ sub doCommand
 			$this->copyQueue($queue);
 			$this->{state} = $RENDERER_STATE_INIT;
 			stopMP($this);
-			doMPCommand('stop');
+			doMPCommand($this,'stop');
 		}
 		else
 		{
 			stopMP($this);
-			doMPCommand('stop');
+			doMPCommand($this,'stop');
 		}
 	}
 
@@ -254,7 +306,7 @@ sub doCommand
 	{
 		if ($this->{state} eq $RENDERER_STATE_PLAYING)
 		{
-			doMPCommand('pause');
+			doMPCommand($this,'pause');
 			$this->{state} = $RENDERER_STATE_PAUSED;
 		}
 		else
@@ -266,11 +318,11 @@ sub doCommand
 	{
 		if ($this->{state} eq $RENDERER_STATE_PLAYING)
 		{
-			doMPCommand('pause');
+			doMPCommand($this,'pause');
 		}
 		elsif ($this->{state} eq $RENDERER_STATE_PAUSED)
 		{
-			doMPCommand('play');
+			doMPCommand($this,'play');
 		}
 		elsif ($this->{playing} == $RENDERER_PLAY_PLAYLIST)
 		{
@@ -298,7 +350,7 @@ sub doCommand
 			my $ms = checkParam(\$error,$command,$params,'position');
 			return $error if !defined($ms);
 			$this->{position} = $ms;
-			doMPCommand('set_position,'.$ms);
+			doMPCommand($this,'set_position,'.$ms);
 		}
 		else
 		{
@@ -529,7 +581,7 @@ sub play_track
 
 	$this->{position} = 0;
 
-	doMPCommand('play,'.$path);
+	doMPCommand($this,'play,'.$path);
 	return '';
 }
 

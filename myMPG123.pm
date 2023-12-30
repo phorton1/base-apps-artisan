@@ -25,6 +25,10 @@
 #     - add "no warnings 'once';" to start_mpg123()
 # (3) don't get (or like too much) the use of custom
 #     symbols.  Changing them to hash members.
+#
+# CLOSE BUT NO CIGAR mpg123 does NOT support seeking (backwards)
+# on http streams.
+#
 
 
 package myMPG123;

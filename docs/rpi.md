@@ -354,3 +354,57 @@ assumes a single drive that is the same as the one the code
 is running on.  I will need a different drive for MP3s on
 the rPis, and it is quite possible to have different drives
 on Windows.
+
+
+
+## MPG123 update
+
+I thought I was close.  Did a chunk of work factoring out mpXXX.pm
+from localRenderer, created mpLinux.pm, and even copied and modified
+my own version of myMPG123.pm, only to finally discover that mpg123
+does not support backward seeks in http streams.
+
+It was a fairly simple solution.  All the other ones I'm seeing are
+tremendously complicated, old, or both.  The most current alternative
+seems to be MPD (Media Player Daemon), which has a Perl Binding,
+but is super a complicated full feature Media pipeline. One called
+MOC is old and barely documented. There's another old one called
+gStreamer.
+
+The problem in all of these cases is that I have to serious work
+to even TRY them as solutions for a localRenderer on Unix.
+It would almost be easier for me to make the HTML Renderer
+work like a real Renderer, such that it could be accessed
+and controlled from other devices.
+
+My architecture is now broken.
+
+
+
+# mpHTML.pm
+
+A substitute for mpWin.pm to be used on the rPi.
+Without changing the current JS implementation of HMTLRenderer.
+I suppose there's nothing to keep me from creating multiple <audio>
+elements ala the current audio.js.
+
+localRenderer::update() is already being called.
+
+
+So, in the case of one of these things, the update() command
+feeds the state BACK from the HTML to the Perl, which, in turn
+feeds COMMANDS back to the JS.
+
+
+Seems unduly complicated.
+
+For phased development I want to keep the existing HTMLRenderer
+and audio.js intact.
+
+
+
+
+
+
+
+

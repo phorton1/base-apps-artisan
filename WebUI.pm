@@ -219,7 +219,7 @@ sub web_ui
 			my $renderer = findDevice($DEVICE_TYPE_RENDERER,$renderer_uuid);
 			return json_error("could not find renderer '$renderer_uuid'") if !$renderer;
 
-			my $error = $renderer->doCommand('update',{});
+			my $error = $renderer->doCommand('update',$params);
 
 			return json_error("renderer_request($path) error: $error")
 				if $error;

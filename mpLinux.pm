@@ -24,7 +24,11 @@
 #     and non-ranged requests.
 #
 # (3) Can seek forward, but not backwards. mpg123 jump() method
-#     acts funny.
+#     acts funny. I now think this is because mpg123 executable
+#     does not buffer the data, and does not implement seek()
+#     except to future positions.  Now leading me down the
+#     same path as Marc Lehmann to build my own mpg123, which
+#     kinda defeats the whole purpose.
 #
 #
 # EXPORTS
@@ -117,7 +121,7 @@ my $mp_command_queue:shared = shared_clone([]);
 
 sub doMPCommand
 {
-	my ($command) = @_;
+	my ($renderer,$command) = @_;
 	display($dbg_mp,0,"doMPCommand($command)");
 	push @$mp_command_queue,$command;
 }
