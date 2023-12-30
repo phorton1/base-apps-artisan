@@ -85,7 +85,7 @@ use artisanUtils;
 use Renderer;
 
 
-my $dbg_mp = -1;
+my $dbg_mp = 0;
 
 
 BEGIN
@@ -194,7 +194,7 @@ sub mpThread
 				my $frame_data = $mp->{frame};
 
 				my $dbg_now = time();
-				if ($last_debug != $dbg_now)
+				if (defined($mp_state) && $last_debug != $dbg_now)
 				{
 					$last_debug = $dbg_now;
 					display($dbg_mp+1,0,"MP state("._def($mp_state).") frame(".

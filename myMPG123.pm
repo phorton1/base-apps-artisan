@@ -28,6 +28,7 @@ use artisanUtils;
 
 
 my $dbg123 = 0;
+my $dbg_lines = 1;
 
 
 my $MPG123 = "mpg123";
@@ -50,6 +51,7 @@ sub start_mpg123
 {
 	my $this = shift;
 	display($dbg123,0,"start_mpg123()");
+	$this->{buf} = '';
 
 	local *DEVNULL;
 	open DEVNULL, ">/dev/null" or die "/dev/null: $!";
@@ -64,14 +66,20 @@ sub start_mpg123
 	}
 	fcntl $this->{r}, F_SETFL, O_NONBLOCK;
 	fcntl $this->{r}, F_SETFD, FD_CLOEXEC;
-	if (!$this->parse(qr/^\@?R (\S+)/,1))
+	
+	$connected = 1;
+	
+	# $dbg_lines = 0;
+	$this->{version} = $this->parse(qr/^\@R (.*)$/,1);
+	if (!$this->{version})
 	{
 		error("Unable to start MPG123: $this->{err}");
 		return;
 	}
-	$this->{version} = $1;
-	display($dbg123,0,"start_mpg123() returning version($this->{version}");
-	$connected = 1;
+	# $dbg_lines = 1;
+	
+	display($dbg123,0,"start_mpg123 returning($this->{version})");
+
 }
 
 
@@ -104,8 +112,12 @@ sub line
 		$this->{buf} =~ s/^(?:\@F[^\n]*\n)+(?=\@F)//s;
 		if (defined $len || ($! != EAGAIN && $! != EINTR))
 		{
-			error("connection to mpg123 process lost: $!")
-				if $len == 0;
+			if ($len == 0)
+			{
+				error("connection to mpg123 process lost: $!");
+				$connected = 0;
+				return '';
+			}
 		}
 		else
 		{
@@ -127,9 +139,12 @@ sub line
 sub parse
 {
 	my ($this,$re,$wait) = @_;
+	return () if !$connected;
 
 	while (my $line = $this->line ($wait))
 	{
+		display($dbg_lines,0,"line='$line'");
+		
 		if ($line =~ /^\@F (.*)$/)
 		{
 			$this->{frame} = [split /\s+/,$1];
@@ -165,7 +180,6 @@ sub parse
 		{
 			$this->{err}=$1;
 			error($this->{err});
-			$connected = 0 if $this->{err} =~ /connection to mpg123 process lost/;
 			return ();
 		}
 		elsif ($line !~ $re)
@@ -173,7 +187,7 @@ sub parse
 			$this->{err}="Unknown response: $line";
 			return ();
 		}
-		return $line if $line =~ $re;
+		return $1 if $line =~ $re;
 	}
 	delete $this->{err};
 	return ();
