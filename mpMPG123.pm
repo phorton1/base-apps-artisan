@@ -11,6 +11,10 @@
 # Had to add special handling to HTTPServer for mpg123 to
 # serve the entire file (not just headers).
 #
+# Added optimization for local http://$server_ip:$server_port
+# urls to use direct file access to address seek/stream
+# length problems.
+#
 # PROBLEMS:
 #
 # (1) There may be SERIOUS PROBLEM with this thread. It stops
@@ -137,7 +141,7 @@ sub mpThread
 	display($dbg_mp,0,"mpThread() started");
 	$mp_running = 1;
 
-	my $last_weird = 0;
+	my $last_debug = 0;
 
 	while (1)
 	{
@@ -186,38 +190,32 @@ sub mpThread
 			else
 			{
 				my $mp_state = $mp->{state};
+				my $frame_data = $mp->{frame};
 
-				display($dbg_mp+1,0,"mp_state($mp_state) state($renderer->{state})")
-					if defined($mp_state);	# not available at init
+				my $dbg_now = time();
+				if ($last_debug != $dbg_now)
+				{
+					$last_debug = $dbg_now;
+					display($dbg_mp+1,0,"MP state("._def($mp_state).") frame(".
+						($frame_data ? join(',',@$frame_data) : 'undef').")");
+				}
 
 				if ($renderer->{state} eq $RENDERER_STATE_PLAYING)
 				{
-					my $frame_data = $mp->{frame};
-						# frames_played, frames_remaining, secs_played, secs_remaining
-
 					if ($frame_data)
 					{
 						my $secs = $frame_data->[2];
 						my $remain = $frame_data->[3];
 						$renderer->{position} = $secs * 1000;
-
-						# WEIRDNESS: for some mp3s, $remain is always '0.00'
-						# in which case we revert to use the metadata duration ..
-
 						if (defined($remain) && $remain ne '0.00')
 						{
 							# how I expect it to work
 							my $total = $secs + $remain;
 							$renderer->{duration} = $total * 1000;
 						}
-						elsif (time() ne $last_weird)	# kludge
+						elsif ($renderer->{metadata})
 						{
-							$last_weird = time();
-							$frame_data ||= ['undef'];
-							display($dbg_mp,0,"weirdness frame_data(".
-								join(',',@$frame_data).")");
-							$renderer->{duration} = $renderer->{metadata}->{duration}
-								if $renderer->{metadata};
+							$renderer->{duration} = $renderer->{metadata}->{duration};
 						}
 					}
 				}
@@ -225,8 +223,7 @@ sub mpThread
 				$renderer->checkMPStart($mp,$mp_state == $MPG123_STATE_STOPPED ? 1 : 0)
 					if defined($mp_state);
 			}
-
-			sleep($dbg_mp < 0 ? 1 : 0.1);
+			sleep(0.1);
 		}
 		elsif ($mp_running)
 		{

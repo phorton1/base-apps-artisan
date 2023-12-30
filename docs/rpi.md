@@ -379,12 +379,8 @@ so I don't really know what caused the problem.
 
 ## TO_DO
 
-- cleanup comments mcast_send() changes in SSDP.pm
-
-- rename mpLinux.mp to mpMPG123.pm
-  - remove 'weirdnes reporting'
-  - use files on local http://$surver_ip:$server_port urls
-    to address 'can't slider backwards' issue
+- mpMPG123.pm to use files on local http://$surver_ip:$server_port urls
+  to address 'can't slider backwards' issue
 
 - 'layout element not found' error on rPi
 
