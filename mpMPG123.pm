@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 #---------------------------------------
-# mpLinux.pm
+# mpMPG1223.pm
 #---------------------------------------
 # See https://metacpan.org/pod/Audio::Play::MPG123 and
 # /zip/_rpi/_setup/rpi_Setup.docx
@@ -13,22 +13,20 @@
 #
 # PROBLEMS:
 #
-# (1) There's a SERIOUS PROBLEM with this thread. It stops
+# (1) There may be SERIOUS PROBLEM with this thread. It stops
 #     sometimes, maybe coincident with trying to resolve
 #     a remote library, or the end of another thread.
 #     Output to STDOUT?
 #
-# (2) frame->[3] is never returning non-zero, so we can't
-#     calc the duration correctly and use the track's metadata
-#     duration as a kludge. Might have to do with HTTP Server
-#     and non-ranged requests.
+# (2) frame->[3] is never returning non-zero on http streams.
+#     So we can't calc the duration correctly and, instead,
+#     am currently using the track's metadata duration as a kludge.
 #
-# (3) Can seek forward, but not backwards. mpg123 jump() method
-#     acts funny. I now think this is because mpg123 executable
-#     does not buffer the data, and does not implement seek()
-#     except to future positions.  Now leading me down the
-#     same path as Marc Lehmann to build my own mpg123, which
-#     kinda defeats the whole purpose.
+# (3) Can seek forward, but not backwards with mpg123 jump() method
+#     funny. I now think this is because mpg123 executable
+#     does not buffer http: data, and does not implement seek()
+#     except to future positions.  Maybe sometime I will try to
+#     build my own mpg123 executable.
 #
 #
 # EXPORTS
@@ -72,16 +70,11 @@
 #       and/or advance the song in playlist/queue if $stopped
 
 
-
-# Constructed in the context of a localRenderer, it calls methods
-# to advance songs automatically. Otherwise
-
-package mpLinux;
+package mpMPG123;
 use strict;
 use warnings;
 use threads;
 use threads::shared;
-# use Audio::Play::MPG123;
 use myMPG123;
 use Time::HiRes qw(sleep);
 use artisanUtils;
@@ -94,9 +87,6 @@ my $dbg_mp = 0;
 BEGIN
 {
  	use Exporter qw( import );
-
-	# our constants
-
 	our @EXPORT = qw (
 		$mp_running
 		mpThread
@@ -128,11 +118,6 @@ sub doMPCommand
 
 
 sub stopMP
-	# When the queue reaches the end it 'stops', and
-	# the renderer goes to RENDERER_STATE_STOPPED.
-	# It can be 'restarted' by navigating to a previous
-	# track or album, or via the Play button which will
-	# start it over from the beginning.
 {
 	my ($renderer,$mp) = @_;
 	$mp->stop() if $mp;
@@ -148,7 +133,6 @@ sub mpThread
 	# handles all state changes
 {
 	my ($renderer) = @_;
-	# my $mp = Audio::Play::MPG123->new();
 	my $mp = myMPG123->new();
 	display($dbg_mp,0,"mpThread() started");
 	$mp_running = 1;
@@ -189,13 +173,7 @@ sub mpThread
 				{
 					my $mp_position = $1;
 					my $seconds = $mp_position/1000;
-					# my $secs_per_frame = $mp->tpf;
-					# 	# seconds per frame, for some reason, is off by factor of 2
-					# my $frame = 2 * $seconds / $secs_per_frame;
-					# display($dbg_mp+1,2,"doing set_position($mp_position)=frame($frame)");
-					# $mp->jump($frame);
 					$mp->jump($seconds."s");
-					# $mp->poll(1);
 				}
 				elsif ($mp_command =~ /^play,(.*)$/)
 				{
@@ -203,15 +181,10 @@ sub mpThread
 					display($dbg_mp+1,2,"doing play($url)");
 					$mp->load($url);
 					$renderer->{state} = $RENDERER_STATE_PLAYING;
-					# while (!$mp->state)
-					# {
-					#	$mp->poll(1);
-					# }
 				}
 			}
 			else
 			{
-				# $mp->poll(0);
 				my $mp_state = $mp->{state};
 
 				display($dbg_mp+1,0,"mp_state($mp_state) state($renderer->{state})")

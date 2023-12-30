@@ -124,8 +124,9 @@ installable on the rPi.
 - gstreamer
 
 
+## rPi initial implementation not4es
 
-## Got Pub::FS::fileServer.pm working on rPi
+### Got Pub::FS::fileServer.pm working on rPi
 
 I was able to get base/Pub/FS/fileServer.pm to work on the
 rPi fairly easily.  There were a number of minor issues,
@@ -249,100 +250,11 @@ to get fileServer/fileClient working on the
 rPi today.
 
 
-## Added support for ansi colors to Pub::Utils.pm
+### Added support for ansi colors to Pub::Utils.pm
 
 Just did it, thought I'd add a note to this ongoing MD file.
 
-
-## Try truncated Artisan Perl on rPi
-
-At a minimum I'm gonna need
-
-- don't construct the localRenderer if is_win()
-- a bit of an /mp3s directory on the rPi (less than 1GB)
-
-push to test is gonna be a hassle.
-wondering about commits from rPi then
-fetch-rebase on Windows.
-
-I think I will start with git clone for artisan
-followed by old fileClient xfer of main pm direcotry.
-
-CHECKING THIS FILE IN (Artisan totally checked in)
-
-The USB drive plugged into rPi is mounted as
-
-	/media/pi/USB_16
-
-and the mp3s directory on it can probably be had at
-
-	/media/pi/USB_16/mp3s
-
-To start with, however, was able to copy it to /mp3s
-with a bunch of sudo mkdirs, chmod 0777, chown, and
-an explicit cp -r command from a terminal window.
-
-### Installed additional Perl Libraries
-
-see /zip/_rpi/_setup/rPi_Setup.docx
-
-
-### Needed changes
-
-The following stuff is not valid on linux:
-
-- artisanUtils.pm way of getting server IP by calling Windows ip_config.exe
-- ENABLE_MOUSE_INPUT at artisan.pm line 83
-- STD_INPUT_HANDLE at artisan.pm 82
-- ENABLE_WINDOW_INPUT
-- something about block or sub at artisan.pm 231
-
-All of that fixed, and a few more minor things, got as far as SSDP
-having errors not being able to call $sock->mcast_send() which returns
-undefined $bytes.  But the ipAdress thing needs to be solved first.
-
-I will start by just making it a constant (modify source on the
-rPi now). ABLE TO HIT SERVER, BRING UP UI, EXPLORE, and PLAY A SONG!!
-
-
-
-The sock->mcast_send that is returning undef $bytes appears to have
-worked, to the degree that I can see the rPi device in Windows Explorer
-Network as see it from SSDP in Artisan running on the windows machine,
-and can even open its library.
-
-I wonder if Windows Artisan will see it?
-
-
-It does, and in fact, after I changed SSDP::sendResponses() to use
-the selected $sock and my hand written _mcast_send(), it works on
-both platforms.
-
-In fact, at this point, the only thing not working for sure
-is getting the ipAddress of the device.
-
-In fact, if I added:
-
-- the ability to get the ipAddress
-- a preference for the location of the library
-- a service descriptor ala myIOTServer and fileServer
-
-I could just boot the machine, open a browser, and it
-would be effectively working (over HDMI or rPi audio).
-
-
-
-
-
-
-
-
-
-
-
-
-
-## Other Possibilties
+### Other Possibilties
 
 - Resolve rPi fileServer vs laptop fileClient issues?
 - Put Unix Commands into Pub::FS and base/apps/fileClient??
@@ -357,14 +269,70 @@ on Windows.
 
 
 
-## MPG123 update
+
+## Back to Artisan
+
+Got Artisan working on the rPi, mostly.
+
+### mp3s directory
+
+It is currently using a subset of /mp3s directory.
+
+The USB drive plugged into rPi is mounted as
+
+	/media/pi/USB_16
+
+and the mp3s directory on it can probably be had at
+
+	/media/pi/USB_16/mp3s
+
+To start with, however, was able to copy it to /mp3s
+with a bunch of sudo mkdirs, chmod 0777, chown, and
+an explicit cp -r command from a terminal window.
+
+
+### Installed additional Perl Libraries
+
+see /zip/_rpi/_setup/rPi_Setup.docx
+
+
+### Addressed the following issues initially
+
+- put a fixed ip address 192.237.50.152 into artisanUtils.pm
+- fixed bareword usages in artisan.pm by fully qualifiying them to methods:
+  - ENABLE_MOUSE_INPUT
+  - STD_INPUT_HANDLE
+  - ENABLE_WINDOW_INPUT
+- changed SSDP send_responses() to use selected $sock and my
+  hand coded _mcast_send() method
+
+The $recv_sock->mcast_send() was returning undef $bytes but
+appears to have worked, to the degree that I ccould see the rPi
+device in Windows Explorer Network as see it from SSDP in
+Artisan running on the windows machine, and could even open
+its library.
+
+At this point, the only things not working for sure
+was getting the ipAddress of the device.
+
+In fact, if I added:
+
+- the ability to get the ipAddress
+- a preference for the location of the library
+- a service descriptor ala myIOTServer and fileServer
+
+I could just boot the machine, open a browser, and it
+would be effectively working (over HDMI or rPi audio).
+
+
+### mpMPG123.pm for linux localRenderer.
 
 I thought I was close.  Did a chunk of work factoring out mpXXX.pm
-from localRenderer, created mpLinux.pm, and even copied and modified
+from localRenderer, created mpMPG123.pm, and even copied and modified
 my own version of myMPG123.pm, only to finally discover that mpg123
 does not support backward seeks in http streams.
 
-It was a fairly simple solution.  All the other ones I'm seeing are
+MPG123 was a fairly simple solution.  All the other ones I'm seeing are
 tremendously complicated, old, or both.  The most current alternative
 seems to be MPD (Media Player Daemon), which has a Perl Binding,
 but is super a complicated full feature Media pipeline. One called
@@ -377,34 +345,57 @@ It would almost be easier for me to make the HTML Renderer
 work like a real Renderer, such that it could be accessed
 and controlled from other devices.
 
-My architecture is now broken.
+I subsequently tried the mpHTML.pm approach below, but in
+the end decided to go forward with the MPG123 solution on
+the rPi.
+
+
+### mpHTML.pm
+
+Implemented and messed with a braindead substitute for mpWin.pm
+to be used on the rPi that uses a browser <audio> device for
+the localRenderer.  After implementation and testing I decided
+it was far too complicated, and did not resolve any real issues.
+I am keeping it around for now in the following files, with the
+following changes
+
+- mpHTML.pm - unused pm file
+- localRendeer.pm - use mpHTML commented out with an
+  unused chunk of code in doCommand() and a line in
+  checkMPStart() that are not called.
+- html_audio.js - unsued js file
+- artisan.js - minor uncalled code in idle_loop()
+- artisan.html - include of html_audio.js is commented out
+
+
+### Instability issues
+
+I don't know what was going on, but I was getting a lot of SIGPIPE
+terminations on the rPi.  I added a warning, and a return in
+artisan.pm handle_signals(), but I have not seen it called since,
+so I don't really know what caused the problem.
 
 
 
-# mpHTML.pm
+## TO_DO
 
-A substitute for mpWin.pm to be used on the rPi.
-Without changing the current JS implementation of HMTLRenderer.
-I suppose there's nothing to keep me from creating multiple <audio>
-elements ala the current audio.js.
+- cleanup comments mcast_send() changes in SSDP.pm
 
-localRenderer::update() is already being called.
+- rename mpLinux.mp to mpMPG123.pm
+  - remove 'weirdnes reporting'
+  - use files on local http://$surver_ip:$server_port urls
+    to address 'can't slider backwards' issue
 
+- 'layout element not found' error on rPi
 
-So, in the case of one of these things, the update() command
-feeds the state BACK from the HTML to the Perl, which, in turn
-feeds COMMANDS back to the JS.
+- Volume Control
 
+- MP3s directory (preference or hardwired)
+- rPi server IP issue
+- rPi service
 
-Seems unduly complicated.
+- USB Audio Sound device solution for rPi (hook up to PA?)
 
-For phased development I want to keep the existing HTMLRenderer
-and audio.js intact.
-
-
-
-
-
-
-
-
+At which point I could theoretically hook it up to the PA
+for real-ish, maybe play with the BOSE thing, bluetooth audio,
+etc.
