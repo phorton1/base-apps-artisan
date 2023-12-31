@@ -221,8 +221,9 @@ sub mpThread
 					}
 				}
 
-				$renderer->checkMPStart($mp,$mp_state == $MPG123_STATE_STOPPED ? 1 : 0)
-					if defined($mp_state);
+				my $stopped = !defined($mp_state) ||
+					$mp_state == $MPG123_STATE_STOPPED ? 1 : 0;
+				$renderer->checkMPStart($mp,$stopped);
 			}
 			sleep(0.1);
 		}
