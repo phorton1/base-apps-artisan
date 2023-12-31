@@ -282,7 +282,8 @@ sub run
 				{
 					if ($message->{MAN} eq '"ssdp:discover"')
 					{
-						if ($peer_ip eq $server_ip &&
+						if (($peer_ip eq $server_ip ||
+							 $peer_ip eq '127.0.0,1') &&
 							$message->{USER_AGENT} &&
 							$message->{USER_AGENT} =~ /Artisan/)
 						{
@@ -367,7 +368,7 @@ sub run
 					# There's some kind of a loopback option I'm probably missing.
 
 					_mcast_send( $send_sock, $msg, $MCAST_ADDR );
-					_mcast_send( $send_sock, $msg, "127.0.0.1:$SSDP_PORT" );
+					_mcast_send( $send_sock, $msg, "127.0.0.1:$SSDP_PORT" ) if is_win();
 					 $next_search = time() + $SSDPSEARCH_INTERVAL;
 				}
 			}
