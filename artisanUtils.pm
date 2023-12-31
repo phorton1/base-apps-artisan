@@ -17,6 +17,12 @@ use threads::shared;
 use Socket;
 use Sys::Hostname;
 use Pub::Utils qw(!:win_only);
+use Pub::ServerUtils;
+
+our $LINUX_PID_FILE = "/var/run/artisan.pid";
+
+Pub::Utils::initUtils(1);
+Pub::ServerUtils::initServerUtils(1,$LINUX_PID_FILE);
 
 
 my $USE_MINI_LIBRARY = 0;
@@ -68,9 +74,12 @@ BEGIN
 {
  	use Exporter qw( import );
 
-	# our constants
+	# our exports
+	# including re-rexport of Pub::ServerUtils $server_ip and $wifi_connected
 
 	our @EXPORT = qw (
+
+		$LINUX_PID_FILE
 
 		$system_update_id
 		$DEVICE_STATE_NONE
@@ -107,6 +116,7 @@ BEGIN
 		$mp3_dir
 		$mp3_dir_RE
 
+		$wifi_connected
         $server_ip
         $server_port
 
@@ -227,32 +237,28 @@ $logfile = "$temp_dir/artisan.log";
 mkdir $temp_dir if !-d $temp_dir;
 
 
-# WINDOWS SPECIFIC CODE
-# determine ip address by parsing ipconfig /all
-# for first IPv4 Address ... : 192.168.0.100
-
 our $server_port = '8091';
-our $server_ip = '';
-
-if (is_win())
-{
-	my $ip_text = `ipconfig /all`;
-	if ($ip_text !~ /^.*?IPv4 Address.*?:\s*(.*)$/im)
-	{
-		error("Could not determine IP Address!")
-			# This is inline display() call in body of package!
-	}
-	else
-	{
-		$server_ip = $1;
-		$server_ip =~ s/\(.*\)//;	# remove (Preferred)
-		$server_ip =~ s/\s//g;
-	}
-}
-else
-{
-	$server_ip = '10.237.50.152';
-}
+#	our $server_ip = '';
+#
+#	if (is_win())
+#	{
+#		my $ip_text = `ipconfig /all`;
+#		if ($ip_text !~ /^.*?IPv4 Address.*?:\s*(.*)$/im)
+#		{
+#			error("Could not determine IP Address!")
+#				# This is inline display() call in body of package!
+#		}
+#		else
+#		{
+#			$server_ip = $1;
+#			$server_ip =~ s/\(.*\)//;	# remove (Preferred)
+#			$server_ip =~ s/\s//g;
+#		}
+#	}
+#	else
+#	{
+#		$server_ip = '10.237.50.152';
+#	}
 
 
 

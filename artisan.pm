@@ -53,7 +53,6 @@ use remoteArtisanLibrary;
 
 use sigtrap 'handler', \&onSignal, 'normal-signals';
 
-Pub::Utils::initUtils(1);
 
 my $dbg_main = 0;
 
