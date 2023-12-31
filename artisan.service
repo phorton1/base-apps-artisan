@@ -1,0 +1,54 @@
+# artisan.service
+#
+# This file is a "systemd unit" file describing a service to be started,
+# in this case, my "artisan" service.  It is assumed that you can
+# already run "./artisan.pm NO_SERVICE" from a command line in the
+# /base/apps/artisan directory, which means that you have already
+# setup the rPi according to /zip/_rpi/_setup/rpi_Setup.docx and
+# gotten all the Perl Modules, Perl Source for /base/Pub and
+# base/apps/artisan to the machine, setup the /base_data/temp
+# directory, gotten an mp3s directory to the rPi somehow, built
+# the artisan database, and can play hear music from any machine.
+# Then:
+#
+# Artisan.pm without NO_SEERVICE will create a PIDFile in /var/run/artisan.pid.
+#
+# INSTALLATION:
+#
+# To install this file on a new rPi, copy this file to the
+# /usr/lib/systemd/system/ directory
+#
+#   > cd /base/apps/artisan
+#   > sudo cp artisan.service /usr/lib/systsemd/system
+#
+# and run:
+#
+#   > sudo systemctl enable artisan.service
+#
+# and then
+#
+#   > sudo systemctl start artisan
+#
+# This will create a symbolic link from
+#
+# /etc/systemd/system/network-online.target.wants/artisan.service
+#
+# to the file in /usr/lib/systemd/system directory, and enable the service
+# on startup.  Thereafter you should be able to start and stop the service
+# from Webmin Bootup/Shutdown, and/or from any web pages I build to do the,
+# or via sudo systemctl start/restart/stop prh-fileserver
+# and it should be running on a freshly booted machine.
+
+
+[Unit]
+Description=:Artisan DLNA MP3 Server Service
+
+[Service]
+Type=forking
+PIDFile=/var/run/artisan.pid
+ExecStart=/base/apps/artisan/artisan.pm
+ExecStop=kill -KILL $(cat /var/run/artisan.pid)
+
+[Install]
+# WantedBy=multi-user.target
+WantedBy=network-online.target

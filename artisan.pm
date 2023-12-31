@@ -3,11 +3,12 @@
 # artisan.pm
 #---------------------------------------
 # LINUX SERVICE
-#	
+#
 #	to test this on the rPi with $AS_SERVICE
 #   you must execute "sudo /base/apps/artisan/artisan.pm"
 #   because ServerUtils changes to the / root directory
-#   in start_unix_service().
+#   in start_unix_service(). You kill it by finding the
+#   PID with "ps -ax", and then "sudo kill -9 PID"
 #
 #   For completeness, there were a number of other issues
 #   for using sudo, and in general with artisan
@@ -16,37 +17,38 @@
 #		because I don't fully qualify Perl artisan packages
 #   - had to add "Defaults env_keep += PERLLIB" to
 #		/etc/sudoers
-#  
+#
+#   With the kludge in the amixer (alsa) volume control below,
 #   I *think* it is now ready to be installed as a service.
-#	see artisan.service for more info.
+#	See artisan.service for more info.
 #
 #
 # WINDOWS SERVICE
 #
-# Quite simply installed as a Windows service by running
+# 	Quite simply installed as a Windows service by running
 #
-#	  nssm install _artisan
+#		  nssm install _artisan
 #
-# And then edit the service in Services
+# 	And then edit the service in Services
 #
-#	 (a) set the 'path' to point to c:\Perl\bin\perl.exe
-#    (b) set the 'starting directory' to c:\base\apps\artisan
-#    (c) setting the 'arguments' to '/base/apps/artisan/artisan.pm'
+#		 (a) set the 'path' to point to c:\Perl\bin\perl.exe
+# 	   (b) set the 'starting directory' to c:\base\apps\artisan
+# 	   (c) setting the 'arguments' to '/base/apps/artisan/artisan.pm'
 #
-# Can be modified and retarted with no build process
-# Can be stopped and run with 'perl artisan.pm NO_SERVICE' from dos box
-# Can be removed with 'nssm remove _artisan'
+# 	Can be modified and retarted with no build process
+# 	Can be stopped and run with 'perl artisan.pm NO_SERVICE' from dos box
+# 	Can be removed with 'nssm remove _artisan'
 #
-# SERVICE NOTES (and wTaskBar.pm) at Initial Check-in
+# 	SERVICE NOTES (and wTaskBar.pm) at Initial Check-in
 #
-#	In truth Artisan only wants to run when there is a network,
-#   and even then only on a specific network (for my bookmarks).
+#		In truth Artisan only wants to run when there is a network,
+# 	  and even then only on a specific network (for my bookmarks).
 #
-#	There is a chicken-and-egg situation with starting the service
-#   automatically.  I don't know how to build dependencies in, but
-#   from a fresh boot it currently doesn't work, probably due to network.
-#	Yet I can hit it the webUI from the wTaskBar?
-#   Something else is going on, but I'm doing a sanity checkin
+#		There is a chicken-and-egg situation with starting the service
+# 	  automatically.  I don't know how to build dependencies in, but
+# 	  from a fresh boot it currently doesn't work, probably due to network.
+#		Yet I can hit it the webUI from the wTaskBar?
+# 	  Something else is going on, but I'm doing a sanity checkin
 
 
 package artisan;
@@ -180,13 +182,13 @@ if (0)
 	taskBarIcon->new();
 }
 
-# temporary kludge for $AS_SERIVCE on Linux 
+# temporary kludge for $AS_SERIVCE on Linux
 # to turn the volume down
 # my $controls = `amixer scontrols`;
 # LOG(0,"ALSA CONTROLS = $controls");
 `amixer sset 'PCM' 20%`
 	if !is_win();
-	
+
 
 while (1)
 {
