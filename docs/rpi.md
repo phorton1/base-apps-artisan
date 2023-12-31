@@ -384,15 +384,128 @@ creation coincident with a network access like getting
 LENOVO2 WMP 'fake' playlists).
 
 
+## SoundCard
+
+After installing it as a service that I can start and stop
+with "sudo systemctl start/stop artisan" I now want to add
+a soundcard so I don't have to use the 12V monitor HDMI
+output.
+
+The only USB Sound Devices I had handy are the old ones from
+my guitar-effects days. After digging up some 1/4" to 1/8"
+adapters and plugs, I was astonished when it just worked
+when I plugged it into the rPi, using artisan from a terminal
+window.
+
+There was a bit of a battle, then, to get stuff working
+from the service, which is running as 'root'.  The mixer
+control in the rPi UI only applies to the user shell.
+
+There are three programs of interest that I messed around
+with on the rPi:
+
+- amixer - was already being called with 'amixer sset 'PCM' 20%'
+  to set the volume to 20% for running out of the 12V monitor
+  HDMI outputs (which are speaker output) to the audio in
+  of the small USB speakers.
+- the command 'cplay -l' will list the sound cards in the
+  system, each of which has a 'card numbers' and typically
+  a single 'device number' of 0
+- the command 'pactl list sinks short' is a way to set the
+  default audio device from the command line. It gives
+  a list of devices with space delimited fields including
+  the long name that can be passed back to set the device
+  with the command 'pactl set-default-sink $long_name'.
+  However, it does not work from root because it is a
+  command line method, requires a XDG_RUNTIME_DIR environment
+  variable.
+
+In the end, I merely set the default device in /etc/asound.conf,
+and merely set the volume to 100% in the artisan startup code.
+
+
+# Setting default device in /etc/asound.conf
+
+Use `aplay -l' to get a listing of devices. you will see something
+like this:
+
+	card 3: Device [USB PnP Sound Device], device 0: USB Audio [USB Audio]
+
+One then sets the USB sound card as the default by editing
+/etc/asound.conf (sudo geany blah) with the card and devoce number
+from above:
+
+	defaults.pcm.card 3
+	defaults.pcm.device 0
+
+I struggled a while with the volume, which seemed stuck at 20%
+for root.  It seemed to work after I stopped the service, ran
+it NO_SERVICE from a terminal with 'amixer sset 'MASTER' 100%',
+and/or via 'sudo /base/apps/artisan/artisan.om' as a SERVICE
+with 'amixer sset 'PCM' 100%' in the code.
+
+I'm not really sure how the volume got turned back up, or
+how it got turned down permanently, in the first place,
+however, it is working right now, and I want to move on.
+
+
+
+## Code I wrote, then removed from Artisan
+
+In testing the above I wrote a chunk of code so I could
+see and try things, particularly when running as 'root'
+from a real service at machine startup. I am keeping that
+code here in this document for posterities sake:
+
+
+	if (0 && !is_win())
+	{
+		my $sinks = `pactl list sinks short`;
+		LOG(0,"pactl sinks=$sinks");
+		my $cards = `aplay -l`;
+		LOG(0,"aplay cards=$cards");
+		my $controls = `amixer scontrols`;
+		LOG(0,"amixer controls= $controls");
+		# exit(0);   # if you just want to see debugging
+	}
+
+	# use pactl to set default audio device
+	# comment out && $AS_SERVICE for debugging
+
+	if (0 && !is_win() && $AS_SERVICE)
+	{
+		my $usb_dev = '';
+		my $sinks = `pactl list sinks short`;
+		for my $line (split(/\n/,$sinks))
+		{
+			if ($line =~ /usb/)
+			{
+				my @parts = split(/\s+/,$line);
+				$usb_dev = $parts[1];
+			}
+		}
+
+		if ($usb_dev)
+		{
+			LOG(-1,"setting USB AUDIO DEVICE to $usb_dev");
+			my $rslt = `pactl set-default-sink $usb_dev`;
+			error($rslt) if $rslt;
+		}
+	}
+
+	# set volume
+
+	if (0 && !is_win() && $AS_SERVICE)
+	{
+		my $volume = '100%';
+		my $device = $AS_SERVICE ? 'PCM' : 'Master';
+
+		my $rslt = `amixer sset '$device' $volume`;
+		LOG(-1,"amixer sset '$device' $volume rslt=$rslt");
+	}
+
 
 ## TO_DO
 
 - Volume Control
 - MP3s directory (preference or hardwired)
-- rPi server IP issue
-- rPi service
-- USB Audio Sound device solution for rPi (hook up to PA?)
-
-At which point I could theoretically hook it up to the PA
-for real-ish, maybe play with the BOSE thing, bluetooth audio,
-etc.

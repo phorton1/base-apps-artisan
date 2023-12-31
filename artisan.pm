@@ -13,15 +13,12 @@
 #   For completeness, there were a number of other issues
 #   for using sudo, and in general with artisan
 #
-#	- /etc/environment is "./:/base:/base/apps/artisan"
+#	- /etc/environment needs "./:/base:/base/apps/artisan"
 #		because I don't fully qualify Perl artisan packages
 #   - had to add "Defaults env_keep += PERLLIB" to
 #		/etc/sudoers
 #
-#   With the kludge in the amixer (alsa) volume control below,
-#   I *think* it is now ready to be installed as a service.
-#	See artisan.service for more info.
-#
+#   See artisan.service, rpi.md, and /zip/_rpi/_setup/rpi_Setup.docx.
 #
 # WINDOWS SERVICE
 #
@@ -31,24 +28,13 @@
 #
 # 	And then edit the service in Services
 #
-#		 (a) set the 'path' to point to c:\Perl\bin\perl.exe
+#	   (a) set the 'path' to point to c:\Perl\bin\perl.exe
 # 	   (b) set the 'starting directory' to c:\base\apps\artisan
 # 	   (c) setting the 'arguments' to '/base/apps/artisan/artisan.pm'
 #
 # 	Can be modified and retarted with no build process
 # 	Can be stopped and run with 'perl artisan.pm NO_SERVICE' from dos box
 # 	Can be removed with 'nssm remove _artisan'
-#
-# 	SERVICE NOTES (and wTaskBar.pm) at Initial Check-in
-#
-#		In truth Artisan only wants to run when there is a network,
-# 	  and even then only on a specific network (for my bookmarks).
-#
-#		There is a chicken-and-egg situation with starting the service
-# 	  automatically.  I don't know how to build dependencies in, but
-# 	  from a fresh boot it currently doesn't work, probably due to network.
-#		Yet I can hit it the webUI from the wTaskBar?
-# 	  Something else is going on, but I'm doing a sanity checkin
 
 
 package artisan;
@@ -114,84 +100,29 @@ if (!$AS_SERVICE && is_win())
 }
 
 
-#----------------------------------
-# setup linux sound 
-#----------------------------------
-# use `aplay -l' to get a listing of devices.
-# you will see something like this:
-#
-#	card 3: Device [USB PnP Sound Device], device 0: USB Audio [USB Audio]
-#
-# Set the USB sound card as the default by editing
-# /etc/asound.conf with the card and devoce number from above
-# 
-# 	defaults.pcm.card 3
-#	defaults.pcm.device 0
-
-# can do it at runtime because
-# pactl does not work from root because it needs XDG_RUNTIME_DIR
-
-if (0 && !is_win())  
-{
-	my $sinks = `pactl list sinks short`;
-	LOG(0,"pactl sinks=$sinks");
-	my $cards = `aplay -l`;
-	LOG(0,"aplay cards=$cards");
-	my $controls = `amixer scontrols`;
-	LOG(0,"amixer controls= $controls");
-	# exit(0);   # if you just want to see debugging
-}
-
-# use pactl to set default audio device
-# comment out && $AS_SERVICE for debugging
+# setup linux sound
+# was using 20% with PCM for HDMI output
+# may have needed to explicitly set 100% for USB card
 
 if (0 && !is_win() && $AS_SERVICE)
 {
-	my $usb_dev = '';
-	my $sinks = `pactl list sinks short`;
-	for my $line (split(/\n/,$sinks))
-	{
-		if ($line =~ /usb/)
-		{
-			my @parts = split(/\s+/,$line);
-			$usb_dev = $parts[1];
-		}
-	}
-	
-	if ($usb_dev)
-	{
-		LOG(-1,"setting USB AUDIO DEVICE to $usb_dev");
-		my $rslt = `pactl set-default-sink $usb_dev`;
-		error($rslt) if $rslt;
-	}
-}
-
-# set volume
-
-if (0 && !is_win() && $AS_SERVICE)	
-{
 	my $volume = '100%';
 	my $device = $AS_SERVICE ? 'PCM' : 'Master';
-	
 	my $rslt = `amixer sset '$device' $volume`;
 	LOG(-1,"amixer sset '$device' $volume rslt=$rslt");
 }
 
-# exit 0 if !is_win();
-	# short ending for testing above code
 
 
 #----------------------------------
 # start artisan
 #----------------------------------
-
 # (0) static initialization of prefs
 
 if (0)
 {
 	artisanPrefs::static_init_prefs();
 }
-
 
 # (1) LIBRARY
 # not done if $DEBUG_SSDP_ALONE
@@ -209,8 +140,8 @@ else
 	localPlaylist::initPlaylists();
 }
 
-# (2) Create Local Devices, and THEN read the device Cache
-# so that local devices come first
+
+# (2) Create Local Devices, early so that local devices come first
 
 addDevice(new localLibrary());
 addDevice(new localRenderer());
@@ -223,11 +154,16 @@ my $thread2 = threads->create('HTTPServer::start_webserver');
 $thread2->detach();
 display($dbg_main,0,"HTTP Server Started");
 
+
 # (4) SSDP SERVER
 
 display($dbg_main,0,"Starting SSDP Server");
 my $ssdp = SSDP->new();
 display($dbg_main,0,"SSDP Server Started");
+
+
+# (5) OLD CODE for taskBarIcon, which is now started
+#     with the windows task scheduler
 
 if (0)
 {
@@ -244,6 +180,13 @@ if (0)
 	require wxTaskBarIcon;
 	taskBarIcon->new();
 }
+
+
+
+#------------------------------------------------------
+# main
+#------------------------------------------------------
+# keyboard input only supported on Windows NO_SERVICE
 
 while (1)
 {
