@@ -114,13 +114,76 @@ if (!$AS_SERVICE && is_win())
 }
 
 
+#----------------------------------
+# setup linux sound 
+#----------------------------------
+# use `aplay -l' to get a listing of devices.
+# you will see something like this:
+#
+#	card 3: Device [USB PnP Sound Device], device 0: USB Audio [USB Audio]
+#
+# Set the USB sound card as the default by editing
+# /etc/asound.conf with the card and devoce number from above
+# 
+# 	defaults.pcm.card 3
+#	defaults.pcm.device 0
 
-#----------------------------------------
-# main
-#----------------------------------------
+# can do it at runtime because
+# pactl does not work from root because it needs XDG_RUNTIME_DIR
 
-display($dbg_main,0,"starting $program_name");
+if (0 && !is_win())  
+{
+	my $sinks = `pactl list sinks short`;
+	LOG(0,"pactl sinks=$sinks");
+	my $cards = `aplay -l`;
+	LOG(0,"aplay cards=$cards");
+	my $controls = `amixer scontrols`;
+	LOG(0,"amixer controls= $controls");
+	# exit(0);   # if you just want to see debugging
+}
 
+# use pactl to set default audio device
+# comment out && $AS_SERVICE for debugging
+
+if (0 && !is_win() && $AS_SERVICE)
+{
+	my $usb_dev = '';
+	my $sinks = `pactl list sinks short`;
+	for my $line (split(/\n/,$sinks))
+	{
+		if ($line =~ /usb/)
+		{
+			my @parts = split(/\s+/,$line);
+			$usb_dev = $parts[1];
+		}
+	}
+	
+	if ($usb_dev)
+	{
+		LOG(-1,"setting USB AUDIO DEVICE to $usb_dev");
+		my $rslt = `pactl set-default-sink $usb_dev`;
+		error($rslt) if $rslt;
+	}
+}
+
+# set volume
+
+if (0 && !is_win() && $AS_SERVICE)	
+{
+	my $volume = '100%';
+	my $device = $AS_SERVICE ? 'PCM' : 'Master';
+	
+	my $rslt = `amixer sset '$device' $volume`;
+	LOG(-1,"amixer sset '$device' $volume rslt=$rslt");
+}
+
+# exit 0 if !is_win();
+	# short ending for testing above code
+
+
+#----------------------------------
+# start artisan
+#----------------------------------
 
 # (0) static initialization of prefs
 
@@ -181,14 +244,6 @@ if (0)
 	require wxTaskBarIcon;
 	taskBarIcon->new();
 }
-
-# temporary kludge for $AS_SERIVCE on Linux
-# to turn the volume down
-# my $controls = `amixer scontrols`;
-# LOG(0,"ALSA CONTROLS = $controls");
-`amixer sset 'PCM' 20%`
-	if !is_win();
-
 
 while (1)
 {
