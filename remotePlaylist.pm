@@ -56,8 +56,6 @@ sub initPlaylists
 	display($dbg_rpl,0,"initPlaylists($library->{name})");
 	display($dbg_rpl,1,"playlist_db = $playlist_db exists = ".((-f $playlist_db) ? 1 : 0));
 
-	display($dbg_rpl,1,"after unlink exists = ".((-f $playlist_db) ? 1 : 0));
-
 	# if the playlists.db file does not exists
 	# create it from the database or a didl request
 

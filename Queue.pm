@@ -287,7 +287,7 @@ sub enqueue
 			my $track = $tracks->[$i];
 			$track->{library_uuid} = $l_uuid;
 			$track->{position} = $pos++;
-			$track->{pl_idx} += $pl_idx++;
+			$track->{pl_idx} = $pl_idx++;
 			$q_tracks->[$i + $q_index] = $track;
 		}
 
