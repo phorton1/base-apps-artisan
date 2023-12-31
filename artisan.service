@@ -11,7 +11,8 @@
 # the artisan database, and can play hear music from any machine.
 # Then:
 #
-# Artisan.pm without NO_SEERVICE will create a PIDFile in /var/run/artisan.pid.
+# Artisan.pm without NO_SERVICE will create a PIDFile in 
+#    /var/run/artisan.pid.
 #
 # INSTALLATION:
 #
@@ -48,6 +49,9 @@ Type=forking
 PIDFile=/var/run/artisan.pid
 ExecStart=/base/apps/artisan/artisan.pm
 ExecStop=kill -KILL $(cat /var/run/artisan.pid)
+# We must import the PERRLIB environment variable
+# for artisan.pm to load correctly on the rPi:
+EnvironmentFile=/etc/environment
 
 [Install]
 # WantedBy=multi-user.target
