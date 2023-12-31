@@ -19,11 +19,6 @@ use Sys::Hostname;
 use Pub::Utils qw(!:win_only);
 use Pub::ServerUtils;
 
-our $LINUX_PID_FILE = "/var/run/artisan.pid";
-
-Pub::Utils::initUtils(1);
-Pub::ServerUtils::initServerUtils(1,$LINUX_PID_FILE);
-
 
 my $USE_MINI_LIBRARY = 0;
 
@@ -239,27 +234,11 @@ mkdir $temp_dir if !-d $temp_dir;
 
 our $server_port = '8091';
 #	our $server_ip = '';
-#
-#	if (is_win())
-#	{
-#		my $ip_text = `ipconfig /all`;
-#		if ($ip_text !~ /^.*?IPv4 Address.*?:\s*(.*)$/im)
-#		{
-#			error("Could not determine IP Address!")
-#				# This is inline display() call in body of package!
-#		}
-#		else
-#		{
-#			$server_ip = $1;
-#			$server_ip =~ s/\(.*\)//;	# remove (Preferred)
-#			$server_ip =~ s/\s//g;
-#		}
-#	}
-#	else
-#	{
-#		$server_ip = '10.237.50.152';
-#	}
 
+our $LINUX_PID_FILE = "/var/run/artisan.pid";
+
+Pub::Utils::initUtils(1);
+Pub::ServerUtils::initServerUtils(1,$LINUX_PID_FILE);
 
 
 # Scanning files/albums can result in numerous

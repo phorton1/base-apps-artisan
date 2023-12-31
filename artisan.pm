@@ -2,7 +2,28 @@
 #---------------------------------------
 # artisan.pm
 #---------------------------------------
-# Quite simply installed as a service by running
+# LINUX SERVICE
+#	
+#	to test this on the rPi with $AS_SERVICE
+#   you must execute "sudo /base/apps/artisan/artisan.pm"
+#   because ServerUtils changes to the / root directory
+#   in start_unix_service().
+#
+#   For completeness, there were a number of other issues
+#   for using sudo, and in general with artisan
+#
+#	- /etc/environment is "./:/base:/base/apps/artisan"
+#		because I don't fully qualify Perl artisan packages
+#   - had to add "Defaults env_keep += PERLLIB" to
+#		/etc/sudoers
+#  
+#   I *think* it is now ready to be installed as a service.
+#	see artisan.service for more info.
+#
+#
+# WINDOWS SERVICE
+#
+# Quite simply installed as a Windows service by running
 #
 #	  nssm install _artisan
 #
@@ -159,8 +180,13 @@ if (0)
 	taskBarIcon->new();
 }
 
-
-
+# temporary kludge for $AS_SERIVCE on Linux 
+# to turn the volume down
+# my $controls = `amixer scontrols`;
+# LOG(0,"ALSA CONTROLS = $controls");
+`amixer sset 'PCM' 20%`
+	if !is_win();
+	
 
 while (1)
 {
