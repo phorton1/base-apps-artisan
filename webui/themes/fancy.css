@@ -27,14 +27,13 @@ ul.fancytree-container
 
 
 /*--------- DEVICE SPECIFIC CSS ----------*/
-/* Example of using a media query in the CSS to change one thing */
-/* We set bigger fonts in the tracklist and tree on mobile devices
-   as determined by anything with a width <= 1250 pix */
+/*
+	This section is intended to make things that one needs to
+	click on BIGGER on the phone and iPad, both of which have
+	pixel ratios > 2
+*/
 
-/* following applies to iPad AND phone */
-
-
-@media (max-device-width: 1250px) and (-Webkit-min-device-pixel-ratio: 1.5)
+@media (-Webkit-min-device-pixel-ratio: 1.5)
 {
 	#queue_tracklist span.fancytree-title,
 	#playlist_tracklist span.fancytree-title,
@@ -62,10 +61,18 @@ ul.fancytree-container
 }
 
 
-/* following only applies to phone in landscape mode
-   and chromium on rPi 12V monitor - make Renderer smaller */
+/*
+	This section is intended to make the renderer SMALLER
+	on everything except the laptop, which has a fixed width
+	of 1920.  The devices currently include the iPad, the phone,
+	and chromium running on the rPi 12V monitor.
 
-@media (max-device-height: 800px)
+	Whatever happens here MUST be mirrored in the artisan.js
+	layout code.
+*/
+
+
+@media (max-device-width: 1900px)
 {
 	#renderer_album_image_td
 	{
@@ -132,6 +139,78 @@ ul.fancytree-container
 
 }
 
+
+
+/*
+	This section is intended to make text on the rPi 12v monitor
+	SMALLER.
+*/
+
+@media (device-width: 800px)
+{
+
+	#queue_tracklist span.fancytree-title,
+	#playlist_tracklist span.fancytree-title,
+	#queue_tracklist td,
+	#playlist_tracklist td,
+	#explorer_tree span,
+	#explorer_tracklist td
+	{
+		font-size:10pt;
+		min-height: 0px !important;
+		border:0px !important;
+	}
+	#explorer_details td
+	{
+		min-height: 0px !important;
+		font-size:8pt;
+	}
+
+	img.fancytree-icon
+	{
+		width:12px;
+		height:12px;
+		padding:0px important;
+		min-height: 0px !important;
+	}
+	.tracklist_icon
+	{
+		width:16px;
+		padding:0px important;
+		min-height: 0px !important;
+	}
+	.fancytree-expander
+	{
+		margin-top:-1px !important;
+	}
+	/* I love chasing down assumptions by others */
+	/* fancytree nodes have a min-height of 20px by default */
+
+	.fancytree-title,
+	.fancytree-node
+	{
+		min-height: 0px !important;
+	}
+	.ui-button
+	{
+		padding:1px;
+	}
+	h3,td {
+		padding-top:0px !important;
+		padding-bottom:0px !important;
+	};
+
+}
+
+/*
+	there are lessons to be learned here.
+	i hate the asssumptions that jquery-ui, jquery-layout, and fancytree make
+	the default should be NO padding and NO margins.
+	and if I want things BIGGER I can always ADD that.
+	rather than using !important to SUBTRACT attributes.
+
+	A total redesign, and ownership, of the CSS is close to warranted
+*/
 
 
 /* end of fancy.css */

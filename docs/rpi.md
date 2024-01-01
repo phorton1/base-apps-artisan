@@ -450,7 +450,7 @@ however, it is working right now, and I want to move on.
 
 
 
-## Code I wrote, then removed from Artisan
+### Code I wrote, then removed from Artisan
 
 In testing the above I wrote a chunk of code so I could
 see and try things, particularly when running as 'root'
@@ -505,7 +505,42 @@ code here in this document for posterities sake:
 	}
 
 
+### USB Audio Card stopped working
+
+Dunno why. Left it on for a day, came back, no more USB audio.
+Switched to rPi headphone jack (device 2) in /etc/asound.conf.
+
+
+
+## Volume Control
+
+My idea here is that on screens that are big enough to handle it,
+there will be a vertical slider to the right in the renderer pane,
+with a mute button, and on smaller screens, there will be a speaker
+button that brings up a popup control with a slider and a mute
+button.
+
+It may be best to just implement it orthogonally, in which case
+it *might* be a playback button, like the shuffle button.
+
+The phone has the smallest real estate.
+
+I really don't like the media_query heuristic approach to
+different screen sizes and layouts. For instance, I get
+different results on the phone if it's fullscreen, or
+in a chrome browser window.   And the fact that I have to
+match the media query in my layout code, because jquery
+ui-layout does not work from CSS.
+
+
+
+
+
+
+
+
+
+
 ## TO_DO
 
-- Volume Control
 - MP3s directory (preference or hardwired)

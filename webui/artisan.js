@@ -75,12 +75,12 @@ $(function()
 
 	$('.artisan_menu_item').button();
 
-	// LAYOUT TRICKS for IS_TOUCH and more
-	// use_small_renderer for the phone in landscape
-	// orientation or rPi 12V monitor
+	// LAYOUT TRICKS for IS_TOUCH and more.
+	// Set use_small_renderer for everything except
+	// the laptop.
 
-	var use_small_renderer = screen.height <= 800;
-		// this must match the @media (max-device-height: 400px) in fancy.css
+	var use_small_renderer = screen.width <= 1900;
+		// this must match the @media (max-device-width: 1900px) in fancy.css
 
 	if (IS_TOUCH)
 	{
@@ -97,7 +97,10 @@ $(function()
 	}
 
 	// When we use the small renderer, we also shrink
-	// the home menu and explorer tree size too.
+	// the home menu and explorer tree size too. This
+	// code can generally be changed independently of
+	// fancy.css, so I *may* want slightly bigger settings
+	// on the iPad at some point.
 
 	if (use_small_renderer)
 	{
