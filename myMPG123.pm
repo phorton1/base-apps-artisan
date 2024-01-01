@@ -66,9 +66,9 @@ sub start_mpg123
 	}
 	fcntl $this->{r}, F_SETFL, O_NONBLOCK;
 	fcntl $this->{r}, F_SETFD, FD_CLOEXEC;
-	
+
 	$connected = 1;
-	
+
 	# $dbg_lines = 0;
 	$this->{version} = $this->parse(qr/^\@R (.*)$/,1);
 	if (!$this->{version})
@@ -77,7 +77,7 @@ sub start_mpg123
 		return;
 	}
 	# $dbg_lines = 1;
-	
+
 	display($dbg123,0,"start_mpg123 returning($this->{version})");
 
 }
@@ -144,7 +144,7 @@ sub parse
 	while (my $line = $this->line ($wait))
 	{
 		display($dbg_lines,0,"line='$line'");
-		
+
 		if ($line =~ /^\@F (.*)$/)
 		{
 			$this->{frame} = [split /\s+/,$1];
@@ -296,6 +296,14 @@ sub stop
    return if !$connected;
    print {$this->{w}} "STOP\n";
    $this->parse(qr{^\@P},1);
+}
+
+
+sub command
+	# does a specific command without parsing result
+{
+	my ($this,$command) = @_;
+	print {$this->{w}} $command."\n";
 }
 
 

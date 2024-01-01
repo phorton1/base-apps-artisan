@@ -23,6 +23,10 @@
 #		sets renderer->state to $RENDERER_STATE_STOPPED
 #			if renderer->state is not $RENDERER_STATE_INIT
 #	doMPCommand()
+#		mute
+#		unmute
+#			mutes or unmutes sound
+#			state maintained by local renderer
 #		stop
 #			calls stopMP()
 #   	pause
@@ -198,6 +202,15 @@ sub mpThread
 					$controls->play();
 					$renderer->{state} = $RENDERER_STATE_PLAYING;
 				}
+				elsif ($mp_command eq 'mute')
+				{
+					$settings->{mute} = 1;
+				}
+				elsif ($mp_command eq 'unmute')
+				{
+					$settings->{mute} = 0;
+				}
+
 			}
 			else
 			{

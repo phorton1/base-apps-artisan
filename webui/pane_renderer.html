@@ -18,7 +18,16 @@
 				  class="header_text header_filler header_button"
 				  onclick="javascript:renderer_command('set_playing',{playing:RENDERER_PLAY_PLAYLIST})"></span>
 		</div>
-		<div id="renderer_status" class="header_text header_right"></div>
+		<div id="renderer_volume_button" class="header_text header_right">
+			<span id="renderer_status"
+			   onclick="javascript:volume_control()">
+			</span>
+			<img
+				id="mute_button"
+				class="speaker_icon header_text header_button"
+				src="/webui/icons/speaker.png"
+				onclick="javascript:renderer_command('toggle_mute')">
+		</div>
 	</div>
 
     <div

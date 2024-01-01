@@ -205,6 +205,8 @@ sub doCommand
 	#	shuffle
 	#		how => $SHUFFLE_XXX  (0,1,2)
 	#
+	#	toggle_mute
+	#
 	#	mute 0 or 1		- not implemented yet
 	#	loud 0 or 1
 	#	volume 0..100
@@ -368,6 +370,16 @@ sub doCommand
 		return $error if !defined($track_id);
 		$error = $this->play_track($library_uuid,$track_id);
 		return $error;
+	}
+
+	#-------------------------------------
+	# volume commands
+	#-------------------------------------
+
+	elsif ($command eq 'toggle_mute')
+	{
+		$this->{muted} = $this->{muted} ? 0 : 1;
+		doMPCommand($this,$this->{muted} ? 'mute' : 'unmute');
 	}
 
 	#-------------------------------------

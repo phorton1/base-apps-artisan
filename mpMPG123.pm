@@ -49,6 +49,10 @@
 #		sets renderer->state to $RENDERER_STATE_STOPPED
 #			if renderer->state is not $RENDERER_STATE_INIT
 #	doMPCommand()
+#		mute
+#		unmute
+#			mutes or unmutes sound
+#			state maintained by local renderer
 #		stop
 #			calls stopMP()
 #   	pause
@@ -186,6 +190,11 @@ sub mpThread
 					$url = mapLocalUrl($url);
 					$mp->load($url);
 					$renderer->{state} = $RENDERER_STATE_PLAYING;
+				}
+				elsif ($mp_command eq 'mute' ||
+					   $mp_command eq 'unmute')
+				{
+					$mp->command(uc($mp_command));
 				}
 			}
 			else

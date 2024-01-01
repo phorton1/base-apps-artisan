@@ -134,6 +134,19 @@
 	vertical-align:top;
 }
 
+.speaker_icon
+{
+	width:30px;
+	height:30px;
+	padding-right:4px;
+	padding-left:4px;
+	margin-left:0px;
+	margin-right:0px;
+	margin-top:-4px;
+	vertical-align:top;
+}
+
+
 .header_filler
 {
 	margin-left:20px;
@@ -149,7 +162,7 @@
 
 .header_right
 {
-	margin-right:12px;
+	margin-right:0px;
 }
 
 

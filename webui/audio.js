@@ -12,6 +12,12 @@ var html_renderer = {
 		name		: 'HTML Audio',
 		type		: DEVICE_TYPE_RENDERER,
 		playing     : RENDERER_PLAY_QUEUE,
+
+		position 	: 0,
+		duration 	: 0,
+		needs_start : 0,
+		muted	    : 0,
+
 		maxVol 		: 100,
 		canMute		: true,
 		canLoud		: false,
@@ -20,16 +26,12 @@ var html_renderer = {
 		maxBass		: 0,
 		maxMid 		: 0,
 		maxHigh		: 0,
-		muted       : 0,
 		volume      : 80,
 		balance     : 0,
 		fade        : 0,
 		bassLevel   : 0,
 		midLevel    : 0,
 		highLevel   : 0,
-		position 	: 0,
-		duration 	: 0,
-		needs_start : 0,
 };
 
 
@@ -151,6 +153,11 @@ function audio_command(command,args)
 		var library_uuid = args['library_uuid'];
 		var track_id = args['track_id'];
 		play_song_local(library_uuid,track_id);
+	}
+	else if (command == 'toggle_mute')
+	{
+		html_renderer.muted = html_renderer.muted ? 0 : 1;
+		audio.muted = html_renderer.muted;
 	}
 
 

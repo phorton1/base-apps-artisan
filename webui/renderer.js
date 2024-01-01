@@ -152,6 +152,7 @@ function update_renderer_ui()
 		last_playing = -1;
 		$('#renderer_header_left').html('');
 		$('#renderer_header_right').html('no renderer');
+		disable_button('#mute_button',true);
 	}
 	else
 	{
@@ -159,6 +160,11 @@ function update_renderer_ui()
 		queue = current_renderer.queue;
 		playlist = current_renderer.playlist;
 		metadata = current_renderer.metadata;
+
+		disable_button('#mute_button',false);
+		$('#mute_button').attr('src',current_renderer.muted?
+			'/webui/icons/speaker_mute.png' :
+			'/webui/icons/speaker.png' );
 
 		$('#renderer_state').html(state);
 		$('#renderer_queue_state').html(
