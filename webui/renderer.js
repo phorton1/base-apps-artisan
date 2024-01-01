@@ -22,6 +22,15 @@ function init_renderer_pane()
 		start: function( event, ui ) {
 			in_slider = true;
 		},
+		slide: function( event, ui ) {
+			if (in_slider)
+			{
+				var pct = ui.value / 100;
+				$('#renderer_position').html(
+					millis_to_duration(pct * current_renderer.duration,false));
+			}
+		},
+
 	});
 
 	renderer_slider = $('#renderer_slider');
@@ -318,7 +327,7 @@ function update_renderer_ui()
 			renderer_slider.slider('enable');
 			if (!in_slider)
 				$('#renderer_slider').slider('value',
-				parseInt(current_renderer.position / current_renderer.duration  * 100));
+				parseInt(100 * (current_renderer.position / current_renderer.duration)));
 		}
 		else
 		{
