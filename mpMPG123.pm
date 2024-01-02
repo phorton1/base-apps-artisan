@@ -53,6 +53,9 @@
 #		unmute
 #			mutes or unmutes sound
 #			state maintained by local renderer
+#		volume,0..100
+#			set the volume
+#			state maintained by local renderer
 #		stop
 #			calls stopMP()
 #   	pause
@@ -142,6 +145,7 @@ sub mpThread
 {
 	my ($renderer) = @_;
 	my $mp = myMPG123->new();
+	$mp->command("VOLUME $renderer->{volume}");
 	display($dbg_mp,0,"mpThread() started");
 	$mp_running = 1;
 
@@ -195,6 +199,12 @@ sub mpThread
 					   $mp_command eq 'unmute')
 				{
 					$mp->command(uc($mp_command));
+				}
+				elsif ($mp_command =~ /^volume,(\d+)$/)
+				{
+					my $volume = $1;
+					$mp->command('UNMUTE');
+					$mp->command("VOLUME $volume");
 				}
 			}
 			else

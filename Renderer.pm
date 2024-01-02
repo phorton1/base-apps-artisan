@@ -2,6 +2,7 @@
 #---------------------------------------
 # Renderer.pm
 #---------------------------------------
+# All Renderers start at a default volume of 80
 
 package Renderer;
 use strict;
@@ -55,6 +56,11 @@ sub new
 
 		state => $RENDERER_STATE_NONE,
 
+		position    => 0,
+		duration    => 0,
+		muted       => 0,
+		volume      => 80,
+
 		maxVol 		=> 0,
 		canMute		=> 0,
 		canLoud		=> 0,
@@ -63,17 +69,11 @@ sub new
 		maxBass		=> 0,
 		maxMid 		=> 0,
 		maxHigh		=> 0,
-		muted       => 0,
-		volume      => 0,
 		balance     => 0,
 		fade        => 0,
 		bassLevel   => 0,
 		midLevel    => 0,
 		highLevel   => 0,
-
-		position    => 0,
-		duration    => 0,
-
 	}));
 
 	return $this;

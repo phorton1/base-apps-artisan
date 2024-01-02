@@ -17,6 +17,7 @@ var html_renderer = {
 		duration 	: 0,
 		needs_start : 0,
 		muted	    : 0,
+		volume      : 80,
 
 		maxVol 		: 100,
 		canMute		: true,
@@ -26,7 +27,6 @@ var html_renderer = {
 		maxBass		: 0,
 		maxMid 		: 0,
 		maxHigh		: 0,
-		volume      : 80,
 		balance     : 0,
 		fade        : 0,
 		bassLevel   : 0,
@@ -49,6 +49,7 @@ function init_audio()
 {
 	audio = document.createElement('audio');
 	audio.setAttribute('autoplay', true);
+	audio.volume = html_renderer.volume / 100;
 
 	if (false)
 	{
@@ -159,7 +160,14 @@ function audio_command(command,args)
 		html_renderer.muted = html_renderer.muted ? 0 : 1;
 		audio.muted = html_renderer.muted;
 	}
-
+	else if (command == 'set_volume')
+	{
+		var volume = args['volume'];
+		html_renderer.muted = 0;
+		html_renderer.volume = volume;
+		audio.muted = 0;
+		audio.volume = volume / 100;
+	}
 
 	//-----------------------------------------------------------
 	// Generic Commands with extra behavior if Queue

@@ -381,6 +381,14 @@ sub doCommand
 		$this->{muted} = $this->{muted} ? 0 : 1;
 		doMPCommand($this,$this->{muted} ? 'mute' : 'unmute');
 	}
+	elsif ($command eq 'set_volume')
+	{
+		my $volume = checkParam(\$error,$command,$params,'volume');
+		return $error if !defined($volume);
+		$this->{muted} = 0;
+		$this->{volume} = $volume;
+		doMPCommand($this,"volume,$volume");
+	}
 
 	#-------------------------------------
 	# transport commands

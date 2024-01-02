@@ -27,6 +27,9 @@
 #		unmute
 #			mutes or unmutes sound
 #			state maintained by local renderer
+#		volume,0..100
+#			set the volume
+#			state maintained by local renderer
 #		stop
 #			calls stopMP()
 #   	pause
@@ -158,7 +161,10 @@ sub mpThread
 	my $mp = Win32::OLE->new('WMPlayer.OCX');
 	my $controls = $mp->{controls};
 	my $settings = $mp->{settings};
+
 	$settings->{autoStart} = 0;
+	$settings->{volume} = $renderer->{volume};
+
 	display($dbg_mp,0,"mpThread() started");
 	$mp_running = 1;
 
@@ -210,7 +216,13 @@ sub mpThread
 				{
 					$settings->{mute} = 0;
 				}
-
+				elsif ($mp_command =~ /^volume,(\d+)$/)
+				{
+					my $volume = $1;
+					display($dbg_mp,2,"doing volume($volume)");
+					$settings->{mute} = 0;
+					$settings->{volume} = $volume;
+				}
 			}
 			else
 			{

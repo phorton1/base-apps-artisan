@@ -4,17 +4,40 @@
 
 var dbg_slider = 0;
 
-var renderer_slider;
 var in_slider = false;
+var in_volume_slider = false;
+
 var last_song = '';
 var last_playing = -1;
+
+
+
+function toggle_volume_control()
+{
+	$('#volume_control').toggle();
+}
 
 
 function init_renderer_pane()
 {
 	display(dbg_home,0,"init_renderer_pane()");
 
-	$( "#renderer_slider" ).slider({
+	$('#volume_slider').slider({
+		// disabled:true,
+		orientation:'vertical',
+		stop: function( event, ui ) {
+			renderer_command('set_volume',{
+				volume:ui.value });
+		},
+		start: function( event, ui ) {
+			in_volume_slider = true;
+		},
+		slide: function( event, ui ) {
+		},
+	});
+
+
+	$('#renderer_slider').slider({
 		disabled:true,
 		stop: function( event, ui ) {
 			on_slider_complete(event,ui);
@@ -32,8 +55,6 @@ function init_renderer_pane()
 		},
 
 	});
-
-	renderer_slider = $('#renderer_slider');
 
 	$(".transport_button").button();
 	$('.header_button').button();
@@ -54,6 +75,9 @@ function init_renderer_pane()
 		{
            $('#transport_shuffle').selectmenu('close');
 		}
+		if (!event.target.classList.contains('vc_dont_close') &&
+			$('#volume_control').is(':visible'))
+			$('#volume_control').hide();
 	});
 }
 
@@ -74,6 +98,7 @@ function renderer_command(command,args)
 	{
 		audio_command(command,args);
 		in_slider = false;
+		in_volume_slider = false;
 		update_renderer_ui();
 		return;
 	}
@@ -102,6 +127,7 @@ function renderer_command(command,args)
 				current_renderer = result;
 			}
 			in_slider = false;
+			in_volume_slider = false;
 			update_renderer_ui();
 		}
 	);
@@ -162,6 +188,7 @@ function update_renderer_ui()
 		$('#renderer_header_left').html('');
 		$('#renderer_header_right').html('no renderer');
 		disable_button('#mute_button',true);
+		disable_button('#renderer_status',true);
 	}
 	else
 	{
@@ -174,6 +201,9 @@ function update_renderer_ui()
 		$('#mute_button').attr('src',current_renderer.muted?
 			'/webui/icons/speaker_mute.png' :
 			'/webui/icons/speaker.png' );
+		disable_button('#renderer_status',false);
+		if (!in_volume_slider)
+			$('#volume_slider').slider('value',current_renderer.volume);
 
 		$('#renderer_state').html(state);
 		$('#renderer_queue_state').html(
@@ -281,7 +311,7 @@ function update_renderer_ui()
 		$('#renderer_song_genre')	.html('');
 		$('#renderer_album_image').attr('src','/webui/icons/artisan.png');
 
-		renderer_slider.slider('disable')
+		$('#renderer_slider').slider('disable')
 		$('#renderer_slider').slider('value',0);
 		$('#renderer_position')		.html('');
 		$('#renderer_duration')		.html('');
@@ -324,14 +354,14 @@ function update_renderer_ui()
 
 		if (current_renderer.duration>0)
 		{
-			renderer_slider.slider('enable');
+			$('#renderer_slider').slider('enable');
 			if (!in_slider)
 				$('#renderer_slider').slider('value',
 				parseInt(100 * (current_renderer.position / current_renderer.duration)));
 		}
 		else
 		{
-			renderer_slider.slider('disable');
+			$('#renderer_slider').slider('disable');
 			$('#renderer_slider').slider('value',0);
 		}
 	}

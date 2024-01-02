@@ -20,8 +20,10 @@
 		</div>
 		<div id="renderer_volume_button" class="header_text header_right">
 			<span id="renderer_status"
-			   onclick="javascript:volume_control()">
+				class="header_text header_button vc_dont_close"
+				onclick="javascript:toggle_volume_control()">
 			</span>
+
 			<img
 				id="mute_button"
 				class="speaker_icon header_text header_button"
@@ -113,9 +115,18 @@
 
 		</div>
 
-    </div>	<!-- why the extra div? -->
+    </div>	<!-- renderer_body -->
 
 </div>  <!-- renderer_pane -->
+
+<!-- popup volume control at page level
+	 uses position absolute and a high z-index to
+	 allow it to extend over the tracklist -->
+
+<div id='volume_control' class='vc_dont_close'>
+	<div id="volume_slider" class='noSwipe vc_dont_close'>
+	</div>
+</div>
 
 
 <!-- end of pane_renderer.html -->

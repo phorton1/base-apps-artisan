@@ -276,4 +276,34 @@
 }
 
 
+
+/*------------ VOLUME CONTROL -------------*/
+
+#volume_control
+{
+	position:absolute;
+	top:35px;
+	right:0px;
+	width:50px;
+	height:150px;
+	background:#444444;
+	border: 2px white;
+	display:none;
+	z-index:1000;
+}
+
+#volume_slider
+{
+	width:10px;
+	height:120px;
+	background:#222266 !important;
+	margin-left:20px;
+	margin-top:14px;
+	margin-right:6px;
+	margin-bottom:8px;
+}
+
+
+
+
 /* end of home.css */
