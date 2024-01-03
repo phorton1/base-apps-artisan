@@ -184,11 +184,12 @@ function init_page_explorer()
 			var node = data.node;
 			var rec = node.data;
 			var $tdList = $(node.tr).find(">td");
+			var artist = rec.artist == '' ? rec.album_artist : rec.artist;
 
 			$tdList.eq(0)						.addClass('tracklist_icon');
 			$tdList.eq(1).text(rec.tracknum)	.addClass('tracklist_tracknum');
 			$tdList.eq(2).html(rec.TITLE)		.addClass('tracklist_title');
-			$tdList.eq(3).text(rec.album_title)	.addClass('tracklist_album');
+			$tdList.eq(3).text(artist)			.addClass('tracklist_artist');
 			$tdList.eq(4).text(rec.genre)		.addClass('tracklist_genre');
 			$tdList.eq(5).text(rec.year_str)	.addClass('tracklist_year');
 		},

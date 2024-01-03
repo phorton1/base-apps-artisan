@@ -310,14 +310,15 @@ function renderTracklistNode(event,data,pl_offset)
 	// We add a style .. but that's not good enough cuz
 	// the inner things are in spans
 
-	$tdList.eq(0)						.addClass('home_rownum');
+	var artist = rec.artist == '' ? rec.album_artist : rec.artist;
 
-	// $tdList.eq(0).html(show_idx)		.addClass('home_rownum');
-	$tdList.eq(1).html(rec.TITLE)		.addClass('tracklist_title');
-	$tdList.eq(2).text(rec.tracknum)	.addClass('home_tracknum');
-	$tdList.eq(3).text(rec.album_title)	.addClass('tracklist_album');
-	$tdList.eq(4).text(rec.genre)		.addClass('tracklist_genre');
-	$tdList.eq(5).text(rec.year_str)	.addClass('tracklist_year');
+	$tdList.eq(0)						.addClass('home_rownum');
+	$tdList.eq(1).html(rec.TITLE)		.addClass('home_title');
+	$tdList.eq(2).html(artist)			.addClass('home_artist');
+	$tdList.eq(3).text(rec.tracknum)	.addClass('home_tracknum');
+	$tdList.eq(4).text(rec.album_title)	.addClass('home_album');
+	$tdList.eq(5).text(rec.genre)		.addClass('home_genre');
+	$tdList.eq(6).text(rec.year_str)	.addClass('home_year');
 }
 
 
