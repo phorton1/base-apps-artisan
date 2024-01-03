@@ -7,6 +7,7 @@
 	display: none;
 }
 
+#search_result_div,
 #home_tracklist_div,
 #explorer_tracklist_div
 {
@@ -14,6 +15,7 @@
 }
 
 
+#search_tracklist,
 #queue_tracklist,
 #playlist_tracklist,
 #explorer_tracklist
@@ -23,8 +25,10 @@
 }
 
 
+#search_tracklist span.fancytree-title,
 #queue_tracklist span.fancytree-title,
 #playlist_tracklist span.fancytree-title,
+#search_tracklist td,
 #queue_tracklist td,
 #playlist_tracklist td,
 #explorer_tracklist td
@@ -41,6 +45,7 @@
 #queue_tracklist .fancytree-node,
 #playlist_tracklist .fancytree-node,
 */
+#search_tracklist .fancytree-expander,
 #queue_tracklist .fancytree-expander,
 #playlist_tracklist .fancytree-expander,
 #explorer_tracklist .fancytree-expander
@@ -48,7 +53,7 @@
 	display:none !important;
 }
 
-.home_rownum		{ margin:0px; /* padding-left:2px;*/  color:#aaaaaa !important; }
+.home_rownum		{ margin:0px;   color:#aaaaaa !important; }
 .home_title  		{ width:25%;	max-width:180px; padding-left:8px; }
 .home_artist  		{ width:25%; 	max-width:160px; padding-left:8px; }
 .home_tracknum		{ width:24px;	padding-left:2px; }
@@ -63,6 +68,26 @@
 .tracklist_artist  	{ width:32%; 	max-width:140px; padding-left:8px; }
 .tracklist_genre  	{ width:25%; 	max-width:100px; padding-left:8px; }
 .tracklist_year  	{ width:60px; 	text-align:right; padding-right:4px; }
+
+
+/* disable blue selected text */
+
+.home_rownum,
+.home_title,
+.home_artist,
+.home_tracknum,
+.home_album,
+.home_genre,
+.home_year,
+.tracklist_icon,
+.tracklist_tracknum,
+.tracklist_title,
+.tracklist_artist,
+.tracklist_genre,
+.tracklist_year
+{
+	user-select: none;
+}
 
 
 

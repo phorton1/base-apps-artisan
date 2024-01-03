@@ -1,0 +1,61 @@
+/*******************************************
+ search.css
+********************************************/
+/* ALBUM INFO TOP PANE */
+
+.search_table
+{
+	margin-top:5px;
+	margin-left:10px;
+	margin-right:10px;
+}
+
+
+.search_conditions
+{
+	margin-top:5px;
+	margin-right:20px;
+}
+
+.search_label,
+.search_value
+{
+	font-size:12pt;
+}
+
+.search_label
+{
+	width:80px;
+	/*
+	display:inline;
+	border:0;
+	margin:0;
+	padding:0;
+	padding-top:3px;
+	color:#ffffff;
+	background:#000000;
+	*/
+}
+
+.search_value
+{
+	width:100%;
+	background: #cccccc;
+}
+
+.search_button
+{
+	margin-top:4px;
+}
+
+.search_buttons
+{
+	margin-left:20px;
+}
+
+td.search_buttons
+{
+	text-align: right;
+}
+
+/* end of search.css */

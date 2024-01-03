@@ -35,8 +35,10 @@ ul.fancytree-container
 
 @media (-Webkit-min-device-pixel-ratio: 1.5)
 {
+	#search_tracklist span.fancytree-title,
 	#queue_tracklist span.fancytree-title,
 	#playlist_tracklist span.fancytree-title,
+	#search_tracklist td,
 	#queue_tracklist td,
 	#playlist_tracklist td,
 	#explorer_tree span,
@@ -149,8 +151,10 @@ ul.fancytree-container
 @media (device-width: 800px)
 {
 
+	#search_tracklist span.fancytree-title,
 	#queue_tracklist span.fancytree-title,
 	#playlist_tracklist span.fancytree-title,
+	#search_tracklist td,
 	#queue_tracklist td,
 	#playlist_tracklist td,
 	#explorer_tree span,

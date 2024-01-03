@@ -1,0 +1,89 @@
+<!-- page_search.html -->
+
+<div
+    id="search_page"
+    class="desktop_page">
+
+    <!-- include artisan_menu.html -->
+
+
+    <div
+        id="search_page_div"
+        class="ui-layout-center">
+
+		<!-- NOTE THE NESTED LAYOUT -->
+		<!-- CONDITIONS -->
+
+		<div
+			id="search_conditions_div"
+			class="ui-layout-north">
+
+			<table width='100%' class='search_table'>
+				<tr>
+					<td>
+						<table class="search_conditions" width='100%'>
+							<tr>
+								<td class="search_label">Any</td>
+								<td><input type="text" class="search_value" id="search_any"/></td>
+							</tr>
+							<tr>
+								<td class="search_label">Album</td>
+								<td><input type="text" class="search_value" id="search_album"/></td>
+							</tr>
+							<tr>
+								<td class="search_label">Title</td>
+								<td><input type="text" class="search_value" id="search_title"/></td>
+							</tr>
+							<tr>
+								<td class="search_label">Artist</td>
+								<td><input type="text" class="search_value" id="search_artist"/></td>
+							</tr>
+						</table>
+					</td>
+					<td width="100px">
+						<table class='search_buttons' width='100%'>
+							<tr><td><button
+								id="search_button_find"
+								class="search_button"
+								onclick = "javascript:onSearchButton('find')">Find</button></td></tr>
+							<tr><td><button
+								id="search_button_play"
+								class="search_button"
+								onclick = "javascript:onSearchButton('play')">Play</button></td></tr>
+							<tr><td><button
+								id="select_button_add"
+								class="search_button"
+								onclick = "javascript:onSearchButton('add')">Add</button></td></tr>
+						</table>
+					</td>
+				</tr>
+
+			</table>
+
+		</div>
+
+		<!-- SEARCH RESULTS TRACKLIST -->
+
+		<div
+			id="search_result_div"
+			class="ui-layout-center">
+
+			<table id="search_tracklist" width='100%'>
+				<thead>
+					<tr>
+						<th class='home_rownum'></th>
+                        <th class='home_title'></th>
+						<th class='home_artist'></th>
+                        <th class='home_tracknum'></th>
+                        <th class='home_album'></th>
+                        <th class='home_genre'></th>
+                        <th class='home_year'></th>
+					</tr>
+				</thead>
+			</table>
+	   </div>
+
+	</div>
+</div>
+
+<!-- end of page_search.html -->

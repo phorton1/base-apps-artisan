@@ -282,14 +282,6 @@ function update_renderer_ui()
 			shuffle = playlist.shuffle;
 		}
 
-		$('#transport_play').html(
-			state == RENDERER_STATE_PAUSED ||
-			state == RENDERER_STATE_INIT ||		// playlist in stopped state
-			state == RENDERER_STATE_STOPPED ? '>' : '||');
-
-		$('#transport_stop').html(
-			state == RENDERER_STATE_STOPPED ? 'O' : 'X');
-
 		$('#transport_shuffle').selectmenu(no_tracks ? 'disable' : 'enable');
 		disable_button('#transport_prev_album',	no_tracks || no_earlier);
 		disable_button('#transport_prev',		no_tracks || no_earlier);
@@ -319,9 +311,11 @@ function update_renderer_ui()
 	}
 	else
 	{
+		disable_button('#transport_play',		false);
+		disable_button('#transport_stop',		false);
+
 		$('#renderer_song_title')	.html(decode_ampersands(metadata.title));
 		$('#renderer_album_artist') .html(decode_ampersands(metadata.artist));
-
 		$('#renderer_album_title')	.html(decode_ampersands(metadata.album_title));
 
 		var track_info = 'Library: ' + getLibraryName(metadata.library_uuid);
@@ -365,6 +359,14 @@ function update_renderer_ui()
 			$('#renderer_slider').slider('value',0);
 		}
 	}
+
+	$('#transport_play').html(
+		state == RENDERER_STATE_PAUSED ||
+		state == RENDERER_STATE_INIT ||		// playlist in stopped state
+		state == RENDERER_STATE_STOPPED ? '>' : '||');
+
+	$('#transport_stop').html(
+		state == RENDERER_STATE_STOPPED ? 'O' : 'X');
 
 	// UPDATE HOME TRACKLISTS
 

@@ -18,12 +18,10 @@ layout_defs['home'] = {
 		size:40,
 		limit:400,
 		resizable: false,
-		element_id:'#renderer_page_header_right',
 	},
 	west: {
 		size:245,
 		limit:600,
-		element_id:'#renderer_page_header_left',
 	},
 };
 

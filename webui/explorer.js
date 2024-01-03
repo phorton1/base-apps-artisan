@@ -39,12 +39,10 @@ layout_defs['explorer'] = {
 		size:40,
 		limit:400,
 		resizable: false,
-		element_id:'#explorer_page_header_right',
 	},
 	west: {
 		size:280,
 		limit:600,
-		element_id:'#explorer_page_header_left',
 	},
 	east: {
 		size:320,
@@ -103,10 +101,11 @@ function init_page_explorer()
 		source: 			function() { return []; },
 		click:				function(event,data)
 		{
-			deselectTree('explorer_tracklist');
 			cur_tree = explorer_tree;
 			var node = data.node;
 			var rec = node.data;
+			var selected = node.isSelected();
+			explorer_tree.onTreeSelect();
 
 			// use the icon as an expander
 			// otherwise, do normal activation
@@ -123,7 +122,7 @@ function init_page_explorer()
 				update_explorer_ui(node);
 				if (IS_TOUCH)
 				{
-					doCtrlSelect(node,'explorer_tree');
+					node.setSelected(!selected);
 					return false;
 				}
 				return true;
@@ -138,8 +137,18 @@ function init_page_explorer()
 	});
 
 	explorer_tree = $("#explorer_tree").fancytree("getTree");
+	explorer_tree.onTreeSelect = function()
+		// deselect the other tree, and if ctrl button not pressed,
+		// deslect this one as well ..
+	{
+		deselectTree('explorer_tracklist');
+		if (IS_TOUCH &&
+			!$('#select_button_ctrl').hasClass('ui-state-active'))
+			deselectTree('explorer_tree');
+	};
 	if (IS_TOUCH)
 		init_touch('explorer_tree');
+
 
 
 	// EXPLORER TRACKLIST
@@ -155,16 +164,19 @@ function init_page_explorer()
 		source: 		function() { return []; },
 		click:  		function(event,data)
 		{
+			cur_tree = explorer_tracklist;
 			var node = data.node;
 			var rec = node.data;
+			var selected = node.isSelected();
+			explorer_tracklist.onTreeSelect();
+
 			explorer_details.reload({
 				url: current_library_url() + '/track_metadata?id=' + rec.id,
 				cache: true});
-			deselectTree('explorer_tree');
-			cur_tree = explorer_tracklist;
+
 			if (IS_TOUCH)
 			{
-				doCtrlSelect(node,'explorer_tracklist');
+				node.setSelected(!selected);
 				return false;
 			}
 			return true;
@@ -173,6 +185,7 @@ function init_page_explorer()
 		{
 			var node = data.node;
 			var rec = node.data;
+			explorer_tracklist.onTreeSelect();
 			explorer_tracklist.selectAll(false);
 			node.setSelected(true);
 			renderer_command('play_song',{
@@ -197,6 +210,14 @@ function init_page_explorer()
 
 	explorer_tracklist = $("#explorer_tracklist").fancytree("getTree");
 	explorer_tracklist.my_load_counter = 0;
+	explorer_tracklist.onTreeSelect = function()
+	{
+		deselectTree('explorer_tree');
+		if (IS_TOUCH &&
+			!$('#select_button_ctrl').hasClass('ui-state-active'))
+			deselectTree('explorer_tracklist');
+	};
+
 	if (IS_TOUCH)
 		init_touch('explorer_tracklist');
 
@@ -297,39 +318,6 @@ function onSelectButton(command)
 }
 
 
-function doCtrlSelect(node,tree_id)
-{
-	var is_sel = node.isSelected();
-	var ctrl = $('#select_button_ctrl').hasClass('ui-state-active');
-	display(dbg_multi+1,0,"doCtrlSelect(" + tree_id +") " +  node.data.TITLE + ") is_sel(" + is_sel + ") ctrl(" + ctrl + ")");
-	if (!ctrl) deselectTree(tree_id);
-	node.setSelected(!is_sel);
-}
-
-
-function multiTouchSelect(is_tree,top1,top2)
-{
-	display(dbg_multi,0,"multiTouchSelect(" + is_tree + ") top1(" + top1 + ") top2(" + top2 + ")");
-	var tree = is_tree ? explorer_tree : explorer_tracklist;
-
-	// deselect the other tree, and if ctrl button not pressed,
-	// deslect this one as well ..
-
-	deselectTree(is_tree ? 'explorer_tracklist' : 'explorer_tree');
-	if (!$('#select_button_ctrl').hasClass('ui-state-active'))
-		deselectTree(is_tree ? 'explorer_tree' : 'explorer_tracklist');
-
-	tree.visit(function (node) {
-		var top = is_tree ?
-			node.li.offsetTop :
-			node.tr.offsetTop;
-		if (top >= top1 && top <= top2)
-		{
-			node.setSelected(true);
-		}
-
-	});
-}
 
 
 

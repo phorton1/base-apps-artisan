@@ -465,6 +465,88 @@ sub sortPlaylist
 
 
 
+#------------------------------------
+# find
+#------------------------------------
+
+use httpUtils;
+
+my $dbg_find = 0;
+
+
+sub clause
+{
+	my ($field,$value) = @_;
+	return "$field LIKE \"%$value%\"";
+}
+
+
+sub find
+{
+	my ($this,$params) = @_;
+
+	my $where_clause = '';
+	my $any = url_decode($params->{any} || '');
+	my $album = url_decode($params->{album} || '');
+	my $title = url_decode($params->{title} || '');
+	my $artist = url_decode($params->{artist} || '');
+
+	display($dbg_find,0,"find($any,$album,$title,$artist)");
+
+	if ($any)
+	{
+		$where_clause = "(" .
+			clause('title',$any) . " OR ".
+			clause('artist',$any) . " OR ".
+			clause('album_title',$any) . " OR ".
+			clause('album_artist',$any) . ")";
+	}
+	if ($album)
+	{
+		$where_clause .= " AND " if $where_clause;
+		$where_clause .= "(" . clause('album_title',$album) . ")";
+	}
+	if ($title)
+	{
+		$where_clause .= " AND " if $where_clause;
+		$where_clause .= "(" . clause('title',$title) . ")";
+	}
+	if ($artist)
+	{
+		$where_clause .= " AND " if $where_clause;
+		$where_clause .= "(" .
+			clause('artist',$artist) . " OR ".
+			clause('album_artist',$artist) . ")";
+	}
+
+	if (!$where_clause)
+	{
+		return json_error("NO fields specified for find");
+	}
+
+	my $query = "SELECT * FROM tracks WHERE $where_clause ORDER BY path";
+
+	display($dbg_find,1,"query = $query");
+
+	my $dbh = db_connect();
+	my $recs = get_records_db($dbh,$query);
+	db_disconnect($dbh);
+
+	display($dbg_find,1,"found ".scalar(@$recs)." recs");
+	return json_error("NO records found") if !@$recs;
+
+	my $tracks = [];
+	for my $rec (@$recs)
+	{
+		display($dbg_find,2,"track($rec->{path}");
+		push @$tracks,Track->newFromDb($rec);
+	}
+
+	return json_header().my_encode_json({tracks => $tracks});
+
+}
+
+
 
 
 1;

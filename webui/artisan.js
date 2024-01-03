@@ -112,6 +112,7 @@ $(function()
 
 	create_layout('home');
 	create_layout('explorer');
+	create_layout('search');
 
 	// NESTED LAYOUTS
 	// The explorer and home 'center' divs are themselves laid out here
@@ -120,16 +121,26 @@ $(function()
 
 	$('#explorer_center_div').layout({		// height of album info pane
 		applyDemoStyles: true,
+		north__resizable : false,
 		north__size: IS_TOUCH ? 115 : 100, });
 
 	$('#renderer_pane_div').layout({		// height of renderer pane
 		applyDemoStyles: true,
+		north__resizable : false,
 		north__size : use_small_renderer ? 164 : 255, });
+
+	$('#search_page_div').layout({
+		applyDemoStyles: true,
+		north__size :  122,
+		north__resizable : false,
+		north__closable : false });
+
 
 	// Dynamic Initialization
 
 	init_page_home();
 	init_page_explorer();
+	init_page_search();
 
 	// Startup
 
@@ -386,20 +397,6 @@ function resize_layout_pane(layout,layout_def,value,pane)
 					// but I prefer a reminder that there is a pane that can be opened.
 					// as it is not always the case
 				layout.close(pane);
-
-				// element_id = pane_def.element_id;
-				// if (element_id)
-				// {
-				// 	$(element_id).css( 'cursor', 'pointer' );
-				// 	$(element_id).on('click',function(event)
-				// 	{
-				// 		open_pane(pane);
-				// 	});
-				// 	if (pane_def.element_is_button)
-				// 	{
-				// 		$(element_id).button('enable');
-				// 	}
-				// }
 			}
 			else if (is_closed && value > pane_def.limit)
 			{

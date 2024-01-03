@@ -191,6 +191,11 @@ sub library_request
 		my $metadata = $library->getFolderMetadata($id);
 		return json_header().my_encode_json($metadata);
 	}
+	elsif ($path eq 'find')
+	{
+		my $rslt = $library->find($params);
+	}
+
 
 
 	#-----------------------------
