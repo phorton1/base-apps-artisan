@@ -26,12 +26,21 @@ layout_defs['search'] = {
 };
 
 
+function disableSearchPlayAdd(disabled)
+{
+	disable_button('#search_button_play',disabled);
+	disable_button('#search_button_add',disabled);
+}
+
+
 function init_page_search()
 {
 	$(".search_button").button();
 	$(".search_label").on("click",onClickSearchLabel);
 	// $(".search_value").prop('value','');
 		// initialize all values to blank on reload
+	disableSearchPlayAdd(true);
+
 
 	$("#search_tracklist").fancytree({
 		nodata:			false,
@@ -58,6 +67,7 @@ function init_page_search()
 			var rec = node.data;
 			deselectTree('search_tracklist');
 			node.setSelected(true);
+			disableSearchPlayAdd(false);
 			renderer_command('play_song',{
 				library_uuid: current_library.uuid,
 				track_id: rec.id});
@@ -77,6 +87,11 @@ function init_page_search()
 			$tdList.eq(5).text(rec.genre)		.addClass('home_genre');
 			$tdList.eq(6).text(rec.year_str)	.addClass('home_year');
 		},
+		select: function (event,data)
+		{
+			disableSearchPlayAdd(
+				!search_tracklist.getSelectedNodes().length);
+		}
 	});
 
 	search_tracklist = $("#search_tracklist").fancytree("getTree");
@@ -114,8 +129,11 @@ function onSearchButton(command)
 		if (title  != '') data.title  = title ;
 		if (artist != '') data.artist = artist;
 
+		search_tracklist.clear();
+		disableSearchPlayAdd(true);
+
 		$.ajax({
-			async: true,
+			async: false,
 			url: current_library_url() + "/find",
 			data: data,
 			success: function (result)
@@ -157,7 +175,6 @@ function addSearchTrackNode(rec)
 function onLoadSearchTracks(tracks)
 {
 	display(dbg_search,0,"onLoadSearchTracks()");
-	search_tracklist.clear();
 	for (var i=0; i<tracks.length; i++)
 	{
 		addSearchTrackNode(tracks[i]);

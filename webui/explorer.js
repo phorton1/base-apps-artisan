@@ -76,6 +76,20 @@ function deselectTree(id)
 }
 
 
+function disableSelectPlayAdd(disabled)
+{
+	disable_button('#select_button_play',disabled);
+	disable_button('#select_button_add',disabled);
+}
+
+function disableSearchPlayAddAny()
+{
+	var any =
+		explorer_tree.getSelectedNodes().length +
+		explorer_tracklist.getSelectedNodes().length;
+	disableSelectPlayAdd(any);
+}
+
 
 //--------------------------------------
 // init_page_explorer()
@@ -134,6 +148,10 @@ function init_page_explorer()
 			addLoadFolder(node);
 			data.result =  [];
 		},
+		select: function (event,data)
+		{
+			disableSearchPlayAddAny();
+		}
 	});
 
 	explorer_tree = $("#explorer_tree").fancytree("getTree");
@@ -188,6 +206,7 @@ function init_page_explorer()
 			explorer_tracklist.onTreeSelect();
 			explorer_tracklist.selectAll(false);
 			node.setSelected(true);
+			disableSelectPlayAdd(false);
 			renderer_command('play_song',{
 				library_uuid: current_library.uuid,
 				track_id: rec.id});
@@ -206,6 +225,10 @@ function init_page_explorer()
 			$tdList.eq(4).text(rec.genre)		.addClass('tracklist_genre');
 			$tdList.eq(5).text(rec.year_str)	.addClass('tracklist_year');
 		},
+		select: function (event,data)
+		{
+			disableSearchPlayAddAny();
+		}
 	});
 
 	explorer_tracklist = $("#explorer_tracklist").fancytree("getTree");
@@ -277,6 +300,8 @@ function init_page_explorer()
 	$(".select_button").button();
 	if (!IS_TOUCH)
 		$('#select_button_ctrl').css('display','none');
+	disableSelectPlayAdd('true');
+
 
 	cur_tree = explorer_tree;
 	update_explorer_ui()
