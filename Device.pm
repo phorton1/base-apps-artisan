@@ -141,7 +141,7 @@ sub didlRequest
 
 	my $content;
 	my $cache_file = $params->{cache_file};
-	if (-f $cache_file)
+	if ($cache_file && -f $cache_file)
 	{
 		$content = getTextFile($cache_file,1);
 		$content = decode_ascii($content);
@@ -168,8 +168,11 @@ sub didlRequest
 			return;
 		}
 
-		display($dbg,1,"writing ".length($content)." bytes to $cache_file");
-		printVarToFile(1,$cache_file,encode_ascii($content),1);
+		if ($cache_file)
+		{
+			display($dbg,1,"writing ".length($content)." bytes to $cache_file");
+			printVarToFile(1,$cache_file,encode_ascii($content),1);
+		}
 	}
 
 	# if ($dbg_name eq 'Browse(107)')
