@@ -87,7 +87,7 @@ function disableSearchPlayAddAny()
 	var any =
 		explorer_tree.getSelectedNodes().length +
 		explorer_tracklist.getSelectedNodes().length;
-	disableSelectPlayAdd(any);
+	disableSelectPlayAdd(!any);
 }
 
 
