@@ -91,6 +91,16 @@ function disableSearchPlayAddAny()
 }
 
 
+
+function loadDetails(id)
+{
+	explorer_details.reload({
+		url: current_library_url() + '/track_metadata?id=' + id,
+		cache: true});
+}
+
+
+
 //--------------------------------------
 // init_page_explorer()
 //--------------------------------------
@@ -188,9 +198,10 @@ function init_page_explorer()
 			var selected = node.isSelected();
 			explorer_tracklist.onTreeSelect();
 
-			explorer_details.reload({
-				url: current_library_url() + '/track_metadata?id=' + rec.id,
-				cache: true});
+			// the time taken by this seems to stop dbl_click from working reliably
+			// so I defer it to a timer 500 ms later
+
+			setTimeout( loadDetails, 500, rec.id);
 
 			if (IS_TOUCH)
 			{
