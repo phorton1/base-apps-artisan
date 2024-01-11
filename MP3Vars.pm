@@ -6,9 +6,9 @@ BEGIN
 {
  	use Exporter qw( import );
 	our @EXPORT = qw (
-		
+
 		$WRITE_VERSION
-		
+
         @mp3_genres
         %rva2_channel_types
 
@@ -36,7 +36,7 @@ our $WRITE_VERSION = 4;
 	# However, I then decided not to write tags at all, so
 	# I prefer the in-memory representation of version 4
 	# which drops less stuff.
-	
+
 
 our @mp3_genres = (
     'Blues',
@@ -423,6 +423,8 @@ our %v24_only_tag_names =
     'TPRO' => 'v4 Produced notice',
     'TSOA' => 'v4 Album sort order',
     'TSOT' => 'v4 Title sort order',
+	'CTOC' => 'v4 Table of Contents',
+	'CHAP' => 'v4 Chapter',
 );
 
 
@@ -445,8 +447,8 @@ our %all_v2_tag_names =
 	(%v23and24_tag_names),
 	(%v24_only_tag_names)
 );
-	
-	
+
+
 
 # mapping from v2 to v3
 
