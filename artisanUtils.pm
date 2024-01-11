@@ -780,6 +780,7 @@ sub split_dir
 	#      album_name = full folder name
 	#      album_artist = the artist portion of the album_name
 	#      album_title = the title portion of the album_name
+	#	   year_str
 	#
 	# for tracks the following are added
 	#
@@ -794,7 +795,7 @@ sub split_dir
 	for my $field (qw(
 		path name
 		type section class album_name album_artist album_title name
-		track title artist ext))
+		track title artist ext year_str))
 	{
 		$rec->{$field} = '';
 	}
@@ -806,6 +807,10 @@ sub split_dir
 	$rec->{type} = 'root';
 	if ($fullpath)
 	{
+		$rec->{year_str} = $1
+			if $fullpath =~ / (\d\d\d\d)($|\/|\.mp3)/ ||
+			   $fullpath =~ /(\d\d\d\d) (Concert|Season)/;
+
 		# the first path element is the section (albums, singles, unresolved)
 		# set the usable parent path and node (track or folder) name
 

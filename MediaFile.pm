@@ -384,6 +384,7 @@ sub set_default_info
         if $split->{album_title} ne 'Unknown';
     $this->set("default_info",$path,'tracknum',$split->{track});
     $this->set("default_info",$path,'title',$split->{title});
+    $this->set("default_info",$path,'year_str',$split->{year_str});
 }
 
 

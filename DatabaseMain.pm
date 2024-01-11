@@ -512,7 +512,7 @@ sub del_unused_text_files
         unlink "$data_dir/$subdir/$id.txt" if $deleting;
         $num_extra++;
     }
-    display($dbg_changes,0,"FOUND $num_extra EXTRA $subdir FILES") if $num_extra;
+    display($dbg_changes,0,($deleting?"DELETED":"FOUND")." $num_extra EXTRA $subdir FILES") if $num_extra;
 	return 1;
 
 }
@@ -799,7 +799,7 @@ sub add_folder
 			$folder->{dirtype} ne $split->{type} ||
 			$folder->{has_art} ne $has_art)
 		{
-			display($dbg_changes,0,"folder_change($in_dir)");
+			display($dbg_changes+1,0,"folder_change($in_dir)");
 			$params->{num_folders_changed} ++;
 				# special meaning - it has changed types
 
@@ -981,7 +981,7 @@ sub	add_track
 			my $msg = $folder->{has_art} ? "added" : "removed";
 			bump_stat("folder_art_$msg");
 			bump_stat("folder_art_changed");
-			display($dbg_changes,1,"folder art $msg in $track->{title}");
+			display($dbg_changes+1,1,"folder art $msg in $track->{title}");
 			$track->{dirty} = 1;
 		}
 
