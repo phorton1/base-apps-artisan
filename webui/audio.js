@@ -47,9 +47,17 @@ function init_html_renderer(state)
 
 function init_audio()
 {
+    var saved_volume = getStorage('html_volume');
+	if (saved_volume != '')
+		html_renderer.volume = parseInt(saved_volume);
+    var saved_mute = getStorage('html_mute');
+	if (saved_mute != '')
+		html_renderer.muted = parseInt(saved_mute);
+
 	audio = document.createElement('audio');
 	audio.setAttribute('autoplay', true);
 	audio.volume = html_renderer.volume / 100;
+    audio.muted = html_renderer.muted;
 
 	if (false)
 	{
@@ -159,6 +167,7 @@ function audio_command(command,args)
 	{
 		html_renderer.muted = html_renderer.muted ? 0 : 1;
 		audio.muted = html_renderer.muted;
+		putStorage('html_muted',html_renderer.muted);
 	}
 	else if (command == 'set_volume')
 	{
@@ -167,6 +176,7 @@ function audio_command(command,args)
 		html_renderer.volume = volume;
 		audio.muted = 0;
 		audio.volume = volume / 100;
+		putStorage('html_volume',volume);
 	}
 
 	//-----------------------------------------------------------

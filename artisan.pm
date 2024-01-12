@@ -119,10 +119,9 @@ if (0 && !is_win() && $AS_SERVICE)
 #----------------------------------
 # (0) static initialization of prefs
 
-if (0)
-{
-	artisanPrefs::static_init_prefs();
-}
+
+artisanPrefs::static_init_prefs();
+
 
 # (1) LIBRARY
 # not done if $DEBUG_SSDP_ALONE

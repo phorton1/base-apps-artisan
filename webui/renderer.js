@@ -9,7 +9,7 @@ var in_volume_slider = false;
 
 var last_song = '';
 var last_playing = -1;
-
+var last_volume = 0;
 
 
 function toggle_volume_control()
@@ -30,9 +30,14 @@ function init_renderer_pane()
 				volume:ui.value });
 		},
 		start: function( event, ui ) {
+			last_volume = ui.value;
 			in_volume_slider = true;
 		},
 		slide: function( event, ui ) {
+			var diff = ui.value - last_volume;
+			if (diff < -4 || diff > 4)
+				renderer_command('set_volume',{
+					volume:ui.value });
 		},
 	});
 

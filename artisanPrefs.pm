@@ -28,16 +28,11 @@ BEGIN
  	use Exporter qw( import );
 	our @EXPORT = qw (
 
-		$PREF_SCAN_LIBRARY_AT_STARTUP
+		getPreference
+		setPreference
 
-		$PREF_USE_PREVIOUS_RENDERER
-		$PREF_PREVIOUS_RENDERER
-
-		$PREF_USE_PREVIOUS_PLAYSTATE
-		$PREF_PREVIOUS_PLAYSTATE
-
-		$PREF_START_DLNA_SERVER
-
+		$PREF_RENDERER_MUTE
+		$PREF_RENDERER_VOLUME
     );
 }
 
@@ -46,24 +41,15 @@ BEGIN
 # variables
 #-----------------------------
 
-our	$PREF_SCAN_LIBRARY_AT_STARTUP = "SCAN_LIBRARY_AT_STARTUP";
-our $PREF_USE_PREVIOUS_RENDERER = "USE_PREVIOUS_RENDERER";
-our $PREF_PREVIOUS_RENDERER = "PREVIOUS_RENDERER";
-our $PREF_USE_PREVIOUS_PLAYSTATE = "USE_PREVIOUS_PLAYSTATE";
-our $PREF_PREVIOUS_PLAYSTATE = "PREVIOUS_PLAYSTATE";
-our $PREF_START_DLNA_SERVER = "START_DLNA_SERVER";
+our	$PREF_RENDERER_MUTE = "RENDERER_MUTE";
+our $PREF_RENDERER_VOLUME = "RENDERER_VOLUME";
 
 
 # default preferences
 
 my @default_prefs =  (
-	$PREF_SCAN_LIBRARY_AT_STARTUP => 1,
-	$PREF_USE_PREVIOUS_RENDERER => 0,
-	$PREF_PREVIOUS_RENDERER => '',
-	$PREF_USE_PREVIOUS_PLAYSTATE => 0,
-	$PREF_PREVIOUS_PLAYSTATE => '',
-	$PREF_START_DLNA_SERVER => 1,
-
+	$PREF_RENDERER_MUTE => 0,
+	$PREF_RENDERER_VOLUME => 80,
 );
 
 my %g_prefs:shared = @default_prefs;
@@ -76,7 +62,7 @@ my %g_prefs:shared = @default_prefs;
 
 sub prefFilename()
 {
-	return "$artisan_perl_dir/artisan.prefs";
+	return "$temp_dir/artisan.prefs";
 }
 
 
@@ -91,6 +77,7 @@ sub setPreference
 {
 	my ($name,$value) = @_;
 	$g_prefs{$name} = $value;
+	write_prefs();
 }
 
 
@@ -117,7 +104,7 @@ sub static_init_prefs
 		    }
 		}
     }
-	elsif (1)	# create an empty prefs file
+	elsif (0)	# create an empty prefs file
 	{
 		write_prefs();
 	}
