@@ -809,6 +809,7 @@ sub split_dir
 	{
 		$rec->{year_str} = $1
 			if $fullpath =~ / (\d\d\d\d)($|\/|\.mp3)/ ||
+			   $fullpath =~ /(\d\d\d\d)-\d\d-\d\d/ ||
 			   $fullpath =~ /(\d\d\d\d) (Concert|Season)/;
 
 		# the first path element is the section (albums, singles, unresolved)

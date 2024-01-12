@@ -314,7 +314,7 @@ function renderTracklistNode(event,data,pl_offset)
 	$tdList.eq(1).html(rec.TITLE)		.addClass('home_title');
 	$tdList.eq(2).html(artist)			.addClass('home_artist');
 	$tdList.eq(3).text(rec.tracknum)	.addClass('home_tracknum');
-	$tdList.eq(4).text(rec.album_title)	.addClass('home_album');
+	$tdList.eq(4).html(rec.album_title)	.addClass('home_album');
 	$tdList.eq(5).text(rec.genre)		.addClass('home_genre');
 	$tdList.eq(6).text(rec.year_str)	.addClass('home_year');
 }
