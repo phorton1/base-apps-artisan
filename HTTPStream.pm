@@ -16,41 +16,12 @@ use IO::Select;
 use artisanUtils;
 use Database;
 use DeviceManager;
+use MP3Normalize;
+
 
 use locale;
 
 my $dbg_stream = 0;
-
-
-sub fix1252String
-	# still digging to understand why.
-	#
-	#	/mp3s/albums/Classical/Guitar/Various - Road to the Sun (Estrada do Sol)/10 - El decamerón negro_ III. Balada de la doncella enamorada.mp3
-	#
-	# Shows correctly here: El decamerón negro_ III, and in CONSOLE after
-	# I added $CONSOLE->OutputCP(1252) to Pub Utils;
-	#
-	# filenames with latin characters (i.e. 7E == o accent) were not playing.
-	# the string has exactly the same bytes as when I scanned the dir and
-	# put it in the database, but perl failed -f now, and not then.
-	# this 'fixes' it by rebuilding the string from the bytes therin,
-	# but it bugs the heck out of me.  Undoubtedly Perl is utf8 encoding
-	# them when I retrieve them from the database, but there's no way
-	# I have found to 'prove' that.  The UTF8 'internal flag' is opaque.
-	#
-	# Who knows when this will come back to haunt me in another way
-	# when I try to open a file or directory in some other piece
-	# of code?
-{
-	my ($s) = @_;
-	my $out = '';
-	for (my $i=0; $i<length($s); $i++)
-	{
-		my $b = ord(substr($s,$i,1));
-		$out .= chr($b);
-	}
-	return $out;
-}
 
 
 sub stream_media
@@ -96,8 +67,9 @@ sub stream_media
 				'log' => 'httpstream' });
 			return;
         }
-    	LOG(1,"stream_media($id) len=$track->{size} file=$track->{path}");
 
+		my $track_size = $track->{size};
+    	LOG(1,"stream_media($id) len=$track_size file=$track->{path}");
 
         # sanity checks
 
@@ -111,10 +83,21 @@ sub stream_media
 			return;
 		}
 
+
 		my $filename2 = "$mp3_dir/$track->{path}";
 			# display_bytes(0,0,"path",$filename2);
 		my $filename = fix1252String($filename2);
-			# display_bytes(0,0,"path($filename)",$filename);
+		my $normalized = getNormalizedFilename($filename);
+
+		if ($normalized)
+		{
+			$filename = $normalized;
+			my @fileinfo = stat($filename);
+			$track_size = $fileinfo[7];
+			display($dbg_stream,1,"normalized_size = $track_size");
+		}
+
+		# display_bytes(0,0,"path($filename)",$filename);
 		# print "same filename? ".($filename eq $filename2 ? "yup" : "nope, wtf")."\n";
 			# the strings have the same exact characters as shown by display_bytes().
 			# perl thinks they're the same string with 'eq'.
@@ -138,7 +121,7 @@ sub stream_media
 		my $to_byte = 0;
 		my $is_ranged = 0;
 		my $from_byte = 0;
-		my $size = $track->{size};
+		my $size = $track_size;
 		my $content_len = $size;
 		my $status_code = 200;
 
@@ -162,11 +145,11 @@ sub stream_media
 			display($dbg_stream,1,"Doing Range request from $from_byte to $to_byte = $content_len bytes");
 		}
 
-		my $send_it = 
+		my $send_it =
 			$headers->{USER_AGENT} &&
 			$headers->{USER_AGENT} =~ /^mpg123/ ? 1 : 0;
 		# MOD for linux mpg123 - send the bytes, not just the headers
-			
+
 		# OK, so what seems to work is that if we DONT get a range request,
 		# we JUST return the headers, telling them to Accept-Ranges, then
 		# they call us back with another ranged request ?!?!
@@ -210,7 +193,7 @@ sub stream_media
 			push @addl_headers, "Accept-Ranges: bytes";
 			if ($is_ranged)
 			{
-				push @addl_headers, "Content-Range: bytes $from_byte-$to_byte/$track->{size}";
+				push @addl_headers, "Content-Range: bytes $from_byte-$to_byte/$track_size";
 			}
 		}
 

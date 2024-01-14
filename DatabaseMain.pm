@@ -50,6 +50,8 @@ use Database;
 use MediaFile;
 use Folder;
 use Track;
+use MP3Normalize;
+
 
 my $dbg_scan = 1;
 	# 0 = shows # files scanned and unknown files
@@ -583,6 +585,12 @@ sub scan_directory
         my $file = add_track($params,$folder,$dir,$file);
 		return if !$file;
     }
+
+	# Normalize the files if needed
+
+	checkNormalization($dir,\@files)
+		if is_win();
+
 
 	# do the subfolders
 
