@@ -6,8 +6,10 @@ var dbg_popup 	 = 1;
 var dbg_loop     = 1;
 var dbg_swipe    = 1;
 
-var restart_message = '';
-
+var restarting = 0;
+	// -1 = transient restarting
+	//  0 = running normally
+	//  1 = check for restart
 
 var WITH_SWIPE = false;
 	// If it is true, then a swipe event handler will be added to
@@ -170,56 +172,59 @@ $( window ).resize(function()
 
 function idle_loop()
 {
-	if (restart_message != '')
-		return;
-
-	display(dbg_loop,0,"idle_loop(" + current_page + ")");
-	idle_count++;
-
-	if (!in_slider && !in_volume_slider)
+	if (restarting >= 0)
 	{
-		var data = { update_id: update_id };
-		if (current_renderer.uuid == html_renderer.uuid)
-		{
-			audio_command('update');
-			update_renderer_ui();
-		}
-		else
-		{
-			data.renderer_uuid = current_renderer.uuid;
-			if (current_renderer.html_audio)
-				addHTMLAudioData(data);
-		}
+		display(dbg_loop,0,"idle_loop(" + current_page + ")");
+		idle_count++;
 
-		$.ajax({
-			async: true,
-			url: '/webui/update',
-			data: data,
-
-			success: function (result)
+		if (!in_slider && !in_volume_slider)
+		{
+			var data = { update_id: update_id };
+			if (current_renderer.uuid == html_renderer.uuid)
 			{
-				if (result.update_id)
-					update_id = result.update_id;
-				if (result.libraries)
-					updateLibraries(result.libraries);
-				if (result.renderer)
+				audio_command('update');
+				update_renderer_ui();
+			}
+			else
+			{
+				data.renderer_uuid = current_renderer.uuid;
+				if (current_renderer.html_audio)
+					addHTMLAudioData(data);
+			}
+
+			$.ajax({
+				async: true,
+				url: '/webui/update',
+				data: data,
+
+				success: function (result)
 				{
-					if (result.renderer.html_audio)
-						handle_html_audio(result.renderer.html_audio);
+					if (restarting)
+						clearRestart();
 
-					current_renderer = result.renderer;
-					update_renderer_ui();
-				}
-			},
+					if (result.update_id)
+						update_id = result.update_id;
+					if (result.libraries)
+						updateLibraries(result.libraries);
+					if (result.renderer)
+					{
+						if (result.renderer.html_audio)
+							handle_html_audio(result.renderer.html_audio);
 
-			error: function() {
-				error("UPDATE ERROR: There was an error calling /webui/update");
-			},
+						current_renderer = result.renderer;
+						update_renderer_ui();
+					}
+				},
 
-			timeout: 3000,
-		});
+				error: function() {
+					error("UPDATE ERROR: There was an error calling /webui/update");
+				},
+
+				timeout: 3000,
+			});
+		}
 	}
-
+	
 	setTimeout("idle_loop();", REFRESH_TIME);
 }
 
@@ -579,27 +584,33 @@ function system_command(command)
 	{
 		$.get(command,function(result)
 		{
-			// Setting the restart_message stops the update loop.
-			// We clear the restart_message after 8 seconds which
-			// is enough time for the service to restart or the
-			// reboot to take place.  Thereafter, upon the first
-			// successful update, the message will change into a number
-			// on the screen.
-
-			disable_button('.artisan_menu_item',true);
-			restart_message = command;
-			current_renderer = '';
-			update_renderer_ui()
-
+			restarting = -1;
+			disableUI(true);
+			update_renderer_ui();			
+			$('.artisan_menu_library_name').html(command);
+			my_alert(command,command);
 			setTimeout(function() {
-				restart_message = '';
-				disable_button('.artisan_menu_item',false);
+				restarting = 1;
 			}, 8000);
-
-			alert(result);
-
 		});
 	}
+}
+
+
+
+function clearRestart()
+{
+	$('.artisan_menu_library_name').html(current_library.name);
+	disableUI(false);
+	restarting = 0;
+}
+
+
+
+
+function disableUI(disable)
+{
+	disable_button('.artisan_menu_item',disable);	
 }
 
 

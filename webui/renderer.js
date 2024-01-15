@@ -187,13 +187,13 @@ function update_renderer_ui()
 
 	// BASED ON RENDERER
 
-	if (!current_renderer || !current_renderer.queue)
+	if (restarting ||
+	    !current_renderer || 
+	    !current_renderer.queue)
 	{
 		last_playing = -1;
 		$('#renderer_header_left').html('');
-
-		var message = restart_message == '' ? 'no_renderer' : restart_message;
-		$('#renderer_header_right').html(message);
+		$('#renderer_header_right').html('no_renderer');
 		disable_button('#mute_button',true);
 		disable_button('#renderer_status',true);
 	}
@@ -260,7 +260,7 @@ function update_renderer_ui()
 
 	// BASED ON QUEUE
 
-	if (!queue)
+	if (restarting || !queue)
 	{
 		$('#transport_play').html('>');
 
@@ -301,7 +301,7 @@ function update_renderer_ui()
 	// BASED ON METADATA
 	// which is the current song playing
 
-	if (!metadata)
+	if (restarting || !metadata)
 	{
 		$('#renderer_song_title')	.html('');
 		$('#renderer_album_artist')	.html('');
