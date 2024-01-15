@@ -84,7 +84,8 @@ sub onSignal
     LOG(-1,"main terminating on SIG$sig");
 	$quitting = 1;
 	sleep(3);
-    kill 6,$$;
+    # kill 6,$$;
+	kill 9, $$;
 }
 
 
@@ -190,6 +191,7 @@ if (0)
 while (1)
 {
 
+	LOG(0,"loop $restart_service");
 	if ($restart_service && time() > $restart_service + 5)
 	{
 		$restart_service = 0;
