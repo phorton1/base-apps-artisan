@@ -75,17 +75,23 @@ display($dbg_main,0,"server_ip($server_ip) server_port($server_port)");
 
 sub onSignal
 {
-    my ($sig) = @_;
-    if ($sig eq 'PIPE')
+    my ($sig) = @_;			# 15 = SIGTERM, 2=SIGINT
+    if ($sig eq 'PIPE')		# 13 = SIGPIPE
     {
 		warning(0,0,"got SIG$sig");
 		return;
 	}
     LOG(-1,"main terminating on SIG$sig");
-	# $quitting = 1;
-	# sleep(3);
-    # kill 6,$$;
-	kill 9, $$;
+
+	# I used to try to do an orderly shutdown of the service,
+	# particularly sending SSDP byebye messages, but that seemed
+	# to hang frequently on linux, so now I just exit immediately.
+	#
+	# 		$quitting = 1;
+	# 		sleep(3);
+    # 		kill 6,$$;		# 6 == SIGABRT
+
+	kill 9, $$;		# 9 == SIGKILL
 }
 
 
