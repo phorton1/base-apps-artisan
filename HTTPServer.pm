@@ -375,6 +375,21 @@ sub handle_connection
 		$dbg_displayable = 0;
 	}
 
+	# linux only reboot and restart requests
+
+	elsif ($request_path eq "/reboot")
+	{
+		LOG(0,"Artisan rebooting the rPi");
+		system("sudo reboot") if is_win();
+		$response = http_header()."Rebooting Server\r\n";
+	}
+	elsif ($request_path eq '/restart_service')
+	{
+		LOG(0,"Artisan restarting service in 5 seconds");
+		$restart_service = time() if is_win();
+		$response = http_header()."Restarting Service.\nWill reload WebUI in 30 seconds..\r\n";
+	}
+
 	# unsupported request
 
 	else

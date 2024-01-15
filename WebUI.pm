@@ -357,6 +357,9 @@ sub process_html
 	my ($html,$level) = @_;
 	$level ||= 0;
 
+	my $is_win = is_win() ? 1 : 0;
+	$html =~ s/is_win\(\)/$is_win/s;
+
 	while ($html =~ s/<!-- include (.*?) -->/###HERE###/s)
 	{
 		my $id = '';

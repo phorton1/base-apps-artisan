@@ -91,3 +91,9 @@ table
 	text-align: right;
 }
 
+
+
+.linux_only
+{
+	display:none;
+}

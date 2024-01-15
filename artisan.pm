@@ -189,6 +189,14 @@ if (0)
 
 while (1)
 {
+
+	if ($restart_service && time() > $restart_service + 5)
+	{
+		$restart_service = 0;
+		LOG(0,"RESTARTING SERVICE");
+		system("sudo systemctl restart artisan");
+	}
+
 	if ($CONSOLE_IN)
 	{
 
@@ -251,7 +259,6 @@ AFTER_EXCEPTION:
 					}
 				}
 			}
-
 			sleep(0.2);
 		}
 		catch Error with
@@ -267,8 +274,9 @@ AFTER_EXCEPTION:
 
 	else	# !$CONSOLE_IN
 	{
-		sleep(10);
+		sleep(2);
 	}
+
 }
 
 

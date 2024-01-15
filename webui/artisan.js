@@ -73,6 +73,9 @@ $(function()
 
 	// STATIC LAYOUT
 
+	if (!is_win)
+		$('.linux_only').show();
+
 	$('.artisan_menu_item').button();
 
 	// LAYOUT TRICKS for IS_TOUCH and more.
@@ -558,6 +561,24 @@ function onswipe(event, direction, distance, duration, fingerCount, fingerData)
 			layout.close(pane);
 		}
 	}
+}
+
+
+//---------------------------------------
+// linux only system_command
+//---------------------------------------
+
+function system_command(command)
+{
+	$.get(command,
+	function(result)
+	{
+		if (command == 'restart_service')
+		{
+			setTimeout(function() { location.reload(); }, 30000);
+		}
+		alert(result);
+	});
 }
 
 
