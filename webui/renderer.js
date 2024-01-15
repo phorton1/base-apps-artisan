@@ -191,7 +191,9 @@ function update_renderer_ui()
 	{
 		last_playing = -1;
 		$('#renderer_header_left').html('');
-		$('#renderer_header_right').html('no renderer');
+
+		var message = restart_message == '' ? 'no_renderer' : restart_message;
+		$('#renderer_header_right').html(message);
 		disable_button('#mute_button',true);
 		disable_button('#renderer_status',true);
 	}

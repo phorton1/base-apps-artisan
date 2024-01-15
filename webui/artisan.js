@@ -6,6 +6,8 @@ var dbg_popup 	 = 1;
 var dbg_loop     = 1;
 var dbg_swipe    = 1;
 
+var restart_message = '';
+
 
 var WITH_SWIPE = false;
 	// If it is true, then a swipe event handler will be added to
@@ -168,6 +170,9 @@ $( window ).resize(function()
 
 function idle_loop()
 {
+	if (restart_message != '')
+		return;
+
 	display(dbg_loop,0,"idle_loop(" + current_page + ")");
 	idle_count++;
 
@@ -570,15 +575,31 @@ function onswipe(event, direction, distance, duration, fingerCount, fingerData)
 
 function system_command(command)
 {
-	$.get(command,
-	function(result)
+	if (confirm(command + '?'))
 	{
-		if (command == 'restart_service')
+		$.get(command,function(result)
 		{
-			setTimeout(function() { location.reload(); }, 30000);
-		}
-		alert(result);
-	});
+			// Setting the restart_message stops the update loop.
+			// We clear the restart_message after 8 seconds which
+			// is enough time for the service to restart or the
+			// reboot to take place.  Thereafter, upon the first
+			// successful update, the message will change into a number
+			// on the screen.
+
+			disable_button('.artisan_menu_item',true);
+			restart_message = command;
+			current_renderer = '';
+			update_renderer_ui()
+
+			setTimeout(function() {
+				restart_message = '';
+				disable_button('.artisan_menu_item',false);
+			}, 8000);
+
+			alert(result);
+
+		});
+	}
 }
 
 

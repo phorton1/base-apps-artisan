@@ -190,8 +190,6 @@ if (0)
 
 while (1)
 {
-
-	LOG(0,"loop $restart_service");
 	if ($restart_service && time() > $restart_service + 5)
 	{
 		$restart_service = 0;
