@@ -12,7 +12,7 @@
 # Then:
 #
 # Artisan.pm without NO_SERVICE will create a PIDFile in 
-#    /var/run/artisan.pid.
+#    /base_data/temp/artisan/artisan.pid
 #
 # INSTALLATION:
 #
@@ -20,7 +20,7 @@
 # /usr/lib/systemd/system/ directory
 #
 #   > cd /base/apps/artisan
-#   > sudo cp artisan.service /usr/lib/systsemd/system
+#   > sudo cp artisan.service /usr/lib/systemd/system
 #
 # and run:
 #
@@ -36,17 +36,22 @@
 #
 # to the file in /usr/lib/systemd/system directory, and enable the service
 # on startup.  Thereafter you should be able to start and stop the service
-# from Webmin Bootup/Shutdown, and/or from any web pages I build to do the,
+# from Webmin Bootup/Shutdown, and/or from any web pages I build to do so,
 # or via sudo systemctl start/restart/stop prh-fileserver
 # and it should be running on a freshly booted machine.
+# 
+# If you modify this file you need to stop the service,
+# recopy this file to /usr/lib/systemd/system, run
+# sudo systemctl daemon-reload, and then restart it.
 
 
 [Unit]
 Description=:Artisan DLNA MP3 Server Service
 
 [Service]
+User=pi
 Type=forking
-PIDFile=/var/run/artisan.pid
+PIDFile=/base_data/temp/artisan/artisan.pid
 ExecStart=/base/apps/artisan/artisan.pm
 ExecStop=kill -KILL $(cat /var/run/artisan.pid)
 # We must import the PERRLIB environment variable

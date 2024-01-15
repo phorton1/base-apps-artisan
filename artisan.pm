@@ -82,8 +82,8 @@ sub onSignal
 		return;
 	}
     LOG(-1,"main terminating on SIG$sig");
-	$quitting = 1;
-	sleep(3);
+	# $quitting = 1;
+	# sleep(3);
     # kill 6,$$;
 	kill 9, $$;
 }

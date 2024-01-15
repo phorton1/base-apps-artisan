@@ -232,13 +232,13 @@ if ($USE_MINI_LIBRARY)
 $data_dir = "$mp3_dir/_data";
 $temp_dir = "/base_data/temp/artisan";
 $logfile = "$temp_dir/artisan.log";
-mkdir $temp_dir if !-d $temp_dir;
+my_mkdir $temp_dir if !-d $temp_dir;
 
 
 our $server_port = '8091';
 #	our $server_ip = '';
 
-our $LINUX_PID_FILE = "/var/run/artisan.pid";
+our $LINUX_PID_FILE = "$temp_dir/artisan.pid";
 
 Pub::Utils::initUtils(1);
 Pub::ServerUtils::initServerUtils(1,$LINUX_PID_FILE);
