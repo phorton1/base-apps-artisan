@@ -59,6 +59,8 @@ use localPlaylist;
 use remoteLibrary;
 use remoteRenderer;
 use remoteArtisanLibrary;
+use IO::Select;
+
 
 use sigtrap 'handler', \&onSignal, 'normal-signals';
 
@@ -194,6 +196,14 @@ if (0)
 #------------------------------------------------------
 # keyboard input only supported on Windows NO_SERVICE
 
+my $linux_keyboard;
+if (is_win() && !$AS_SERVICE)
+{
+	$linux_keyboard = IO::Select->new();
+	$linux_keyboard->add(\*STDIN);
+}
+
+
 while (1)
 {
 	if ($restart_service && time() > $restart_service + 5)
@@ -202,6 +212,8 @@ while (1)
 		LOG(0,"RESTARTING SERVICE");
 		system("sudo systemctl restart artisan");
 	}
+
+
 
 	if ($CONSOLE_IN)
 	{
@@ -278,9 +290,27 @@ AFTER_EXCEPTION:
 		};
 	}
 
-	else	# !$CONSOLE_IN
+	elsif ($linux_keyboard)
 	{
-		sleep(2);
+		if ($linux_keyboard->can_read(2))
+		{
+			my $line = <STDIN>;
+			chomp $line;
+			if ($line eq 'd')
+			{
+				 print "\033[2J\n";
+			}
+			elsif ($line eq 'a')
+			{
+				display($dbg_main,0,"artisan.pm calling SSDP doAlive()");
+				SSDP::doAlive();
+			}
+			elsif ($line eq 's')
+			{
+				display($dbg_main,0,"artisan.pm calling SSDP doSearch()");
+				SSDP::doSearch();
+			}
+		}
 	}
 
 }
