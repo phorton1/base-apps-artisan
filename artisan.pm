@@ -197,7 +197,7 @@ if (0)
 # keyboard input only supported on Windows NO_SERVICE
 
 my $linux_keyboard;
-if (is_win() && !$AS_SERVICE)
+if (!is_win() && !$AS_SERVICE)
 {
 	$linux_keyboard = IO::Select->new();
 	$linux_keyboard->add(\*STDIN);
