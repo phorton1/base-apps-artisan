@@ -59,6 +59,7 @@ table
 
 
 
+.cover_screen,
 .desktop_page
 {
     width:100%;
@@ -67,6 +68,13 @@ table
 	top:0;
 	position:absolute;
 	display:none;
+}
+
+.cover_screen
+{
+	z_index:1000;
+	background-color:#000000 !important;
+	opacity:0.5;
 }
 
 
@@ -93,6 +101,7 @@ table
 
 
 
+.as_service,
 .linux_only
 {
 	display:none;

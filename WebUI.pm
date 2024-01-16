@@ -357,8 +357,14 @@ sub process_html
 	my ($html,$level) = @_;
 	$level ||= 0;
 
+	# special global variable replacement
+
 	my $is_win = is_win() ? 1 : 0;
+	my $as_service = $AS_SERVICE ? 1 : 0;
+
 	$html =~ s/is_win\(\)/$is_win/s;
+	$html =~ s/as_service\(\)/$as_service/s;
+
 
 	while ($html =~ s/<!-- include (.*?) -->/###HERE###/s)
 	{

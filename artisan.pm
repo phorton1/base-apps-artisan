@@ -210,7 +210,14 @@ while (1)
 	{
 		$restart_service = 0;
 		LOG(0,"RESTARTING SERVICE");
-		system("sudo systemctl restart artisan");
+		if (is_win())
+		{
+			kill 9, $$;		# 9 == SIGKILL
+		}
+		else
+		{
+			system("sudo systemctl restart artisan");
+		}
 	}
 
 

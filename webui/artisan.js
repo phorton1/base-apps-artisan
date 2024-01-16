@@ -79,6 +79,9 @@ $(function()
 
 	if (!is_win)
 		$('.linux_only').show();
+	if (as_service)
+		$('.as_service').show();
+
 
 	$('.artisan_menu_item').button();
 
@@ -224,7 +227,7 @@ function idle_loop()
 			});
 		}
 	}
-	
+
 	setTimeout("idle_loop();", REFRESH_TIME);
 }
 
@@ -585,13 +588,20 @@ function system_command(command)
 		$.get(command,function(result)
 		{
 			restarting = -1;
-			disableUI(true);
-			update_renderer_ui();			
+
+			// restarting != 0 stops any subsequent gets to the server
+			// which is, as far as I know, only the on_idle() update loop
+
+			$('.cover_screen').show();
+			audio_command('stop');
+			update_renderer_ui();
 			$('.artisan_menu_library_name').html(command);
 			my_alert(command,command);
+			var delay = command == 'reboot' ? 30000 : 8000;
+
 			setTimeout(function() {
 				restarting = 1;
-			}, 8000);
+			}, delay);
 		});
 	}
 }
@@ -601,17 +611,13 @@ function system_command(command)
 function clearRestart()
 {
 	$('.artisan_menu_library_name').html(current_library.name);
-	disableUI(false);
 	restarting = 0;
+	location.reload();
 }
 
 
 
 
-function disableUI(disable)
-{
-	disable_button('.artisan_menu_item',disable);	
-}
 
 
 // end of artisan.js

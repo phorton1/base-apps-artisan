@@ -386,7 +386,7 @@ sub handle_connection
 	elsif ($request_path eq '/restart_service')
 	{
 		LOG(0,"Artisan restarting service in 5 seconds");
-		$restart_service = time() if !is_win();
+		$restart_service = time();	# if !is_win();
 		$response = http_header()."Restarting Service.\nWill reload WebUI in 30 seconds..\r\n";
 	}
 
