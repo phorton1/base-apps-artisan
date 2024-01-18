@@ -2,6 +2,36 @@
 #---------------------------------------
 # testFilenames.pm
 #---------------------------------------
+# This is so damned complicated.
+# Just dealing with filenames is a pain.
+# There is also MP3 metadata decoding, and the webUI to consider.
+#
+# Windows scans filenames in 1252 (Latin)
+#		accented e == 0xE9
+# Linux scans filenames in UTF8
+#		accented e = 0xC3 0xA9
+# Currently, the webUI is expecting 1252 encoding
+#		after being variously json and/or url encoded
+#
+# Default SQLite encoding is platform specific, with
+# 	windows 1252 and linux UTF???
+# and can be forced to UTF8 (unicode)
+#
+# Various methods compare filenames.  Some can be 'known'
+# 	to be using scan or database filenames, but others
+#   cannot.
+#
+# I wish I could force SQLite to use 1252 (or essentially NO encoding)
+
+
+
+
+
+
+
+
+
+
 # Attempt to put to rest filename encoding issues.
 #
 # 1. As far as I can tell, raw filenames gotten from the directory
@@ -48,16 +78,15 @@ use Encode;
 use Time::HiRes qw(stat);
 
 
-my $test_db = "$temp_dir/testFilenames.db";
 my $test_path = $mp3_dir.'/albums/Blues/Soft/Marc Broussard - Momentary Setback';
-my $pm_leaf = '04 - French Café.mp3';
+my $default_db = "$temp_dir/testFilenames_default.db";
+my $unicode_db = "$temp_dir/testFilenames_unicode.db";
 
-unlink $test_db;
 
 # $pm_leaf = fix1252String($pm_leaf) is the same, I think, as:
 # utf8::downgrade($pm_leaf);
 
-$pm_leaf = Encode::encode("utf-8",$pm_leaf) if !is_win();
+
 
 sub getLeafFromDir
 {
@@ -120,23 +149,54 @@ sub test
 
 
 
+sub showString
+{
+	my ($what,$string) = @_;
+	# my $is_utf8 = utf8::is_utf8($string) ? 1 : 0;
+	my $is_utf8 = Encode::is_utf8($string) ? 1 : 0;
+	my $valid =  utf8::valid($string);
+	display_bytes(0,0,"$what($is_utf8,$valid) $string",$string);
+}
+
+
 
 # main
+# Comments are 'is_utf8' char code(s) for accented e
 
 display(0,0,"testFilenames.pm started");
 
+my $pm_leaf = '04 - French Café.mp3';
+my $utf8_pm_leaf = Encode::encode("utf-8",$pm_leaf);
+my $iso_pm_leaf = Encode::encode('iso-8859-1',$pm_leaf);
+showString("orig pm_leaf",$pm_leaf);
+showString("utf8 pm_leaf",$utf8_pm_leaf);
+showString("iso  pm_leaf",$iso_pm_leaf);
+
+
 my $dir_leaf = getLeafFromDir();
+my $utf8_dir_leaf = Encode::encode("utf-8",$dir_leaf);
+my $iso_dir_leaf = Encode::encode('iso-8859-1',$dir_leaf);
+showString("orig dir_leaf",$dir_leaf);
+showString("utf8 dir_leaf",$utf8_dir_leaf);
+showString("iso  dir_leaf",$iso_dir_leaf);
 
-my $dbh = db_connect($test_db);
-create_table($dbh,"tracks");
 
-my $dbpm_leaf = database_leaf($dbh,'pm',$pm_leaf);
-my $dbdir_leaf = database_leaf($dbh,'dir',$dir_leaf);
+$SQLite::SQLITE_UNICODE = 1;
 
-test('pm',$pm_leaf);
-test('dir',$dir_leaf);
-test('dbpm',$dbpm_leaf);
-test('dbdir',$dbdir_leaf);
+
+# my $dbh = db_connect($test_db);
+# create_table($dbh,"tracks");
+
+
+
+#
+# my $dbpm_leaf = database_leaf($dbh,'pm',$pm_leaf);
+# my $dbdir_leaf = database_leaf($dbh,'dir',$dir_leaf);
+#
+# test('pm',$pm_leaf);
+# test('dir',$dir_leaf);
+# test('dbpm',$dbpm_leaf);
+# test('dbdir',$dbdir_leaf);
 
 
 display(0,0,"testFilenames.pm finished");
