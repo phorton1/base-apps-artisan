@@ -80,7 +80,7 @@ sub test
 {
 	my ($what,$leaf) = @_;
 	my $path = "$test_path/$leaf";
-	display_bytes(0,0,"$what($leaf)",$leaf);
+	showString(0,0,$what,$leaf);
 
    	my @fileinfo = stat($path);
 	my $size = $fileinfo[7];

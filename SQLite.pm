@@ -57,11 +57,11 @@ sub sqlite_connect
 	# On linux, this *might* be needed even if we specify $SQLITE_UNICODE = 0,
 	# we still get the database stored (and retrievedd in utf-8)
 	#
-	#	if (!$SQLITE_UNICODE && !is_win())
-	#	{
-	#		use if !is_win(), 'DBD::SQLite::Constants';
-	#		$dbh->{sqlite_string_mode} = DBD::SQLite::Constants::DBD_SQLITE_STRING_MODE_BYTES()
-	#	}
+	if (!$SQLITE_UNICODE && !is_win())
+	{
+			use if !is_win(), 'DBD::SQLite::Constants';
+			$dbh->{sqlite_string_mode} = DBD::SQLite::Constants::DBD_SQLITE_STRING_MODE_BYTES();
+	}
 
 	return $dbh;
 }
