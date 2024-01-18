@@ -964,7 +964,13 @@ sub	add_track
 	{
 		$track->{file_exists} = 1;
 
-		if ($track->{timestamp} ne $timestamp)
+		# The timestamps are stored as integers, which differ
+		# from linux to windows.  However, the strings returned
+		# by gmtToLocalTime() are the same, so we compare them
+		# using eq rather than the integers using !=
+
+		# if ($track->{timestamp} != $timestamp)
+		if (gmtToLocalTime($track->{timestamp}) ne gmtToLocalTime($timestamp))
 		{
 			bump_stat("file timestamp changed");
 
