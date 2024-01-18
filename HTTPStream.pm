@@ -83,10 +83,8 @@ sub stream_media
 			return;
 		}
 
-
-		my $filename2 = "$mp3_dir/$track->{path}";
-			# display_bytes(0,0,"path",$filename2);
-		my $filename = fix1252String($filename2);
+		my $filename = "$mp3_dir/$track->{path}";
+		utf8::downgrade($filename) if is_win();
 		my $normalized = getNormalizedFilename($filename);
 
 		if ($normalized)

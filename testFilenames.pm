@@ -10,25 +10,13 @@
 #    on linux because THIS file is encoded with 1252 ...
 #
 # The issue arises when we put the path into mySQL and then retreive it.
-# The notion is/was that I could just move the database from windows to linux,
-# but there are at least two problems with that approach:
+# If I dont use sqlite_unicode=>1 in SQLite.pm, then everything works
+# on windows, but I will have a host of problems on linux, not only
+# with filenames, but all displayable strings.
 #
-#		- timestamps for tracks are stored as an integer and windows
-#		- mySQL has to assume some kind of encoding
-
-
-# 3. artisan/SQLite.pm is/was using 'sqlite_unicode=>1'
-#    which *may* have been the root of the problem.
-
-# At this point, if I remove the sqlite_unicode=>1 from SQLite.pm,
-# this program works, EXCEPT the constant in the THIS file needs
-# to be encoded to utf-8 on linux.
-#
-# The question becomes more complicated when we move the DB between
-# machines.  The simplest way to test this is to try it on windows,
-# removing the body of fix1252String() and the utf8::downgrade in
-# MediaFile
-
+# So, the simplest solution is to (continue to) use sqlite_unicode=>1
+# in the database, and 'demote' the utf8 filenames upon usage in
+# windows.
 
 package testFilenames;
 use strict;
@@ -44,10 +32,6 @@ use Time::HiRes qw(stat);
 my $test_db = "$temp_dir/testFilenames.db";
 my $test_path = $mp3_dir.'/albums/Blues/Soft/Marc Broussard - Momentary Setback';
 my $pm_leaf = '04 - French Café.mp3';
-
-my $tm_test = "$mp3_dir/albums/Friends/Pat Kingsland - Various/Mean Town Blues.mp3";
-my $tm_win = 1587159415;
-
 
 unlink $test_db;
 
@@ -79,7 +63,7 @@ sub database_leaf
 	my $found_leaf = $found->{path};
 
 	# paths retreived from the database need to use utf8::downgrade() at some point.
-	# utf8::downgrade($found_leaf);
+	utf8::downgrade($found_leaf) if is_win();
 
 	return $found_leaf;
 }
@@ -120,16 +104,7 @@ sub test
 
 # main
 
-display(0,0,"testFilenames.pm 2 started");
-
-# time stamp test
-
-my ($dev,$ino,$mode,$nlink,$uid,$gid,$rdev,$size,
-	$atime,$mtime,$ctime,$blksize,$blocks) = stat($tm_test);
-display(0,0,"timestamp=$mtime");
-
-
-
+display(0,0,"testFilenames.pm started");
 
 my $dir_leaf = getLeafFromDir();
 

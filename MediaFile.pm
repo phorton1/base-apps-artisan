@@ -42,15 +42,8 @@ sub new
     display($dbg_mediafile,0,"MediaFile::new($rel_path) force=$force");
     my $utf_path = "$mp3_dir/$rel_path";
 
-    # 2015-07-02 Had to add handling of UTF filenames presumably from database.
-    # For windows, we have to utf8:downgrade the string, which is apparently not
-    # really utf encoded, but which thinks it is?
-    # For android we have to encode the non-encoded filename from the database
-    # cuz unix is using utf-8 filenames.
-    # At least the filename seems to come out of the database the same
-    # on both platforms, sheesh.
-
     my $path = $utf_path;
+	utf8::downgrade($path) if is_win();
 
     # if (0)
     # {

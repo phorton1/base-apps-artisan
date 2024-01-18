@@ -40,7 +40,7 @@ sub sqlite_connect
 	$password ||= '';
     display($dbg_sqlite,0,"db_connect");
 	my $dsn = "dbi:SQLite:dbname=$db_name";
-	my $dbh = DBI->connect($dsn,$user,$password);	# ,{sqlite_unicode => 1,});
+	my $dbh = DBI->connect($dsn,$user,$password,{sqlite_unicode => 1,});
     if (!$dbh)
     {
         error("Unable to connect to Database: ".$DBI::errstr);
