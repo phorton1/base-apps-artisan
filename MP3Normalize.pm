@@ -4,7 +4,6 @@
 #---------------------------------------
 # getNormalizedFilename($filename)
 #	called by HTTPStream.pm with the path to a stream
-#   (on which utf8::downgrade() has already been called).
 #	and if it exists in the 'normlized' subdirectory, returns
 #   the '_normalized' filename. Otherwise it returns what was
 #   passed in.
@@ -205,7 +204,7 @@ sub doFFMpegCommand
 sub normalizeOne
 {
 	my ($dir,$normal_dir,$file,$params) = @_;
-	utf8::downgrade($file) if is_win();
+	$file = fixUTF8($file);
 
 	my $ifile = "$dir/$file";
 	my $ofile = "$normal_dir/$file";

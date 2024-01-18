@@ -40,21 +40,8 @@ sub new
     $force ||= 0;
 
     display($dbg_mediafile,0,"MediaFile::new($rel_path) force=$force");
-    my $utf_path = "$mp3_dir/$rel_path";
-
-    my $path = $utf_path;
-	utf8::downgrade($path) if is_win();
-
-    # if (0)
-    # {
-	# 	# if running on the car stereo, I found I needed this
-    #     $path = Encode::encode("utf-8",$path);
-    # }
-    # else
-    # {
-	# 	# and otherwise, I guess I need this
-    #     utf8::downgrade($path);
-    # }
+    my $path = "$mp3_dir/$rel_path";
+	$path = fixUTF8($path);
 
    	my @fileinfo = stat($path);
 	my $size = $fileinfo[7];
@@ -116,7 +103,7 @@ sub new
     # all single/albums MP3s and start using the tag version,
     # and give a warning when it overrides the folder version.
 
-    $this->set_default_info($utf_path);
+    $this->set_default_info($path);
         # distinction between the path used in perl,
         # which has been utf8:downgraded, and the one
         # passed to set_default_info, which sets up displayable
