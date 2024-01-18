@@ -79,8 +79,7 @@ use Time::HiRes qw(stat);
 
 
 my $test_path = $mp3_dir.'/albums/Blues/Soft/Marc Broussard - Momentary Setback';
-my $default_db = "$temp_dir/testFilenames_default.db";
-my $unicode_db = "$temp_dir/testFilenames_unicode.db";
+
 
 
 # $pm_leaf = fix1252String($pm_leaf) is the same, I think, as:
@@ -181,18 +180,34 @@ showString("utf8 dir_leaf",$utf8_dir_leaf);
 showString("iso  dir_leaf",$iso_dir_leaf);
 
 
-$SQLite::SQLITE_UNICODE = 1;
+
+$SQLite::SQLITE_UNICODE = 0;
+
+sub getdbh
+{
+	my ($unicode) = @_;
+	my $db_name = "$temp_dir/test_".($unicode?"unicode":"default").".db";
+	unlink $db_name;
+	$SQLite::SQLITE_UNICODE = $unicode;
+	my $dbh = db_connect($db_name);
+	create_table($dbh,"tracks");
+	return $dbh;
+}
+
+my $default_dbh = getdbh(0);
+my $unicode_dbh = getdbh(1);
+
+my $default_pm_leaf  = database_leaf($default_dbh,'pm',$pm_leaf);
+my $default_dir_leaf = database_leaf($default_dbh,'dir',$dir_leaf);
+my $unicode_pm_leaf  = database_leaf($unicode_dbh,'pm',$pm_leaf);
+my $unicode_dir_leaf = database_leaf($unicode_dbh,'dir',$dir_leaf);
+
+showString("default_pm_leaf",	$default_pm_leaf);
+showString("unicode_pm_leaf",	$unicode_pm_leaf);
+showString("default_dir_leaf",	$default_dir_leaf);
+showString("unicode_dir_leaf",	$unicode_dir_leaf);
 
 
-# my $dbh = db_connect($test_db);
-# create_table($dbh,"tracks");
-
-
-
-#
-# my $dbpm_leaf = database_leaf($dbh,'pm',$pm_leaf);
-# my $dbdir_leaf = database_leaf($dbh,'dir',$dir_leaf);
-#
 # test('pm',$pm_leaf);
 # test('dir',$dir_leaf);
 # test('dbpm',$dbpm_leaf);
