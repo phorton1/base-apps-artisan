@@ -52,16 +52,16 @@ sub new
 
     my $path = $utf_path;
 
-    if (0)
-    {
-		# if running on the car stereo, I found I needed this
-        $path = Encode::encode("utf-8",$path);
-    }
-    else
-    {
-		# and otherwise, I guess I need this
-        utf8::downgrade($path);
-    }
+    # if (0)
+    # {
+	# 	# if running on the car stereo, I found I needed this
+    #     $path = Encode::encode("utf-8",$path);
+    # }
+    # else
+    # {
+	# 	# and otherwise, I guess I need this
+    #     utf8::downgrade($path);
+    # }
 
    	my @fileinfo = stat($path);
 	my $size = $fileinfo[7];
