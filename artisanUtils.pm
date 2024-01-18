@@ -222,6 +222,13 @@ $this_uuid =~ s/\s//g;		# remove ' ' from $program name
 our $mp3_dir = "/mp3s";
 our $mp3_dir_RE = '\/mp3s';
 
+if (!is_win())
+{
+	$mp3_dir = "/media/pi/SanDisk/mp3s";
+	$mp3_dir_RE = '\/media\/pi\/SanDisk\/mp3s';
+}
+
+
 if ($USE_MINI_LIBRARY)
 {
 	$mp3_dir = "/mp3s_mini";
