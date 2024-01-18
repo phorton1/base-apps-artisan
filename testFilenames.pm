@@ -8,10 +8,18 @@
 #    work, when passed back in, on both platforms.
 # 2. The string constant $test_leaf needed to be encoded to utf-8
 #    on linux because THIS file is encoded with 1252 ...
-# 3. artisan/SQLite.pm uses 'sqlite_unicode=>1'.
-#    I create a test database /$temp_dir/testFilenames.db",
-#    with a 'tracks' table, and insert records into it
-#    and then retrieve them.
+# 3. artisan/SQLite.pm was using 'sqlite_unicode=>1'
+#    which *may* have been the root of the problem.
+
+# At this point, if I remove the sqlite_unicode=>1 from SQLite.pm,
+# this program works, EXCEPT the constant in the THIS file needs
+# to be encoded to utf-8 on linux.
+#
+# The question becomes more complicated when we move the DB between
+# machines.  The simplest way to test this is to try it on windows,
+# removing the body of fix1252String() and the utf8::downgrade in
+# MediaFile
+
 
 package testFilenames;
 use strict;
@@ -30,7 +38,8 @@ unlink $test_db;
 
 # $pm_leaf = fix1252String($pm_leaf) is the same, I think, as:
 # utf8::downgrade($pm_leaf);
-# $pm_leaf = Encode::encode("utf-8",$pm_leaf);
+
+$pm_leaf = Encode::encode("utf-8",$pm_leaf);
 
 sub getLeafFromDir
 {
