@@ -21,51 +21,10 @@
 # 	to be using scan or database filenames, but others
 #   cannot.
 #
-# I wish I could force SQLite to use 1252 (or essentially NO encoding)
-
-
-
-
-
-
-
-
-
-
-# Attempt to put to rest filename encoding issues.
-#
 # 1. As far as I can tell, raw filenames gotten from the directory
 #    work, when passed back in, on both platforms.
 # 2. The string constant $test_leaf needed to be encoded to utf-8
 #    on linux because THIS file is encoded with 1252 ...
-#
-# We can either use sqlite_unicode=>1 in SQLite.pm, or not.
-# Directory scan on Windows returns 1252 encoded strings.
-# Directory scan on Linux returns utf8 encoded strings.
-#
-# The issue arises when we try to use the database created on
-# windows on the linux machine. If I DONT use sqlite_unicode=>1,
-# and re-run the scan on Linux, everything seems to work with
-# no other decoding needed, but the database cannot be copied
-# and used.
-#
-# If I DO use sqlite_unicode=>1, then, on windows, I need to
-# know when a path comes from the database as opposed to a scan,
-# and if it comes from the database, call utf8::downgrade on it.
-#
-# I have attempted to encapsulate this by creating artisanUtils::
-# fixDBFilename() in the case of sqlite_unicode=>1, BUT there
-# is still a call to MediaFile->new() using a database, rather
-# than a scanned path name.
-
-#
-# If I dont use , then everything works
-# on windows, but I will have a host of problems on linux, not only
-# with filenames, but all displayable strings.
-#
-# So, the simplest solution is to (continue to) use sqlite_unicode=>1
-# in the database, and 'demote' the utf8 filenames upon usage in
-# windows.
 
 package testFilenames;
 use strict;
@@ -172,41 +131,35 @@ showString("utf8 pm_leaf",$utf8_pm_leaf);
 showString("iso  pm_leaf",$iso_pm_leaf);
 
 
-my $dir_leaf = getLeafFromDir();		
+my $dir_leaf = getLeafFromDir();
 	# windows: 0xE9  linux: 0xC3 A9
-	# in neither case is the utf8 flag set automagially	
+	# in neither case is the utf8 flag set automagially
 
 # utf8::upgrade($dir_leaf);
 	################################################################
 	# ONE - calling this turns the utf-8 flag on without
 	#       changing the string from C3 A9 on linux
 	################################################################
-	
+
 my $utf8_dir_leaf = Encode::encode("utf-8",$dir_leaf);
 my $iso_dir_leaf = Encode::encode('iso-8859-1',$dir_leaf);
 	################################################################
 	# TWO - this DOES NOT WORK to change ONE to E9
 	################################################################
-	
-	
+
+
 showString("orig dir_leaf",$dir_leaf);
 showString("utf8 dir_leaf",$utf8_dir_leaf);
 showString("iso  dir_leaf",$iso_dir_leaf);
 
 
-	 
+
 my $decode_dir_leaf = Encode::decode("utf-8",$dir_leaf);
 showString("iso  decode_dir_leaf",$decode_dir_leaf);
 
 
 
 $SQLite::SQLITE_UNICODE = 0;
-
-
-use DBI qw(:sql_types);
-use DBD::SQLite::Constants qw(
-	DBD_SQLITE_STRING_MODE_BYTES
-	DBD_SQLITE_STRING_MODE_UNICODE_FALLBACK ); # 'dbd_sqlite_string_mode';
 
 
 sub getdbh

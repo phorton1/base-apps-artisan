@@ -987,12 +987,14 @@ sub compareTSLinux
 }
 
 
+use Encode;
+
 sub fixUTF8
 	# return a string without Perl's utf8 bit
 {
 	my ($path) = @_;
 	no warnings 'once';
-	if (is_win() && $SQLite::SQLITE_UNICODE)
+	if (!is_win() && !$SQLite::SQLITE_UNICODE)
 	{
 		# utf::downgrade($path) if is_win() && ;
 		my $out = '';

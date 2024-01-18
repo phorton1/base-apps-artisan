@@ -9,20 +9,13 @@ use warnings;
 use DBI;
 use artisanUtils;
 
+
 my $dbg_sqlite = 2;
 
-our $SQLITE_UNICODE = 1;
+our $SQLITE_UNICODE = 0;
 	# This define goes to the heart of the problem with character
 	# encodings, filenames, and attempting to share the database
 	# on windows and linux.
-	#
-	# If set to 1 we will use sqlite_unicode=>1 when creating the
-	# windows database, and then ArtisanUtils::fixUTF8() will 'fix'
-	# any filenames we need for open,stat, etc.  In this case the
-	# database *should* be transferable to linux.
-	#
-	# If it is set to 0, the databases will be created in their native,
-	# no encoding will be done, and the scan must be re-performed on linux.
 
 
 BEGIN
@@ -45,27 +38,31 @@ sub sqlite_connect
 {
 	my ($db_name, $user, $password) = @_;
 
-	# 2015-06-28 The sqlite_unicode flag is important to
-	# writing a database that can be read by android sdk,
-	# and did not seem to negatively alter the windows version.
-
-	# 2024-01-18 $SQLITE_UNICODE is an experimental define to determine
-	# whether the database on windows is created with sqlite_unicode=>1.
-	# It is always created with sqlite_unicode=>1 on windows.
+	# 2024-01-18 $SQLITE_UNICODE is an to determine
+	# whether the database is stored in utf-8 or raw byte formats.
+	# On windows, 1252 default encoding is same as the raw encoding (it's bytes only)
+	# so, as long as we don't turn the flag on, the database is created thusly.
 
 	$password ||= '';
-    display($dbg_sqlite,0,"db_connect");
-
-	# my $use_unicode = !is_win() || $SQLITE_UNICODE ? 1 : 0;
-	my $use_unicode = $SQLITE_UNICODE ? 1 : 0;
+    display($dbg_sqlite,0,"db_connect SQL_UNICODE=$SQLITE_UNICODE");
 
 	my $dsn = "dbi:SQLite:dbname=$db_name";
-	my $dbh = DBI->connect($dsn,$user,$password,{sqlite_unicode => $use_unicode });
+	my $dbh = DBI->connect($dsn,$user,$password,{sqlite_unicode => $SQLITE_UNICODE });
     if (!$dbh)
     {
         error("Unable to connect to Database: ".$DBI::errstr);
         exit 1;
 	}
+
+	# On linux, this *might* be needed even if we specify $SQLITE_UNICODE = 0,
+	# we still get the database stored (and retrievedd in utf-8)
+	#
+	#	if (!$SQLITE_UNICODE && !is_win())
+	#	{
+	#		use if !is_win(), 'DBD::SQLite::Constants';
+	#		$dbh->{sqlite_string_mode} = DBD::SQLite::Constants::DBD_SQLITE_STRING_MODE_BYTES()
+	#	}
+
 	return $dbh;
 }
 
