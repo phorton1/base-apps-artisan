@@ -18,6 +18,7 @@ use Socket;
 use Sys::Hostname;
 use Pub::Utils qw(!:win_only);
 use Pub::ServerUtils;
+use Encode;
 
 
 my $USE_MINI_LIBRARY = 0;
@@ -149,9 +150,9 @@ BEGIN
 
 		albumId
 
-		fixUTF8
 		compareTSLinux
-
+		fileToDbPath
+		dbToFilePath
 	);
 
 
@@ -987,26 +988,22 @@ sub compareTSLinux
 }
 
 
-use Encode;
-
-sub fixUTF8
-	# return a string without Perl's utf8 bit
+sub fileToDbPath
 {
 	my ($path) = @_;
-	no warnings 'once';
-	if (!is_win() && !$SQLite::SQLITE_UNICODE)
-	{
-		# utf::downgrade($path) if is_win() && ;
-		my $out = '';
-		for (my $i=0; $i<length($path); $i++)
-		{
-			my $b = ord(substr($path,$i,1));
-			$out .= chr($b);
-		}
-		$path = $out;
-	}
+	$path = Encode::decode("utf-8",$path) if !is_win();
 	return $path;
 }
+
+
+sub dbToFilePath
+{
+	my ($path) = @_;
+	$path = Encode::encode("utf-8",$path) if !is_win();
+	return $path;
+}
+
+
 
 
 1;

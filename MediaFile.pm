@@ -35,22 +35,23 @@ use utf8;
 
 sub new
     # See Utils.pm for a definition of the error constants.
+	# takes a FILE path
 {
     my ($class,$rel_path,$force) = @_;
     $force ||= 0;
 
     display($dbg_mediafile,0,"MediaFile::new($rel_path) force=$force");
-    my $path = "$mp3_dir/$rel_path";
-	$path = fixUTF8($path);
+	my $db_path = fileToDbPath($rel_path);
+    my $file_path = "$mp3_dir/$rel_path";
 
-   	my @fileinfo = stat($path);
+   	my @fileinfo = stat($file_path);
 	my $size = $fileinfo[7];
 	my $timestamp = $fileinfo[9];
 
-    if (!(-f $path))
+    if (!(-f $file_path))
     {
         display(0,0,"fileinfo=@fileinfo size=$size timestamp=$timestamp");
-        error("File not found: $path");
+        error("File not found: $file_path");
         return;
     }
 
@@ -58,30 +59,30 @@ sub new
     bless $this,$class;
 
     $this->{id} = '';
-    $this->{path} = $path;
+    $this->{path} = $db_path;
     $this->{has_art} = 0;
     $this->{file_md5} = '';
     $this->{errors} = undef;
     $this->{error_codes} = '';
 
-    if ($path =~ /\.mp3$/i)
+    if ($file_path =~ /\.mp3$/i)
     {
         $this->{type} = 'mp3';
-        return if !$this->fromMP3($path);
+        return if !$this->fromMP3($file_path);
     }
-    elsif ($path =~ /\.wma$/i)
+    elsif ($file_path =~ /\.wma$/i)
     {
         $this->{type} = 'wma';
-        return if !$this->fromWMA($path);
+        return if !$this->fromWMA($file_path);
     }
-    elsif ($path =~ /\.(m4a)/i)
+    elsif ($file_path =~ /\.(m4a)/i)
     {
         $this->{type} = 'm4a';
-        return if !$this->fromM4A($path);
+        return if !$this->fromM4A($file_path);
     }
-    elsif ($path !~ /\.wav$/i)
+    elsif ($file_path !~ /\.wav$/i)
     {
-        error("Unknown file type: $path");
+        error("Unknown file type: $file_path");
         return;
     }
     else
@@ -103,7 +104,7 @@ sub new
     # all single/albums MP3s and start using the tag version,
     # and give a warning when it overrides the folder version.
 
-    $this->set_default_info($path);
+    $this->set_default_info($db_path);
         # distinction between the path used in perl,
         # which has been utf8:downgraded, and the one
         # passed to set_default_info, which sets up displayable
@@ -120,21 +121,21 @@ sub new
     # get the file_md5
 
     my $fh;
-    if (!open ($fh, '<', $path))
+    if (!open ($fh, '<', $file_path))
     {
-        error("FATAL ERROR - Could not get file_md5 (could not open file) for $path: $!");
+        error("FATAL ERROR - Could not get file_md5 (could not open file) for $file_path: $!");
     }
     else
     {
         binmode ($fh);
         my $file_md5 = Digest::MD5->new->addfile($fh)->hexdigest();
-        display(9,0,"file_md5($path) = $file_md5");
-        $this->set('mediaFile',$path,'file_md5',$file_md5);
+        display(9,0,"file_md5($file_path) = $file_md5");
+        $this->set('mediaFile',$file_path,'file_md5',$file_md5);
         close($fh);
 
         if (!$file_md5)
         {
-            error("FATAL ERROR - no file_md5 for $path");
+            error("FATAL ERROR - no file_md5 for $file_path");
             return;
         }
 
@@ -150,12 +151,12 @@ sub new
         }
         elsif (!$info->{stream_md5})
         {
-            error("FATAL - no stream_md5 for $this->{file_md5}=$path");
+            error("FATAL - no stream_md5 for $this->{file_md5}=$file_path");
             return;
         }
         else
         {
-            $this->set('mediaFile',$path,'id',$info->{stream_md5});
+            $this->set('mediaFile',$file_path,'id',$info->{stream_md5});
 
 			# think fpcalc returns decimal seconds
 			# which we convert to milliseconds here
@@ -164,7 +165,7 @@ sub new
                 $info->{duration} &&
                 $info->{duration} =~ /^[\.\d]+$/)
             {
-                $this->set("mediaFile",$path,'duration',$info->{duration} * 1000);
+                $this->set("mediaFile",$file_path,'duration',$info->{duration} * 1000);
             }
         }
     }
@@ -259,6 +260,8 @@ sub get_errors
 sub set
 {
     my ($this,$parser,$file,$field,$val) = @_;
+		# '$file' param is unused
+
     $val = '' if (!defined($val));
     $val =~ s/\s*$// if ($field ne 'picture');
 

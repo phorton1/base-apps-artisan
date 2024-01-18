@@ -297,7 +297,8 @@ sub getTrackMetadata
 	# a section that shows the resolved "mediaFile"
 	# section(s) that shows the low level tags
 
-	my $info = MediaFile->new($track->{path});
+	my $file_path = dbToFilePath($track->{path});
+	my $info = MediaFile->new($file_path);
 	if (!$info)
 	{
 		error("no mediaFile($track->{path}) in item_tags request!");

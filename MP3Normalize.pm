@@ -202,9 +202,10 @@ sub doFFMpegCommand
 
 
 sub normalizeOne
+	# this is called directly with FILE dir and $file(s)
+	# from the scan
 {
 	my ($dir,$normal_dir,$file,$params) = @_;
-	$file = fixUTF8($file);
 
 	my $ifile = "$dir/$file";
 	my $ofile = "$normal_dir/$file";

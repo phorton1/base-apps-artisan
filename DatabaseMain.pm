@@ -37,6 +37,21 @@
 # Here's how to copy only changed/newer files from the mp3 tree
 # to the thumb drive for the car stereo
 # 	xcopy  c:\mp3s d:\mp3s /d /y /s /f
+#
+#
+#--------------------------------------------------------------
+# DATABASE versus FILE paths
+#--------------------------------------------------------------
+# On windows everything is in iso-8859-1 (win-1252) encoding and
+# we don't need to pay attention whether a path is from the database
+# or if it is from a directory scan.  BUT on unix we need to pay
+# attention, so unfortunately, we must now ALWAYS know which is
+# which.
+#
+# The database ALWAYS stores 1252 encodings. so on linux we convert
+# the paths from utf8 to 1252 as we store them in the database.
+# Then later, when we want to do ANY file access, we have to convert
+# database paths back to file system paths.
 
 
 package DatabaseMain;
@@ -200,7 +215,7 @@ sub init_params
         dbh => $dbh,
 
 		# We start by getting the existing folders and tracks
-		# into hashes, for speed.
+		# into hashes BY DATABASE PATHS, for speed.
 
         folders => {},			# folders by path
 		folders_by_id => {},	# folders by (integer) FOLDER_ID
@@ -755,8 +770,10 @@ sub add_folder
 
 	# parse the mp3_relative relative folder name
 
-	my $path = mp3_relative($in_dir);
-	my $split = split_dir(0,$path,$files);
+	my $file_path = mp3_relative($in_dir);
+	my $db_path = fileToDbPath($file_path);
+
+	my $split = split_dir(0,$db_path,$files);
 	my $is_album = $split->{type} eq 'album';
 	my $num_elements = $is_album ? @$files : @$subdirs;
 	my $has_art = (-f "$in_dir/folder.jpg") ? $HAS_FOLDER_ART : 0;
@@ -767,20 +784,20 @@ sub add_folder
 	# the database, and add it if it doesn't.
 	# setting the 'new' bit.
 
-	my $folder = $params->{folders}->{$path};
+	my $folder = $params->{folders}->{$db_path};
 	if (!$folder)
 	{
-		display($dbg_library,0,"add_folder($path) parent_id=$parent_id");
+		display($dbg_library,0,"add_folder($db_path) parent_id=$parent_id");
 
 		$folder = Folder->newFromHash({
 			is_local      => 1,
 			parent_id 	  => $parent_id,
 			dirtype   	  => $split->{type},
-			path  	      => $path,
+			path  	      => $db_path,
 			has_art   	  => $has_art,
 			year_str      => $split->{year_str} || '',
 			genre         => $is_album ? $split->{class} : '',
-			title   	  => $is_album ? clean_str($split->{album_title}) : pathName($path),
+			title   	  => $is_album ? clean_str($split->{album_title}) : pathName($db_path),
 			artist        => $is_album ? clean_str($split->{album_artist}) : '',
 			num_elements  => $num_elements });
 
@@ -840,6 +857,7 @@ sub	add_track
 	# the routine, save() teh track
 {
 	my ($params,$folder,$in_dir,$file) = @_;
+
 	display($dbg_scan,-1,"Scanning $scan_count") if ($scan_count % 100) == 0;
 	$scan_count++;
 
@@ -850,12 +868,16 @@ sub	add_track
 	# in the existing database ..
 
 	my $dir = mp3_relative($in_dir);
-    my $path = "$dir/$file";
+    my $file_path = "$dir/$file";
+	my $db_path = fileToDbPath($file_path);
+
 	my $type = $file =~ /.*\.(.*?)$/ ? $1 : error("no file extension!");
    	my @fileinfo = stat("$in_dir/$file");
+		# this stat() call works off of the implicit file path
+
 	my $size = $fileinfo[7];
 	my $timestamp = $fileinfo[9];
-    my $track = $params->{tracks}->{$path};
+    my $track = $params->{tracks}->{$db_path};
 
     bump_stat('tot_bytes',$fileinfo[7]);
 	bump_stat("type_".$type);
@@ -865,20 +887,19 @@ sub	add_track
 	# does not have art, and we are looking for art.
 
 	my $info;
-	my $get_meta_data = !$track || $track->{timestamp} != $timestamp  ? 1 : 0;
-
+	my $get_meta_data = !$track || compareTSLinux($track->{timestamp},$timestamp)  ? 1 : 0;
 	if ($get_meta_data)
 	{
-		$info = MediaFile->new($path);
+		$info = MediaFile->new($file_path);
 		bump_stat('meta_data_get');
 		if (!$info)
 		{
-			error("Could not get MediaFile($path)");
+			error("Could not get MediaFile($file_path)");
 			exit 1;
 		}
 		if (!$info->{id})
 		{
-			error("Could not get id (STREAM_MD5) from MediaFile($path)");
+			error("Could not get id (STREAM_MD5) from MediaFile($file_path)");
 			exit 1;
 		}
 	}
@@ -897,7 +918,7 @@ sub	add_track
 
 	if ($track && $info && $track->{id} ne $info->{id})
 	{
-		error("Yikes: File '$path' has different stream_md5 in database, than that returned by MediaFile!!");
+		error("Yikes: File '$db_path' has different stream_md5 in database, than that returned by MediaFile!!");
 		exit 1;
 	}
 
@@ -908,20 +929,24 @@ sub	add_track
 	if (!$track)
 	{
 		my $old_track = $params->{tracks_by_id}->{$info->{id}};
+		my $old_db_path = $old_track ? $old_track->{path} : '';
+		my $old_file_path = dbToFilePath($old_db_path);
 
-		display($dbg_changes,0,"add_track($path) old_track="._def($old_track));
+		display($dbg_changes,0,"add_track($db_path) old_track=$old_db_path");
 
-		if ($old_track && -f "$mp3_dir/$old_track->{path}")
+		if ($old_file_path && -f "$mp3_dir/$old_file_path")
 		{
-			display_bytes(0,0,"path",$path);
-			display_bytes(0,0,"old_track path",$old_track->{path});
+			display_bytes(0,0,"db_path",$db_path);
+			display_bytes(0,0,"file_path",$file_path);
+			display_bytes(0,0,"old_db path",$old_db_path);
+			display_bytes(0,0,"old_file path",$old_file_path);
 
-			if ($path eq $old_track->{path})
+			if ($db_path eq $old_db_path)
 			{
-				warning(0,0,"apparently same file scanned twice: $path");
+				warning(0,0,"apparently same file scanned twice: $db_path");
 				return 1;
 			}
-			error("DUPLICATE STREAM_MD5 (ID) for $path\nFOUND AT OTHER=$old_track->{path}");
+			error("DUPLICATE STREAM_MD5 (ID) for $file_path\nFOUND AT OTHER=$old_file_path");
 			exit 1;
 		}
 
@@ -932,14 +957,14 @@ sub	add_track
 
 		elsif ($old_track)
 		{
-			warning(0,0,"Track($old_track->{id}) moved from '$old_track->{path}' to '$path'");
+			warning(0,0,"Track($old_track->{id}) moved from '$old_db_path' to '$db_path'");
 			if (!db_do($params->{dbh},"DELETE FROM tracks WHERE id='$old_track->{id}'"))
 			{
 				error("Could not remove old track $old_track->{id}=$old_track->{path}");
 				exit 1;
 			}
 			delete $params->{tracks_by_id}->{$old_track->{id}};
-			delete $params->{tracks}->{$old_track->{path}};
+			delete $params->{tracks}->{$old_db_path};
 		}
 
 		# CONTINUING TO CREATE A NEW RECORD
@@ -948,7 +973,7 @@ sub	add_track
 			is_local   => 1,
 			id         => $info->{id},
 			parent_id  => $folder->{id},
-			path  	   => $path,
+			path  	   => $db_path,
 			type       => $type,
 			timestamp  => $timestamp,
 			size       => $size,
@@ -968,14 +993,14 @@ sub	add_track
 		# from linux to windows.  We compare them with an accuracy
 		# of two seconds to eliminate the differences.
 
-		if (compareTSLinux($track->{timestamp} != $timestamp))
+		if (compareTSLinux($track->{timestamp},$timestamp))
 		{
 			bump_stat("file timestamp changed");
 
 			display($dbg_changes,1,"timestamp changed from ".
 				gmtToLocalTime($track->{timestamp}).
 				"  to ".gmtToLocalTime($timestamp).
-				" in file($path)");
+				" in file($db_path)");
 
       		$track->{size} = $size;
 			$track->{timestamp} = $timestamp;
@@ -1024,13 +1049,13 @@ sub	add_track
 
 	if (!$track->save($params->{dbh}))
 	{
-		error("Could not save TRACK record for $path");
+		error("Could not save TRACK record for $db_path");
 		exit 1;
 	}
 
 	# add it to in-memory hashes in every case
 
-	$params->{tracks}->{$path} = $track;
+	$params->{tracks}->{$db_path} = $track;
 	$params->{tracks_by_id}->{$track->{id}} = $track;
 
 	# propogate the highest error level upwards

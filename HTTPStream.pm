@@ -84,7 +84,7 @@ sub stream_media
 		}
 
 		my $filename = "$mp3_dir/$track->{path}";
-		$filename = fixUTF8($filename);
+		$filename = dbToFilePath($filename);
 		my $normalized = getNormalizedFilename($filename);
 
 		if ($normalized)
