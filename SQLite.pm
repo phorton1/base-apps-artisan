@@ -17,7 +17,7 @@ BEGIN
 {
  	use Exporter qw( import );
 	our @EXPORT = qw (
-		
+
         sqlite_connect
         sqlite_disconnect
 
@@ -32,15 +32,15 @@ BEGIN
 sub sqlite_connect
 {
 	my ($db_name, $user, $password) = @_;
-	
+
 	# 2015-06-28 The sqlite_unicode flag is important to
 	# writing a database that can be read by android sdk,
 	# and did not seem to negatively alter the windows version.
-	
+
 	$password ||= '';
     display($dbg_sqlite,0,"db_connect");
 	my $dsn = "dbi:SQLite:dbname=$db_name";
-	my $dbh = DBI->connect($dsn,$user,$password,{sqlite_unicode => 1,});
+	my $dbh = DBI->connect($dsn,$user,$password);	# ,{sqlite_unicode => 1,});
     if (!$dbh)
     {
         error("Unable to connect to Database: ".$DBI::errstr);
@@ -79,8 +79,8 @@ sub get_records_db
     #    my $fields = join(',',@{get_table_fields($dbh,$table)});
     #    $query =~ s/###HERE###/SELECT $fields FROM $table /;
     #}
-	
-	
+
+
 	my $sth = $dbh->prepare($query);
     if (!$sth)
     {
@@ -126,7 +126,7 @@ sub db_do
 	my ($dbh,$query,$params) = @_;
 
 	# display
-	
+
 	my $param_str = 'no params';
 	if (defined($params) && @$params)
 	{
