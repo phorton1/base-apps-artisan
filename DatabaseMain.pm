@@ -964,7 +964,7 @@ sub	add_track
 	{
 		$track->{file_exists} = 1;
 
-		if ($track->{timestamp} != $timestamp)
+		if ($track->{timestamp} ne $timestamp)
 		{
 			bump_stat("file timestamp changed");
 
