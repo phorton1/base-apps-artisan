@@ -969,8 +969,7 @@ sub	add_track
 		# by gmtToLocalTime() are the same, so we compare them
 		# using eq rather than the integers using !=
 
-		# if ($track->{timestamp} != $timestamp)
-		if (gmtToLocalTime($track->{timestamp}) ne gmtToLocalTime($timestamp))
+		if ($track->{timestamp} != $timestamp)
 		{
 			bump_stat("file timestamp changed");
 
