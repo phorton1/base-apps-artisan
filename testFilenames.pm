@@ -9,8 +9,27 @@
 # 2. The string constant $test_leaf needed to be encoded to utf-8
 #    on linux because THIS file is encoded with 1252 ...
 #
-# The issue arises when we put the path into mySQL and then retreive it.
-# If I dont use sqlite_unicode=>1 in SQLite.pm, then everything works
+# We can either use sqlite_unicode=>1 in SQLite.pm, or not.
+# Directory scan on Windows returns 1252 encoded strings.
+# Directory scan on Linux returns utf8 encoded strings.
+#
+# The issue arises when we try to use the database created on
+# windows on the linux machine. If I DONT use sqlite_unicode=>1,
+# and re-run the scan on Linux, everything seems to work with
+# no other decoding needed, but the database cannot be copied
+# and used.
+#
+# If I DO use sqlite_unicode=>1, then, on windows, I need to
+# know when a path comes from the database as opposed to a scan,
+# and if it comes from the database, call utf8::downgrade on it.
+#
+# I have attempted to encapsulate this by creating artisanUtils::
+# fixDBFilename() in the case of sqlite_unicode=>1, BUT there
+# is still a call to MediaFile->new() using a database, rather
+# than a scanned path name.
+
+#
+# If I dont use , then everything works
 # on windows, but I will have a host of problems on linux, not only
 # with filenames, but all displayable strings.
 #

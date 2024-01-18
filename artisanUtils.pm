@@ -150,6 +150,7 @@ BEGIN
 		albumId
 
 		fixUTF8
+		compareTSLinux
 
 	);
 
@@ -972,51 +973,38 @@ sub unused_dbg_mem
 
 
 #--------------------------------------
-# fixUTF8
+# Cross Platform Database Fixes
 #--------------------------------------
 
+sub compareTSLinux
+	# compare two linux integer timestamps and return
+	# true if they are more than two seconds apart
+{
+	my ($ts1,$ts2) = @_;
+	my $dif = $ts1 - $ts2;
+	return 1 if $dif > 2 || $dif < -2;
+	return 0;
+}
+
+
 sub fixUTF8
+	# return a string without Perl's utf8 bit
 {
 	my ($path) = @_;
 	no warnings 'once';
-	utf::downgrade($path) if is_win() && $SQLite::SQLITE_UNICODE;
+	if (is_win() && $SQLite::SQLITE_UNICODE)
+	{
+		# utf::downgrade($path) if is_win() && ;
+		my $out = '';
+		for (my $i=0; $i<length($path); $i++)
+		{
+			my $b = ord(substr($path,$i,1));
+			$out .= chr($b);
+		}
+		$path = $out;
+	}
 	return $path;
 }
-
-
-
-sub fix1252String
-	# still digging to understand why.
-	#
-	#	/mp3s/albums/Classical/Guitar/Various - Road to the Sun (Estrada do Sol)/10 - El decamerón negro_ III. Balada de la doncella enamorada.mp3
-	#
-	# Shows correctly here: El decamerón negro_ III, and in CONSOLE after
-	# I added $CONSOLE->OutputCP(1252) to Pub Utils;
-	#
-	# filenames with latin characters (i.e. 7E == o accent) were not playing.
-	# the string has exactly the same bytes as when I scanned the dir and
-	# put it in the database, but perl failed -f now, and not then.
-	# this 'fixes' it by rebuilding the string from the bytes therin,
-	# but it bugs the heck out of me.  Undoubtedly Perl is utf8 encoding
-	# them when I retrieve them from the database, but there's no way
-	# I have found to 'prove' that.  The UTF8 'internal flag' is opaque.
-	#
-	# Who knows when this will come back to haunt me in another way
-	# when I try to open a file or directory in some other piece
-	# of code?
-{
-	my ($s) = @_;
-	return $s;
-
-	my $out = '';
-	for (my $i=0; $i<length($s); $i++)
-	{
-		my $b = ord(substr($s,$i,1));
-		$out .= chr($b);
-	}
-	return $out;
-}
-
 
 
 1;

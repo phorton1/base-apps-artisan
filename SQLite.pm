@@ -11,7 +11,18 @@ use artisanUtils;
 
 my $dbg_sqlite = 2;
 
-our $SQLITE_UNICODE = 0;
+our $SQLITE_UNICODE = 1;
+	# This define goes to the heart of the problem with character
+	# encodings, filenames, and attempting to share the database
+	# on windows and linux.
+	#
+	# If set to 1 we will use sqlite_unicode=>1 when creating the
+	# windows database, and then ArtisanUtils::fixUTF8() will 'fix'
+	# any filenames we need for open,stat, etc.  In this case the
+	# database *should* be transferable to linux.
+	#
+	# If it is set to 0, the databases will be created in their native,
+	# no encoding will be done, and the scan must be re-performed on linux.
 
 
 BEGIN
@@ -38,10 +49,17 @@ sub sqlite_connect
 	# writing a database that can be read by android sdk,
 	# and did not seem to negatively alter the windows version.
 
+	# 2024-01-18 $SQLITE_UNICODE is an experimental define to determine
+	# whether the database on windows is created with sqlite_unicode=>1.
+	# It is always created with sqlite_unicode=>1 on windows.
+
 	$password ||= '';
     display($dbg_sqlite,0,"db_connect");
+
+	my $use_unicode = !is_win() || $SQLITE_UNICODE ? 1 : 0;
+
 	my $dsn = "dbi:SQLite:dbname=$db_name";
-	my $dbh = DBI->connect($dsn,$user,$password,{sqlite_unicode => $SQLITE_UNICODE });
+	my $dbh = DBI->connect($dsn,$user,$password,{sqlite_unicode => $use_unicode });
     if (!$dbh)
     {
         error("Unable to connect to Database: ".$DBI::errstr);
