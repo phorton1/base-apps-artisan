@@ -16,6 +16,8 @@ my $test_path = $mp3_dir.'/albums/Blues/Soft/Marc Broussard - Momentary Setback'
 my $test_leaf = '04 - French Café.mp3';
 my $test_file = "$test_path/$test_leaf";
 
+# $test_leaf = fix1252String($test_leaf); 
+$test_leaf = Encode::encode("utf-8",$test_leaf);
 
 sub getLeafFromDir
 {
