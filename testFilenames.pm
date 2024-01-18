@@ -8,7 +8,16 @@
 #    work, when passed back in, on both platforms.
 # 2. The string constant $test_leaf needed to be encoded to utf-8
 #    on linux because THIS file is encoded with 1252 ...
-# 3. artisan/SQLite.pm was using 'sqlite_unicode=>1'
+#
+# The issue arises when we put the path into mySQL and then retreive it.
+# The notion is/was that I could just move the database from windows to linux,
+# but there are at least two problems with that approach:
+#
+#		- timestamps for tracks are stored as an integer and windows
+#		- mySQL has to assume some kind of encoding
+
+
+# 3. artisan/SQLite.pm is/was using 'sqlite_unicode=>1'
 #    which *may* have been the root of the problem.
 
 # At this point, if I remove the sqlite_unicode=>1 from SQLite.pm,
@@ -29,17 +38,23 @@ use threads::shared;
 use artisanUtils;
 use Database;
 use Encode;
+use Time::HiRes qw(stat);
+
 
 my $test_db = "$temp_dir/testFilenames.db";
 my $test_path = $mp3_dir.'/albums/Blues/Soft/Marc Broussard - Momentary Setback';
 my $pm_leaf = '04 - French Café.mp3';
+
+my $tm_test = "$mp3_dir/albums/Friends/Pat Kingsland - Various/Mean Town Blues.mp3";
+my $tm_win = 1587159415;
+
 
 unlink $test_db;
 
 # $pm_leaf = fix1252String($pm_leaf) is the same, I think, as:
 # utf8::downgrade($pm_leaf);
 
-$pm_leaf = Encode::encode("utf-8",$pm_leaf);
+$pm_leaf = Encode::encode("utf-8",$pm_leaf) if !is_win();
 
 sub getLeafFromDir
 {
@@ -106,6 +121,16 @@ sub test
 # main
 
 display(0,0,"testFilenames.pm 2 started");
+
+# time stamp test
+
+my ($dev,$ino,$mode,$nlink,$uid,$gid,$rdev,$size,
+	$atime,$mtime,$ctime,$blksize,$blocks) = stat($tm_test);
+display(0,0,"timestamp=$mtime");
+
+
+
+
 my $dir_leaf = getLeafFromDir();
 
 my $dbh = db_connect($test_db);
