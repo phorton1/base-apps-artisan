@@ -110,7 +110,7 @@ sub database_leaf
 	my $found_leaf = $found->{path};
 
 	# paths retreived from the database need to use utf8::downgrade() at some point.
-	utf8::downgrade($found_leaf) if is_win();
+	# utf8::downgrade($found_leaf) if is_win();
 
 	return $found_leaf;
 }
@@ -172,16 +172,42 @@ showString("utf8 pm_leaf",$utf8_pm_leaf);
 showString("iso  pm_leaf",$iso_pm_leaf);
 
 
-my $dir_leaf = getLeafFromDir();
+my $dir_leaf = getLeafFromDir();		
+	# windows: 0xE9  linux: 0xC3 A9
+	# in neither case is the utf8 flag set automagially	
+
+# utf8::upgrade($dir_leaf);
+	################################################################
+	# ONE - calling this turns the utf-8 flag on without
+	#       changing the string from C3 A9 on linux
+	################################################################
+	
 my $utf8_dir_leaf = Encode::encode("utf-8",$dir_leaf);
 my $iso_dir_leaf = Encode::encode('iso-8859-1',$dir_leaf);
+	################################################################
+	# TWO - this DOES NOT WORK to change ONE to E9
+	################################################################
+	
+	
 showString("orig dir_leaf",$dir_leaf);
 showString("utf8 dir_leaf",$utf8_dir_leaf);
 showString("iso  dir_leaf",$iso_dir_leaf);
 
 
+	 
+my $decode_dir_leaf = Encode::decode("utf-8",$dir_leaf);
+showString("iso  decode_dir_leaf",$decode_dir_leaf);
+
+
 
 $SQLite::SQLITE_UNICODE = 0;
+
+
+use DBI qw(:sql_types);
+use DBD::SQLite::Constants qw(
+	DBD_SQLITE_STRING_MODE_BYTES
+	DBD_SQLITE_STRING_MODE_UNICODE_FALLBACK ); # 'dbd_sqlite_string_mode';
+
 
 sub getdbh
 {
@@ -190,9 +216,13 @@ sub getdbh
 	unlink $db_name;
 	$SQLite::SQLITE_UNICODE = $unicode;
 	my $dbh = db_connect($db_name);
+	# $dbh->{sqlite_string_mode} = DBD_SQLITE_STRING_MODE_BYTES
+	#	if !$unicode;
 	create_table($dbh,"tracks");
 	return $dbh;
 }
+
+
 
 my $default_dbh = getdbh(0);
 my $unicode_dbh = getdbh(1);

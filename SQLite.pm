@@ -56,7 +56,8 @@ sub sqlite_connect
 	$password ||= '';
     display($dbg_sqlite,0,"db_connect");
 
-	my $use_unicode = !is_win() || $SQLITE_UNICODE ? 1 : 0;
+	# my $use_unicode = !is_win() || $SQLITE_UNICODE ? 1 : 0;
+	my $use_unicode = $SQLITE_UNICODE ? 1 : 0;
 
 	my $dsn = "dbi:SQLite:dbname=$db_name";
 	my $dbh = DBI->connect($dsn,$user,$password,{sqlite_unicode => $use_unicode });
