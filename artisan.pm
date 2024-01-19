@@ -72,8 +72,28 @@ display($dbg_main,0,"----------------------------------------------");
 display($dbg_main,0,"Artisan.pm starting");
 display($dbg_main,0,"----------------------------------------------");
 display($dbg_main,0,"perl_dir=$artisan_perl_dir");
+display($dbg_main,0,"mp3_dir=$mp3_dir");
 display($dbg_main,0,"server_ip($server_ip) server_port($server_port)");
 
+# Wait upto 10 seconds for mp3_dir to exist (for booting rPi)
+# and exit (restart service) if not
+
+{
+	my $now = time();
+	while (!(-d $mp3_dir))
+	{
+		if (time() - $now > 10)
+		{
+			error("Timeout waiting for MP3 directory");
+			kill 9,$$;
+		}
+		display(0,0,"waiting for $mp3_dir");
+		sleep(1);
+	}
+}
+
+
+#-------------------------------------------------------------
 
 sub onSignal
 {
