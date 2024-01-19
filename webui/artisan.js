@@ -584,6 +584,7 @@ function onswipe(event, direction, distance, duration, fingerCount, fingerData)
 // linux only system_command
 //---------------------------------------
 
+
 function system_command(command)
 {
 	$('.cover_screen').show();
