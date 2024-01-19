@@ -27,8 +27,6 @@ use artisanUtils;
 use if is_win, 'mpWin';
 # use mpMPG123 on Linux
 use if !is_win, 'mpMPG123';
-# unused mpHTML on linux
-# use if !is_win, 'mpHTML';
 use Renderer;
 use Device;
 use DeviceManager;
@@ -233,47 +231,6 @@ sub doCommand
 	my $error = '';
 	if ($command eq 'update')
 	{
-		# Special Handling for HTML Audio 'device'
-
-		my $mp = $this->{html_audio};
-		if ($mp)
-		{
-			my $state = $params->{html_audio_state} || '';
-			my $version = $params->{html_audio_version} || 0;
-			my $position = $params->{html_audio_position} || 0;
-			my $duration = $params->{html_audio_duration} || 0;
-
-			display($dbg_hren+1,0,"HTML_AUDIO UPDATE($state) V($version) pos($position) dur($duration)");
-
-			# the position and duration are relatively
-			# intelligently handled, so, at least for now,
-			# we just set em'
-
-			$this->{position} = $position;
-			$this->{duration} = $duration;
-
-			# We clear the command and updazte the renderer's state
-			# after a given command once the version number is 'acknowledged'.
-			# This handles all state changes EXCEPT if a song ends in the JS.
-
-			if ($mp->{command} && $version >= $mp->{version})	# command ACK
-			{
-				display($dbg_hren,1,"clearing command $mp->{command}");
-				$mp->{command} = '';
-				$this->{state} = $state;
-			}
-
-			# The tricky part is understanding the difference between
-			# the JS stopping from a stop command, versus stopping from
-			# a end event.  Therefore we only checkMPStart() on the ELSE
-			# from a command.
-
-			else
-			{
-				$this->checkMPStart(undef,$state eq $RENDERER_STATE_STOPPED ? 1 : 0);
-			}
-		}
-
 		# if they just added tracks, then we go from INIT to STOPPED
 
 		$this->{state} = $RENDERER_STATE_STOPPED

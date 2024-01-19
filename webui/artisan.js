@@ -191,8 +191,6 @@ function idle_loop()
 			else
 			{
 				data.renderer_uuid = current_renderer.uuid;
-				if (current_renderer.html_audio)
-					addHTMLAudioData(data);
 			}
 
 			$.ajax({
@@ -211,9 +209,6 @@ function idle_loop()
 						updateLibraries(result.libraries);
 					if (result.renderer)
 					{
-						if (result.renderer.html_audio)
-							handle_html_audio(result.renderer.html_audio);
-
 						current_renderer = result.renderer;
 						update_renderer_ui();
 					}
