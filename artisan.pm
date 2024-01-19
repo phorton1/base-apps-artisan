@@ -309,6 +309,10 @@ AFTER_EXCEPTION:
 						{
 							checkForUpdates();
 						}
+						elsif (chr($char) eq 'p')
+						{
+							doUpdates();
+						}
 					}
 				}
 			}
@@ -348,6 +352,10 @@ AFTER_EXCEPTION:
 			elsif ($line eq 'u')
 			{
 				checkForUpdates();
+			}
+			elsif ($line eq 'p')
+			{
+				doUpdates();
 			}
 		}
 	}
