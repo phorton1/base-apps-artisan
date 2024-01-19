@@ -75,25 +75,6 @@ display($dbg_main,0,"perl_dir=$artisan_perl_dir");
 display($dbg_main,0,"mp3_dir=$mp3_dir");
 display($dbg_main,0,"server_ip($server_ip) server_port($server_port)");
 
-# Wait upto 10 seconds for mp3_dir to exist (for booting rPi)
-# and exit (restart service) if not
-
-{
-	my $now = time();
-	while (!(-d $mp3_dir))
-	{
-		if (time() - $now > 10)
-		{
-			error("Timeout waiting for MP3 directory");
-			kill 9,$$;
-		}
-		display(0,0,"waiting for $mp3_dir");
-		sleep(1);
-	}
-}
-
-
-#-------------------------------------------------------------
 
 sub onSignal
 {
@@ -142,15 +123,29 @@ if (0 && !is_win() && $AS_SERVICE)
 }
 
 
-
 #----------------------------------
 # start artisan
 #----------------------------------
 # (0) static initialization of prefs
 
-
 artisanPrefs::static_init_prefs();
 
+# Wait upto 10 seconds for mp3_dir to exist (for booting rPi)
+# and exit (restart service) if not
+
+{
+	my $now = time();
+	while (!(-d $mp3_dir))
+	{
+		if (time() - $now > 10)
+		{
+			error("Timeout waiting for MP3 directory");
+			restart();
+		}
+		display(0,0,"waiting for $mp3_dir");
+		sleep(1);
+	}
+}
 
 # (1) LIBRARY
 # not done if $DEBUG_SSDP_ALONE
@@ -210,11 +205,26 @@ if (0)
 }
 
 
+sub restart
+{
+	LOG(0,"RESTARTING SERVICE");
+	if (!$AS_SERVICE || is_win())
+	{
+		kill 9, $$;		# 9 == SIGKILL
+	}
+	else
+	{
+		system("sudo systemctl restart artisan");
+	}
+}
+
 
 #------------------------------------------------------
 # main
 #------------------------------------------------------
 # keyboard input only supported on Windows NO_SERVICE
+
+
 
 my $linux_keyboard;
 if (!is_win() && !$AS_SERVICE)
@@ -223,24 +233,13 @@ if (!is_win() && !$AS_SERVICE)
 	$linux_keyboard->add(\*STDIN);
 }
 
-
 while (1)
 {
 	if ($restart_service && time() > $restart_service + 5)
 	{
 		$restart_service = 0;
-		LOG(0,"RESTARTING SERVICE");
-		if (is_win())
-		{
-			kill 9, $$;		# 9 == SIGKILL
-		}
-		else
-		{
-			system("sudo systemctl restart artisan");
-		}
+		restart();
 	}
-
-
 
 	if ($CONSOLE_IN)
 	{
