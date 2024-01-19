@@ -63,7 +63,7 @@ use remoteArtisanLibrary;
 use Update;
 
 
-my $CHECK_FOR_UPDATES = 0;
+my $CHECK_FOR_UPDATES = 30;
 
 
 use sigtrap 'handler', \&onSignal, 'normal-signals';
