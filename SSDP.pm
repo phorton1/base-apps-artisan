@@ -40,13 +40,13 @@ my $dbg_ssdp = 0;
 my $dbg_run = 0; # 0;
 	#  0 == quitting notice and warnings for empty messages
 	# -1 == wait loop
-my $dbg_msearch = 0;  # 0;
+my $dbg_msearch = 1;  # 0;
 	#  0 == M-SEARCH messages received
 	# -1 == M-SEARCH messages skipped
-my $dbg_responses = 0;
+my $dbg_responses = 1;
 	#  0 == general response header
 	# -1 == individual responses that are sent
-my $dbg_search = 0;
+my $dbg_search = 1;
 	# 0 = show a header when search message sent
 my $dbg_alive = 1;
 	# 0 = show a header when alive messages sent
