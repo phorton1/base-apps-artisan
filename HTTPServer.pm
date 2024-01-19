@@ -393,9 +393,10 @@ sub handle_connection
 	elsif ($request_path eq '/update_system')
 	{
 		LOG(0,"Artisan updating system");
-		if (!doUpdates())
+		my $error = Update::doSystemUpdate();
+		if ($error)
 		{
-			$response = http_header()."There was an error doing a system_update\r\n";
+			$response = http_header()."There was an error doing a system_update: $error\r\n";
 		}
 		else
 		{
