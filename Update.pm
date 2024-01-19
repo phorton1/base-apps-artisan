@@ -48,6 +48,7 @@ sub updateOne
 		return -1 if !gitCommand($repo,'diff',$text,1);
 		return -1 if $$text && !gitCommand($repo,'stash',$text);
 		return -1 if !gitCommand($repo,'pull',$text);
+		LOG(-2,$$text);
 		return 1;
 	}
 	return 0;
