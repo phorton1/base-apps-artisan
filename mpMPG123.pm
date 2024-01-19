@@ -279,7 +279,7 @@ sub mapLocalUrl
 		my $track = $local_library->getTrack($track_id);
 		if ($track)
 		{
-			 $url = "$mp3_dir/$track->{path}";
+			 $url = dbToFilePath("$mp3_dir/$track->{path}");
 			 display($dbg_mp,0,"mapped to $url");
 		}
 	}
