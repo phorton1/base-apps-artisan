@@ -581,38 +581,33 @@ function system_command(command)
 	// restarting != 0 stops any subsequent gets to the server
 	// which is, as far as I know, only the on_idle() update loop
 {
-	$('.cover_screen').show();
 	if (confirm(command + '?'))
 	{
 		$('.cover_screen').show();
-			// for some reason the cover screen disappears
 		restarting = -1;
 		audio_command('stop');
 		update_renderer_ui();
 		$('.artisan_menu_library_name').html(command);
 
-		$.get(command,function(result)
-		{
-			if (result.includes('error'))
-			{
-				alert(result);
-				restarting = 0;
-				$('.artisan_menu_library_name').html(current_library.name);
-				$('.cover_screen').hide();
-			}
-			else
-			{
-				my_alert(command,command);
-				var delay = command == 'reboot' || command == 'update_system' ?
-					30000 :
-					8000;
-				setTimeout(function() { restarting = 1; }, delay);
-			}
-		});
-	}
-	else
-	{
-		$('.cover_screen').hide();
+		setTimeout(function() {
+			$.get(command,function(result) {
+				if (result.includes('error'))
+				{
+					alert(result);
+					restarting = 0;
+					$('.artisan_menu_library_name').html(current_library.name);
+					$('.cover_screen').hide();
+				}
+				else
+				{
+					my_alert(command,command);
+					var delay = command == 'reboot' || command == 'update_system' ?
+						30000 :
+						8000;
+					setTimeout(function() { restarting = 1; }, delay);
+				}
+			});
+		},10);
 	}
 }
 

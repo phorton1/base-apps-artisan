@@ -396,7 +396,8 @@ sub handle_connection
 		my $error = Update::doSystemUpdate();
 		if ($error)
 		{
-			$response = http_header()."There was an error doing a system_update: $error\r\n";
+			$error =~ s/\r/ /g;
+			$response = http_header()."There was an error doing a system_update:\n$error\r\n";
 		}
 		else
 		{
