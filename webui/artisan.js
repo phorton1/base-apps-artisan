@@ -618,6 +618,10 @@ function system_command(command)
 			}, delay);
 		});
 	}
+	else
+	{
+		$('.cover_screen').hide();
+	}
 }
 
 
