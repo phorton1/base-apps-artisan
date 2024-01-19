@@ -578,6 +578,7 @@ function onswipe(event, direction, distance, duration, fingerCount, fingerData)
 
 function system_command(command)
 {
+	$('.cover_screen').show();
 	if (confirm(command + '?'))
 	{
 		$.get(command,function(result)
@@ -587,7 +588,6 @@ function system_command(command)
 			// restarting != 0 stops any subsequent gets to the server
 			// which is, as far as I know, only the on_idle() update loop
 
-			$('.cover_screen').show();
 			audio_command('stop');
 			update_renderer_ui();
 			$('.artisan_menu_library_name').html(command);
@@ -600,6 +600,10 @@ function system_command(command)
 				restarting = 1;
 			}, delay);
 		});
+	}
+	else
+	{
+		$('.cover_screen').hide();
 	}
 }
 
