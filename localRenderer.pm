@@ -124,7 +124,7 @@ sub new
 	my $this = $class->SUPER::new({
 		local => 1,
 		uuid  => $this_uuid,
-		name  => $program_name,
+		name  => "Artisan(".getMachineId().")",
 		ip    => $server_ip,		# unused, added for consistency
 		port  => $server_port, });
 	bless $this,$class;

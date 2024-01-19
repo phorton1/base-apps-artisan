@@ -361,10 +361,11 @@ sub process_html
 
 	my $is_win = is_win() ? 1 : 0;
 	my $as_service = $AS_SERVICE ? 1 : 0;
+	my $machine_id = getMachineId();
 
 	$html =~ s/is_win\(\)/$is_win/s;
 	$html =~ s/as_service\(\)/$as_service/s;
-
+	$html =~ s/machine_id\(\)/$machine_id/s;
 
 	while ($html =~ s/<!-- include (.*?) -->/###HERE###/s)
 	{

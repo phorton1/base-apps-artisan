@@ -9,7 +9,7 @@ var audio;
 
 
 var html_renderer = {
-		name		: 'HTML Audio',
+		name		: 'Browser',
 		type		: DEVICE_TYPE_RENDERER,
 		playing     : RENDERER_PLAY_QUEUE,
 
