@@ -20,7 +20,7 @@ use httpUtils;
 my $dbg_uilib = 0;
 	# 0 == shows calls
 	# -1 == show results
-	# -2 == show icons
+	# -2 == show icon requests
 my $dbg_uipls = 0;
 	# 'Local Playlist Source'
 
@@ -34,7 +34,7 @@ my $dbg_uipls = 0;
 #
 #		key = is set to the id of the Folder/Track
 #       icon = retrievable url for an error icon
-#			i.e. "/webui/icons/error_3.png"
+#			i.e. "/webui/images/error_3.png"
 #
 # For Explorer Tree we pass 'title' to fancytree (it is removed from
 # the data-record by fancytree). We also add the following fields for
@@ -63,7 +63,7 @@ my $dbg_uipls = 0;
 #	expanded: undefined
 #	extraClasses: undefined
 #	folder: undefined
-#	icon: "/webui/icons/error_3.png"			<-- WE ADDED THIS
+#	icon: "/webui/images/error_3.png"			<-- WE ADDED THIS
 #	iconTooltip: undefined						<-- WE SET THIS for non-terminal ExplorerTree nodes
 #	key: "c04b4dc0c522241edfbecf916be2ee03"		<-- WE ADDED THIS
 #	lazy: undefined								<-- WE SET THIS for non-terminal ExplorerTree nodes
@@ -380,7 +380,7 @@ sub library_dir_element
 		$rec->{highest_error} > $rec->{highest_folder_error} ?
 		$rec->{highest_error} : $rec->{highest_folder_error};
 
-	$rec->{icon} = "/webui/icons/error_$use_high.png";
+	$rec->{icon} = "/webui/images/error_$use_high.png";
 
 	return "\n".my_encode_json($rec);
 }
@@ -406,7 +406,7 @@ sub library_tracklist
 		# add fancy tree fields
 
 		$rec->{key} = $rec->{id};
-		$rec->{icon} = "/webui/icons/error_$rec->{highest_error}.png";
+		$rec->{icon} = "/webui/images/error_$rec->{highest_error}.png";
 
 		# map fancy tree conflict fields
 

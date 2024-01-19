@@ -110,7 +110,7 @@ my $app;
 	# fowarded for callt to ExitMainLoop
 
 Wx::InitAllImageHandlers();
-my $icon_name = "$artisan_perl_dir/webui/icons/artisan_16.png";
+my $icon_name = "$artisan_perl_dir/webui/images/artisan_16.png";
 my $icon = Wx::Icon->new($icon_name,wxBITMAP_TYPE_PNG );
 
 

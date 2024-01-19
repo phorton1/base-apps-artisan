@@ -342,8 +342,8 @@ sub handle_connection
 		$path ||= '';
 		$path =~ s/^\///;
 		$response = WebUI::web_ui($path,$post_data);
-		$dbg_displayable = 0 if $request_path =~ /^\/webui\/icons\//;
-			# don't show Library /webui/icons/png files
+		$dbg_displayable = 0 if $request_path =~ /^\/webui\/images\//;
+			# don't show Library /webui/images requests
 	}
 
 
@@ -463,7 +463,7 @@ sub favicon
 {
     display($dbg_http+2,1,"favicon()");
     my $response = http_header({ content_type => 'image/png' });
-	$response .= getTextFile('artisan.png',1);
+	$response .= getTextFile("$image_dir/artisan.png",1);
     $response .= "\r\n";
 	return $response;
 
@@ -485,7 +485,7 @@ sub get_art
     if (!(-f $filename))
     {
         error("get_art($id): file not found: $filename");
-		$filename = "$artisan_perl_dir/images/no_image.jpg";
+		$filename = "$image_dir/no_image.jpg";
     }
 
     display($dbg_art,1,"get_art($id) opening file: $filename");
@@ -551,7 +551,7 @@ EOXML
             $xml .= $indent."    <width>$size</width>\n";
             $xml .= $indent."    <height>$size</height>\n";
             $xml .= $indent."    <depth>24</depth>\n";
-            $xml .= $indent."    <url>/icons/$size/icon.$type</url>\n";
+            $xml .= $indent."    <url>/images/$size/icon.$type</url>\n";
             $xml .= $indent."</icon>\n";
         }
     }

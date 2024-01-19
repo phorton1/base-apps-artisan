@@ -112,6 +112,7 @@ BEGIN
         $artisan_perl_dir
 		$mp3_dir
 		$mp3_dir_RE
+		$image_dir
 
 		$wifi_connected
         $server_ip
@@ -198,6 +199,8 @@ $artisan_perl_dir =~ s/^.*://;
 $artisan_perl_dir =~ s/\\/\//g;
 $artisan_perl_dir = pathOf($artisan_perl_dir);
 $artisan_perl_dir = "./" if $artisan_perl_dir eq '/';
+
+our $image_dir = "$artisan_perl_dir/webui/images";
 
 # print "0=$0\n";
 # print "perl_dir=$artisan_perl_dir\n";

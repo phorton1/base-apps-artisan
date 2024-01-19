@@ -594,7 +594,7 @@ function update_explorer_ui(node)
 
 	if (node == undefined)
 	{
-		$('#explorer_folder_image').attr('src','/webui/icons/artisan.png');
+		$('#explorer_folder_image').attr('src','/webui/images/artisan.png');
 		$('#explorer_folder_title') .html('');
 		$('#explorer_folder_artist').html('');
 		$('#explorer_folder_genre') .html('');
@@ -621,7 +621,7 @@ function update_explorer_ui(node)
 		}
 
 		$('#explorer_folder_image').attr('src',
-			rec.art_uri == '' ? '/webui/icons/no_image.png' :
+			rec.art_uri == '' ? '/webui/images/no_image.png' :
 			rec.art_uri);
 		$('#explorer_folder_title') .html(title);
 		$('#explorer_folder_artist').html(rec.artist == ''   ? '' : 'Artist: ' + rec.artist);

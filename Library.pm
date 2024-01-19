@@ -131,7 +131,7 @@ sub error_section
 	for my $rec (@$array)
 	{
 		my ($i,$lval,$rval) = (@$rec);
-		my $icon = "/webui/icons/error_$i.png";
+		my $icon = "/webui/images/error_$i.png";
 		display($dbg_meta+2,0,"icon($lval)=$icon");
 		my $html = "<img src='$icon' width='16' height='16'>&nbsp;$lval";
 		push @{$section->{children}},meta_item($use_id,$html,$rval);

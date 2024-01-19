@@ -4,7 +4,7 @@
   "orientation":"landscape",
   "start_url":"/webui",
   "icons":[{
-    "src":"/webui/icons/artisan.png",
+    "src":"/webui/images/artisan.png",
     "type":"image/png",
     "sizes":"36x36"
   }],

@@ -600,7 +600,7 @@ function addHomeTrackNode(tree,counter,rec)
 		// 		delete rec.title;
 		// 		delete rec.type;
 		// 		rec.key = rec.id;
-		// 		rec.icon = '/webui/icons/error_0.png',
+		// 		rec.icon = '/webui/images/error_0.png',
 		//				 this was the only thing that effing worked
 
 		display(dbg_tl+1,2,"addHomeTrackNode(" + rec.TITLE + ")");
