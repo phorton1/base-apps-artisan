@@ -34,8 +34,8 @@ BEGIN
 
 my $in_update:shared = 0;
 
-my $update_available:shared = 0;
-my $stash_needed:shared = 0;
+our $update_available:shared = 0;
+our $stash_needed:shared = 0;
 
 
 
