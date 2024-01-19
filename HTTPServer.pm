@@ -395,7 +395,7 @@ sub handle_connection
 		LOG(0,"Artisan updating system");
 		if (!doUpdates())
 		{
-			$response = http_error("Could not do a system_update");
+			$response = http_header()."There was an error doing a system_update\r\n";
 		}
 		else
 		{
@@ -404,8 +404,6 @@ sub handle_connection
 			$response = http_header()."Restarting Service after System Update.\nWill reload WebUI in 30 seconds..\r\n";
 		}
 	}
-
-
 
 	# unsupported request
 

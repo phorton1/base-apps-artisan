@@ -24,7 +24,6 @@ var explorer_mode = 0;
 var idle_timer = null;
 var idle_count = 0;
 var update_id = 1;
-var stash_needed = 0;
 
 
 display(dbg_load,0,"artisan.js loaded");
@@ -203,13 +202,6 @@ function idle_loop()
 				{
 					if (restarting)
 						clearRestart();
-
-					if (result.update_available)
-						$('#update_system').addClass('update_available');
-					else
-						$('#update_system').removeClass('update_available');
-
-					stash_needed = result.stash_needed;
 
 					if (result.update_id)
 						update_id = result.update_id;
@@ -586,36 +578,34 @@ function onswipe(event, direction, distance, duration, fingerCount, fingerData)
 
 
 function system_command(command)
+	// restarting != 0 stops any subsequent gets to the server
+	// which is, as far as I know, only the on_idle() update loop
 {
 	$('.cover_screen').show();
 	if (confirm(command + '?'))
 	{
-		if (command == 'update_system' && stash_needed)
-		{
-			if (!confirm("A stash is needed in order to update ths system. Continue?"))
-			{
-				$('.cover_screen').hide();
-				return;
-			}
-		}
+		restarting = -1;
+		audio_command('stop');
+		update_renderer_ui();
+		$('.artisan_menu_library_name').html(command);
+
 		$.get(command,function(result)
 		{
-			restarting = -1;
-
-			// restarting != 0 stops any subsequent gets to the server
-			// which is, as far as I know, only the on_idle() update loop
-
-			audio_command('stop');
-			update_renderer_ui();
-			$('.artisan_menu_library_name').html(command);
-			my_alert(command,command);
-			var delay = command == 'reboot' || command == 'update_system' ?
-				30000 :
-				8000;
-
-			setTimeout(function() {
-				restarting = 1;
-			}, delay);
+			if (result.contains('error'))
+			{
+				rerror(result);
+				restarting = 0;
+				$('.artisan_menu_library_name').html(current_library.name);
+				$('.cover_screen').hide();
+			}
+			else
+			{
+				my_alert(command,command);
+				var delay = command == 'reboot' || command == 'update_system' ?
+					30000 :
+					8000;
+				setTimeout(function() { restarting = 1; }, delay);
+			}
 		});
 	}
 	else

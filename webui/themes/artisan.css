@@ -99,14 +99,9 @@ table
 }
 
 
+/* .update_allowed, */
 .as_service,
 .linux_only
 {
 	display:none;
-}
-
-
-.update_available
-{
-	color: #ff0000;
 }

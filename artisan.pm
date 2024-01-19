@@ -60,13 +60,10 @@ use localPlaylist;
 use remoteLibrary;
 use remoteRenderer;
 use remoteArtisanLibrary;
-use Update;
-
-
-my $CHECK_FOR_UPDATES = 30;
-
 
 use sigtrap 'handler', \&onSignal, 'normal-signals';
+$SIG{CHLD} = 'DEFAULT' if !is_win();
+	# needed to run git from linux service
 
 
 my $dbg_main = 0;
@@ -307,10 +304,6 @@ AFTER_EXCEPTION:
 						}
 						elsif (chr($char) eq 'u')
 						{
-							checkForUpdates();
-						}
-						elsif (chr($char) eq 'p')
-						{
 							doUpdates();
 						}
 					}
@@ -351,19 +344,9 @@ AFTER_EXCEPTION:
 			}
 			elsif ($line eq 'u')
 			{
-				checkForUpdates();
-			}
-			elsif ($line eq 'p')
-			{
 				doUpdates();
 			}
 		}
-	}
-
-	if ($CHECK_FOR_UPDATES && (time() > $last_update_check + $CHECK_FOR_UPDATES))
-	{
-		$last_update_check = time();
-		checkForUpdates();
 	}
 
 }

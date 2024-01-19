@@ -1,11 +1,11 @@
 # Artisan Perl
 
-Artisan Perl is primarily a complete, self contained, system for organizing,
-presenting, and playing audio from a local Music Library of consisting of
-files, like MP3s, contained in a single folder tree, on a Windows computer.
+Artisan Perl is a complete, self contained, system for organizing,
+presenting, and playing audio from a local Music Library consisting of
+files, like MP3s, contained in a folder tree on some machine.
 
-In addition, it implements, and takes advantage of certain DLNA
-and UPNP standards:
+Artisan implements, and takes advantage of industry standards, like
+UPNP and DLNA to work with other devices on the home network.
 
 - it is a standard DLNA Media Server, providing its Library to a huge
   number of existing devices (Music Players) that can render audio on
@@ -13,26 +13,75 @@ and UPNP standards:
 - it can present and play audio from a similarly huge number of
   existing networked Media Servers that implement the DLNA standard.
 
-Planned (possible) enhancements:
+![readme_01.jpg](images/readme_01.jpg)
 
-- it can control any Music Players on the netork that implement the
-  standard DLNA Renderer interface, of which there are many. As such
-  it can connect any DLNA Media Server to any DLNA Renderer on the
-  network to present and play audio from the given Server on the
-  given Renderer.
+Artisan Perl runs as a Service on a Windows or Linux Machine, and
+provides a User Interface via an HTTP Server that can be accessed
+by a Browser anywhere on the on home network.  From that User
+Interface you can play and control music on either the Server
+machine, or on the device that is running the Browser.
 
-Artisan Perl runs as a Service on the Windows Machine, and provides a
-User Interface via an HTTP Server that can be accessed by a Browser
-anywhere on the on home network.
+The responsive User Interface is designed to work with any Browser,
+on a variety of different devices and screen sizes, from desktop or
+laptop computers, as shown above, to smaller touch devices like
+tablets and phones.
+
+Artisan can work with MP3, WMA, and M4A audio files. However,
+since Web Browsers do not typically support the WMA standard, and
+for other reasonse, in my own usage, I have decided to standardize
+all of my own personal music as MP3 files.
 
 
-## Design Overview
+## Renderers, Libraries, and SSDP
+
+The two most impoortant concepts in Artisan are **Renderers**
+and **Libraries**.
+
+A *Renderer* is a device that can **play** music.  Artisan
+supports two Renderers.  Whether running on Linux (typically
+a Raspberry Pi) or on a Windows machine, the primary Renderer
+is the machine on which the Artisan service is running.
+In other words Artisan can play music on your Windows machine
+or Raspberry Pi through any of their normal audio devices.
+
+The second Renderer supported directly by Artisan is the device
+on which the Browser is running.  So, for example, you can
+play music from Artisan on your cellphone or tablet, or any
+other device on your home network that has a Browser that
+supports HTML audio.
+
+A *Library* is a synonym for a *DLNA Media Server*, an industry
+standard for devices that contain and/or can **serve** music files
+to be played by a Renderer. Artisan itself is generally the primary
+Library you will use, containing your audio files, organized how
+you like them, on the machine running the service.
+
+Artisan can also play music from any other Libraries (*DLNA
+Media Servers*) that exist on your home network.  Some examples
+of standard DLNA Media Servers include the **Windows Media Player**
+and program like **Plex**.  And, once again, any standard *DLNA Media
+Renderer*, which includes programs like the Windows Media Player,
+or devices like Samsung Smart TV's, can access the Artisan Library
+and play music from it.
+
+Because Artisan fully supports **SSDP** (Simple Search and Discovery
+Protocol), it automatically locates, and is located by, these other
+devices on your home network without the need for any complicated
+configuration.  As soon as Artisan is running, it will show up in
+WMP (Windows Media Player) as an available library, and vice-versa,
+the WMP Library will show up in the Artisan Web UI.
+
+
+
+
+
+
+
 
 Artisan Perl
 
 - is a DLNA MediaServer
-- can access any existing DLNA Media Servers
-- **can control any existing DLNA Media Renderers**
+- can access any existing DLNA MediaServers
 
 It is **not** a DLNA Renderer.  Artisan itself cannot be
 controlled by existing DLNA Control Points.  Internally
