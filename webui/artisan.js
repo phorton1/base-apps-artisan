@@ -592,7 +592,9 @@ function system_command(command)
 			update_renderer_ui();
 			$('.artisan_menu_library_name').html(command);
 			my_alert(command,command);
-			var delay = command == 'reboot' ? 30000 : 8000;
+			var delay = command == 'reboot' || command == 'update' ?
+				30000 :
+				8000;
 
 			setTimeout(function() {
 				restarting = 1;

@@ -1,56 +1,47 @@
 <!-- artisan_menu.html -->
 
 <div class="ui-layout-north">
-	<table class="artisan_menu_table">
-		<tr>
-			<td width='80px'>
-				<button
-					class='artisan_menu_item'
-					onclick="javascript:set_page('home')" >
-					home
-				</button>
-			</td>
-			<td width='80px'>
-				<button
-					class='artisan_menu_item'
-					onclick="javascript:set_page('explorer')" >
-					explorer
-				</button>
-			</td>
-			<td width='80px'>
-				<button
-					class='artisan_menu_item'
-					onclick="javascript:set_page('search')" >
-					search
-				</button>
-			</td>
-			<td width='80px'>
-				<button
-					class='artisan_menu_item'
-					onclick="javascript:toggleFullScreen()" >
-					full_screen
-				</button>
-			</td>
-			<td width='80px'>
-				<button
-					class='artisan_menu_item as_service'
-					onclick="javascript:system_command('restart_service')" >
-					restart
-				</button>
-			</td>
-			<td width='80px'>
-				<button
-					class='artisan_menu_item linux_only'
-					onclick="javascript:system_command('reboot')" >
-					reboot
-				</button>
-			</td>
+	<div class="artisan_menu_bar">
 
-			<td class='artisan_menu_library_name'>
-				Library Name
-			</td>
-		</tr>
-	</table>
+		<button
+			class='artisan_menu_item'
+			onclick="javascript:set_page('home')" >
+			home
+		</button>
+		<button
+			class='artisan_menu_item'
+			onclick="javascript:set_page('explorer')" >
+			explorer
+		</button>
+		<button
+			class='artisan_menu_item'
+			onclick="javascript:set_page('search')" >
+			search
+		</button>
+		<button
+			class='artisan_menu_item'
+			onclick="javascript:toggleFullScreen()" >
+			full_screen
+		</button>
+		<button
+			class='artisan_menu_item as_service'
+			onclick="javascript:system_command('restart_service')" >
+			restart
+		</button>
+		<button
+			class='artisan_menu_item linux_only'
+			onclick="javascript:system_command('reboot')" >
+			reboot
+		</button>
+		<button
+			class='artisan_menu_item update_available'
+			onclick="javascript:system_command('update')" >
+			update
+		</button>
+		<div class='artisan_menu_library_name'>
+			Library Name
+		</div>
+	</div>
 </div>
 
 <!-- end of artisan_menu.html -->

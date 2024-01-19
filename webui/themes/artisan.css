@@ -79,27 +79,27 @@ table
 
 
 
-.artisan_menu_table
+.artisan_menu_bar
 {
-	height:100%;
+	margin-top:4px;
+	margin-left:5px;
 	width:100%;
-}
-.artisan_menu_table td
-{
-	vertical-align:middle;
-	padding-left:14px;
-	padding-top:2px;
+	display:flex;
+	flex-wrap: nowrap;
+	gap:6px;
 }
 .artisan_menu_library_name
 {
 	color:#cccccc;
 	font-size:14pt;
 	font-weight: bold;
+	margin-top:4px;
 	padding-right:14px;
-	text-align: right;
+	margin-left:auto;
 }
 
 
+/* .update_available, */
 
 .as_service,
 .linux_only

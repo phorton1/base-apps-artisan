@@ -43,6 +43,7 @@ use warnings;
 use threads;
 use threads::shared;
 use Error qw(:try);
+use IO::Select;
 use Pub::Utils;
 use if is_win, 'Win32::Console';
 use Time::HiRes qw(sleep time);
@@ -59,13 +60,17 @@ use localPlaylist;
 use remoteLibrary;
 use remoteRenderer;
 use remoteArtisanLibrary;
-use IO::Select;
+use Update;
+
+
+my $CHECK_FOR_UPDATES = 0;
 
 
 use sigtrap 'handler', \&onSignal, 'normal-signals';
 
 
 my $dbg_main = 0;
+my $last_update_check = 0;
 
 
 display($dbg_main,0,"----------------------------------------------");
@@ -300,6 +305,10 @@ AFTER_EXCEPTION:
 							display($dbg_main,0,"artisan.pm calling SSDP doSearch()");
 							SSDP::doSearch();
 						}
+						elsif (chr($char) eq 'u')
+						{
+							checkForUpdates();
+						}
 					}
 				}
 			}
@@ -336,7 +345,17 @@ AFTER_EXCEPTION:
 				display($dbg_main,0,"artisan.pm calling SSDP doSearch()");
 				SSDP::doSearch();
 			}
+			elsif ($line eq 'u')
+			{
+				checkForUpdates();
+			}
 		}
+	}
+
+	if ($CHECK_FOR_UPDATES && (time() > $last_update_check + $CHECK_FOR_UPDATES))
+	{
+		$last_update_check = time();
+		checkForUpdates();
 	}
 
 }
