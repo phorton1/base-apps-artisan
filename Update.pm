@@ -92,23 +92,14 @@ sub checkDoUpdate
 	my $this_available = 0;
 	my $this_stash_needed = 0;
 
-	return 0 if !gitCommand($repo,'remote update',\$text);
-	return 1 if !$text;
-
+	return 0 if !gitCommand($repo,'remote update');
 	return 0 if !gitCommand($repo,'status',\$text);
-	if (!$text)
-	{
-		error("unexpected blank result from git(status) $repo");
-		return 0;
-	}
-
 	if ($text =~ /Your branch is behind .* and can be fast-forwarded/)
 	{
 		display($dbg_checks,0,"UPDATE_NEEDED($repo)",0,$UTILS_COLOR_MAGENTA);
 		$this_available = 1;
 		$update_available = 1;
 	}
-
 	if ($this_available)
 	{
 		return 0 if !gitCommand($repo,'diff',\$text);
@@ -118,12 +109,11 @@ sub checkDoUpdate
 			$this_stash_needed = 1;
 			$stash_needed = 1;
 		}
-	}
-
-	if ($doit && $this_available)
-	{
-		return 0 if $this_stash_needed && !gitCommand($repo,'stash');
-		return 0 if !gitCommand($repo,'pull');
+		if ($doit)
+		{
+			return 0 if $this_stash_needed && !gitCommand($repo,'stash');
+			return 0 if !gitCommand($repo,'pull');
+		}
 	}
 
 	return 1;
