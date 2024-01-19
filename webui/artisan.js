@@ -205,9 +205,10 @@ function idle_loop()
 						clearRestart();
 
 					if (result.update_available)
-						$('.update_available').show()
+						$('#update_system').addClass('update_available');
 					else
-						$('.update_available').hide();
+						$('#update_system').removeClass('update_available');
+
 					stash_needed = result.stash_needed;
 
 					if (result.update_id)
@@ -591,7 +592,10 @@ function system_command(command)
 		if (command == 'update_system' && stash_needed)
 		{
 			if (!confirm("A stash is needed in order to update ths system. Continue?"))
+			{
+				$('.cover_screen').hide();
 				return;
+			}
 		}
 		$.get(command,function(result)
 		{
@@ -612,10 +616,6 @@ function system_command(command)
 				restarting = 1;
 			}, delay);
 		});
-	}
-	else
-	{
-		$('.cover_screen').hide();
 	}
 }
 
