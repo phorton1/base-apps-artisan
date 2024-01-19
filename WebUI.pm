@@ -31,6 +31,7 @@ use DeviceManager;
 use httpUtils;
 use uiLibrary;
 use Queue;
+use Update;
 
 
 my $dbg_webui = 1;
@@ -213,6 +214,9 @@ sub web_ui
 
 		$data->{libraries} = getDevicesData($DEVICE_TYPE_LIBRARY)
 			if $update_id != $system_update_id;
+
+		$data->{update_available} = $update_available;
+		$data->{stash_needed} = $stash_needed;
 
 		if ($renderer_uuid)
 		{

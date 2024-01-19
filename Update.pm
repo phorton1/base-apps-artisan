@@ -65,16 +65,16 @@ sub gitCommand
 	# reports error and and returns 0 if an error detected
 	# returns 1 and sets $retval from the command otherwise
 {
-	my ($repo,$command,$retval) = @_;
+	my ($doit,$repo,$command,$retval) = @_;
 	$$retval = '' if $retval;
-	display($dbg_git,0,"gitCommand($command)");
+	display($doit?0:$dbg_git,0,"gitCommand($command)");
 	my $rslt = `git -C $repo $command 2>&1`;
 	if ($rslt =~ /error/si)
 	{
 		error("repo($repo) command($command) $rslt");
 		return 0;
 	}
-	display($dbg_git+1,0,"rslt=$rslt");
+	display($doit?0:$dbg_git+1,0,"rslt=$rslt");
 	$$retval = $rslt if $retval;
 	return 1;
 }
@@ -92,8 +92,8 @@ sub checkDoUpdate
 	my $this_available = 0;
 	my $this_stash_needed = 0;
 
-	return 0 if !gitCommand($repo,'remote update');
-	return 0 if !gitCommand($repo,'status',\$text);
+	return 0 if !gitCommand($doit,$repo,'remote update');
+	return 0 if !gitCommand($doit,$repo,'status',\$text);
 	if ($text =~ /Your branch is behind .* and can be fast-forwarded/)
 	{
 		display($dbg_checks,0,"UPDATE_NEEDED($repo)",0,$UTILS_COLOR_MAGENTA);
@@ -102,7 +102,7 @@ sub checkDoUpdate
 	}
 	if ($this_available)
 	{
-		return 0 if !gitCommand($repo,'diff',\$text);
+		return 0 if !gitCommand($doit,$repo,'diff',\$text);
 		if ($text)
 		{
 			display($dbg_checks,0,"STASH_NEEDED($repo)",0,$UTILS_COLOR_MAGENTA);
@@ -111,8 +111,8 @@ sub checkDoUpdate
 		}
 		if ($doit)
 		{
-			return 0 if $this_stash_needed && !gitCommand($repo,'stash');
-			return 0 if !gitCommand($repo,'pull');
+			return 0 if $this_stash_needed && !gitCommand($doit,$repo,'stash');
+			return 0 if !gitCommand($doit,$repo,'pull');
 		}
 	}
 
@@ -136,7 +136,7 @@ sub doUpdates
 		sleep(1);
 	}
 
-	if (checkDoUpdate(0,'/base/Pub') &&
+	if (checkDoUpdate(1,'/base/Pub') &&
 		checkDoUpdate(1,'/base/apps/artisan'))
 	{
 		LOG(0,"UPDATE COMPLETED");

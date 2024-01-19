@@ -24,6 +24,7 @@ var explorer_mode = 0;
 var idle_timer = null;
 var idle_count = 0;
 var update_id = 1;
+var stash_needed = 0;
 
 
 display(dbg_load,0,"artisan.js loaded");
@@ -202,6 +203,12 @@ function idle_loop()
 				{
 					if (restarting)
 						clearRestart();
+
+					if (result.update_available)
+						$('.update_available').show()
+					else
+						$('.update_available').hide();
+					stash_needed = result.stash_needed;
 
 					if (result.update_id)
 						update_id = result.update_id;
@@ -581,6 +588,11 @@ function system_command(command)
 	$('.cover_screen').show();
 	if (confirm(command + '?'))
 	{
+		if (command == 'update_system' && stash_needed)
+		{
+			if (!confirm("A stash is needed in order to update ths system. Continue?"))
+				return;
+		}
 		$.get(command,function(result)
 		{
 			restarting = -1;
@@ -592,7 +604,7 @@ function system_command(command)
 			update_renderer_ui();
 			$('.artisan_menu_library_name').html(command);
 			my_alert(command,command);
-			var delay = command == 'reboot' || command == 'update' ?
+			var delay = command == 'reboot' || command == 'update_system' ?
 				30000 :
 				8000;
 

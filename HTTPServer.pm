@@ -18,6 +18,7 @@ use httpUtils;
 use HTTPStream;
 use ContentDirectory1;
 use WebUI;
+use Update;
 
 
 my $dbg_http = 0;
@@ -389,6 +390,22 @@ sub handle_connection
 		$restart_service = time();	# if !is_win();
 		$response = http_header()."Restarting Service.\nWill reload WebUI in 30 seconds..\r\n";
 	}
+	elsif ($request_path eq '/update_system')
+	{
+		LOG(0,"Artisan updating system");
+		if (!doUpdates())
+		{
+			$response = http_error("Could not do a system_update");
+		}
+		else
+		{
+			LOG(0,"restarting service in 5 seconds");
+			$restart_service = time();	# if !is_win();
+			$response = http_header()."Restarting Service after System Update.\nWill reload WebUI in 30 seconds..\r\n";
+		}
+	}
+
+
 
 	# unsupported request
 
