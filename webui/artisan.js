@@ -584,6 +584,8 @@ function system_command(command)
 	$('.cover_screen').show();
 	if (confirm(command + '?'))
 	{
+		$('.cover_screen').show();
+			// for some reason the cover screen disappears
 		restarting = -1;
 		audio_command('stop');
 		update_renderer_ui();
