@@ -355,6 +355,7 @@ AFTER_EXCEPTION:
 			}
 			elsif ($line eq 'p')
 			{
+				# test change
 				doUpdates();
 			}
 		}
