@@ -71,14 +71,25 @@ sub checkUpdatesThread
 
 
 sub checkUpdate
+	# returns 1 on success
 	# returns 0 on error
-	# sets var and returns 1 on success
+	# sets var if update is needed
 {
 	my ($repo,$update_needed) = @_;
 	display($dbg_checks+1,0,"checkUpdate($repo)");
-	return 0 if !gitCommand($repo,'remote update',$dbg_checks);
-	my $text = gitCommand($repo,'status',$dbg_checks);
-	return 0 if !$text;
+
+	# 'remote update' can return blank if no remote update needed
+
+	my $text = '';
+	return 0 if !gitCommand(\$text,$repo,'remote update',$dbg_checks);
+	return 1 if !$text;
+
+	return 0 if !gitCommand(\$text,$repo,'status',$dbg_checks);
+	if (!$text)
+	{
+		error("unexpected blank result from git(status) $repo");
+		return 0;
+	}
 
 	if ($text =~ /Your branch is behind .* and can be fast-forwarded/)
 	{
@@ -90,20 +101,22 @@ sub checkUpdate
 
 
 sub gitCommand
-	# reports and returns '' if an error detected
-	# returns text from the command otherwise
+	# reports error and and returns 0 if an error detected
+	# returns 1 and sets $retval from the command otherwise
 {
-	my ($repo,$command,$dbg) = @_;
+	my ($retval,$repo,$command,$dbg) = @_;
 	$dbg ||= 0;
+	$$retval = '';
 	display($dbg,0,"gitCommand($command)");
 	my $rslt = `git -C $repo $command 2>&1`;
 	if ($rslt =~ /error/si)
 	{
-		error($rslt);
-		return '';
+		error("repo($repo) command($command) $rslt");
+		return 0;
 	}
 	display($dbg,0,"rslt=$rslt");
-	return $rslt;
+	$$retval = $rslt;
+	return 1;
 }
 
 
