@@ -591,9 +591,9 @@ function system_command(command)
 
 		$.get(command,function(result)
 		{
-			if (result.contains('error'))
+			if (result.includes('error'))
 			{
-				rerror(result);
+				alert(result);
 				restarting = 0;
 				$('.artisan_menu_library_name').html(current_library.name);
 				$('.cover_screen').hide();

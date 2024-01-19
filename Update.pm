@@ -59,11 +59,12 @@ sub doSystemUpdate
 {
 	LOG(-1,"UPDATING SYSTEM");
 	my $text = '';
-	my $pub = updateOne('/base/Pub',$text);
-	my $artisan = $pub >= 0 ?  updateOne('/base/apps/artisan',$text) : 0;
+	my $pub = updateOne('/base/Pub',\$text);
+	my $artisan = $pub >= 0 ?  updateOne('/base/apps/artisan',\$text) : 0;
 	if (!$pub && !$artisan)
 	{
 		$text = 'Nothing to do!';
+		error($text);
 		$pub = -1;
 	}
 	return $text if $pub<0 || $artisan<0;
