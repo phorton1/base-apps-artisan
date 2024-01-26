@@ -349,6 +349,11 @@ AFTER_EXCEPTION:
 		}
 	}
 
+	else	# empty loop
+	{
+		sleep(1);
+	}
+
 }
 
 
