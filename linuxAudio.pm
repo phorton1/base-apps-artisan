@@ -26,6 +26,9 @@ sub getDevices
 	if ($force || !$laudio_devices)
 	{
 		$laudio_devices = shared_clone({});
+		my $current = pactl("get-default-sink") || '';
+		display($dbg_la,1,"current=$current");
+
 		my $text = pactl("list sinks");
 		my @parts = split(/Sink #/s,$text);
 		shift @parts;	# remove text before first sink
@@ -35,8 +38,11 @@ sub getDevices
 			my $descrip = $part =~ /Description: (.*)$/m ? $1 : '';
 			$descrip = "AVJack" if $descrip =~ /Built-in Audio Stereo/;
 			$descrip = "HDMI" if $descrip =~ /Built-in Audio Digital Stereo \(HDMI\)/;
-			display($dbg_la,1,"device($descrip) = $name");
-			$laudio_devices->{$descrip} = $name;
+			my $active = $name eq $current ? 1 : 0;
+			display($dbg_la,1,"device($active,$descrip) = $name");
+			$laudio_devices->{$descrip} = shard_clone({
+				name => $name,
+				active => $active, });
 		}
 	}
 	return $laudio_devices;
@@ -50,11 +56,10 @@ sub setDevice
 	$id ||= '';
 	display($dbg_la,0,"linuxAudio::setDevice($id)");
 	my $devices = getDevices();
-	my $long_name = $devices->{$id};
-	return error("Could not find linux audio device($id)") if !$long_name;
-	display($dbg_la+1,"long_name=$long_name");
-	my $text = pactl("set-default-sink $long_name");
-	$text =~ s/^\s|\s$//g;
+	my $device = $devices->{$id};
+	return error("Could not find linux audio device($id)") if !$device;
+	display($dbg_la+1,"device=$device->{name} active=$device->{active}");
+	my $text = pactl("set-default-sink $device->{name}");
 	error($text) if $text;
 	return $text;
 }
@@ -70,6 +75,7 @@ sub pactl
 	my $sudo_cmd = $AS_SERVICE ? "sudo -u '#1000' $xdg" : '';
 	my $text = `$sudo_cmd $pactl $cmd`;
 	dbgText($text) if $dbg_la < 0;
+	$text =~ s/^\s|\s$//g;
 	return $text;
 }
 

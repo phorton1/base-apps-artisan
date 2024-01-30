@@ -284,11 +284,11 @@
 	position:absolute;
 	top:35px;
 	right:0px;
-	width:50px;
+	width:auto;
 	height:150px;
 	background:#444444;
 	border: 2px white;
-	display:none;
+	display:flex;
 	z-index:1000;
 }
 
@@ -299,10 +299,22 @@
 	background:#222266 !important;
 	margin-left:20px;
 	margin-top:14px;
-	margin-right:6px;
+	margin-right:20px;
 	margin-bottom:8px;
 }
 
+.linux_devices
+{
+	width:90px;
+}
+
+.linux_device_label
+{
+	display:block;
+	margin-right:5px;
+	overflow:hidden !important;
+	margin-top:5px;
+}
 
 
 

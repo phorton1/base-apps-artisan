@@ -280,7 +280,7 @@ sub web_ui
 	elsif (!is_win() && $path =~ /^get_audio_devices/)
 	{
 		my $devices = linuxAudio::getDevices();
-		$response = json_header().my_encode_json($devices);
+		$response = json_header().my_encode_json({devices=>$devices});
 	}
 	elsif (!is_win() && $path =~ /^set_audio_device\/(.*)$/)
 	{

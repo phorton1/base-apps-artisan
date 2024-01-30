@@ -15,12 +15,72 @@ var last_volume = 0;
 function toggle_volume_control()
 {
 	$('#volume_control').toggle();
+	if ($('#volume_control').is(":visible") && !is_win)
+		populate_linux_devices();
+
+}
+
+function populate_linux_devices()
+{
+	if (is_win)
+		return;
+	$.get('/webui/get_audio_devices',
+		function(result)
+		{
+			if (result.error)
+				rerror('Error in populate_linux_devices(): ' + result.error);
+			else
+				on_populate_linux_devices(result.devices);
+		});
+}
+
+function on_populate_linux_devices(devices)
+{
+	$('#linux_devices').empty();
+	var active ;
+	for (name in devices)
+	{
+		var device = devices[name];
+		if (device.active)
+			active = name;
+		$('#linux_devices').append(
+			'<input type="radio" ' +
+			'id="' + name + '" ' +
+			'name="linux_device_button" ' +
+			'class="linux_device_button vc_dont_close" ' +
+			(device.active ? 'checked ' : '') +
+			'value="' + name + '"' +
+			'>');
+		$('#linux_devices').append(
+			'<label for="' + name + '" ' +
+			'class="linux_device_label vc_dont_close" ' +
+			'name="linux_device_button">' +
+			name +
+			'</label>');
+		$('#' + name).attr('onClick', "selectLinuxDevice('" + name + "')");
+		$('#' + name).button({ icon: false });
+	}
+
+	$('.linux_device_button').buttonSet();
+}
+function selectLinuxDevice(name)
+{
+	$.get('/webui/set_audio_device/' + name,
+		function(result)
+		{
+			if (result.error)
+				rerror('Error in populate_linux_devices(): ' + result.error);
+			else
+				$( "#" + name).prop('checked', true).button('refresh');
+		});
 }
 
 
 function init_renderer_pane()
 {
 	display(dbg_home,0,"init_renderer_pane()");
+
+	$('#volume_control').hide();
 
 	$('#volume_slider').slider({
 		// disabled:true,
