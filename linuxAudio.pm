@@ -12,7 +12,7 @@ use threads::shared;
 use artisanUtils;
 
 
-my $dbg_la = -1;
+my $dbg_la = 0;
 
 
 my $laudio_devices;
@@ -33,8 +33,8 @@ sub getDevices
 		{
 			my $name = $part =~ /Name: (.*)$/m ? $1 : '';
 			my $descrip = $part =~ /Description: (.*)$/m ? $1 : '';
-			$name = "AVJack" if $name =~ /Built-in Audio Stereo/;
-			$name = "HDMI" if $name =~ /Built-in Audio Digital Stereo \(HDMI\)/;
+			$descrip = "AVJack" if $descrip =~ /Built-in Audio Stereo/;
+			$descrip = "HDMI" if $descrip =~ /Built-in Audio Digital Stereo \(HDMI\)/;
 			display($dbg_la,1,"device($descrip) = $name");
 			$laudio_devices->{$descrip} = $name;
 		}
@@ -49,7 +49,8 @@ sub setDevice
 	my ($id) = @_;
 	$id ||= '';
 	display($dbg_la,0,"linuxAudio::setDevice($id)");
-	my $long_name = $laudio_devices->{$id} = '';
+	my $devices = getDevices();
+	my $long_name = $devices->{$id};
 	return error("Could not find linux audio device($id)") if !$long_name;
 	display($dbg_la+1,"long_name=$long_name");
 	my $text = pactl("set-default-sink $long_name");
@@ -65,9 +66,9 @@ sub pactl
 	my ($cmd) = @_;
 	display($dbg_la,0,"pactl($cmd)");
 	my $pactl = "pactl -n pi";
-	my $sudo_cmd = 1 || $AS_SERVICE ? "sudo -u '#1000'" : '';
-		# XDG_RUNTIME_DIR=/run/user/1000" : '';
-	my $text = `$sudo_cmd  $cmd`;
+	my $xdg = " XDG_RUNTIME_DIR=/run/user/1000";
+	my $sudo_cmd = $AS_SERVICE ? "sudo -u '#1000' $xdg" : '';
+	my $text = `$sudo_cmd $pactl $cmd`;
 	dbgText($text) if $dbg_la < 0;
 	return $text;
 }

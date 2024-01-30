@@ -274,8 +274,8 @@ sub web_ui
 		$response = json_header().my_encode_json($rslt);
 	}
 
-	# This *might* go directly in the HTTP Server
 	# get/set linux audio device
+	# This stuff *might* go directly in the HTTP Server
 
 	elsif (!is_win() && $path =~ /^get_audio_devices/)
 	{
@@ -457,103 +457,6 @@ sub scale_fancytree_css
 	$response .= "\r\n";
 	return $response;
 }
-
-
-
-#--------------------------------------------------------------
-# Audio Experiments
-#--------------------------------------------------------------
-
-sub dispAdd
-{
-	my ($result,$dbg,$indent,$msg,$text) = @_;
-	$text ||= '';
-	$msg .= "\n$text\n";
-	display($dbg,$indent,$msg);
-	$$result .= $msg."\n";
-}
-
-
-sub setAudioDevice
-{
-	my ($device) = @_;
-
-	my $result = '';
-	dispAdd(\$result,0,0,"setAudioDevice($device)\n");
-
-	my $cmd;
-	my $text;
-	my $pactl = "pactl -n pi";
-	my $sudo_cmd = 1 || $AS_SERVICE ? "sudo -u '#1000' XDG_RUNTIME_DIR=/run/user/1000" : '';
-
-	$cmd = "aplay --list-pcms";
-	$text = `$sudo_cmd  $cmd`;
-	dispAdd(\$result,1,1,$cmd,$text);
-
-	$cmd = "amixer controls";
-	$text = `$sudo_cmd  $cmd`;
-	dispAdd(\$result,1,1,$cmd,$text);
-		# Returns following from ./artisan.pm NO_SERVICE
-		# 		Simple mixer control 'Master',0
-		# 		  Capabilities: pvolume pswitch pswitch-joined
-		# 		  Playback channels: Front Left - Front Right
-		# 		  Limits: Playback 0 - 65536
-		# 		  Mono:
-		# 		  Front Left: Playback 65536 [100%] [on]
-		# 		  Front Right: Playback 65536 [100%] [on]
-		# 		Simple mixer control 'Capture',0
-		# 		  Capabilities: cvolume cswitch cswitch-joined
-		# 		  Capture channels: Front Left - Front Right
-		# 		  Limits: Capture 0 - 65536
-		# 		  Front Left: Capture 0 [0%] [on]
-		# 		  Front Right: Capture 0 [0%] [on]
-		# Returns following from Service
-		#		Simple mixer control 'PCM',0
-		#		  Capabilities: pvolume
-		#		  Playback channels: Front Left - Front Right
-		#		  Limits: Playback 0 - 255
-		#		  Mono:
-		#		  Front Left: Playback 255 [100%] [0.00dB]
-		#		  Front Right: Playback 255 [100%] [0.00dB]
-
-	$cmd = "amixer -D pulse";
-	$text = `$sudo_cmd  $cmd`;
-	dispAdd(\$result,1,1,$cmd,$text);
-
-
-
-	$cmd = "$pactl list sinks short";
-	$text = `$sudo_cmd $cmd`;
-	dispAdd(\$result,0,1,$cmd,$text);
-		# 66	alsa_output.platform-bcm2835_audio.stereo-fallback	PipeWire	s16le 2ch 48000Hz	SUSPENDED
-		# 67	alsa_output.platform-fef00700.hdmi.hdmi-stereo	PipeWire	s32le 2ch 48000Hz	SUSPENDED
-		# 77	bluez_output.06_E4_81_E9_0E_07.1	PipeWire	s16le 2ch 48000Hz	SUSPENDED
-
-	# Without the "short" in the above command, I *could* get the full descriptions and map
-	#	alsa_output.platform-bcm2835_audio.stereo-fallback => Built-in Audio Stereo => AV Jack
-	#	alsa_output.platform-fef00700.hdmi.hdmi-stereo => Built-in Audio Digital Stereo (HDMI) => HDMI
-	#	bluez_output.06_E4_81_E9_0E_07.1 => BLS-B11
-	# and also handle potential future (i.e. USB) devices
-
-	my $audio_devices =
-	{
-		AVJack => "alsa_output.platform-bcm2835_audio.stereo-fallback",
-		HDMI => "alsa_output.platform-fef00700.hdmi.hdmi-stereo",
-		BLSB11 => "bluez_output.06_E4_81_E9_0E_07.1",
-	};
-
-	my $long_name = $audio_devices->{$device};
-	$long_name ||= $audio_devices->{HDMI};
-
-	$cmd = "$pactl set-default-sink $long_name";
-	$text = `$sudo_cmd $cmd`;
-	dispAdd(\$result,0,1,$cmd,$text);
-
-	return http_header().$result."\r\n";
-
-}
-
-
 
 
 1;
