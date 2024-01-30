@@ -305,13 +305,14 @@
 
 .linux_devices
 {
-	width:90px;
+	width:110px;
 }
 
 .linux_device_label
 {
 	display:block;
 	margin-right:5px;
+	white-space:nowrap;
 	overflow:hidden !important;
 	margin-top:5px;
 }

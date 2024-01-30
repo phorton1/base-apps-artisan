@@ -40,7 +40,7 @@ sub getDevices
 			$descrip = "HDMI" if $descrip =~ /Built-in Audio Digital Stereo \(HDMI\)/;
 			my $active = $name eq $current ? 1 : 0;
 			display($dbg_la,1,"device($active,$descrip) = $name");
-			$laudio_devices->{$descrip} = shard_clone({
+			$laudio_devices->{$descrip} = shared_clone({
 				name => $name,
 				active => $active, });
 		}
