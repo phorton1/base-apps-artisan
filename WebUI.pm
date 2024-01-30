@@ -272,8 +272,8 @@ sub web_ui
 		my $rslt = Queue::queueCommand($command,$post_params);
 		$response = json_header().my_encode_json($rslt);
 	}
-	
-	elsif ($path =~ /^set_audio_device\/(.*)$/)
+
+	elsif (!is_win() && $path =~ /^set_audio_device\/(.*)$/)
 	{
 		my $device = $1;
 		$response = setAudioDevice($device)
@@ -465,21 +465,21 @@ sub dispAdd
 sub setAudioDevice
 {
 	my ($device) = @_;
-	
+
 	my $result = '';
 	dispAdd(\$result,0,0,"setAudioDevice($device)\n");
-	
+
 	my $cmd;
 	my $text;
 	my $pactl = "pactl -n pi";
 	my $sudo_cmd = 1 || $AS_SERVICE ? "sudo -u '#1000' XDG_RUNTIME_DIR=/run/user/1000" : '';
 
 	$cmd = "aplay --list-pcms";
-	$text = `$sudo_cmd  $cmd`;	
+	$text = `$sudo_cmd  $cmd`;
 	dispAdd(\$result,1,1,$cmd,$text);
 
 	$cmd = "amixer controls";
-	$text = `$sudo_cmd  $cmd`;	
+	$text = `$sudo_cmd  $cmd`;
 	dispAdd(\$result,1,1,$cmd,$text);
 		# Returns following from ./artisan.pm NO_SERVICE
 		# 		Simple mixer control 'Master',0
@@ -505,7 +505,7 @@ sub setAudioDevice
 		#		  Front Right: Playback 255 [100%] [0.00dB]
 
 	$cmd = "amixer -D pulse";
-	$text = `$sudo_cmd  $cmd`;	
+	$text = `$sudo_cmd  $cmd`;
 	dispAdd(\$result,1,1,$cmd,$text);
 
 
@@ -517,26 +517,26 @@ sub setAudioDevice
 		# 67	alsa_output.platform-fef00700.hdmi.hdmi-stereo	PipeWire	s32le 2ch 48000Hz	SUSPENDED
 		# 77	bluez_output.06_E4_81_E9_0E_07.1	PipeWire	s16le 2ch 48000Hz	SUSPENDED
 
-	# Without the "short" in the above command, I *could* get the full descriptions and map 
+	# Without the "short" in the above command, I *could* get the full descriptions and map
 	#	alsa_output.platform-bcm2835_audio.stereo-fallback => Built-in Audio Stereo => AV Jack
 	#	alsa_output.platform-fef00700.hdmi.hdmi-stereo => Built-in Audio Digital Stereo (HDMI) => HDMI
 	#	bluez_output.06_E4_81_E9_0E_07.1 => BLS-B11
 	# and also handle potential future (i.e. USB) devices
-	
-	my $audio_devices = 
+
+	my $audio_devices =
 	{
 		AVJack => "alsa_output.platform-bcm2835_audio.stereo-fallback",
 		HDMI => "alsa_output.platform-fef00700.hdmi.hdmi-stereo",
 		BLSB11 => "bluez_output.06_E4_81_E9_0E_07.1",
 	};
-	
+
 	my $long_name = $audio_devices->{$device};
 	$long_name ||= $audio_devices->{HDMI};
-	
+
 	$cmd = "$pactl set-default-sink $long_name";
 	$text = `$sudo_cmd $cmd`;
 	dispAdd(\$result,0,1,$cmd,$text);
-	
+
 	return http_header().$result."\r\n";
 
 }

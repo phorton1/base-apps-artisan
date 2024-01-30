@@ -1,20 +1,22 @@
 # artisan.service
 #
 # This file is a "systemd unit" file describing a service to be started,
-# in this case, my "artisan" service.  It is assumed that you can
-# already run "./artisan.pm NO_SERVICE" from a command line in the
-# /base/apps/artisan directory, which means that you have already
-# setup the rPi according to /zip/_rpi/_setup/rpi_Setup.docx and
-# gotten all the Perl Modules, Perl Source for /base/Pub and
+# in this case, my "artisan" service.
+#
+# It is assumed that you can already run "./artisan.pm NO_SERVICE" from a
+# command line in the /base/apps/artisan directory, which means that you
+# have already setup the rPi according to /zip/_rpi/_setup/rpi_Setup.docx
+# and gotten all the Perl Modules, Perl Source for /base/Pub and
 # base/apps/artisan to the machine, setup the /base_data/temp
-# directory, gotten an mp3s directory to the rPi somehow, built
-# the artisan database, and can play hear music from any machine.
-# Then:
+# directory, gotten an mp3s directory to the rPi on a USB drive,
+# with the correct path specified in artisanUtils.pm, and can play
+# and hear music from any machine.
 #
-# Artisan.pm without NO_SERVICE will create a PIDFile in 
-#    /base_data/temp/artisan/artisan.pid
-#
-# INSTALLATION:
+# Artisan (artisanUtils.pm) calls initUtils(1), where the 1==AS_SERVICE.
+# All this does is turn off screen output. Note that Artisan calls
+# initServerUtils(1,'') ... without a PID file ... so that it WILL
+# wait for Wifi, but NOT fork and write a PID file.  Artisan is now
+# a 'simple' service
 #
 # To install this file on a new rPi, copy this file to the
 # /usr/lib/systemd/system/ directory
@@ -37,35 +39,42 @@
 # to the file in /usr/lib/systemd/system directory, and enable the service
 # on startup.  Thereafter you should be able to start and stop the service
 # from Webmin Bootup/Shutdown, and/or from any web pages I build to do so,
-# or via sudo systemctl start/restart/stop prh-fileserver
-# and it should be running on a freshly booted machine.
-# 
-# If you modify this file you need to stop the service,
-# recopy this file to /usr/lib/systemd/system, run
-# sudo systemctl daemon-reload, and then restart it.
+# or via "sudo systemctl start/restart/stop prh-fileserver" and it should be
+# running on a freshly booted machine.
+#
+# If you modify this file you need to stop the service, recopy this file to
+# /usr/lib/systemd/system, and run "sudo systemctl daemon-reload", and then
+# restart the artisan service.
 
 
 [Unit]
 Description=:Artisan DLNA MP3 Server Service
-Requires=dbus.service
+# Requires=dbus.service
 
 [Service]
 User=pi
-Type=simple
-# Type=forking
-
-# PIDFile=/base_data/temp/artisan/artisan.pid
 ExecStart=/base/apps/artisan/artisan.pm
+
+# Simpls versus Forking Service
+# I had problems getting sound to go to the correct device, which
+# I *think* is related not to the service type, but rather, to specific
+# environment variable(s).   But this is currently working
+
+Type=simple
+
+# Type=forking
+# PIDFile=/base_data/temp/artisan/artisan.pid
 # ExecStop=kill -KILL $(cat /var/run/artisan.pid)
 
+# The real issue seems to be an environment variable.
+# Nominally we must import the PERRLIB environment variable
+# for artisan.pm to load correctly on the rPi, but for
+# set_audio_device, we must set some other environment
+# variables
 
-# We must import the PERRLIB environment variable
-# for artisan.pm to load correctly on the rPi:
 # EnvironmentFile=/etc/environment
 EnvironmentFile=/base/apps/artisan/env.txt
 
 
-
 [Install]
-# WantedBy=multi-user.target
 WantedBy=network-online.target

@@ -624,3 +624,27 @@ after trying to add '@lxterminal' to all these files:
 Note that even though the audio is not changed when running as a service,
 the WebUI::set_audio_device command DOES change the system default audio
 device.
+
+
+## Environment Variables
+
+It turns out to be some kind of an issue with environment variables.
+
+I changed the service description file to make the service SIMPLE and
+include all the environment variables that are seen by the command line
+version, and, in addition, changed serverUtils.pm to not fork, but rather
+to merely write an (unused) PID file, and it started working.
+
+I'm not sure exactly how to proceed at this point.
+
+- Do I want a 'simple' non-forking Unix Service? or,
+- Do I want to go back to a forking process and try it with environment variables.
+
+I don't really want to change serverUtils.pm ... it is also the basis of the
+fileServer service, myIOT Service, and eventually other services.  But it
+is nice, in a sense, that I don't need to call serverUtils at all to create
+unix services.   initUtils(1) (AS_SERVICE) *may* still be required to turn
+off screen output.
+
+I will *still* want to narrow down exactly WHICH environment variables
+are important for this.
