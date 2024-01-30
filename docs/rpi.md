@@ -408,7 +408,7 @@ with on the rPi:
   to set the volume to 20% for running out of the 12V monitor
   HDMI outputs (which are speaker output) to the audio in
   of the small USB speakers.
-- the command 'cplay -l' will list the sound cards in the
+- the command 'aplay -l' will list the sound cards in the
   system, each of which has a 'card numbers' and typically
   a single 'device number' of 0
 - the command 'pactl list sinks short' is a way to set the
@@ -534,13 +534,93 @@ ui-layout does not work from CSS.
 
 
 
+## BLUETOOTH AUDIO - With new cheap BT audio device.
+
+There are two possible scenarios for BT audio on the rPI
+
+- using the rPi as a BT speaker from Windows Machine is an intereesting
+  experiment, especially if this system becomes "the boat stereo".
+- output from the Artisan service to the BT audio device.
+
+The latter case is the one we delve into here.
+
+### BLS-B11  Mac: 06:E4:81:E9:0E:07
+
+Is the model of the BT speaker device.
+
+Switching pairings between rPi and Windows seems to work fine.
+Inasmuch as, at least, the rPi pairing was done via the GUI.
 
 
+### /etc/asound.conf
+
+When I add the following the rPi /etc/asound.conf file, the
+BT speaker becomes the default rPi output device, though not
+for the Artisan service
+
+	defaults.bluealsa.interface "hci0"
+	defaults.bluealsa.device "XX:XX:XX:XX:XX:XX"
+	defaults.bluealsa.profile "a2dp"
+	defaults.bluealsa.delay 10000
+
+	# defaults.pcm.card = 2
+	# defaults.pcm.device = 0
 
 
+### /etc/group
+
+EXPERIMENT: in middle with using PACTL from artisan.pm
+getting "pactl pa_context_connect() failed connection refused"
+error. Added user pi to /etc/group file for
+group "pulse" and "pulse-access"
+
+	pulse:x:117:pi
+	pusle-access:x:118:pi
+
+I think I already added pi to the audio group with
+a command line while trying something else
+
+	audio:x:29:pi,pulse
 
 
+### Working from command line but not AS_SERVICE
 
-## TO_DO
+At this point I have implemented webUI/set_audio_device(AVJack|HDMI|BLSB11)
+and it works when Artisan is running from the command line, but not when
+Artisan is running as a service.
 
-- MP3s directory (preference or hardwired)
+
+### Trying to run from terminal window on startup
+
+I have tried several ways to run Artisan from a terminal window
+upon startup
+
+- add /base/apps/artisan/artisan.pm to /etc/rc.local -
+  I get no output to artisan.log, which I do not understand
+  Even if it did work, presumably the forked child would be
+  killed when rc.local exits
+- I don't want to try /base/apps/artisan/artisan.pm NO_SERVICE
+  as this might freeze startup, rendering the machine u-nusable.
+
+I could not get the terminal to come up automatically at all,
+after trying to add '@lxterminal' to all these files:
+
+- /etc/xdg/lxsession/LXDE/autostart -
+  changes left in place, commented out
+- /etc/xdg/lxsession/LXDE-pi/autostart -
+  changes left in place, commented out
+- created /home/pi/.config/lxsession/LXDE-pi/autostart -
+  renamed to prh-autostart-did-not-work)
+
+
+### linux audio is VERY confusing
+
+- I think I am using 'pipewire' which emulates 'pulseaudio'
+- pipewire itself does not appear to support setting a current, or defaul, audio device
+- There are many different commands and approaches to setting the audio device
+- There is something different about a SERVICE's audio than an application.
+- myMPG123.pm crashes if I try to add -o alsa:bluealsa to the command line
+
+Note that even though the audio is not changed when running as a service,
+the WebUI::set_audio_device command DOES change the system default audio
+device.
