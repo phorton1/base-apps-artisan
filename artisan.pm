@@ -112,17 +112,78 @@ if (!$AS_SERVICE && is_win())
 }
 
 
+#----------------------------------
 # setup linux sound
+#----------------------------------
 # was using 20% with PCM for HDMI output
 # may have needed to explicitly set 100% for USB card
 
-if (0 && !is_win() && $AS_SERVICE)
+WebUI::setAudioDevice('BLSB11');
+
+if (0 && !is_win() && $AS_SERVICE)	# OLD
 {
 	my $volume = '100%';
 	my $device = $AS_SERVICE ? 'PCM' : 'Master';
 	my $rslt = `amixer sset '$device' $volume`;
 	LOG(-1,"amixer sset '$device' $volume rslt=$rslt");
 }
+
+if (00 && !is_win())
+{
+	my $text = `amixer`;
+	display(0,0,"amixer = \n$text");
+		# Returns following from ./artisan.pm NO_SERVICE
+		# 		Simple mixer control 'Master',0
+		# 		  Capabilities: pvolume pswitch pswitch-joined
+		# 		  Playback channels: Front Left - Front Right
+		# 		  Limits: Playback 0 - 65536
+		# 		  Mono:
+		# 		  Front Left: Playback 65536 [100%] [on]
+		# 		  Front Right: Playback 65536 [100%] [on]
+		# 		Simple mixer control 'Capture',0
+		# 		  Capabilities: cvolume cswitch cswitch-joined
+		# 		  Capture channels: Front Left - Front Right
+		# 		  Limits: Capture 0 - 65536
+		# 		  Front Left: Capture 0 [0%] [on]
+		# 		  Front Right: Capture 0 [0%] [on]
+		# Returns following from Service
+		#		Simple mixer control 'PCM',0
+		#		  Capabilities: pvolume
+		#		  Playback channels: Front Left - Front Right
+		#		  Limits: Playback 0 - 255
+		#		  Mono:
+		#		  Front Left: Playback 255 [100%] [0.00dB]
+		#		  Front Right: Playback 255 [100%] [0.00dB]
+
+
+	
+	my $sudo_cmd = "sudo -u '#1000' XDG_RUNTIME_DIR=/run/user/1000";
+	$text = `$sudo_cmd pactl list sinks short`;
+	display(0,0,"pactl list sinks short = \n$text");
+		# 66	alsa_output.platform-bcm2835_audio.stereo-fallback	PipeWire	s16le 2ch 48000Hz	SUSPENDED
+		# 67	alsa_output.platform-fef00700.hdmi.hdmi-stereo	PipeWire	s32le 2ch 48000Hz	SUSPENDED
+		# 77	bluez_output.06_E4_81_E9_0E_07.1	PipeWire	s16le 2ch 48000Hz	SUSPENDED
+
+	# Without the "short" in the above command, I *could* get the full descriptions and map 
+	#	alsa_output.platform-bcm2835_audio.stereo-fallback => Built-in Audio Stereo => AV Jack
+	#	alsa_output.platform-fef00700.hdmi.hdmi-stereo => Built-in Audio Digital Stereo (HDMI) => HDMI
+	#	bluez_output.06_E4_81_E9_0E_07.1 => BLS-B11
+	# and also handle potential future (i.e. USB) devices
+	
+	my $audio_devices = 
+	{
+		AVJack => "alsa_output.platform-bcm2835_audio.stereo-fallback",
+		HDMI => "alsa_output.platform-fef00700.hdmi.hdmi-stereo",
+		BLSB11 => "bluez_output.06_E4_81_E9_0E_07.1",
+	};
+	
+	my $default_device = 'HDMI';
+	my $long_name = $audio_devices->{$default_device};
+	
+	$text = `$sudo_cmd pactl set-default-sink $long_name`;
+	display(0,0,"pactl set-default-sink $long_name = \n$text");
+}
+
 
 
 #----------------------------------
@@ -347,11 +408,6 @@ AFTER_EXCEPTION:
 				doUpdates();
 			}
 		}
-	}
-
-	else	# empty loop
-	{
-		sleep(1);
 	}
 
 }
