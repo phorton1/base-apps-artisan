@@ -118,7 +118,7 @@ if (!$AS_SERVICE && is_win())
 # was using 20% with PCM for HDMI output
 # may have needed to explicitly set 100% for USB card
 
-for my $key (keys %ENV)
+for my $key (sort keys %ENV)
 {
 	display(0,0,"$key=\"$ENV{$key}\"");
 }

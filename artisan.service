@@ -13,10 +13,11 @@
 # and hear music from any machine.
 #
 # Artisan (artisanUtils.pm) calls initUtils(1), where the 1==AS_SERVICE.
-# All this does is turn off screen output. Note that Artisan calls
-# initServerUtils(1,'') ... without a PID file ... so that it WILL
-# wait for Wifi, but NOT fork and write a PID file.  Artisan is now
-# a 'simple' service
+# All this does is turn off screen output. 
+#
+# Artisan can be run as a "simple" or a "forked" service by
+# changing FORKING_UNIX_SERVICE=0/1 in artisanUtils.pm, which
+# will, or will not, pass a $pid_filename into initServerUtils.
 #
 # To install this file on a new rPi, copy this file to the
 # /usr/lib/systemd/system/ directory
@@ -55,25 +56,28 @@ Description=:Artisan DLNA MP3 Server Service
 User=pi
 ExecStart=/base/apps/artisan/artisan.pm
 
-# Simpls versus Forking Service
-# I had problems getting sound to go to the correct device, which
-# I *think* is related not to the service type, but rather, to specific
-# environment variable(s).   But this is currently working
+# Simple Service
+# set artisanUtils::FORKING_UNIX_SERVICE=0
+# Type=simple
 
-Type=simple
+# Forking Service
+# set artisanUtils::FORKING_UNIX_SERVICE=1
 
-# Type=forking
-# PIDFile=/base_data/temp/artisan/artisan.pid
-# ExecStop=kill -KILL $(cat /var/run/artisan.pid)
+Type=forking
+PIDFile=/base_data/temp/artisan/artisan.pid
+ExecStop=kill -KILL $(cat /var/run/artisan.pid)
 
-# The real issue seems to be an environment variable.
-# Nominally we must import the PERRLIB environment variable
+
+# The problem with the sound all seems to come down to
+# needing XDG_RUNTIME_DIR="/run/user/1000" in the environment
+# Nominally we neededthe PERRLIB environment variable
 # for artisan.pm to load correctly on the rPi, but for
-# set_audio_device, we must set some other environment
-# variables
+# set_audio_device, we must set XDG_RUNTIME_DIR as well
 
-# EnvironmentFile=/etc/environment
-EnvironmentFile=/base/apps/artisan/env.txt
+EnvironmentFile=/etc/environment
+
+# EnvironmentFile=/base/apps/artisan/env.txt
+# A file I used for testing and to narrow the problem down
 
 
 [Install]

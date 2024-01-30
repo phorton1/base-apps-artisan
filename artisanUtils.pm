@@ -20,7 +20,7 @@ use Pub::Utils qw(!:win_only);
 use Pub::ServerUtils;
 use Encode;
 
-my $FORKING_UNIX_SERVICE = 0;
+my $FORKING_UNIX_SERVICE = 1;
 my $USE_MINI_LIBRARY = 0;
 
 
