@@ -118,7 +118,12 @@ if (!$AS_SERVICE && is_win())
 # was using 20% with PCM for HDMI output
 # may have needed to explicitly set 100% for USB card
 
-WebUI::setAudioDevice('BLSB11');
+for my $key (keys %ENV)
+{
+	display(0,0,"$key=\"$ENV{$key}\"");
+}
+
+# WebUI::setAudioDevice('BLSB11');
 
 if (0 && !is_win() && $AS_SERVICE)	# OLD
 {
@@ -290,7 +295,7 @@ sub restart
 
 
 my $linux_keyboard;
-if (!is_win() && !$AS_SERVICE)
+if (0 && !is_win() && !$AS_SERVICE)
 {
 	$linux_keyboard = IO::Select->new();
 	$linux_keyboard->add(\*STDIN);

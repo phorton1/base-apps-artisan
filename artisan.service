@@ -47,16 +47,24 @@
 
 [Unit]
 Description=:Artisan DLNA MP3 Server Service
+Requires=dbus.service
 
 [Service]
 User=pi
-Type=forking
-PIDFile=/base_data/temp/artisan/artisan.pid
+Type=simple
+# Type=forking
+
+# PIDFile=/base_data/temp/artisan/artisan.pid
 ExecStart=/base/apps/artisan/artisan.pm
-ExecStop=kill -KILL $(cat /var/run/artisan.pid)
+# ExecStop=kill -KILL $(cat /var/run/artisan.pid)
+
+
 # We must import the PERRLIB environment variable
 # for artisan.pm to load correctly on the rPi:
-EnvironmentFile=/etc/environment
+# EnvironmentFile=/etc/environment
+EnvironmentFile=/base/apps/artisan/env.txt
+
+
 
 [Install]
 # WantedBy=multi-user.target
