@@ -32,6 +32,7 @@ use httpUtils;
 use uiLibrary;
 use Queue;
 use Update;
+use if !is_win, 'linuxAudio';
 
 
 my $dbg_webui = 1;
@@ -273,10 +274,21 @@ sub web_ui
 		$response = json_header().my_encode_json($rslt);
 	}
 
+	# This *might* go directly in the HTTP Server
+	# get/set linux audio device
+
+	elsif (!is_win() && $path =~ /^get_audio_devices/)
+	{
+		my $devices = linuxAudio::getDevices();
+		$response = json_header().my_encode_json($devices);
+	}
 	elsif (!is_win() && $path =~ /^set_audio_device\/(.*)$/)
 	{
 		my $device = $1;
-		$response = setAudioDevice($device)
+		my $error = linuxAudio::setDevice($device);
+		$response = $error ?
+			json_error($error) :
+			json_header().my_encode_json({result => "OK"});
 	}
 
 	# unknown request

@@ -1,0 +1,149 @@
+#-----------------------------------------
+# linuxAudio.pm
+#-----------------------------------------
+# methods for getting and manipulating the output
+# sound device on the rPi.
+
+package linuxAudio;
+use strict;
+use warnings;
+use threads;
+use threads::shared;
+use artisanUtils;
+
+
+my $dbg_la = -1;
+
+
+my $laudio_devices;
+
+
+sub getDevices
+{
+	my ($force) = @_;
+	$force ||= 0;
+	display($dbg_la,0,"linuxAudio::getDevices($force)");
+	if ($force || !$laudio_devices)
+	{
+		$laudio_devices = shared_clone({});
+		my $text = pactl("list sinks");
+		my @parts = split(/Sink #/s,$text);
+		shift @parts;	# remove text before first sink
+		for my $part (@parts)
+		{
+			my $name = $part =~ /Name: (.*)$/m ? $1 : '';
+			my $descrip = $part =~ /Description: (.*)$/m ? $1 : '';
+			$name = "AVJack" if $name =~ /Built-in Audio Stereo/;
+			$name = "HDMI" if $name =~ /Built-in Audio Digital Stereo \(HDMI\)/;
+			display($dbg_la,1,"device($descrip) = $name");
+			$laudio_devices->{$descrip} = $name;
+		}
+	}
+	return $laudio_devices;
+}
+
+
+sub setDevice
+	# returns '' or an error
+{
+	my ($id) = @_;
+	$id ||= '';
+	display($dbg_la,0,"linuxAudio::setDevice($id)");
+	my $long_name = $laudio_devices->{$id} = '';
+	return error("Could not find linux audio device($id)") if !$long_name;
+	display($dbg_la+1,"long_name=$long_name");
+	my $text = pactl("set-default-sink $long_name");
+	$text =~ s/^\s|\s$//g;
+	error($text) if $text;
+	return $text;
+}
+
+
+sub pactl
+	# runs a "pactl" command and returns the text
+{
+	my ($cmd) = @_;
+	display($dbg_la,0,"pactl($cmd)");
+	my $pactl = "pactl -n pi";
+	my $sudo_cmd = 1 || $AS_SERVICE ? "sudo -u '#1000'" : '';
+		# XDG_RUNTIME_DIR=/run/user/1000" : '';
+	my $text = `$sudo_cmd  $cmd`;
+	dbgText($text) if $dbg_la < 0;
+	return $text;
+}
+
+
+sub dbgText
+{
+	my ($text) = @_;
+	for my $line (split(/\n/,$text))
+	{
+		display($dbg_la+1,0,"--> $line");
+	}
+}
+
+
+
+# OLD
+#	$cmd = "aplay --list-pcms";
+#	$text = `$sudo_cmd  $cmd`;
+#	dispAdd(\$result,1,1,$cmd,$text);
+#
+#	$cmd = "amixer controls";
+#	$text = `$sudo_cmd  $cmd`;
+#	dispAdd(\$result,1,1,$cmd,$text);
+#		# Returns following from ./artisan.pm NO_SERVICE
+#		# 		Simple mixer control 'Master',0
+#		# 		  Capabilities: pvolume pswitch pswitch-joined
+#		# 		  Playback channels: Front Left - Front Right
+#		# 		  Limits: Playback 0 - 65536
+#		# 		  Mono:
+#		# 		  Front Left: Playback 65536 [100%] [on]
+#		# 		  Front Right: Playback 65536 [100%] [on]
+#		# 		Simple mixer control 'Capture',0
+#		# 		  Capabilities: cvolume cswitch cswitch-joined
+#		# 		  Capture channels: Front Left - Front Right
+#		# 		  Limits: Capture 0 - 65536
+#		# 		  Front Left: Capture 0 [0%] [on]
+#		# 		  Front Right: Capture 0 [0%] [on]
+#		# Returns following from Service
+#		#		Simple mixer control 'PCM',0
+#		#		  Capabilities: pvolume
+#		#		  Playback channels: Front Left - Front Right
+#		#		  Limits: Playback 0 - 255
+#		#		  Mono:
+#		#		  Front Left: Playback 255 [100%] [0.00dB]
+#		#		  Front Right: Playback 255 [100%] [0.00dB]
+#
+#	$cmd = "amixer -D pulse";
+#	$text = `$sudo_cmd  $cmd`;
+#	dispAdd(\$result,1,1,$cmd,$text);
+#
+#	$cmd = "$pactl list sinks short";
+#	$text = `$sudo_cmd $cmd`;
+#	dispAdd(\$result,0,1,$cmd,$text);
+#		# 66	alsa_output.platform-bcm2835_audio.stereo-fallback	PipeWire	s16le 2ch 48000Hz	SUSPENDED
+#		# 67	alsa_output.platform-fef00700.hdmi.hdmi-stereo	PipeWire	s32le 2ch 48000Hz	SUSPENDED
+#		# 77	bluez_output.06_E4_81_E9_0E_07.1	PipeWire	s16le 2ch 48000Hz	SUSPENDED
+#
+#	my $audio_devices =
+#	{
+#		AVJack => "alsa_output.platform-bcm2835_audio.stereo-fallback",
+#		HDMI => "alsa_output.platform-fef00700.hdmi.hdmi-stereo",
+#		BLSB11 => "bluez_output.06_E4_81_E9_0E_07.1",
+#	};
+#
+#	my $long_name = $audio_devices->{$device};
+#	$long_name ||= $audio_devices->{HDMI};
+#
+#	$cmd = "$pactl set-default-sink $long_name";
+#	$text = `$sudo_cmd $cmd`;
+#	dispAdd(\$result,0,1,$cmd,$text);
+#
+#	return http_header().$result."\r\n";
+
+
+
+
+
+1;
