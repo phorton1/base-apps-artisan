@@ -62,7 +62,7 @@ my %g_prefs:shared = @default_prefs;
 
 sub prefFilename()
 {
-	return "$temp_dir/artisan.prefs";
+	return "$data_dir/artisan.prefs";
 }
 
 
