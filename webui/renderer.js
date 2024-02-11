@@ -61,7 +61,7 @@ function on_populate_linux_devices(devices)
 		$('#' + name).button({ icon: false });
 	}
 
-	$('.linux_device_button').buttonSet();
+	$('.linux_device_button').buttonset();
 }
 function selectLinuxDevice(name)
 {
