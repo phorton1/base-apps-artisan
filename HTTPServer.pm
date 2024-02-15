@@ -43,7 +43,6 @@ sub new()
 		HTTP_DEBUG_REQUEST => 0,
 		HTTP_DEBUG_RESPONSE => 0,
 
-
 		HTTP_DEBUG_QUIET_RE => join('|',(
 			'\/webui\/update',
 			'\/webui\/queue\/get_queue',
@@ -51,9 +50,11 @@ sub new()
 			'\/images\/error_\d\.png',
 		)),
 
+
+		# HTTP_DEBUG_LOUD_RE => '\.html$',
 		# HTTP_DEBUG_LOUD_RE => '^\/webui\/queue',
 		# HTTP_DEBUG_LOUD_RE => '^\/webui\/renderer\/.*\/next$',
-		# HTTP_DEBUG_LOUD_RE => '/media',
+		# HTTP_DEBUG_LOUD_RE => '\/media',
 		# HTTP_DEBUG_LOUD_RE => '\/webui\/getDevice',
 		# HTTP_DEBUG_LOUD_RE => '\/webui\/queue',
 		# HTTP_DEBUG_LOUD_RE => '^.*\.(?!jpg$|png$)[^.]+$',
@@ -83,7 +84,11 @@ sub new()
 
 		HTTP_DOCUMENT_ROOT => '/base/apps/artisan/webui',
 		HTTP_DEFAULT_LOCATION => 'artisan.html',
+		HTTP_FAVICON => '/base/apps/artisan/webui/images/artisan.png',
         HTTP_GET_EXT_RE => 'html|js|css|jpg|gif|png|ico',
+
+		# HTTP_MINIFIED_JS	=> 1,
+		# HTTP_MINIFIED_CSS	=> 1,
 
 		# example of setting default headers for GET_EXT_RE extensions
 
@@ -216,16 +221,6 @@ sub handle_request
 	#------------------------------------------------------------
 	# system requests
 	#------------------------------------------------------------
-	# generic icon request
-	# To be moved to ServerBase as param
-
-	elsif ($uri =~ /^\/(favicon.ico|icons)/)
-	{
-		$response = Pub::HTTP::Response->new($request,
-			{filename => "$image_dir/artisan.png" });
-	}
-
-	# reboot and restart requests
 
 	elsif ($uri eq "/reboot")
 	{

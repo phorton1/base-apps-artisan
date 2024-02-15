@@ -130,7 +130,11 @@ if (!$AS_SERVICE && is_win())
 #----------------------------------
 # (0) static initialization of prefs
 
+
 artisanPrefs::static_init_prefs();
+
+
+
 
 # Wait upto 10 seconds for mp3_dir to exist (for booting rPi)
 # and exit (restart service) if not

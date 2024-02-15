@@ -143,8 +143,8 @@ sub new
 	my $thread = threads->create(\&mpThread,$this);
 	$thread->detach();
 
-	$this->{volume} = getPreference($PREF_RENDERER_VOLUME);
-	$this->{muted} = getPreference($PREF_RENDERER_MUTE);
+	$this->{volume} = getUserPref($PREF_RENDERER_VOLUME);
+	$this->{muted} = getUserPref($PREF_RENDERER_MUTE);
 
 	doMPCommand($this,$this->{muted} ? 'mute' : 'unmute');
 	doMPCommand($this,"volume,$this->{volume}");
@@ -343,7 +343,7 @@ sub doCommand
 	{
 		$this->{muted} = $this->{muted} ? 0 : 1;
 		doMPCommand($this,$this->{muted} ? 'mute' : 'unmute');
-		setPreference($PREF_RENDERER_MUTE,$this->{muted});
+		setUserPref($PREF_RENDERER_MUTE,$this->{muted});
 	}
 	elsif ($command eq 'set_volume')
 	{
@@ -352,7 +352,7 @@ sub doCommand
 		$this->{muted} = 0;
 		$this->{volume} = $volume;
 		doMPCommand($this,"volume,$volume");
-		setPreference($PREF_RENDERER_VOLUME,$this->{volume});
+		setUserPref($PREF_RENDERER_VOLUME,$this->{volume});
 	}
 
 	#-------------------------------------
