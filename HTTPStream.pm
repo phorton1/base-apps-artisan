@@ -165,13 +165,13 @@ sub stream_media
 
 		if ($method eq 'HEAD' || !$content_len)
 		{
-			display($dbg_stream+1,1,"short ending for HEAD request");
+			display($dbg_stream,1,"short ending for HEAD request");
 			return $RESPONSE_HANDLED ;
 
 		}
 		if (!$is_mpg123 && !$is_ranged)
 		{
-			display($dbg_stream+1,1,"short ending for !is_mpg123 && !is_ranged");
+			display($dbg_stream,1,"short ending for !is_mpg123 && !is_ranged");
 			return $RESPONSE_HANDLED
 		}
 

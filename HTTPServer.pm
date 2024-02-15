@@ -316,40 +316,18 @@ sub ServerDesc
         <modelDescription>a simple media server</modelDescription>
         <modelNumber>2.0</modelNumber>
         <modelURL>https://github.com/phorton1/base-apps-artisan</modelURL>
-        <presentationURL>http://$server_ip:$server_port/webui</presentationURL>
+        <presentationURL>http://$server_ip:$server_port</presentationURL>
         <serialNumber>ap-12345678</serialNumber>
 		<dlna:X_DLNADOC xmlns:dlna="urn:schemas-dlna-org:device-1-0">DMS-1.50</dlna:X_DLNADOC>
         <iconList>
-EOXML
-
-    my $indent = "            ";
-    for my $size (256)  # 120, 48, 32)
-    {
-        for my $type (qw(png)) # jpeg))
-        {
-            $xml .= $indent."<icon>\n";
-            $xml .= $indent."    <mimetype>image/$type</mimetype>\n";
-            $xml .= $indent."    <width>$size</width>\n";
-            $xml .= $indent."    <height>$size</height>\n";
-            $xml .= $indent."    <depth>24</depth>\n";
-            $xml .= $indent."    <url>/images/$size/icon.$type</url>\n";
-            $xml .= $indent."</icon>\n";
-        }
-    }
-
-    # we dont advertise that we're a connection manager,
-    # since we're not ...
-    #
-    # <service>
-    #    <serviceType>urn:schemas-upnp-org:service:ConnectionManager:1</serviceType>
-    #    <serviceId>urn:upnp-org:serviceId:ConnectionManager</serviceId>
-    #    <SCPDURL>ConnectionManager1.xml</SCPDURL>
-    #    <controlURL>/upnp/control/ConnectionManager1</controlURL>
-    #    <eventSubURL>/upnp/event/ConnectionManager1</eventSubURL>
-    # </service>
-
-    $xml .= <<EOXML;
-        </iconList>
+			<icon>
+				<mimetype>image/png</mimetype>
+				<width>256</width>
+				<height>256</height>
+				<depth>24</depth>
+				<url>/images/blah/artisan_16_large.png</url>
+			</icon>\n";
+		</iconList>
         <serviceList>
             <service>
                 <serviceType>urn:schemas-upnp-org:service:ContentDirectory:1</serviceType>
@@ -363,6 +341,18 @@ EOXML
     <URLBase>http://$server_ip:$server_port/</URLBase>
 </root>
 EOXML
+
+
+    # we dont advertise that we're a connection manager,
+    # since we're not ...
+    #
+    # <service>
+    #    <serviceType>urn:schemas-upnp-org:service:ConnectionManager:1</serviceType>
+    #    <serviceId>urn:upnp-org:serviceId:ConnectionManager</serviceId>
+    #    <SCPDURL>ConnectionManager1.xml</SCPDURL>
+    #    <controlURL>/upnp/control/ConnectionManager1</controlURL>
+    #    <eventSubURL>/upnp/event/ConnectionManager1</eventSubURL>
+    # </service>
 
 	display($dbg_server_desc,0,$xml);
 	return $xml;
