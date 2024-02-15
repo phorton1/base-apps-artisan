@@ -118,8 +118,7 @@ BEGIN
         $server_ip
         $server_port
 
-		myMimeType
-		pathMimeType
+		artisanMimeType
 
 		severity_to_str
 		code_to_severity
@@ -379,24 +378,18 @@ my %error_mappings = (
 # Mime utilities
 #---------------------------------
 
-sub myMimeType
+sub artisanMimeType
 {
-	my ($type) = @_;
-    return 'audio/mpeg'         if ($type =~ /^mp3$/i);	   # 7231
-    return 'audio/x-m4a'        if ($type =~ /^m4a$/i);    # 392
-	return 'audio/x-ms-wma'     if ($type =~ /^wma$/i);    # 965
-	return 'audio/x-wav'        if ($type =~ /^wav$/i);    # 0
-	# mp4 files are not currently playable
-	# return 'audio/mp4a-latm'    if ($filename =~ /\.m4p$/i);
-	return '';
-}
-
-
-sub pathMimeType
-{
-    my ($filename) = @_;
-	return myMimeType($1) if ($filename =~ /.*\.(.*)$/);
-    return '';
+	my ($filename_or_ext) = @_;
+	my $ext = lc($filename_or_ext);
+	$ext =~ s/^.*\.//;
+	my $mime_type =
+		$ext eq 'mp3' ? 'audio/mpeg' :
+		$ext eq 'm4a' ? 'audio/x-m4a' :
+		$ext eq 'wma' ? 'audio/x-ms-wma' :
+		$ext eq 'wav' ? 'audio/x-wav' : '';
+	# display(0,0,"artisanMimeType($filename_or_ext  ext($ext) = $mime_type");
+	return $mime_type;
 }
 
 

@@ -100,7 +100,8 @@ function queue_command(command,params)
 	{
 		display(dbg_queue,1,'queue_command ' + url + "data=\n" + data);
 	}
-	$.post(url,data,function(result)
+
+	$.postJSON(url,data,function(result)
 	{
 		if (result.error)
 		{

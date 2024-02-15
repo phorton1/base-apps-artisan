@@ -10,257 +10,108 @@ use strict;
 use warnings;
 use threads;
 use threads::shared;
-use Fcntl;
-use Socket;
-use IO::Select;
+use Pub::HTTP::Response;
 use artisanUtils;
-use httpUtils;
+# use httpUtils;
+use WebUI;
+use DeviceManager;
+use Update;
 use HTTPStream;
 use ContentDirectory1;
-use WebUI;
-use Update;
+use base qw(Pub::HTTP::ServerBase);
 
 
-my $dbg_http = 0;
-	#  0 == lifecycle
-my $dbg_post = 1;
-	#  0 == show POST data
-my $dbg_art = 1;
-	# 0 == debug get_art() method
+my $dbg_req = 1;
+
+# debug specific methods
+
+my $dbg_icon = 0;
+my $dbg_art = 0;
 my $dbg_server_desc = 1;
-	# 0 = show the xml to be returned for ServerDesc.xml
 
 
-# use with care - debugging that cannot be filtered by call
-
-my $dbg_connect = 1;
-	#  0 == show individual connections
-	# -1 == rarely used to show pending connnections in case there is
-	#       more than one at a time or to debug $FH closing at end
-
-my $dbg_hdr = 1;
-	#  0 == show actual request header lines
-
-
-# debugging that is filtered for renderer/xxx/update calls
-
-my $dbg_request = 0;
-	#  0 == show a header for every non renderer/xxx/update call
-	# -1 == show request headers for same
-	# -2 == show header for renderer/xxx/update calls, headers for all otherw
-	# -3 == show headers for everything
-
-my $dbg_response = 1;			# show the first line
-	# Response never shows for filtered requests
-	#  0 = single line with status line,, content_type, and length if present
-	# -1 = show the actual headers
-	# -2 = show the actual body, if any
-
-
-# THERE WAS SOME REASON THAT MULTI-THREADING WAS NOT WORKING,
-# but i don't remember what it was this time.
-
-our $SINGLE_THREAD = 0;
-	# 0 required the use of Win32::OLE::prhSetThreadNum(1) in localRenderer.pm.
-	# used to be set to 1 in artisanWin.pm and artisan.pm
-
-	# !!! MULTI-THREAD NOT WORKING in old artisanWin !!!
-	# Crashes when I try to "set the renderer" from the webUI
-	# at least in the old Wx artisanWin app ..
-	# The last thing appears to be the close($FH) at the end of handle_connection(),
-	# which is a thread created, and detached in start_webserver, below.
-	# Does not appear to make any difference if I detach, $FH, or init
-	# artisanWin from the main thread, or not.
-	# Then I get "Free to wrong pool during global destruction" error message
-	# Single thread set directly in artisan.pm
-
-
-my $http_running:shared = 0;
-sub running
+sub new()
 {
-	return $http_running;
+	my ($class) = @_;
+	my $no_cache =  shared_clone({
+		'cache-control' => 'max-age: 603200',
+	});
+
+	my $params = {
+
+		HTTP_DEBUG_SERVER => 0,
+			# 0 is nominal debug level showing one line per request and response
+		HTTP_DEBUG_REQUEST => 0,
+		HTTP_DEBUG_RESPONSE => 0,
+
+
+		HTTP_DEBUG_QUIET_RE => join('|',(
+			'\/webui\/update',
+			'\/webui\/queue\/get_queue',
+			'\/debug_output\/',
+			'\/images\/error_\d\.png',
+		)),
+
+		# HTTP_DEBUG_LOUD_RE => '^\/webui\/queue',
+		# HTTP_DEBUG_LOUD_RE => '^\/webui\/renderer\/.*\/next$',
+		# HTTP_DEBUG_LOUD_RE => '/media',
+		# HTTP_DEBUG_LOUD_RE => '\/webui\/getDevice',
+		# HTTP_DEBUG_LOUD_RE => '\/webui\/queue',
+		# HTTP_DEBUG_LOUD_RE => '^.*\.(?!jpg$|png$)[^.]+$',
+			# An example that shows urls that DO NOT match .jpt and .png,
+			# which shows JS, HTML, etc. And by setting DEBUG_REQUEST and
+			# DEBUG_RESPONSE to -1, you only see headers for the debugging
+			# at level 1.
+
+		HTTP_MAX_THREADS => 5,
+		# HTTP_KEEP_ALIVE => 0,
+			# In the ebay application, KEEP_ALIVE makes all the difference
+			# in the world, not spawning a new thread for all 1000 images.
+
+		HTTP_PORT => $server_port,
+
+		# HTTP_SSL => 1,
+		# HTTP_SSL_CERT_FILE => "/dat/Private/ssl/esp32/myIOT.crt",
+		# HTTP_SSL_KEY_FILE  => "/dat/Private/ssl/esp32/myIOT.key",
+        #
+		# HTTP_AUTH_ENCRYPTED => 1,
+		# HTTP_AUTH_FILE      => "$base_data_dir/users/local_users.txt",
+		# HTTP_AUTH_REALM     => "$owner_name Customs Manager Service",
+        #
+		# HTTP_USE_GZIP_RESPONSES => 1,
+		# HTTP_DEFAULT_HEADERS => {},
+        # HTTP_ALLOW_SCRIPT_EXTENSIONS_RE => '',
+
+		HTTP_DOCUMENT_ROOT => '/base/apps/artisan/webui',
+		HTTP_DEFAULT_LOCATION => 'artisan.html',
+        HTTP_GET_EXT_RE => 'html|js|css|jpg|gif|png|ico',
+
+		# example of setting default headers for GET_EXT_RE extensions
+
+		# HTTP_DEFAULT_HEADERS_JPG => $no_cache,
+		# HTTP_DEFAULT_HEADERS_PNG => $no_cache,
+	};
+
+	my $this = $class->SUPER::new($params);
+	bless $this,$class;
+	return $this;
 }
 
 
-sub start_webserver
-	# this is a separate thread, even if $SINGLE_THREA
+sub handle_request
 {
-	# My::Utils::setOutputToSTDERR();
-	# My::Utils::set_alt_output(1);
-	display($dbg_http,0,"HTTPServer starting ...");
-
-	local *S;
-	socket(S, PF_INET, SOCK_STREAM, getprotobyname('tcp')) || die "Can't open HTTPServer socket: $!\n";
-	setsockopt(S, SOL_SOCKET, SO_REUSEADDR, 1);
-	my $ip = inet_aton($server_ip);
-	bind(S, sockaddr_in($server_port, $ip));
-	if (!listen(S, 5))
-    {
-        error("Can't listen to HTTPServer socket: $!\n");
-        return;
-    }
-
-	my $ss = IO::Select->new();
-	$ss->add(*S);
-
-	$http_running = 1;
-
-    LOG(0,"HTTPServer started on $server_ip:$server_port");
-	while ($http_running)
-	{
-		if ($quitting)
-		{
-			$http_running = 0 if $http_running == 1;
-		}
-		else
-		{
-			my @connections_pending = $ss->can_read($SINGLE_THREAD?1:60);
-			display($dbg_connect+1,0,"accepted ".scalar(@connections_pending)." pending connections")
-				if (@connections_pending);
-			for my $connection (@connections_pending)
-			{
-				my $FH;
-				my $remote = accept($FH, $connection);
-				my ($peer_port, $peer_addr) = sockaddr_in($remote);
-				my $peer_ip = inet_ntoa($peer_addr);
-				$http_running++;
-
-				if ($SINGLE_THREAD)
-				{
-					handle_connection( $FH, $peer_ip, $peer_port );
-				}
-				else
-				{
-					my $thread = threads->create(\&handle_connection, $FH, $peer_ip, $peer_port);
-					$thread->detach();
-				}
-			}
-		}
-	}
-    LOG(0,"HTTPServer ended on $server_ip:$server_port");
-}
-
-
-
-sub handle_connection
-{
-	my ($FH,$peer_ip,$peer_port) = @_;
-	binmode($FH);
-
-	# My::Utils::setOutputToSTDERR();
-	# My::Utils::set_alt_output(1) if (!$SINGLE_THREAD);
-
-	display($dbg_connect,0,"HTTP connect from $peer_ip:$peer_port");
-
-	#=================================
-	# parse http request header
-	#=================================
-
-	my $request_method;
-	my $request_path;
-	my %request_headers = ();
-
-	my $first_line;
-	my $request_line = <$FH>;
-	display($dbg_hdr,0,"ACTUAL HEADERS");
-	while (defined($request_line) && $request_line ne "\r\n")
-	{
-		# next if !$request_line;
-		$request_line =~ s/\r\n//g;
-		chomp($request_line);
-
-		display($dbg_hdr,1,$request_line);
-
-		if (!$first_line)
-		{
-			$first_line = $request_line;
-			my @parts = split(' ', $request_line);
-			close $FH if @parts != 3;
-			$request_method = $parts[0];
-			$request_path = $parts[1];
-			my $http_version = $parts[2];
-		}
-		else
-		{
-			my ($name, $value) = split(':', $request_line, 2);
-			$name =~ s/-/_/g;
-			$name = uc($name);
-			$value =~ s/^\s//g;
-			$request_headers{$name} = $value;
-		}
-		$request_line = <$FH>;
-	}
-
-	# if we got no request line,
-	# then it is an unrecoverable error
-
-	if (!$first_line ||
-		!defined($request_method) ||
-		!defined($request_path))
-	{
-		error("Unable to parse HTTP from $peer_ip:$peer_port line="._def($first_line));
-		my $response = http_header({
-			status_code   => 501,
-			content_type => 'text/plain' });
-		print $FH $response;
-		close($FH);
-		$http_running--;
-		return 0;
-	}
-
-    # debug display and/or log the request
-	# don't want to see the stupid static requests
-
-	my $use_dbg_request = $dbg_request;
-	my $use_dbg_response = $dbg_response;
-
-	$use_dbg_request += 2  if $request_path =~ /^\/webui\/update|^\/webui\/debug_output\/|^\/webui\/queue\/get_queue/;
-	#|\/^ContentDirectory1\.xml|\/ServerDesc\.xml/;
-	# $use_dbg_request -= 2  if $request_method =~ /SUBSCRIBE/;
-	# $use_dbg_response -= 2  if $request_method =~ /SUBSCRIBE/;
-
-	display($use_dbg_request,0,"$request_method $request_path from $peer_ip:$peer_port");
-	for my $key (keys %request_headers)
-	{
-		display($use_dbg_request+1,1,"$key=$request_headers{$key}");
-	}
-
-	#=================================
-    # Get POST/NOTIFY data
-	#=================================
-	# NOTIFY is currently unused, but needed to support
-	# remoteLibrary::subscribe()
-
-	my $post_data = '';
-	if ($request_method eq "POST" ||
-		$request_method eq "NOTIFY" )
-	{
-		my $content_length = $request_headers{CONTENT_LENGTH};
-		if (defined($content_length) && length($content_length) > 0)
-		{
-			display($dbg_post,1,"Reading $content_length bytes for POSTDATA");
-			read($FH, $post_data, $content_length);
-		}
-		else
-		{
-			display($dbg_post,1,"Reading content until  cr-lf for POSTDATA");
-			my $line = <$FH>;
-			while ($line && $line ne "\r\n")
-			{
-				$post_data .= $line;
-				$line = <$FH>;
-			}
-		}
-		display($dbg_post,1,"POSTDATA: $post_data");
-	}
-
+	my ($this,$client,$request) = @_;
 
 	#===============================================================
 	# Handle the requests
 	#===============================================================
 
-	my $response = undef;
-	my $dbg_displayable = 1;
+	my $response;
+	my $uri = $request->{uri};
+	my $method = $request->{method};
+	my $use_dbg = $dbg_req + $request->{extra_debug};
+
+	display($use_dbg,0,"handle_request($method $uri)");
 
 	#-------------------------------------------------
 	# OPTIONS request
@@ -281,7 +132,6 @@ sub handle_connection
 	# 			],
 	# 		});
 	# }
-	# elsif
 
 	#------------------------------------------------------------
 	# Artisan Perl BEING a DLNA Media Server/Renderer
@@ -289,184 +139,132 @@ sub handle_connection
 	# These are Post Requests, and are only for us BEING a DLNA Server/Renderer
 	# and, of course, supported only for the localLibrary and localRenderer
 
-	if ($request_path eq '/upnp/control/ContentDirectory1')
+	if ($uri eq '/upnp/control/ContentDirectory1')
 	{
-		$response = ContentDirectory1::handle_request($request_method, \%request_headers, $post_data, $peer_ip, $peer_port);
+		$response = ContentDirectory1::handle_request($request);
 	}
-	elsif ($request_path eq '/upnp/event/ContentDirectory1')
+	elsif ($uri eq '/upnp/event/ContentDirectory1')
 	{
-		$response = ContentDirectory1::handleSubscribe($request_method,\%request_headers,$peer_ip,$peer_port)
+		$response = ContentDirectory1::handleSubscribe($request);
 	}
 
 	# DLNA GET REQUESTS
 
-	elsif ($request_path =~ /^\/(ServerDesc|ContentDirectory1)\.xml/)
+	elsif ($uri =~ /^\/(ServerDesc|ContentDirectory1)\.xml/)
 	{
 		my $desc = $1;
 		my $xml = $1 eq 'ServerDesc' ?
 			ServerDesc() :
 			getTextFile("$artisan_perl_dir/xml/$desc.xml",1);
-		$response = http_header({
-			status_code => 200,
-			content_type => 'text/xml; charset=utf8',
-			content_length => length($xml) });
-		$response .= $xml;
+		$response = Pub::HTTP::Response->new($request,$xml,200,'text/xml; charset=utf8');
 	}
 
+	#------------------------------------------------------------
+	# Local Library Requests
+	#------------------------------------------------------------
 	# STREAMING MEDIA REQUEST (also used by the webUI)
 	# duplicates the header debugging, and does not return
 	# a response, so note that $dbg_response doesn't work with it.
 
-	elsif ($request_path =~ /^\/media\/(.*)$/)
+	elsif ($uri =~ /^\/media\/(.*)$/)
 	{
 		my $id = $1;
-		stream_media($FH,, $request_method, \%request_headers, $id);
-		$dbg_displayable = 0;
+		$response = HTTPStream::stream_media($client,$request,$id);
 	}
 
+	# LOCAL LIBRARY GET_ART REQUEST
 	# /get_art/folder_id.jpg is folded into the DLNA api AND called by the webUI
 
-	elsif ($request_path =~ /^\/get_art*\/(.*)\/folder.jpg$/)
+	elsif ($uri =~ /^\/get_art*\/(.*)\/folder.jpg$/)
 	{
-		$response = get_art($1);	# foldeer id
-		$dbg_displayable = 0;
+		my $folder_id = $1;
+		$response = $this->get_art($request,$1);	# folder id
 	}
 
 
 	#------------------------------------------------------------
-	# WEBUI GET CALLS
+	# Distributed Requests
 	#------------------------------------------------------------
+	# WEBUI CALLS
 
-	elsif ($request_path =~ /^\/webui(\/.*)*$/)
+	elsif ($uri =~ /^\/webui\/(.*)$/)
 	{
 		my $path = $1;
 		$path ||= '';
 		$path =~ s/^\///;
-		$response = WebUI::web_ui($path,$post_data);
-		$dbg_displayable = 0 if $request_path =~ /^\/webui\/images\//;
-			# don't show Library /webui/images requests
+		$response = WebUI::webui_request($request,$path);
 	}
 
 
-	#------------------------------------------------------------
-	# all other calls
-	#------------------------------------------------------------
 	# currently unused NOTIFY events from remoteLibraries we are 'subscribed' to.
 
-	elsif ($request_path =~ s/\/remoteLibrary\/event\///)
+	elsif ($uri =~/\/remoteLibrary\/event\/(.*)$/)
 	{
-		display(0,0,"got /remoteLibrary/event to $request_path");
-		my $library = findDevice($DEVICE_TYPE_LIBRARY,$request_path);
+		my $library_uuid = $1;
+		display(0,0,"got /remoteLibrary/event to $library_uuid");
+		my $library = findDevice($DEVICE_TYPE_LIBRARY,$library_uuid);
 		if (!$library)
 		{
-			$response = http_header({ status_code => 401 }).error("Could not find library $request_path");
+			$response = http_error($request,"Could not find library $library_uuid");
 		}
 		else
 		{
-			$library->handleEvent($post_data);
-			$response = http_header();
+			$response = $library->event_request($request);
 		}
 	}
 
-	# generic icon request
 
-	elsif ($request_path =~ /^\/(favicon.ico|icons)/)
+	#------------------------------------------------------------
+	# system requests
+	#------------------------------------------------------------
+	# generic icon request
+	# To be moved to ServerBase as param
+
+	elsif ($uri =~ /^\/(favicon.ico|icons)/)
 	{
-		$response = favicon();
-		$dbg_displayable = 0;
+		$response = Pub::HTTP::Response->new($request,
+			{filename => "$image_dir/artisan.png" });
 	}
 
-	# linux only reboot and restart requests
+	# reboot and restart requests
 
-	elsif ($request_path eq "/reboot")
+	elsif ($uri eq "/reboot")
 	{
 		LOG(0,"Artisan rebooting the rPi");
 		system("sudo reboot") if !is_win();
-		$response = http_header()."Rebooting Server\r\n";
+		$response = http_ok($request,"Rebooting Server");
 	}
-	elsif ($request_path eq '/restart_service')
+	elsif ($uri eq '/restart_service')
 	{
 		LOG(0,"Artisan restarting service in 5 seconds");
 		$restart_service = time();	# if !is_win();
-		$response = http_header()."Restarting Service.\nWill reload WebUI in 30 seconds..\r\n";
+		$uri = http_ok($request,"Restarting Service.\nWill reload WebUI in 30 seconds..");
 	}
-	elsif ($request_path eq '/update_system')
+	elsif ($uri eq '/update_system')
 	{
 		LOG(0,"Artisan updating system");
 		my $error = Update::doSystemUpdate();
 		if ($error)
 		{
 			$error =~ s/\r/ /g;
-			$response = http_header()."There was an error doing a system_update:\n$error\r\n";
+			$response = http_ok($request,"There was an error doing a system_update:\n$error");
 		}
 		else
 		{
 			LOG(0,"restarting service in 5 seconds");
 			$restart_service = time();	# if !is_win();
-			$response = http_header()."Restarting Service after System Update.\nWill reload WebUI in 30 seconds..\r\n";
+			$response = http_ok($request,"Restarting Service after System Update.\nWill reload WebUI in 30 seconds..");
 		}
 	}
 
-	# unsupported request
+	# call base class
 
 	else
 	{
-		error("Unsupported request $request_method $request_path from $peer_ip:$peer_port");
-		$response = http_header({ status_code => 501 });
+		$response = $this->SUPER::handle_request($client,$request);
 	}
 
-
-    #===========================================================
-    # send response to client
-    #===========================================================
-
-	if ($quitting && defined($response))
-	{
-		warning(0,0,"not sending response in handle_connection() due to quitting");
-	}
-	elsif (defined($response))
-	{
-		if ($use_dbg_request <= $debug_level)	# only show debugging for non-filtered requests
-		{
-			display($use_dbg_response,1,"Sending ".length($response)." byte response");
-
-			my $first_line = '';
-			my $content_type = '';
-			my $content_len  = '';
-
-			# run through the headers
-
-			my $in_body = 0;
-			my $started = 0;
-			my @lines = split(/\n/,$response);
-			for my $line (@lines)
-			{
-				$line =~ s/\s+$//;
-				$first_line = $line if !$started;
-				$started = 1;
-
-				$content_type = "content_type($1)" if $line =~ /content-type:\s*(.*)$/;
-				$content_len = "content_len($1)" if $line =~ /content-length:\s*(.*)$/;
-				$in_body = ($dbg_displayable ? 100 : 1) if !$line;
-
-				display($use_dbg_response+$in_body+1,2,$line);
-			}
-
-			display(0,1,"RESPONSE: $first_line $content_type $content_len")
-				if $use_dbg_response == 0;
-		}
-
-		(print $FH $response) ?
-			display($use_dbg_response+1,1,"Sent response OK") :
-			error("Could not complete HTTP Server Response len=".length($response));
-	}
-
-	display($dbg_connect+1,1,"Closing File Handle");
-	close($FH);
-	display($dbg_connect+1,1,"File Handle Closed");
-
-	$http_running--;
-	return 1;
+	return $response;
 
 }   # handle_connection()
 
@@ -476,24 +274,13 @@ sub handle_connection
 # Snippets
 #-----------------------------------------------------------------
 
-sub favicon
-{
-    display($dbg_http+2,1,"favicon()");
-    my $response = http_header({ content_type => 'image/png' });
-	$response .= getTextFile("$image_dir/artisan.png",1);
-    $response .= "\r\n";
-	return $response;
-
-}
-
-
 sub get_art
 {
-	my ($id) = @_;
+	my ($this,$request,$id) = @_;
     display($dbg_art,0,"get_art($id)");
 
 	my $folder = $local_library->getFolder($id,undef,$dbg_art);
-	return http_header({ status_code => 400 })
+	return http_error("Could not find folder for id($id)")
 		if !$folder;
 
     # open the file and send it to the client
@@ -505,22 +292,7 @@ sub get_art
 		$filename = "$image_dir/no_image.jpg";
     }
 
-    display($dbg_art,1,"get_art($id) opening file: $filename");
-    if (!open(IFILE,"<$filename"))
-    {
-        error("get_art($id): Could not open file: $filename");
-        return http_header({ status_code => 400 });
-    }
-
-    binmode IFILE;
-    my $data = join('',<IFILE>);
-    close IFILE;
-
-    display($dbg_art,1,"get_art($id): sending file: $filename");
-    my $response = http_header({ content_type => 'image/jpeg' });
-    $response .= $data;
-    $response .= "\r\n";
-    return $response;
+	return Pub::HTTP::Response->new($request,{filename => $filename});
 
 }   # get_art()
 
@@ -530,10 +302,8 @@ sub get_art
 sub ServerDesc
 	# server description for the DLNA Server
 {
-
 	# my $use_friendly = $program_name;
 	my $use_friendly = "Artisan(".getMachineId().")";
-
 
 	my $xml = <<EOXML;
 <?xml version="1.0"?>
@@ -605,6 +375,165 @@ EOXML
 }
 
 
+
+
+
+
+
+#------------------------------------------------------
+# obsolete old webui getting of DOCUMENT_ROOT_FILES
+#------------------------------------------------------
+
+# # deliver static files
+#
+# my $response = undef;
+# if ($path =~ /^((.*\.)(js|css|gif|png|html|json))$/)
+# {
+# 	my $filename = $1;
+# 	my $type = $3;
+# 	my $query = $5;
+#
+# 	# scale fancytree CSS file if it has scale param
+#
+# 	if (!(-f "$artisan_perl_dir/webui/$filename"))
+# 	{
+# 		$response = http_error("web_ui(): Could not open file: $filename");
+# 	}
+# 	elsif ($params->{scale} &&
+# 		   $filename =~ /ui\.fancytree\.css$/)
+# 	{
+# 		$response = scale_fancytree_css($filename,$params->{scale});
+# 	}
+# 	else
+# 	{
+# 		my $content_type =
+# 			$type eq 'js'  ? 'text/javascript' :
+# 			$type eq 'css' ? 'text/css' :
+# 			$type eq 'gif' ? 'image/gif' :
+# 			$type eq 'png' ? 'image/png' :
+# 			$type eq 'html' ? 'text/html' :
+# 			$type eq 'json' ? 'application/json' :
+# 			'text/plain';
+#
+# 		# add CORS cross-origin headers to the main HTML file
+# 		# allow cross-origin requests to iPad browsers
+# 		# which would not call /get_art/ to get our album art URIs otherwise
+#
+# 		# Modified to allow most generous CORS options while messing with
+# 		# 	cross-origin webUI request, but this is not, per se, specifically
+# 		# 	needed for those.
+#
+# 		my $addl_headers = [];
+# 		if ($type eq 'html')
+# 		{
+# 			push @$addl_headers,"Access-Control-Allow-Origin: *";			# was http://$server_ip:$server_port";
+# 			push @$addl_headers,"Access-Control-Allow-Methods: GET";		# OPTIONS, POST, SUBSCRIBE, UNSUBSCRIBE
+# 		}
+#
+# 		$response = http_header({
+# 			content_type => $content_type,
+# 			addl_headers => $addl_headers });
+#
+# 		if ($SEND_MINIFIED_JS_AND_CSS && ($type eq 'js' || $type eq 'css'))
+# 		{
+# 			my $filename2 = $filename;
+# 			$filename2 =~ s/$type$/min.$type/;
+# 			display(5,0,"checking MIN: $filename2");
+# 			if (-f "$artisan_perl_dir/webui/$filename2")
+# 			{
+# 				display($dbg_webui,1,"serving MIN: $filename2");
+# 				$filename = $filename2;
+# 			}
+# 		}
+#
+# 		my $text = getTextFile("$artisan_perl_dir/webui/$filename",1);
+# 		$text = process_html($text) if ($type eq 'html');
+# 		$response .= $text."\r\n";
+# 	}
+# }
+#
+#
+#	sub process_html
+#	{
+#		my ($html,$level) = @_;
+#		$level ||= 0;
+#
+#		# special global variable replacement
+#
+#		my $is_win = is_win() ? 1 : 0;
+#		my $as_service = $AS_SERVICE ? 1 : 0;
+#		my $machine_id = getMachineId();
+#
+#		$html =~ s/is_win\(\)/$is_win/s;
+#		$html =~ s/as_service\(\)/$as_service/s;
+#		$html =~ s/machine_id\(\)/$machine_id/s;
+#
+#		while ($html =~ s/<!-- include (.*?) -->/###HERE###/s)
+#		{
+#			my $id = '';
+#			my $spec = $1;
+#			$id = $1 if ($spec =~ s/\s+id=(.*)$//);
+#
+#			my $filename = "$artisan_perl_dir/webui/$spec";
+#			display($dbg_webui+1,0,"including $filename  id='$id'");
+#			my $text = getTextFile($filename,1);
+#
+#			$text =~ s/{id}/$id/g;
+#
+#			$text = process_html($text,$level+1);
+#			$text = "\n<!-- including $filename -->\n".
+#				$text.
+#				"\n<!-- end of included $filename -->\n";
+#
+#			$html =~ s/###HERE###/$text/;
+#		}
+#
+#		if (0 && !$level)
+#		{
+#			while ($html =~ s/<script type="text\/javascript" src="\/(.*?)"><\/script>/###HERE###/s)
+#			{
+#				my $filename = $1;
+#				display($dbg_webui+1,0,"including javascript $filename");
+#				my $eol = "\r\n";
+#				# my $text = getTextFile($filename,1);
+#
+#				my $text = $eol.$eol."<script type=\"text\/javascript\">".$eol.$eol;
+#				my @lines = getTextLines($filename);
+#				for my $line (@lines)
+#				{
+#					$line =~ s/\/\/.*$//;
+#					$text .= $line.$eol;
+#				}
+#
+#				while ($text =~ s/\/\*.*?\*\///s) {};
+#				$text .= $eol.$eol."</script>".$eol.$eol;
+#				$html =~ s/###HERE###/$text/s;
+#			}
+#		}
+#
+#		return $html;
+#	}
+#
+#	sub scale_fancytree_css
+#		# algorithmically scale fancy tree css file
+#		# requires that icons$pixels.gif created by hand
+#		# scale font-size pts, and certain px values
+#	{
+#		my ($filename,$pixels) = @_;
+#		my $factor = $pixels/16;
+#		display($dbg_webui+2,0,"scale($pixels = $factor) $filename");
+#
+#		my $text .= getTextFile("$artisan_perl_dir/webui/$filename",1);
+#		$text =~ s/url\("icons\.gif"\);/url("icons$pixels.gif");/sg;
+#		$text =~ s/font-size: 10pt;/'font-size: '.int($factor*10).'pt;'/sge;
+#		$text =~ s/(\s*)((-)*(16|32|48|64|80|96|112|128|144))px/' '.int($factor*$2).'px'/sge;
+#		# printVarToFile(1,"/junk/test.css",$text);
+#
+#		my $response = http_header({ content_type => 'text/css' });
+#		$response .= $text;
+#		$response .= "\r\n";
+#		return $response;
+#	}
 
 
 

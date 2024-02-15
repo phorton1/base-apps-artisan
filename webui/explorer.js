@@ -558,7 +558,7 @@ function doSelectCommand(command)
 	{
 		var url = '/webui/queue/' + command;
 		var data = JSON.stringify(data_rec);
-		$.post(url,data,function(result)
+		$.postJSON(url,data,function(result)
 		{
 			if (result.error)
 			{
@@ -594,7 +594,7 @@ function update_explorer_ui(node)
 
 	if (node == undefined)
 	{
-		$('#explorer_folder_image').attr('src','/webui/images/artisan.png');
+		$('#explorer_folder_image').attr('src','/images/artisan.png');
 		$('#explorer_folder_title') .html('');
 		$('#explorer_folder_artist').html('');
 		$('#explorer_folder_genre') .html('');
@@ -621,7 +621,7 @@ function update_explorer_ui(node)
 		}
 
 		$('#explorer_folder_image').attr('src',
-			rec.art_uri == '' ? '/webui/images/no_image.png' :
+			rec.art_uri == '' ? '/images/no_image.png' :
 			rec.art_uri);
 		$('#explorer_folder_title') .html(title);
 		$('#explorer_folder_artist').html(rec.artist == ''   ? '' : 'Artist: ' + rec.artist);

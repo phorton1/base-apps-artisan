@@ -19,6 +19,7 @@ use strict;
 use warnings;
 use threads;
 use threads::shared;
+use Pub::HTTP::Response;
 use artisanUtils;
 use Database;
 use Folder;
@@ -470,8 +471,6 @@ sub sortPlaylist
 # find
 #------------------------------------
 
-use httpUtils;
-
 my $dbg_find = 0;
 
 
@@ -484,7 +483,7 @@ sub clause
 
 sub find
 {
-	my ($this,$params) = @_;
+	my ($this,$request,$params) = @_;
 
 	my $where_clause = '';
 	my $any = url_decode($params->{any} || '');
@@ -534,7 +533,7 @@ sub find
 	db_disconnect($dbh);
 
 	display($dbg_find,1,"found ".scalar(@$recs)." recs");
-	return json_error("NO records found") if !@$recs;
+	return json_error($request,"NO records found") if !@$recs;
 
 	my $tracks = [];
 	for my $rec (@$recs)
@@ -543,7 +542,7 @@ sub find
 		push @$tracks,Track->newFromDb($rec);
 	}
 
-	return json_header().my_encode_json({tracks => $tracks});
+	return json_response($request,{tracks => $tracks});
 
 }
 

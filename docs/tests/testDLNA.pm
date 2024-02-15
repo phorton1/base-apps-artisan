@@ -11,7 +11,7 @@ use threads::shared;
 use Data::Dumper;
 use IO::Socket::INET;
 use artisanUtils;
-use httpUtils;
+# use httpUtils;
 use remoteLibrary;
 use DeviceManager;
 

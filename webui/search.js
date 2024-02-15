@@ -218,7 +218,7 @@ function doSearchSelectCommand(command)
 	{
 		var url = '/webui/queue/' + command;
 		var data = JSON.stringify(data_rec);
-		$.post(url,data,function(result)
+		$.postJSON(url,data,function(result)
 		{
 			if (result.error)
 			{

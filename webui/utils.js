@@ -39,10 +39,24 @@ const SHUFFLE_ALBUMS = 2;
 const DEVICE_TYPE_RENDERER = 'renderer';
 const DEVICE_TYPE_LIBRARY = 'library';
 
-
-
 jQuery.ajaxSetup({async:false});
 	// global async jquery Ajax setup
+jQuery["postJSON"] = function( url, data, callback ) {
+    // shift arguments if data argument was omitted
+    if ( jQuery.isFunction( data ) ) {
+        callback = data;
+        data = undefined;
+    }
+    return jQuery.ajax({
+        url: url,
+        type: "POST",
+        contentType:"application/json",
+        dataType: "json",
+        data: data,
+        success: callback
+    });
+};
+
 
 
 //-------------------------------------------

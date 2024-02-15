@@ -2,17 +2,17 @@
 #---------------------------------------
 # HTTPStream.pm
 #---------------------------------------
+# inspired by: http://www.adp-gmbh.ch/perl/webserver/
+# modified from pDNLA server
 
-
-package HTTPStream;
+package HTTPServer;    # continued ...
 use strict;
 use warnings;
 use threads;
 use threads::shared;
-use Fcntl qw(O_RDONLY);
-# use Socket;
-# use IO::Select;
-use Pub::HTTP::Response;
+use Fcntl;
+use Socket;
+use IO::Select;
 use artisanUtils;
 use Database;
 use DeviceManager;
@@ -25,6 +25,7 @@ my $dbg_stream = 0;
 
 
 sub stream_media
+	# $FH will be closed after this call
 {
 	my ($client,
 		$request,
@@ -46,7 +47,7 @@ sub stream_media
 	# The content ID comes in as 56789ABC678D.XXX
 	# where the first chars are the STREAM_MD5 TRACK_ID and
 	# XXX is mp3,m4a,wav, etc based on the tracks file extension.
-	# Only the TRACK_ID is uesd ... the ext is ignored.
+	# The TRACK_ID is uesd ... the XXX is ignored.
 
 	if ($content_id =~ /^(.*?)\.(\w+)$/)
 	{
@@ -64,6 +65,7 @@ sub stream_media
 		return http_error($request,"Content($id) has no path")
 			if !$track->{path};	# ?!?!
 
+
 		my $filename = "$mp3_dir/$track->{path}";
 		$filename = dbToFilePath($filename);
 		my $normalized = getNormalizedFilename($filename);
@@ -76,8 +78,10 @@ sub stream_media
 			display($dbg_stream,1,"normalized_size = $track_size");
 		}
 
-		return http_error($request,"Content($id) file not found: $filename")
+		http_error($request,"Content($id) file not found: $filename")
 			if !-f $filename;
+
+
 
 		my $BUF_SIZE = 30000000;   # $is_wd && $ANDROID ? 16384 : 300000;
 
@@ -92,8 +96,8 @@ sub stream_media
 		my $status_word = 'OK';
 
 
-		if (defined($headers->{range}) &&
-			$headers->{range} =~ /^bytes=(\d+)-(\d*)$/)
+		if (defined($headers->{RANGE}) &&
+			$headers->{RANGE} =~ /^bytes=(\d+)-(\d*)$/)
 		{
 			$is_ranged = 1;
 			$status_code = 206;
@@ -114,12 +118,12 @@ sub stream_media
 			display($dbg_stream,1,"Doing Range request from $from_byte to $to_byte = $content_len bytes");
 		}
 
-		my $is_mpg123 =
-			$headers->{'user-agent'} &&
-			$headers->{'user-agent'} =~ /^mpg123/ ? 1 : 0;
+		my $send_it =
+			$headers->{USER_AGENT} &&
+			$headers->{USER_AGENT} =~ /^mpg123/ ? 1 : 0;
 
 		# MOD for linux mpg123 - send the bytes, not just the headers
-		#
+
 		# OK, so what seems to work is that if we DONT get a range request,
 		# we JUST return the headers, telling them to Accept-Ranges, then
 		# they call us back with another ranged request ?!?!
@@ -154,61 +158,80 @@ sub stream_media
 
 
 		my $http_headers = "HTTP/1.1 $status_code $status_word\r\n";
-
-		$http_headers .= "Server: Artisan Perl(".getMachineId().")\r\n";
-		$http_headers .= "Content-Type: ".artisanMimeType($filename)."\r\n";
+		$http_headers .= "Server: Artisan ".getMachineId()."\r\n";
+		$http_headers .= "Content-Type: ".myMimeType($filename)."\r\n";
 		$http_headers .= "Access-Control-Allow-Origin: *\r\n";
+			# all my responses are allowed from any referrer
 		$http_headers .= "Content-Length: $content_len\r\n";
 		$http_headers .= "Date: ".gmtime()." GMT\r\n";
-		$http_headers .= "contentFeatures.dlna.org: ".$track->dlna_content_features()."\r\n";
-		$http_headers .= "transferMode.dlna.org: Streaming\r\n";
-		$http_headers .= "Accept-Ranges: bytes\r\n";
-		$http_headers .= "Content-Range: bytes $from_byte-$to_byte/$track_size"
-			if $is_ranged;
-		$http_headers .= "Cache-Control: no-cache\r\n";
-		$http_headers .= "Connection: close\r\n";
+		$http_headers .= "Date: ".Last-Modified: "gmtime()." GMT\r\n";
 
-		# $http_headers .= "Content-Disposition: attachment; filename=\"$track->{title}\"\r\n";
-		#
-			# all my responses are allowed from any referrer
-		#
-		# $http_headers .= "Last-Modified: ".gmtime()." GMT\r\n";
+	if (defined($params->{'addl_headers'}))
+	{
+		for my $header (@{$params->{'addl_headers'}})
+		{
+			push(@response, $header);
+		}
+	}
 
-		$http_headers .= "\r\n";
+	if (0)
+	{
+		push(@response,"ETag:");
+		push(@response,'Cache-Control "max-age=0, no-cache, no-store, must-revalidate"');
+		push(@response,'Pragma "no-cache"');
+		push(@response,'Expires "Wed, 11 Jan 1984 05:00:00 GMT"');
+	}
+	else
+	{
+		push(@response, 'Cache-Control: no-cache');
+	}
+
+	push(@response, 'Connection: close');
+
+
+
+		my $http_header = http_header({
+			status_code => $status_code,
+			content_type => $track->mimeType(),
+			content_length => $content_len,
+			addl_headers => \@addl_headers });
+
+		if (1)
+		{
+			# push @addl_headers, "Content-Disposition: attachment; filename=\"$track->{titles}\"";
+			push @addl_headers, "contentFeatures.dlna.org: ".$track->dlna_content_features();
+			push @addl_headers, 'transferMode.dlna.org: Streaming';
+			push @addl_headers, "Accept-Ranges: bytes";
+			if ($is_ranged)
+			{
+				push @addl_headers, "Content-Range: bytes $from_byte-$to_byte/$track_size";
+			}
+		}
 
 		#-------------------------------------
 		# SEND HEADERS
 		#-------------------------------------
 
 		display($dbg_stream+1,1,"Sending $method http_header content_len=$content_len is_ranged=$is_ranged");
-		display($dbg_stream+1,2,$http_headers);
+		display($dbg_stream+1,2,$http_header);
 
 		if ($quitting)
 		{
 			warning(0,0,"not sending $method header in stream_media() due to quitting");
-			return $RESPONSE_HANDLED;
+			return;
 		}
 
-		my $ok = print $client $http_headers;
+		my $ok = print $client $http_header;
 		if (!$ok)
 		{
 			error("Could not send headers for $method");
-			return $RESPONSE_HANDLED;
+			return;
 		}
-
-		# This is the way I remember it working
-
-		if ($method eq 'HEAD' || !$content_len)
-		{
-			display($dbg_stream+1,1,"short ending for HEAD request");
-			return $RESPONSE_HANDLED ;
-
-		}
-		if (!$is_mpg123 && !$is_ranged)
-		{
-			display($dbg_stream+1,1,"short ending for !is_mpg123 && !is_ranged");
-			return $RESPONSE_HANDLED
-		}
+		return if ($method eq 'HEAD' || !$content_len);
+			# This is the way I remember it working
+		return if !$send_it && !$is_ranged;
+			# This is apparently the way it works.
+			# See above comment
 
 		#-------------------------------------
 		# STREAMING BYTES
@@ -263,7 +286,7 @@ sub stream_media
 			# Had to use SIGPIPE on Android when WDTV Live failed
 			# a write and perl bailed ...
 
-			local $SIG{PIPE} = \&onPipeError;
+			$SIG{PIPE} = \&onPipeError;
 			sub onPipeError
 			{
 				my ($sig) = @_;
@@ -283,16 +306,35 @@ sub stream_media
 
 		display($dbg_stream,1,"finished sending stream rslt=".($rslt?"OK":"ERROR"));
 		close(ITEM);
+
+		#    }       # STREAM IT
+		#    else    # unknown TRANSFERMODE.DLNA.ORG
+		#	 {
+		#		error("Transfermode $$CGI{'TRANSFERMODE.DLNA.ORG'} not supported");
+		#		print $client http_header({
+		#			'status_code' => 501,
+		#			'content_type' => 'text/plain' });
+		#	 }
+		# }
+		# else # TRANSFERMODE.DLNA.ORG is not set
+		# {
+		#    error("No Transfermode for: $item->{path}");
+		#	 print $client http_header({
+		#		'status_code' => 200,
+		#		'additional_header' => \@additional_header,
+		#		'log' => 'httpstream' });
+		# }
 	}
 	else    # bad content id
 	{
-		return http_error($request,"ContentID($content_id) not supported for Streaming Items");
+		error("ContentID($content_id) not supported for Streaming Items");
+		print $client http_header({
+			'status_code' => 501,
+			'content_type' => 'text/plain',
+			'log' => 'httpstream'});
 	}
 
-	return $RESPONSE_HANDLED;
-
 }   # stream_media()
-
 
 
 1;

@@ -57,7 +57,7 @@ use threads;
 use threads::shared;
 use IO::Socket::INET;
 use artisanUtils;
-use httpUtils;
+# use httpUtils;
 
 
 my $dbg_device = 0;

@@ -96,7 +96,7 @@ my $CHECK_DUPLICATE_FINGERPRINTS = 0;
 	# C:\mp3s\albums\Rock\Main\Bob Dylan - Greatest Hits\02 - Blowin' In The Wind.mp3
 	# much less when one is a wma and the other is an mp3!
 
-my $CLEANUP_DATABASE = 1;
+my $CLEANUP_DATABASE = 0;
 	# remove unused database records at end of scan
 my $CLEANUP_FPCALC_FILES = 0;
 	# remove unused fpcalc_info files at end of scan
@@ -567,12 +567,13 @@ sub scan_directory
         }
         else
         {
-            my $mime_type = pathMimeType($entry);
+            my $mime_type = artisanMimeType($entry);
             if (!$mime_type)
 			{
-				if ($entry !~ /^(folder\.jpg)$/)
+				if ($entry !~ /^(folder(.*)\.jpg)$/ &&
+					$entry !~ /^info\.txt$/)
 				{
-					display($dbg_scan,0,"unknown file: $dir/$entry");
+					display($dbg_scan,-2,"unknown file: $dir/$entry");
 				}
 			}
 			else

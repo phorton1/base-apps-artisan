@@ -797,8 +797,8 @@ sub processExternalMessage
 
 	# Currently only 'sees' MediaServers
 
-    my $type =
-		$utype eq 'MediaServer:1' ? $DEVICE_TYPE_LIBRARY : '';
+    my $type = '';
+		# $utype eq 'MediaServer:1' ? $DEVICE_TYPE_LIBRARY : '';
 		# $utype eq 'MediaRenderer:1' ? $DEVICE_TYPE_RENDERER : '';
 
 	my $mask = 1;

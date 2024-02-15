@@ -343,7 +343,7 @@ sub dlna_content_features
 {
 	my ($this) = @_;
 	my $type = $this->{type};
-	my $mime_type = myMimeType($type);
+	my $mime_type = artisanMimeType($type);
 	my $contentfeatures = '';
 
     # $contentfeatures .= 'DLNA.ORG_PN=LPCM;' if $mime_type eq 'audio/L16';

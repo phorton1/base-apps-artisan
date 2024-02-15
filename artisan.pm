@@ -1,4 +1,11 @@
 #!/usr/bin/perl
+
+# TODO: replace httpUtils.pm with Pub::XML
+# TODO: replace httpUtils.pm with Artisan::SOAP and DIDL
+# TODO: test ContentDirectory1
+# TODO: move to rPi, possibly LENOVO2 - full regression test
+
+
 #---------------------------------------
 # artisan.pm
 #---------------------------------------
@@ -164,14 +171,12 @@ else
 addDevice(new localLibrary());
 addDevice(new localRenderer());
 
-
 # (3) HTTP SERVER - establishes $server_ip
 
 display($dbg_main,0,"Starting HTTP Server ....)");
-my $thread2 = threads->create('HTTPServer::start_webserver');
-$thread2->detach();
+my $http_server = HTTPServer->new();
+$http_server->start();
 display($dbg_main,0,"HTTP Server Started");
-
 
 # (4) SSDP SERVER
 
@@ -220,7 +225,6 @@ sub restart
 # keyboard input only supported on Windows NO_SERVICE
 
 
-
 my $linux_keyboard;
 if (!is_win() && !$AS_SERVICE)
 {
@@ -262,15 +266,15 @@ AFTER_EXCEPTION:
 						display($dbg_main,0,"exiting Artisan on CTRL-C");
 						if (0)
 						{
+							$http_server->stop() if $http_server;
+
 							$quitting = 1;
-							my $http_running = HTTPServer::running();
 							my $ssdp_running = $ssdp ? $ssdp->running() : 0;
 							my $lr_running = $local_renderer ? $local_renderer->running() : 0;
 							my $start = time();
-							while (time()<$start+3 && $http_running || $ssdp_running || $lr_running )
+							while (time()<$start+3 && $http_server->{running} || $ssdp_running || $lr_running )
 							{
-								display($dbg_main,1,"stopping http($http_running) ssdp($ssdp_running) lr($lr_running)");
-								$http_running = HTTPServer::running();
+								display($dbg_main,1,"stopping http($http_server->{running}) ssdp($ssdp_running) lr($lr_running)");
 								$ssdp_running = $ssdp ? $ssdp->running() : 0;
 								$lr_running = $local_renderer ? $local_renderer->running() : 0;
 								sleep(0.2);

@@ -178,6 +178,12 @@ function renderer_command(command,args)
 		}
 	}
 
+	if (command != 'update')
+	{
+		display(0,0,"renderer_command(" + command + ") args=" + args + "=" +  cmd_args);
+	}
+
+
 	$.get('/webui/renderer/' + current_renderer['uuid'] + '/' + command + cmd_args,
 
 		function(result)
@@ -266,8 +272,8 @@ function update_renderer_ui()
 
 		disable_button('#mute_button',false);
 		$('#mute_button').attr('src',current_renderer.muted?
-			'/webui/images/speaker_mute.png' :
-			'/webui/images/speaker.png' );
+			'/images/speaker_mute.png' :
+			'/images/speaker.png' );
 		disable_button('#renderer_status',false);
 		if (!in_volume_slider)
 			$('#volume_slider').slider('value',current_renderer.volume);
@@ -368,7 +374,7 @@ function update_renderer_ui()
 		$('#renderer_album_title')	.html('');
 		$('#renderer_album_track')	.html('');
 		$('#renderer_song_genre')	.html('');
-		$('#renderer_album_image').attr('src','/webui/images/artisan.png');
+		$('#renderer_album_image').attr('src','/images/artisan.png');
 
 		$('#renderer_slider').slider('disable')
 		$('#renderer_slider').slider('value',0);
@@ -400,7 +406,7 @@ function update_renderer_ui()
 		$('#renderer_song_genre').html(genre_year);
 
 		$('#renderer_album_image').attr('src', metadata.art_uri ?
-			metadata.art_uri : '/webui/images/no_image.png');
+			metadata.art_uri : '/images/no_image.png');
 
 		$('#renderer_play_type').html(
 			metadata.type + ' &nbsp;&nbsp; ' +  metadata.pretty_size);

@@ -46,7 +46,7 @@ use threads::shared;
 use IO::Socket::INET;
 use XML::Simple;
 use artisanUtils;
-use httpUtils;
+# use httpUtils;
 use Library;
 use Database;
 use Track;
@@ -860,13 +860,15 @@ sub subscribe
 
 
 
-sub handleEvent
+sub event_request
 	# Called from HTTPServer on NOTIFY to /remoteLibrary/event/uuid
 	# gets the systemUpdateId and thousands of pairs of id/containerUpdateIds
 {
-	my ($this,$data) = @_;
+	my ($this,$request) = @_;
 	$this->{event_num} ||= 0;
 	$this->{event_num} ++;
+	my $data = $request->{content};
+
 	my $dbg_name = "event($this->{event_num})";
 	display($dbg_subscribe,0,"handleEvent($this->{name},$this->{event_num}) data=".length($data)." bytes");
 
@@ -900,6 +902,8 @@ sub handleEvent
 			display($dbg_subscribe,1,"container_update_ids=".length($container_update_ids)." bytes ".scalar(@eles)." elements");
 		}
 	}
+
+	return http_ok($request);
 }
 
 
@@ -910,109 +914,106 @@ sub handleEvent
 # find
 #------------------------------------
 
-use httpUtils;
-
-my $dbg_find = 0;
-
-
-sub clause
-{
-	my ($field,$value) = @_;
-	return "$field contains \"$value\"";
-}
-
-
-sub find
-{
-	my ($this,$in_params) = @_;
-
-
-	my $any = url_decode($in_params->{any} || '');
-	my $album = url_decode($in_params->{album} || '');
-	my $title = url_decode($in_params->{title} || '');
-	my $artist = url_decode($in_params->{artist} || '');
-
-	display($dbg_find,0,"find($any,$album,$title,$artist)");
-
-
-	my $criteria = '';
-	if ($any)
-	{
-		$criteria = "(" .
-			clause('dc:title',$any) . " or ".
-			clause('dc:creator',$any) . " or ".
-			clause('upnp:album',$any) . " or ".
-			clause('upnp:artist',$any) . ")";
-	}
-	if ($album)
-	{
-		$criteria .= " and " if $criteria;
-		$criteria .= "(" . clause('upnp:album',$album) . ")";
-	}
-	if ($title)
-	{
-		$criteria .= " and " if $criteria;
-		$criteria .= "(" . clause('dc:title',$title) . ")";
-		# $criteria .=  clause('dc:title',$title) ;
-	}
-	if ($artist)
-	{
-		$criteria .= " and " if $criteria;
-		$criteria .= "(" .
-			clause('dc:creator',$artist) . " or ".
-			clause('upnp:artist',$artist) . ")";
-	}
-
-	if (!$criteria)
-	{
-		return json_error("NO fields specified for find");
-	}
-
-
-	$criteria = "upnp:class derivedfrom \"object.item.audioItem\" and $criteria";
-	$criteria .= " and \@refID exists false";
-
-	display($dbg_find,1,"criteria = $criteria");
-
-	my $use_name = 'Search(user)';
-	my $params = $this->getParseParams($dbg_find,$use_name);
-	$params->{cache_file} = '';
-
-	$params->{dbg} = $dbg_find;
-	$params->{service} = 'ContentDirectory';
-	$params->{action} = 'Search';
-	$params->{args} = [
-		ContainerID => 0,
-		SearchCriteria =>  $criteria,
-		Filter => '*',
-		StartingIndex => 0,
-		RequestedCount => 9999,
-		SortCriteria => '', ];
-
-
-	my $dbpath = $this->dbPath();
-	$params->{dbh} = db_connect($dbpath);
-	return json_erorr("Could not connect to database($dbpath)") if !$params->{dbh};
-
-	my $tracks = $this->getAndParseDidl($params,'tracks');
-
-	db_disconnect($params->{dbh});
-
-	return json_error("NO records found") if !$tracks || !@$tracks;
-
-	display($dbg_find,1,"found ".scalar(@$tracks)." tracks");
-
-	if ($dbg_find <= 0)
-	{
-		for my $track (@$tracks)
-		{
-			display($dbg_find,2,"track($track->{title}");
-		}
-	}
-
-	return json_header().my_encode_json({tracks => $tracks});
-
-}
+#	my $dbg_find = 0;
+#
+#
+#	sub clause
+#	{
+#		my ($field,$value) = @_;
+#		return "$field contains \"$value\"";
+#	}
+#
+#
+#	sub find
+#	{
+#		my ($this,$request,$in_params) = @_;
+#
+#		my $any = url_decode($in_params->{any} || '');
+#		my $album = url_decode($in_params->{album} || '');
+#		my $title = url_decode($in_params->{title} || '');
+#		my $artist = url_decode($in_params->{artist} || '');
+#
+#		display($dbg_find,0,"find($any,$album,$title,$artist)");
+#
+#
+#		my $criteria = '';
+#		if ($any)
+#		{
+#			$criteria = "(" .
+#				clause('dc:title',$any) . " or ".
+#				clause('dc:creator',$any) . " or ".
+#				clause('upnp:album',$any) . " or ".
+#				clause('upnp:artist',$any) . ")";
+#		}
+#		if ($album)
+#		{
+#			$criteria .= " and " if $criteria;
+#			$criteria .= "(" . clause('upnp:album',$album) . ")";
+#		}
+#		if ($title)
+#		{
+#			$criteria .= " and " if $criteria;
+#			$criteria .= "(" . clause('dc:title',$title) . ")";
+#			# $criteria .=  clause('dc:title',$title) ;
+#		}
+#		if ($artist)
+#		{
+#			$criteria .= " and " if $criteria;
+#			$criteria .= "(" .
+#				clause('dc:creator',$artist) . " or ".
+#				clause('upnp:artist',$artist) . ")";
+#		}
+#
+#		if (!$criteria)
+#		{
+#			return json_error("NO fields specified for find");
+#		}
+#
+#
+#		$criteria = "upnp:class derivedfrom \"object.item.audioItem\" and $criteria";
+#		$criteria .= " and \@refID exists false";
+#
+#		display($dbg_find,1,"criteria = $criteria");
+#
+#		my $use_name = 'Search(user)';
+#		my $params = $this->getParseParams($dbg_find,$use_name);
+#		$params->{cache_file} = '';
+#
+#		$params->{dbg} = $dbg_find;
+#		$params->{service} = 'ContentDirectory';
+#		$params->{action} = 'Search';
+#		$params->{args} = [
+#			ContainerID => 0,
+#			SearchCriteria =>  $criteria,
+#			Filter => '*',
+#			StartingIndex => 0,
+#			RequestedCount => 9999,
+#			SortCriteria => '', ];
+#
+#
+#		my $dbpath = $this->dbPath();
+#		$params->{dbh} = db_connect($dbpath);
+#		return json_erorr("Could not connect to database($dbpath)") if !$params->{dbh};
+#
+#		my $tracks = $this->getAndParseDidl($params,'tracks');
+#
+#		db_disconnect($params->{dbh});
+#
+#		return json_error($request,"NO records found") if !$tracks || !@$tracks;
+#
+#		display($dbg_find,1,"found ".scalar(@$tracks)." tracks");
+#
+#		if ($dbg_find <= 0)
+#		{
+#			for my $track (@$tracks)
+#			{
+#				display($dbg_find,2,"track($track->{title}");
+#			}
+#		}
+#
+#		return json_response($request,{tracks => $tracks});
+#
+#	}
 
 
 

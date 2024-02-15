@@ -48,7 +48,7 @@ sub getContainingPath
 sub mimeType
 {
 	my ($this) = @_;
-	return myMimeType($this->{type});
+	return artisanMimeType($this->{type});
 }
 
 
@@ -207,7 +207,7 @@ sub getDidl
 
 	my $dlna_stuff = $this->dlna_content_features();
 	my $pretty_duration = millis_to_duration($this->{duration},1);
-	my $mime_type = myMimeType($this->{type});
+	my $mime_type = artisanMimeType($this->{type});
 	my $url = "http://$server_ip:$server_port/media/$this->{id}.$this->{type}";
 
 	my $art_uri = $this->{art_uri};
@@ -324,7 +324,7 @@ sub dlna_content_features
 {
 	my ($this) = @_;
 	my $type = $this->{type};
-	my $mime_type = myMimeType($type);
+	my $mime_type = artisanMimeType($type);
 		# we get audio/x-wma,
 		# WMP returns audio/x-ms-wma
 	my $contentfeatures = '';

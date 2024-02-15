@@ -31,7 +31,7 @@ use warnings;
 use threads;
 use threads::shared;
 use artisanUtils;
-use httpUtils;
+# use httpUtils;
 use DeviceManager;
 
 

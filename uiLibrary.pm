@@ -8,6 +8,7 @@
 package uiLibrary;
 use strict;
 use warnings;
+use Pub::HTTP::Response;
 use artisanUtils;
 use Device;
 use DeviceManager;
@@ -15,9 +16,10 @@ use Database;
 use MediaFile;
 use Library;
 
-use httpUtils;
+# use httpUtils;
 
-my $dbg_uilib = 0;
+
+my $dbg_uilib = 1;
 	# 0 == shows calls
 	# -1 == show results
 	# -2 == show icon requests
@@ -34,7 +36,7 @@ my $dbg_uipls = 0;
 #
 #		key = is set to the id of the Folder/Track
 #       icon = retrievable url for an error icon
-#			i.e. "/webui/images/error_3.png"
+#			i.e. "/images/error_3.png"
 #
 # For Explorer Tree we pass 'title' to fancytree (it is removed from
 # the data-record by fancytree). We also add the following fields for
@@ -63,7 +65,7 @@ my $dbg_uipls = 0;
 #	expanded: undefined
 #	extraClasses: undefined
 #	folder: undefined
-#	icon: "/webui/images/error_3.png"			<-- WE ADDED THIS
+#	icon: "images/error_3.png"			<-- WE ADDED THIS
 #	iconTooltip: undefined						<-- WE SET THIS for non-terminal ExplorerTree nodes
 #	key: "c04b4dc0c522241edfbecf916be2ee03"		<-- WE ADDED THIS
 #	lazy: undefined								<-- WE SET THIS for non-terminal ExplorerTree nodes
@@ -141,37 +143,37 @@ sub library_request
 	# are already diverted to the other instance of
 	# Artisan by using the js library_url() method
 {
-	my ($path,$params,$post_params) = @_;
-	display($dbg_uilib,0,"library_request($path)");
+	my ($request,$path) = @_;		# ,$params,$post_params) = @_;
+	my $use_dbg = $dbg_uilib + $request->{extra_debug};
+	display($use_dbg,0,"library_request($path)");
 
 	return json_error("could not find library uuid in '$path'")
 		if $path !~ s/^(.*?)\///;
 	my $uuid = $1;
 
-	display(0,0,"path2=$path");
-
 	# Get the Library
 
 	my $library = findDevice($DEVICE_TYPE_LIBRARY,$uuid);
-	return json_error("could not find library '$uuid'") if !$library;
+	return json_error($request,"could not find library '$uuid'") if !$library;
 
 
 	# handle request
 
+	my $params = $request->{params};
 	if ($path eq 'dir')
 	{
-		return library_dir($library,$params);
+		return library_dir($request,$library,$params);
 	}
 	elsif ($path eq 'tracklist')
 	{
-		return library_tracklist($library,$params);
+		return library_tracklist($request,$library,$params);
 	}
 	elsif ($path eq 'get_track')
 	{
 		my $id = $params->{id} || '';
 		my $track = $library->getTrack($id);
-		return json_error("could not find track '$id'") if !$track;
-		return json_header().my_encode_json($track);
+		return json_error($request,"could not find track '$id'") if !$track;
+		return json_response($request,$track);
 	}
 
 	# following two currently require a previously
@@ -180,20 +182,20 @@ sub library_request
 	elsif ($path eq 'track_metadata')
 	{
 		my $id = $params->{id} || 0;
-		display($dbg_uilib,0,"library_track_metadata($id)");
+		display($use_dbg,0,"library_track_metadata($id)");
 		my $metadata = $library->getTrackMetadata($id);
-		return json_header().my_encode_json($metadata);
+		return json_response($request,$metadata);
 	}
 	elsif ($path eq 'folder_metadata')
 	{
 		my $id = $params->{id} || 0;
-		display($dbg_uilib,0,"library_folder_metadata($id)");
+		display($use_dbg,0,"library_folder_metadata($id)");
 		my $metadata = $library->getFolderMetadata($id);
-		return json_header().my_encode_json($metadata);
+		return json_response($request,$metadata);
 	}
 	elsif ($path eq 'find')
 	{
-		my $rslt = $library->find($params);
+		return $library->find($request,$params);
 	}
 
 
@@ -213,7 +215,7 @@ sub library_request
 				name => $playlist->{name},
 				uuid => $playlist->{uuid}, };
 		}
-		return json_header().my_encode_json($result);
+		return json_response($request,$result);
 	}
 
 	# command that need a playlist
@@ -221,7 +223,7 @@ sub library_request
 	elsif ($path =~ /^(get_playlist|get_playlist_track|shuffle_playlist|get_playlist_tracks_sorted)$/)
 	{
 		my $id = $params->{id} || '';
-		return json_error("no playlist id in get_playiist")
+		return json_error($request,"no playlist id in get_playiist")
 			if !$id;
 
 		my $playlist = $library->getPlaylist($id);
@@ -233,31 +235,31 @@ sub library_request
 			my $mode = $params->{mode} || 0;
 			my $index = $params->{index} || 0;
 			$playlist = $playlist->getPlaylistTrack($version,$mode,$index);
-			return json_error("uiLibrary($library->{name}) could not getPlaylistTrack($mode,$index)")
+			return json_error($request,"uiLibrary($library->{name}) could not getPlaylistTrack($mode,$index)")
 				if !$playlist;
 		}
 		elsif ($path eq 'shuffle_playlist')
 		{
 			my $shuffle = $params->{shuffle} || 0;
 			$playlist = $playlist->sortPlaylist($shuffle);
-			return json_error("uiLibrary($library->{name}) could not sortPlaylist($shuffle)")
+			return json_error($request,"uiLibrary($library->{name}) could not sortPlaylist($shuffle)")
 				if !$playlist;
 		}
 		elsif ($path eq 'get_playlist_tracks_sorted')
 		{
 			my $start = $params->{start};
 			my $count = $params->{count};
-			return json_error("get_playlist_tracks_sorted undefined start("._def($start).") or count("._def($count).")")
+			return json_error($request,"get_playlist_tracks_sorted undefined start("._def($start).") or count("._def($count).")")
 				if !defined($start) || !defined($count);
 
 			my $tracks = $playlist->getTracksSorted($start,$count);
-			return json_error("uiLibrary($library->{name}) could not getTracksSorted()")
+			return json_error($request,"uiLibrary($library->{name}) could not getTracksSorted()")
 				if !$tracks;
-			return json_header().my_encode_json($tracks);
+			return json_response($request,$tracks);
 				# note short return of $tracks, not $playlist
 		}
 
-		return json_header().my_encode_json($playlist);
+		return json_response($request,$playlist);
 	}
 
 	#--------------------------------------------
@@ -267,10 +269,11 @@ sub library_request
 	elsif ($path eq 'get_queue_tracks')
 	{
 		my $rslt = {};
+		my $post_params = $request->getPostParams();
 		my $tracks = Queue::getQueueTracks($rslt,$library,$post_params);
-		return return json_error($rslt->{error})
+		return return json_error($request,$rslt->{error})
 			if $rslt->{error};
-		return json_header().my_encode_json({tracks => $tracks});
+		return json_response($request,{tracks => $tracks});
 	}
 
 	#-----------------------------
@@ -279,7 +282,7 @@ sub library_request
 
 	else
 	{
-		return json_error("unknown library_request: $path");
+		return json_error($request,"unknown uiLibrary request: $path");
 	}
 }
 
@@ -293,12 +296,14 @@ sub library_dir
 	# Return the json for the list of children of the directory
 	# given by params->{id}. albums are leaf nodes (in explorer)
 {
-	my ($library,$params) = @_;
+	my ($request,$library,$params) = @_;
 	my $id = $params->{id} || 0;
 	my $start = $params->{start} || 0;
 	my $count = $params->{count} || 0;
 		# count==0 means get all of em
-	display($dbg_uilib,0,"library_dir($id,$start,$count)");
+
+	my $use_dbg = $dbg_uilib + $request->{extra_debug};
+	display($use_dbg,0,"library_dir($id,$start,$count)");
 
 	# sublimate id(0) to id(1)
 
@@ -309,19 +314,18 @@ sub library_dir
 	my $results = $library->getSubitems('folders', $use_id, $start, $count);
 
 	my $started = 0;
-	my $response = json_header();
-	$response .= '[';
+	my $content = '[';
 	for my $rec (@$results)
 	{
 		next if (!$rec->{id});
-		$response .= ',' if ($started);
+		$content .= ',' if ($started);
 		$started = 1;
-		$response .= library_dir_element($library,$params,$rec);
+		$content .= library_dir_element($library,$params,$rec);
 	}
-	$response .= ']';
+	$content .= ']';
 
-	display($dbg_uilib+1,0,"dir response=$response");
-	return $response;
+	display($use_dbg+1,0,"dir response=$content");
+	return json_response($request,$content);
 }
 
 
@@ -380,7 +384,7 @@ sub library_dir_element
 		$rec->{highest_error} > $rec->{highest_folder_error} ?
 		$rec->{highest_error} : $rec->{highest_folder_error};
 
-	$rec->{icon} = "/webui/images/error_$use_high.png";
+	$rec->{icon} = "/images/error_$use_high.png";
 
 	return "\n".my_encode_json($rec);
 }
@@ -390,15 +394,15 @@ sub library_tracklist
 	# Return the json for a list of of files (tracks)
 	# associated with a directory.
 {
-	my ($library,$params) = @_;
+	my ($request,$library,$params) = @_;
 	my $id = $params->{id} || 0;
 	my $start = $params->{start} || 0;
 	my $count = $params->{count} || 0;
-	display($dbg_uilib,0,"library_tracklist($id,$start,$count)");
+	display($dbg_uilib + $request->{extra_debug},0,"library_tracklist($id,$start,$count)");
 	my $results = $library->getSubitems('tracks', $id, $start, $count);
 
 	my $started = 0;
-	my $response = json_header().'[';
+	my $content = '[';
 	for my $rec (@$results)
 	{
 		next if (!$rec->{id});
@@ -406,7 +410,7 @@ sub library_tracklist
 		# add fancy tree fields
 
 		$rec->{key} = $rec->{id};
-		$rec->{icon} = "/webui/images/error_$rec->{highest_error}.png";
+		$rec->{icon} = "/images/error_$rec->{highest_error}.png";
 
 		# map fancy tree conflict fields
 
@@ -415,13 +419,12 @@ sub library_tracklist
 		delete $rec->{title};
 		delete $rec->{type};
 
-
-		$response .= ',' if ($started);
+		$content .= ',' if ($started);
 		$started = 1;
-		$response .= my_encode_json($rec);
+		$content .= my_encode_json($rec);
 	}
-	$response .= ']';
-	return $response;
+	$content .= ']';
+	return json_response($request,$content);
 }
 
 

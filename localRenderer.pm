@@ -35,8 +35,6 @@ use Queue;
 use base qw(Renderer);
 
 my $dbg_lren = 0;
-my $dbg_hren = 0;
-	# html renderer specific
 
 
 # fields that get moved from a track to the renderer
@@ -224,11 +222,12 @@ sub doCommand
 
 {
 	my ($this,$command,$params) = @_;
+
 	my $extra_dbg = $command eq 'update' ? 1 : 0;
     display_hash($dbg_lren + $extra_dbg,0,"doCommand($command) playing($this->{playing})",$params);
-	my $queue = Queue::getQueue($this->{uuid});
 
 	my $error = '';
+	my $queue = Queue::getQueue($this->{uuid});
 	if ($command eq 'update')
 	{
 		# if they just added tracks, then we go from INIT to STOPPED
@@ -519,6 +518,7 @@ sub doCommand
 		return error("unknown doCommand($command)");
 	}
 
+	# display(0,0,"renderer doCommand() returning error='$error'");
 	return $error;
 
 }	# doCommand()

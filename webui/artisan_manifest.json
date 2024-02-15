@@ -2,9 +2,9 @@
   "name":"Artisan App",
   "display":"standalone",
   "orientation":"landscape",
-  "start_url":"/webui",
+  "start_url":"/",
   "icons":[{
-    "src":"/webui/images/artisan.png",
+    "src":"/images/artisan.png",
     "type":"image/png",
     "sizes":"36x36"
   }],

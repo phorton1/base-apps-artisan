@@ -234,7 +234,7 @@ function init_home_tracklists()
 				var params = JSON.stringify({
 					pl_idx: rec.pl_idx,
 					renderer_uuid: current_renderer.uuid });
-				$.post('/webui/queue/play_track',params,function(result)
+				$.postJSON('/webui/queue/play_track',params,function(result)
 				{
 					if (result.error)
 					{
@@ -382,7 +382,10 @@ function update_home_tracklists()
 			var ajax_params = {
 				async: true,
 				method: 'POST',
-				url: "/webui/queue/get_tracks", };
+				url: "/webui/queue/get_tracks",
+				contentType:"application/json",
+				dataType: "json",
+			};
 			var params = {
 				field:'tracks',
 				renderer_uuid:current_renderer.uuid, };
@@ -600,7 +603,7 @@ function addHomeTrackNode(tree,counter,rec)
 		// 		delete rec.title;
 		// 		delete rec.type;
 		// 		rec.key = rec.id;
-		// 		rec.icon = '/webui/images/error_0.png',
+		// 		rec.icon = '/images/error_0.png',
 		//				 this was the only thing that effing worked
 
 		display(dbg_tl+1,2,"addHomeTrackNode(" + rec.TITLE + ")");
