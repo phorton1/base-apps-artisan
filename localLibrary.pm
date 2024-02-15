@@ -12,21 +12,20 @@
 #	getPlaylists
 #	getTrackMetadata
 #	getFolderMetadata
-
+#	find
 
 package localLibrary;
 use strict;
 use warnings;
 use threads;
 use threads::shared;
-use Pub::HTTP::Response;
 use artisanUtils;
-use Database;
-use Folder;
 use Track;
+use Folder;
 use Library;
-#	use Playlist;
+use Database;
 use base qw(Library);
+
 
 my $dbg_llib = 0;
 my $dbg_virt = 1;
@@ -483,7 +482,7 @@ sub clause
 
 sub find
 {
-	my ($this,$request,$params) = @_;
+	my ($this,$params) = @_;
 
 	my $where_clause = '';
 	my $any = url_decode($params->{any} || '');
@@ -521,7 +520,7 @@ sub find
 
 	if (!$where_clause)
 	{
-		return json_error("NO fields specified for find");
+		return error("NO fields specified for find");
 	}
 
 	my $query = "SELECT * FROM tracks WHERE $where_clause ORDER BY path";
@@ -533,7 +532,7 @@ sub find
 	db_disconnect($dbh);
 
 	display($dbg_find,1,"found ".scalar(@$recs)." recs");
-	return json_error($request,"NO records found") if !@$recs;
+	return error("NO records found") if !@$recs;
 
 	my $tracks = [];
 	for my $rec (@$recs)
@@ -542,7 +541,7 @@ sub find
 		push @$tracks,Track->newFromDb($rec);
 	}
 
-	return json_response($request,{tracks => $tracks});
+	return $tracks;
 
 }
 

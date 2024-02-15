@@ -12,11 +12,10 @@ use threads;
 use threads::shared;
 use Pub::HTTP::Response;
 use artisanUtils;
-# use httpUtils;
 use WebUI;
-use DeviceManager;
 use Update;
 use HTTPStream;
+use DeviceManager;
 use ContentDirectory1;
 use base qw(Pub::HTTP::ServerBase);
 

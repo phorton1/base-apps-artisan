@@ -27,11 +27,12 @@ use threads::shared;
 use Date::Format;
 use Pub::HTTP::Response;
 use artisanUtils;
-use Device;
-use DeviceManager;
-use uiLibrary;
 use Queue;
 use Update;
+use Device;
+use uiLibrary;
+use DeviceManager;
+
 use if !is_win, 'linuxAudio';
 
 
@@ -39,34 +40,11 @@ my $dbg_webui = 1;
 	# 0 = show basic calls
 	# -1 = show building of html files with js and css
 	# -2 = show fancytree scaling pct
-my $dbg_post_params = 0;
-	# specific to get_queue_tracks call
-
-
-my $SEND_MINIFIED_JS_AND_CSS = 0;
-	# I spent over an hour trying to figure out how JS was getting minified
-	# when I am loading the unminified versions ins artisan.html, only to discover
-	# that I myself am loading the min files if they exist, sheesh.
-
-
-# old reminder of the user agents from various devices
-#
-# my $ua1 = 'Mozilla/5.0 (Windows NT 6.3; WOW64; rv:24.0) Gecko/20100101 Firefox/24.0';
-	# firefox on laptop  1600x900
-# my $ua2 = 'Mozilla/5.0 (iPad; CPU OS 5_1 like Mac OS X) AppleWebKit/534.46 (KHTML, like Gecko ) Version/5.1 Mobile/9B176 Safari/7534.48.3';
-	# android dongle.  I think it's 1280x768
-# my $ua3a = 'Mozilla/5.0 (Linux; U; Android 4.2.2; en-us; rk30sdk Build/JDQ39) AppleWebKit/534.30 (KHTML, like Gecko) Version/4.0 Mobile Safari/534.30';
-# my $ua3b = 'Mozilla/5.0 (Linux' Android 4.4.2; GA10H BuildKVT49L) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39  Mobile Safari...';
-	# car stereo;  534x320
-# my $ua4 = 'Mozilla/5.0 (Linux' Android 4.4.2; GA10H BuildKVT49L) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/3 ?? ?? ';
-	# new 16G tablet. 900x1600
 
 
 #--------------------------------------
 # webUI request dispatcher
 #--------------------------------------
-# NEW syntax of update is
-#	/webui/update?update_id=$update_id&renderer_uuid=$renderer_uuid
 
 
 sub webui_request
@@ -103,8 +81,22 @@ sub webui_request
 		$response = getDeviceJson($request,$singular,$uuid);
 	}
 
+	# pass library requests to uiLibrary sub module
+
+	elsif ($path =~ s/^library\///)
+	{
+		$response = uiLibrary::library_request($request,$path);	#,$params,$post_params);
+	}
+
+	#----------------------------------------------------
+	# Call methods that return data to be jsonified
+	#----------------------------------------------------
+	# The rest of these requests call methods in other objects
+	# that return errors or hashes to be returned by json.
 
 	# NEW UPDATE SYNTAX
+	# /webui/update?update_id=$update_id&renderer_uuid=$renderer_uuid
+	# includes lists of new devices (libraries) if update_id changes
 
 	elsif ($path eq 'update')
 	{
@@ -140,11 +132,9 @@ sub webui_request
 		$response = json_response($request,$data);
 	}
 
-	# dispatch renderer request directly to object
+	# RENDERER requests do things and return a renderer
 	# note that actual playlist commands take place
 	# on the renderer ...
-	#
-	# renderer/update is no longer called.
 
 	elsif ($path =~ s/^renderer\///)
 	{
@@ -164,27 +154,17 @@ sub webui_request
 		$response = json_response($request,$renderer);
 	}
 
-	# pass library requests to PM sub module
-
-	elsif ($path =~ s/^library\///)
-	{
-		# my $post_params = $path =~'get_queue_tracks' ? my_decode_json($post_data) : '';
-		# display_hash($dbg_post_params,0,"decoded post_params",$post_params) if $path =~ 'get_queue_tracks';
-		$response = uiLibrary::library_request($request,$path);	#,$params,$post_params);
-	}
-
-	# queue request
+	# QUEUE request
 
 	elsif ($path =~ /^queue\/(.*)$/)
 	{
 		my $command = $1;
 		my $request_json = $request->get_decoded_content();
-			# my_decode_json($post_data);
 		my $json = Queue::queueCommand($command,$request_json);
 		$response = json_response($request,$json);
 	}
 
-	# get/set linux audio device
+	# get/set LINUX AUDIO DEVICE
 	# This stuff *might* go directly in the HTTP Server
 
 	elsif (!is_win() && $path =~ /^get_audio_devices/)
@@ -217,7 +197,6 @@ sub webui_request
 sub getDeviceJson
 {
 	my ($request,$type,$uuid) = @_;
-
 	display($dbg_webui + $request->{extra_debug},0,"getDeviceJson($type,$uuid)");
 	my $device  = findDevice($type,$uuid);
 	return http_error("Could not get getDeviceJson($type,$uuid)")

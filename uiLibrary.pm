@@ -11,10 +11,10 @@ use warnings;
 use Pub::HTTP::Response;
 use artisanUtils;
 use Device;
-use DeviceManager;
+use Library;
 use Database;
 use MediaFile;
-use Library;
+use DeviceManager;
 
 # use httpUtils;
 
@@ -34,16 +34,16 @@ my $dbg_uipls = 0;
 # and tracklist items (tracks) data-records we return to the UI
 # for fancytree:
 #
-#		key = is set to the id of the Folder/Track
-#       icon = retrievable url for an error icon
-#			i.e. "/images/error_3.png"
+#	key = is set to the id of the Folder/Track
+#   icon = retrievable url for an error icon
+#		i.e. "/images/error_3.png"
 #
 # For Explorer Tree we pass 'title' to fancytree (it is removed from
 # the data-record by fancytree). We also add the following fields for
 # for non-terminal nodes (not playlists or albums)
 #
-# 		folder => 1
-#		lazy => 1
+# 	folder => 1
+#	lazy => 1
 #
 # The following fields in our Track records CONFLICT with fancytree.
 # Fancytree USES these identifiers itself and removes them from the
@@ -65,7 +65,7 @@ my $dbg_uipls = 0;
 #	expanded: undefined
 #	extraClasses: undefined
 #	folder: undefined
-#	icon: "images/error_3.png"			<-- WE ADDED THIS
+#	icon: "images/error_3.png"					<-- WE ADDED THIS
 #	iconTooltip: undefined						<-- WE SET THIS for non-terminal ExplorerTree nodes
 #	key: "c04b4dc0c522241edfbecf916be2ee03"		<-- WE ADDED THIS
 #	lazy: undefined								<-- WE SET THIS for non-terminal ExplorerTree nodes
@@ -154,10 +154,12 @@ sub library_request
 	# Get the Library
 
 	my $library = findDevice($DEVICE_TYPE_LIBRARY,$uuid);
-	return json_error($request,"could not find library '$uuid'") if !$library;
+	return json_error($request,"could not find library '$uuid'")
+		if !$library;
 
-
+	#-------------------------
 	# handle request
+	#-------------------------
 
 	my $params = $request->{params};
 	if ($path eq 'dir')
@@ -195,10 +197,11 @@ sub library_request
 	}
 	elsif ($path eq 'find')
 	{
-		return $library->find($request,$params);
+		my $tracks_or_error = $library->find($params);
+		return ref($tracks_or_error) ?
+			json_response($request,{tracks => $tracks_or_error}) :
+			json_error($request,$tracks_or_error);
 	}
-
-
 
 	#-----------------------------
 	# Playlists
@@ -305,13 +308,9 @@ sub library_dir
 	my $use_dbg = $dbg_uilib + $request->{extra_debug};
 	display($use_dbg,0,"library_dir($id,$start,$count)");
 
-	# sublimate id(0) to id(1)
-
-	my $use_id = $id; # ? $id : 1;
-
 	# collect the child folders
 
-	my $results = $library->getSubitems('folders', $use_id, $start, $count);
+	my $results = $library->getSubitems('folders', $id, $start, $count);
 
 	my $started = 0;
 	my $content = '[';
@@ -426,8 +425,6 @@ sub library_tracklist
 	$content .= ']';
 	return json_response($request,$content);
 }
-
-
 
 
 

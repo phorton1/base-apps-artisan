@@ -43,14 +43,12 @@ use strict;
 use warnings;
 use threads;
 use threads::shared;
-use IO::Socket::INET;
-use XML::Simple;
+# TODO: uses parseXML
 use artisanUtils;
-# use httpUtils;
-use Library;
-use Database;
 use Track;
+use Library;
 use Folder;
+use Database;
 use Playlist;
 use remotePlaylist;
 use base qw(Library);
@@ -857,9 +855,6 @@ sub subscribe
 }
 
 
-
-
-
 sub event_request
 	# Called from HTTPServer on NOTIFY to /remoteLibrary/event/uuid
 	# gets the systemUpdateId and thousands of pairs of id/containerUpdateIds
@@ -905,8 +900,6 @@ sub event_request
 
 	return http_ok($request);
 }
-
-
 
 
 

@@ -3,15 +3,12 @@
 # HTTPStream.pm
 #---------------------------------------
 
-
 package HTTPStream;
 use strict;
 use warnings;
 use threads;
 use threads::shared;
 use Fcntl qw(O_RDONLY);
-# use Socket;
-# use IO::Select;
 use Pub::HTTP::Response;
 use artisanUtils;
 use Database;
@@ -52,7 +49,6 @@ sub stream_media
 	{
 		my ($id,$ext) = ($1,$2);
 		my $track = $local_library->getTrack($id);
-
         return http_error($request,"track($content_id) not found")
 			if !$track;
 
@@ -91,7 +87,6 @@ sub stream_media
 		my $status_code = 200;
 		my $status_word = 'OK';
 
-
 		if (defined($headers->{range}) &&
 			$headers->{range} =~ /^bytes=(\d+)-(\d*)$/)
 		{
@@ -118,46 +113,19 @@ sub stream_media
 			$headers->{'user-agent'} &&
 			$headers->{'user-agent'} =~ /^mpg123/ ? 1 : 0;
 
-		# MOD for linux mpg123 - send the bytes, not just the headers
-		#
 		# OK, so what seems to work is that if we DONT get a range request,
 		# we JUST return the headers, telling them to Accept-Ranges, then
-		# they call us back with another ranged request ?!?!
+		# they call us back with another ranged request.
 		#
-		# On DLNABrowser if I just start returning bytes on the initial
-		# request, it fails with "could not print" to device ... and
-		# then it calls back with a range request, and sometimes same
-		# seemed to happen with WMP.  So far, all devices (WMP, DLNABrowser
-		# and the embedded HTML media player) seem to work with this approach.
-
-		# All types in my library 				MP3, WMA, M4A
-		# 	First WMA = /albums/Pop/Old/Frank/Frank Sinatra - Harmony
-		# 	First M4A = /albums/Rock/Alt/Billy McLaughlin - The Bow and the Arrow
-		# All possible types in my library: 	MP3, WMA, M4A, WAV
-		#
-		# Tested						MP3		WMA		M4A		WAV
-		#
-		#	localRenderer $mp file		X		X		X		-
-		#	localRenderer $mp stream	X		X		X		-
-		#	WMP							X		X		X		-
-		#	DLNABrowser					X		X		X		-
-		#	HTML embedded				X		0		X		-
-		#
-		#      HTML embedded works the same on:
-		#			Win10 Firefox
-		#			iPad Chrome
-		#			Xiamoi phone Chrome
-		#
-		# Thus far, the only unuspported playback is WMA in HTML embedded player
-		# as I presume WAV would work with all of them. Unfortunately 962 tracks
-		# or almost 10% of my library is WMA.
-
+		# mpg123 seems to be an exception, in which case we send the bytes,
+		# not just the headers
 
 		my $http_headers = "HTTP/1.1 $status_code $status_word\r\n";
 
 		$http_headers .= "Server: Artisan Perl(".getMachineId().")\r\n";
 		$http_headers .= "Content-Type: ".artisanMimeType($filename)."\r\n";
 		$http_headers .= "Access-Control-Allow-Origin: *\r\n";
+			# all my responses are allowed from any referrer
 		$http_headers .= "Content-Length: $content_len\r\n";
 		$http_headers .= "Date: ".gmtime()." GMT\r\n";
 		$http_headers .= "contentFeatures.dlna.org: ".$track->dlna_content_features()."\r\n";
@@ -169,9 +137,6 @@ sub stream_media
 		$http_headers .= "Connection: close\r\n";
 
 		# $http_headers .= "Content-Disposition: attachment; filename=\"$track->{title}\"\r\n";
-		#
-			# all my responses are allowed from any referrer
-		#
 		# $http_headers .= "Last-Modified: ".gmtime()." GMT\r\n";
 
 		$http_headers .= "\r\n";
@@ -196,7 +161,7 @@ sub stream_media
 			return $RESPONSE_HANDLED;
 		}
 
-		# This is the way I remember it working
+		# As described above
 
 		if ($method eq 'HEAD' || !$content_len)
 		{
@@ -250,7 +215,7 @@ sub stream_media
 			    $rslt = 0;
 				last;
 			}
-			# display($dbg_stream,2,"Sending $bytes bytes at=$at of=$content_len remain=$bytes_left");
+
 			display($dbg_stream,2,"---> send ".($from_byte+$at)."-".($from_byte+$at+$bytes-1)."/$size  content($at:$bytes bytes of $content_len)");
 
 			if ($quitting)
