@@ -52,6 +52,7 @@ use threads::shared;
 use Error qw(:try);
 use IO::Select;
 use Pub::Utils;
+use Pub::ServiceMain;
 use if is_win, 'Win32::Console';
 use Time::HiRes qw(sleep time);
 use artisanUtils;
@@ -68,14 +69,9 @@ use remoteLibrary;
 use remoteRenderer;
 use remoteArtisanLibrary;
 
-use sigtrap 'handler', \&onSignal, 'normal-signals';
-$SIG{CHLD} = 'DEFAULT' if !is_win();
-	# needed to run git from linux service
-
 
 my $dbg_main = 0;
 my $last_update_check = 0;
-
 
 display($dbg_main,0,"----------------------------------------------");
 display($dbg_main,0,"Artisan.pm starting");
@@ -84,57 +80,7 @@ display($dbg_main,0,"perl_dir=$artisan_perl_dir");
 display($dbg_main,0,"mp3_dir=$mp3_dir");
 display($dbg_main,0,"server_ip($server_ip) server_port($server_port)");
 
-
-sub onSignal
-{
-    my ($sig) = @_;			# 15 = SIGTERM, 2=SIGINT
-    if ($sig eq 'PIPE')		# 13 = SIGPIPE
-    {
-		warning(0,0,"got SIG$sig");
-		return;
-	}
-    LOG(-1,"main terminating on SIG$sig");
-
-	# I used to try to do an orderly shutdown of the service,
-	# particularly sending SSDP byebye messages, but that seemed
-	# to hang frequently on linux, so now I just exit immediately.
-	#
-	# 		$quitting = 1;
-	# 		sleep(3);
-    # 		kill 6,$$;		# 6 == SIGABRT
-
-	kill 9, $$;		# 9 == SIGKILL
-}
-
-
-my $CONSOLE_IN;
-
-if (!$AS_SERVICE && is_win())
-{
-	$CONSOLE_IN = Win32::Console->new(
-		Win32::Console::STD_INPUT_HANDLE());
-	$CONSOLE_IN->Mode(
-		Win32::Console::ENABLE_MOUSE_INPUT() |
-		Win32::Console::ENABLE_WINDOW_INPUT() );
-}
-
-
-#	for my $key (sort keys %ENV)
-#	{
-#		display(0,0,"$key=\"$ENV{$key}\"");
-#	}
-
-
-#----------------------------------
-# start artisan
-#----------------------------------
-# (0) static initialization of prefs
-
-
 artisanPrefs::static_init_prefs();
-
-
-
 
 # Wait upto 10 seconds for mp3_dir to exist (for booting rPi)
 # and exit (restart service) if not
@@ -175,7 +121,7 @@ else
 addDevice(new localLibrary());
 addDevice(new localRenderer());
 
-# (3) HTTP SERVER - establishes $server_ip
+# (3) HTTP SERVER
 
 display($dbg_main,0,"Starting HTTP Server ....)");
 my $http_server = HTTPServer->new();
@@ -189,25 +135,9 @@ my $ssdp = SSDP->new();
 display($dbg_main,0,"SSDP Server Started");
 
 
-# (5) OLD CODE for taskBarIcon, which is now started
-#     with the windows task scheduler
-
-if (0)
-{
-	my $taskbar_pm = "/base/apps/artisan/wxTaskBarIcon.pm";
-	$taskbar_pm =~ s/\//\\/g;
-	$taskbar_pm = "c:".$taskbar_pm;
-	display(0,0,"taskbar_pm=$taskbar_pm");
-	my $perl = "\\perl\\bin\\perl.exe";
-	Pub::Utils::execNoShell("wxTaskBarIcon.pm","\\base\\apps\\artisan");
-}
-
-if (0)
-{
-	require wxTaskBarIcon;
-	taskBarIcon->new();
-}
-
+#-----------------------------------------------
+# main_loop
+#-----------------------------------------------
 
 sub restart
 {
@@ -223,137 +153,74 @@ sub restart
 }
 
 
-#------------------------------------------------------
-# main
-#------------------------------------------------------
-# keyboard input only supported on Windows NO_SERVICE
-
-
-my $linux_keyboard;
-if (!is_win() && !$AS_SERVICE)
+sub on_terminate
 {
-	$linux_keyboard = IO::Select->new();
-	$linux_keyboard->add(\*STDIN);
+	my ($sig) = @_;
+	display($dbg_main,0,"artisan on_terminate($sig)");
+	if (0)
+	{
+		$http_server->stop() if $http_server;
+
+		$quitting = 1;
+		my $ssdp_running = $ssdp ? $ssdp->running() : 0;
+		my $lr_running = $local_renderer ? $local_renderer->running() : 0;
+		my $start = time();
+		while (time()<$start+3 && $http_server->{running} || $ssdp_running || $lr_running )
+		{
+			display($dbg_main,1,"stopping http($http_server->{running}) ssdp($ssdp_running) lr($lr_running)");
+			$ssdp_running = $ssdp ? $ssdp->running() : 0;
+			$lr_running = $local_renderer ? $local_renderer->running() : 0;
+			sleep(0.2);
+		}
+		display($dbg_main,1,"Artisan stopped");
+	}
+	return 0;	# don't ignore; i.e. quit
 }
 
-while (1)
+
+sub on_console_key
+{
+	my ($key) = @_;
+	if (chr($key) eq 'a')
+	{
+		display($dbg_main,0,"artisan.pm calling SSDP doAlive()");
+		SSDP::doAlive();
+	}
+	elsif (chr($key) eq 's')
+	{
+		display($dbg_main,0,"artisan.pm calling SSDP doSearch()");
+		SSDP::doSearch();
+	}
+	elsif (chr($key) eq 'u')
+	{
+		display($dbg_main,0,"artisan.pm calling doUpdates()");
+		doUpdates();
+	}
+}
+
+
+
+sub on_loop
 {
 	if ($restart_service && time() > $restart_service + 5)
 	{
 		$restart_service = 0;
 		restart();
 	}
-
-	if ($CONSOLE_IN)
-	{
-
-AFTER_EXCEPTION:
-
-		try
-		{
-			display($dbg_main+1,0,"main loop");
-			# display_hash(0,0,"mp",$mp);
-
-			if ($CONSOLE_IN->GetEvents())
-			{
-				my @event = $CONSOLE_IN->Input();
-				if (@event &&
-					$event[0] &&
-					$event[0] == 1) # key event
-				{
-					my $char = $event[5];
-
-					# print "got event down(" . $event[1] . ") char(" . $event[5] . ")\n";
-
-					if ($char == 3)        # char = 0x03
-					{
-						display($dbg_main,0,"exiting Artisan on CTRL-C");
-						if (0)
-						{
-							$http_server->stop() if $http_server;
-
-							$quitting = 1;
-							my $ssdp_running = $ssdp ? $ssdp->running() : 0;
-							my $lr_running = $local_renderer ? $local_renderer->running() : 0;
-							my $start = time();
-							while (time()<$start+3 && $http_server->{running} || $ssdp_running || $lr_running )
-							{
-								display($dbg_main,1,"stopping http($http_server->{running}) ssdp($ssdp_running) lr($lr_running)");
-								$ssdp_running = $ssdp ? $ssdp->running() : 0;
-								$lr_running = $local_renderer ? $local_renderer->running() : 0;
-								sleep(0.2);
-							}
-							display($dbg_main,1,"Artisan stopped");
-						}
-						exit(0);
-					}
-					elsif ($event[1] == 1)       # key down
-					{
-						if ($Pub::Utils::CONSOLE && $char == 4)            # CTRL-D
-						{
-							$Pub::Utils::CONSOLE->Cls();    # clear the screen
-						}
-						elsif (chr($char) eq 'a')
-						{
-							display($dbg_main,0,"artisan.pm calling SSDP doAlive()");
-							SSDP::doAlive();
-						}
-						elsif (chr($char) eq 's')
-						{
-							display($dbg_main,0,"artisan.pm calling SSDP doSearch()");
-							SSDP::doSearch();
-						}
-						elsif (chr($char) eq 'u')
-						{
-							doUpdates();
-						}
-					}
-				}
-			}
-			sleep(0.2);
-		}
-		catch Error with
-		{
-			my $ex = shift;   # the exception object
-			display($dbg_main,0,"exception: $ex");
-			error($ex);
-			my $msg = "!!! main() caught an exception !!!\n\n";
-			error($msg);
-			goto AFTER_EXCEPTION if (1);
-		};
-	}
-
-	elsif ($linux_keyboard)
-	{
-		if ($linux_keyboard->can_read(2))
-		{
-			my $line = <STDIN>;
-			chomp $line;
-			if ($line eq 'd')
-			{
-				 print "\033[2J\n";
-			}
-			elsif ($line eq 'a')
-			{
-				display($dbg_main,0,"artisan.pm calling SSDP doAlive()");
-				SSDP::doAlive();
-			}
-			elsif ($line eq 's')
-			{
-				display($dbg_main,0,"artisan.pm calling SSDP doSearch()");
-				SSDP::doSearch();
-			}
-			elsif ($line eq 'u')
-			{
-				doUpdates();
-			}
-		}
-	}
-
 }
 
 
-display(0,0,"never gets here to end $program_name");
+Pub::ServiceMain::main_loop({
+	MAIN_LOOP_CONSOLE => 1,
+	MAIN_LOOP_SLEEP => 0.2,
+	MAIN_LOOP_CB_TIME => 1,
+	MAIN_LOOP_CB => \&on_loop,
+	MAIN_LOOP_KEY_CB => \&on_console_key,
+	MAIN_LOOP_TERMINATE_CB => \&on_terminate,
+});
+
+
+# never gets here
 
 
 1;
