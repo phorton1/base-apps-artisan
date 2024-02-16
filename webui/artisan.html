@@ -5,61 +5,53 @@
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="viewport" content="width=device-width, height=device-height, user-scalable=no, initial-scale=1, maximum-scale=1">
 
+	<!-- using HTTP::ServerBase::includeCSS and includeJS with cache-control: max-age=60000000
 
 	<!-- CSS MUST BE loaded before JAVASCRIPT !!! -->
     <!-- the order of the css is important -->
 
-	<!-- NEW standard jquery-ui CSS -->
-	<link rel="stylesheet" type="text/css" href="/jquery/jquery-ui-1.13.2/jquery-ui.structure.css" />
-
-	<!-- NEW jquery-ui-1.13.2.custom.zip is/was 'dark_hive' 'theme' downloaded from 'ThemeRoller' on 2023-12-12 -->
-	<link rel="stylesheet" type="text/css" href="/jquery/jquery-ui-1.13.2.custom_dark_hive/jquery-ui.css" />
-	<link rel="stylesheet" type="text/css" href="/jquery/jquery-ui-1.13.2.custom_dark_hive/jquery-ui.theme.css" />
-
-	<!-- NEW jquery.layout default.css does not appear to be necessary -->
-	<!-- link rel="stylesheet" type="text/css" href="/jquery/layout-1.4.3/layout-default.css" /-->
-
-	<!-- NEW fancytree css -->
-	<link rel="stylesheet" type="text/css" href="/jquery/fancytree-2.38.3/skin-themeroller/ui.fancytree.css" />
-
+	<&$this->includeCSS('jquery/jquery-ui-1.13.2/jquery-ui.structure.css')>
+	<&$this->includeCSS('jquery/jquery-ui-1.13.2.custom_dark_hive/jquery-ui.css')>
+	<&$this->includeCSS('jquery/jquery-ui-1.13.2.custom_dark_hive/jquery-ui.theme.css')>
+	<&$this->includeCSS('jquery/fancytree-2.38.3/skin-themeroller/ui.fancytree.css')>
 
 	<!-- MY CSS  -->
 
-	<link rel="stylesheet" type="text/css" href="/themes/artisan.css" />
-	<link rel="stylesheet" type="text/css" href="/themes/home.css" />
-	<link rel="stylesheet" type="text/css" href="/themes/explorer.css" />
-	<link rel="stylesheet" type="text/css" href="/themes/search.css" />
-	<link rel="stylesheet" type="text/css" href="/themes/tracklist.css" />
-	<link rel="stylesheet" type="text/css" href="/themes/fancy.css" />
-
+	<&$this->includeCSS('/themes/artisan.css')>
+	<&$this->includeCSS('/themes/home.css')>
+	<&$this->includeCSS('/themes/explorer.css')>
+	<&$this->includeCSS('/themes/search.css')>
+	<&$this->includeCSS('/themes/tracklist.css')>
+	<&$this->includeCSS('/themes/fancy.css')>
 
 	<!-- NEW jquery JS -->
 
-    <script type="text/javascript" src="/jquery/jquery-3.7.1.js"></script>
-    <script type="text/javascript" src="/jquery/jquery-ui-1.13.2/jquery-ui.js"></script>
-    <script type="text/javascript" src="/jquery/layout-1.4.3/jquery.layout.js"></script>
-	<script type="text/javascript" src="/jquery/layout-1.4.3/callbacks/jquery.layout.resizePaneAccordions.js"></script>
-    <script type="text/javascript" src="/jquery/fancytree-2.38.3/jquery.fancytree-all.js"></script>
-    <script type="text/javascript" src="/jquery/jquery.ui.touch-punch.js"></script>
-    <script type="text/javascript" src="/jquery/jquery.touchSwipe-1.6.js"></script>
+    <&$this->includeJS('jquery/jquery-3.7.1.js')>
+    <&$this->includeJS('jquery/jquery-ui-1.13.2/jquery-ui.js')>
+    <&$this->includeJS('jquery/layout-1.4.3/jquery.layout.js')>
+	<&$this->includeJS('jquery/layout-1.4.3/callbacks/jquery.layout.resizePaneAccordions.js')>
+    <&$this->includeJS('jquery/fancytree-2.38.3/jquery.fancytree-all.js')>
+    <&$this->includeJS('jquery/jquery.ui.touch-punch.js')>
+    <&$this->includeJS('jquery/jquery.touchSwipe-1.6.js')>
 
     <!--script type="text/javascript" src="/jquery/jquery.ui-contextmenu-1.18.1.js"></script-->
 
 
 	<!--- MY JS --->
 
-    <script type="text/javascript" src="/utils.js"></script>
-	<script type="text/javascript" src="/touch.js"></script>
-    <script type="text/javascript" src="/artisan.js"></script>
-    <script type="text/javascript" src="/home.js"></script>
-    <script type="text/javascript" src="/renderer.js"></script>
-    <script type="text/javascript" src="/explorer.js"></script>
-	<script type="text/javascript" src="/search.js"></script>
-	<script type="text/javascript" src="/audio.js"></script>
+    <&$this->includeJS('utils.js')>
+	<&$this->includeJS('touch.js')>
+    <&$this->includeJS('artisan.js')>
+    <&$this->includeJS('home.js')>
+    <&$this->includeJS('renderer.js')>
+    <&$this->includeJS('explorer.js')>
+	<&$this->includeJS('search.js')>
+	<&$this->includeJS('audio.js')>
+
 
 	<script>
-		var is_win = <&Pub::Utils::is_win()>;
-		var as_service = <$Pub::Utils::AS_SERVICE>;
+		var is_win = <&is_win()>;
+		var as_service = <$AS_SERVICE>;
 	</script>
 
 </head>
