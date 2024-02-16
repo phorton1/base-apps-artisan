@@ -51,6 +51,8 @@ sub new()
 		)),
 
 
+		HTTP_DEBUG_LOUD_RE => '\/upnp\/event\/ContentDirectory1',
+
 		# HTTP_DEBUG_LOUD_RE => '\.html$',
 		# HTTP_DEBUG_LOUD_RE => '^\/webui\/queue',
 		# HTTP_DEBUG_LOUD_RE => '^\/webui\/renderer\/.*\/next$',
@@ -325,7 +327,7 @@ sub ServerDesc
 				<width>256</width>
 				<height>256</height>
 				<depth>24</depth>
-				<url>/images/blah/artisan_16_large.png</url>
+				<url>/images/artisan_16_large.png</url>
 			</icon>\n";
 		</iconList>
         <serviceList>

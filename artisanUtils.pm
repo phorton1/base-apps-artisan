@@ -129,11 +129,6 @@ BEGIN
         init_stats
         dump_stats
 
-		encode_didl
-		decode_didl
-		encode_xml
-		encode_content
-		decode_xml
         escape_tag
         unescape_tag
 
@@ -507,87 +502,10 @@ sub dump_stats
 #---------------------------------------------------------------------
 # String Utility Routines (and encoding/decoding)
 #---------------------------------------------------------------------
-# notes on xml and encoding.
-#
-# for example, the 'é' in 'Les Lables de Légende'
-# came in as orig(C3 A9) from the mb_track_info file
-# C:/mp3s/_data/mb_track_info/7ca4892022582c2b90c8bdca8657c888.xml
-# was being written as (E9) to my my file:
-# C:\mp3s\_data\unresolved_albums\albums.Blues.Old.Buddy Guy - The Treasure Untold.xml
-# and then would not re-parse in xml_simple
-#
-# C3 A9 is the UTF-8 encoding of the latin ascii character E9
-# it gets changed automatically on reading to E9 by xml_simple
-# but we have to manually convert it back, here ...
-#
-# Note that this is different than unescape_tags(), below
-#
-# use Encode qw/encode decode/;
-# $text = encode('UTF-8',$text);
-# change single ascii byte E9 for é into two bytes C3 A9
-
-sub encode_didl
-	# does lightweight didl encoding
-{
-	my ($string) = @_;
-	# $string =~ s/"/&quot;/g;
-	$string =~ s/</&lt;/sg;
-	$string =~ s/>/&gt;/sg;
-	return $string;
-}
-
-sub decode_didl
-	# does lightweight didl encoding
-{
-	my ($string) = @_;
-	# $string =~ s/&quot;/"/g;
-	$string =~ s/&lt;/</sg;
-	$string =~ s/&gt;/>/sg;
-	return $string;
-}
-
-
-sub encode_xml
-	# does encoding of inner values within didl
-	# for returning xml to dlna clients
-	# Note double encoding of ampersand as per
-	# http://sourceforge.net/p/minidlna/bugs/198/
-	# USING DECIMAL ENCODING
-{
-	my $string = shift;
-    $string =~ s/([^\x20-\x7f])/"&#".ord($1).";"/eg;
-	$string =~ s/&/&amp;/g;
-	return $string;
-}
-
-
-sub encode_content
-	# temporary routine? to change '&' into 'and'
-	# and then encode_xml.  perhaps that should
-	# just be done in encode_xml, but this code is
-	# very fragile, and this is currently working.
-{
-	my $string = shift;
-	$string =~ s/&/&amp;/g;
-	return encode_xml($string);
-}
-
-
-sub decode_xml
-	# called by specific to XML encoding
-	# Note double encoding of ampersand as per
-	# http://sourceforge.net/p/minidlna/bugs/198/
-{
-	my $string = shift;
-	$string =~ s/&amp;/&/g;
-    $string =~ s/\\#(\d+);/chr($1)/eg;
-	return $string;
-}
-
 
 
 sub escape_tag
-    # slighly different than encode xml
+    # slighly different than XMLSoap::encode_xml()
 	# does same DECIMAL encoding of non-printable characters
 	# but has special case to replace \'s with \x5c
 	#

@@ -28,6 +28,8 @@ use threads::shared;
 use Digest::MD5 'md5_hex';
 use Database;
 use artisanUtils;
+use XMLSoap;
+
 
 my $dbg_folder = 0;
 my $dbg_didl = 1;

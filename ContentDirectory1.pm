@@ -5,15 +5,20 @@
 # handle requests to /upnp/control/ContentDirectory1,
 # which is Artisan BEING a DLNA MediaServer
 # WMP cache is at C:\Users\Patrick\AppData\Local\Microsoft\Media Player
+# NOTE KOMODO_FIX FOR WRONG method signatures
+#	remove C:\Users\<username>\AppData\Local\ActiveState\KomodoEdit\8.5
+#		/codeinte/db/perl  contents
+
+use lib '/base';
 
 package ContentDirectory1;
 use strict;
 use warnings;
 use threads;
 use threads::shared;
+use Pub::HTTP::Response;
 use artisanUtils;
-# use httpUtils;
-# what was httpUtils to become Pub::XMLParser or something
+use XMLSoap;
 use Track;
 use Folder;
 use Database;
@@ -57,21 +62,24 @@ sub getDumpDir
 
 sub handle_request
 {
-	my ($method, $headers, $post_data, $peer_ip,$peer_port) = @_;
+	my ($request) = @_;
 
-	return http_error("unsupported method($method) in ContentDirectory1")
-		if $method ne 'POST';
+	# $method, $headers, $post_data, $peer_ip,$peer_port) = @_;
 
-	my $action = $headers->{SOAPACTION};
+	return http_error($request,"unsupported method($request->{method}) in ContentDirectory1")
+		if $request->{method} ne 'POST';
+
+	my $action = $request->{headers}->{soapaction} || '';
 
 	$action =~ s/"//g;
-	return error("action not upnp: $action")
+	return http_error($request,"action not upnp: $action")
 		if $action !~ s/^urn:schemas-upnp-org:service://;
-	return error("action not ContentDirectory1: $action")
+	return http_error($request,"action not ContentDirectory1: $action")
 		if $action !~ s/^ContentDirectory:1#//;
 
-	display($dbg_input,0,"ContentDirectory1.handle_request($action) from $peer_ip:$peer_port");
+	display($dbg_input,0,"ContentDirectory1.handle_request($action) from $request->{peer_ip}:$request->{peer_port}");
 
+	my $post_data = $request->{content} || '';
 	my $xml = parseXML($post_data,{
 		dbg => $dbg_input,
 		dbg_name => "$action.request",
@@ -86,13 +94,14 @@ sub handle_request
 
     # browser, search, bookmark
 
+	my $error = '';
 	if ($action eq 'Browse')
 	{
-        $content = browse_directory($xml);
+        $content = browse_directory($xml,\$error);
     }
     elsif ($action eq 'Search')
     {
-        $content = search_directory($xml);
+        $content = search_directory($xml,\$error);
     }
 
     # capability responses
@@ -135,40 +144,39 @@ sub handle_request
 	# }
 	else
 	{
-		error("ContentDirectory1: $action not supported");
-		return http_header({ status_code => 501 });
+		return http_error($request,"ContentDirectory1: $action not supported");
 	}
+
+	if (!defined($content))
+	{
+		$error ||= "No Response";
+		return http_error($request,$error)
+	}
+
+
 
 	# RETURN THE RESPONSE
 
-	my $response = undef;
-	if (defined($content))
-	{
-		display($dbg_output,1,"returning ".length($content)." bytes xml content");
-		$response = http_header({
-			content_type => 'text/xml; charset=utf8',
-			content_length => length($content) });
-		$response .= $content;
+	display($dbg_output,1,"returning ".length($content)." bytes xml content");
 
-		parseXML($content,{
-			dbg => $dbg_input,
-			dbg_name => "$action.response",
-			dump_dir => getDumpDir(),		# comment out for no dumps
-			decode_didl => 0,
-			raw => 0,
-			pretty => 1,
-			my_dump => 0,
-			dumper => 1 }) if $PARSE_RESULTS;
-	}
-	else
-	{
-		error("No Response");
-		$response = http_header({ status_code => 501 });
-	}
+	parseXML($content,{
+		dbg => $dbg_input,
+		dbg_name => "$action.response",
+		dump_dir => getDumpDir(),		# comment out for no dumps
+		decode_didl => 0,
+		raw => 0,
+		pretty => 1,
+		my_dump => 0,
+		dumper => 1 }) if $PARSE_RESULTS;
 
-	return $response;
+	return Pub::HTTP::Response->new(
+		$request,
+		$content,
+		200,
+		'text/xml; charset=utf8');
 
 }   # ContentDirectory1::handle_request()
+
 
 
 
@@ -246,7 +254,7 @@ sub get_xml_params
 sub search_directory
     # no longer using #filter
 {
-    my ($xml,$peer_ip_addr) = @_;
+    my ($xml,$perror) = @_;
     display($dbg_search,0,"SEARCH()",0,$UTILS_COLOR_LIGHT_MAGENTA);
 
 	# upnp:class derivedfrom "object.item.audioItem" and @refID exists false
@@ -261,8 +269,8 @@ sub search_directory
             Filter ));
     if (!$criteria)
     {
-        error('ERROR: Unable to find SearchCriteria in search_directory()');
-        return '';  # return empty result set
+        $$perror = error('ERROR: Unable to find SearchCriteria in search_directory()');
+        return;  # return empty result set
     }
 
 	$start ||= 0;
@@ -326,7 +334,8 @@ sub search_directory
 	}
 	else
 	{
-		error("!!!! UNSUPPORTED SEARCH CRITERIA($criteria) !!!!!!");
+		$$perror = error("!!!! UNSUPPORTED SEARCH CRITERIA($criteria) !!!!!!");
+		return;
 	}
 
 	$didl .= didl_footer();
@@ -450,7 +459,7 @@ sub currently_unused_create_sql_expr
 
 sub browse_directory
 {
-    my ($xml,$peer_ip_addr) = @_;
+    my ($xml,$perror) = @_;
 	display($dbg_browse,0,"BROWSE()",0,$UTILS_COLOR_LIGHT_CYAN);
 
     my ($id, $start, $count, $flag) =
@@ -461,7 +470,7 @@ sub browse_directory
             BrowseFlag));
             # Filter));
 
-    my $error = '';
+
 	my $folder;
 
 	# $id ||= 'c5b5b8ca14b0c5f07a110fb727d3baa0';
@@ -469,18 +478,18 @@ sub browse_directory
 
     if (!defined($id))
     {
-		$error = "No ID passed to browse_directory";
+		$$perror = "No ID passed to browse_directory";
 	}
 
-	if (!$error)
+	if (!$$perror)
 	{
 		display($dbg_browse+1,1,"browse folder($id)");
 		$folder = $local_library->getFolder($id);
-		$error = "Could not get_folder($id)"
+		$$perror = "Could not get_folder($id)"
 			if (!$folder);
 	}
 
-	if (!$error)
+	if (!$$perror)
 	{
 		if ($flag eq 'BrowseMetadata')
 		{
@@ -488,18 +497,18 @@ sub browse_directory
 			warning(0,-1,"mis-implemented BROWSE_METADATA($id) called");
 			$id = $folder->{parent_id};
 			$folder = $local_library->getFolder($id);
-			$error = "Could not get_folder($id)"
+			$$perror = "Could not get_folder($id)"
 				if (!$folder);
 		}
 		elsif ($flag ne 'BrowseDirectChildren')
 		{
-			$error = "BrowseFlag: $flag is NOT supported";
+			$$perror = "BrowseFlag: $flag is NOT supported";
 		}
 	}
 
-    # build the http response
+    # build the content
 
-	if (!$error)
+	if (!$$perror)
 	{
 		$count ||= 0;
 		display($dbg_browse+1,1,"$flag(id=$id,start=$start,count=$count)");
@@ -555,8 +564,9 @@ sub browse_directory
 
 	# error exit
 
-	error($error);
-	return http_header({ status_code => 501 });
+	error($$perror);
+	return undef;
+
 }
 
 
@@ -648,28 +658,33 @@ my $subscribers:shared = shared_clone({});
 
 sub handleSubscribe
 {
-	my ($method,$headers,$peer_ip,$peer_port) = @_;
+	my ($request) = @_;
 
-	my $sid = $headers->{SID} || '';
+	my $method = $request->{method};
+	my $headers = $request->{headers};
+	my $peer_ip = $request->{peer_ip};
+	my $peer_port = $request->{peer_port};
+
+	my $sid = $headers->{sid} || '';
 	$sid =~ s/^uuid://;
 	my $exists = $subscribers->{$sid} || '';
 
 	if ($method eq 'SUBSCRIBE')
 	{
 		my $nt = $headers->{NT} || '';
-		my $callback = $headers->{CALLBACK} || '';
-		my $timeout = $headers->{TIMEOUT} || '';
+		my $callback = $headers->{callback} || '';
+		my $timeout = $headers->{timeout} || '';
 
 		$callback =~ s/^<|>$//g;
 
 		display($dbg_sub,1,"SUBSCRIBE($nt) from $peer_ip:$peer_port");
 		display($dbg_sub,2,"timeout($timeout) exists(".($exists?1:0).") callback='$callback'");;
 
-		return http_error("no callback or valid sid in SUBSCRIBE")
+		return http_error($request,"no callback or valid sid in SUBSCRIBE")
 			if !$callback && !$exists;
-		return http_error("unrecognized timeout($timeout) in SUBSCRIBE")
+		return http_error($request,"unrecognized timeout($timeout) in SUBSCRIBE")
 			if $timeout !~ s/^Second-//;
-		return http_error("illegal timeout($timeout) in SUBSCRIBE")
+		return http_error($request,"illegal timeout($timeout) in SUBSCRIBE")
 			if !$timeout || $timeout !~ /^\d+$/;
 
 		if (!$exists)
@@ -686,10 +701,11 @@ sub handleSubscribe
 			$exists->{timeout} = $timeout;
 		}
 
-		return http_header({
-			addl_headers => [
-				"SID: uuid:$sid",
-				"TIMEOUT: $timeout", ]});
+		my $response = http_ok($request);
+		$response->{headers}->{SID} = "uuid:$sid";
+		$response->{headers}->{TIMEOUT} = $timeout;
+		$response->{headers}->{Date} = gmtime()." GMT";
+		return $response;
 	}
 	else	# method eq UNUSUBSCRIBE
 	{
@@ -697,7 +713,7 @@ sub handleSubscribe
 		return error("could not find sid($sid) in UNSUBSCRIBE")
 			if !$exists;
 		delete $subscribers->{$sid};
-		return http_header();
+		return http_ok($request,"");
 	}
 }
 

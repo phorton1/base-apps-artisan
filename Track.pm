@@ -24,6 +24,7 @@ use warnings;
 use threads;
 use threads::shared;
 use artisanUtils;
+use XMLSoap;
 use Database;
 
 

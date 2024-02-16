@@ -43,8 +43,8 @@ use strict;
 use warnings;
 use threads;
 use threads::shared;
-# TODO: uses parseXML
 use artisanUtils;
+use XMLSoap;
 use Track;
 use Library;
 use Folder;
