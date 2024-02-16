@@ -50,9 +50,8 @@ sub new()
 			'\/images\/error_\d\.png',
 		)),
 
-
-		HTTP_DEBUG_LOUD_RE => '\/upnp\/event\/ContentDirectory1',
-
+		# Debugging is better specified in /mp3s/_data/artisan.prefs
+		# HTTP_DEBUG_LOUD_RE => '\/upnp\/event\/ContentDirectory1',
 		# HTTP_DEBUG_LOUD_RE => '\.html$',
 		# HTTP_DEBUG_LOUD_RE => '^\/webui\/queue',
 		# HTTP_DEBUG_LOUD_RE => '^\/webui\/renderer\/.*\/next$',
