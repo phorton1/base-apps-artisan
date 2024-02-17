@@ -100,6 +100,15 @@ sub new()
 
 	my $this = $class->SUPER::new($params);
 	bless $this,$class;
+
+	# Add most generous CORS cross-origin headers to all responses
+	# iPad browsers which would not call /get_art/ in Artisan otherwise.
+	# and is needed for remoteArtisanLibrary calls directly from JS.
+	# This is only done via post construction for certain apps only.
+
+	$this->{HTTP_DEFAULT_HEADERS}->{'Access-Control-Allow-Origin'} = '*';
+	$this->{HTTP_DEFAULT_HEADERS}->{'Access-Control-Allow-Methods'} = 'GET';
+
 	return $this;
 }
 

@@ -117,7 +117,7 @@ sub new
 
 	$params ||= {};
 	getObjectPref($params,'SSDP_FIND_ARTISAN_LIBRARIES',1);
-	getObjectPref($params,'SSDP_FIND_OTHER_LIBRARIES',1);
+	getObjectPref($params,'SSDP_FIND_OTHER_LIBRARIES',0);
 	getObjectPref($params,'SSDP_FIND_RENDERERS',0);
 
     display_hash($dbg_ssdp,0,"SSDP starting ...",$params);
