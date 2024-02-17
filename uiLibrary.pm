@@ -324,7 +324,9 @@ sub library_dir
 	$content .= ']';
 
 	display($use_dbg+1,0,"dir response=$content");
-	return json_response($request,$content);
+	my $response = json_response($request,$content);
+	# $response->cache();
+	return $response;
 }
 
 
@@ -423,7 +425,9 @@ sub library_tracklist
 		$content .= my_encode_json($rec);
 	}
 	$content .= ']';
-	return json_response($request,$content);
+	my $response = json_response($request,$content);
+	# $response->cache();
+	return $response;
 }
 
 

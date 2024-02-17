@@ -159,7 +159,7 @@ sub webui_request
 	elsif ($path =~ /^queue\/(.*)$/)
 	{
 		my $command = $1;
-		my $request_json = $request->get_decoded_content();
+		my $request_json = $request->getPostJSON();
 		my $json = Queue::queueCommand($command,$request_json);
 		$response = json_response($request,$json);
 	}
