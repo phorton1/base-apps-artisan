@@ -1,11 +1,4 @@
 #!/usr/bin/perl
-
-# TODO: replace httpUtils.pm with Pub::XML
-# TODO: replace httpUtils.pm with Artisan::SOAP and DIDL
-# TODO: test ContentDirectory1
-# TODO: move to rPi, possibly LENOVO2 - full regression test
-
-
 #---------------------------------------
 # artisan.pm
 #---------------------------------------
