@@ -87,7 +87,7 @@ sub new()
 		HTTP_DEFAULT_LOCATION => 'artisan.html',
 		HTTP_FAVICON => '/base/apps/artisan/webui/images/artisan.png',
         HTTP_GET_EXT_RE => 'html|js|css|jpg|gif|png|ico',
-		HTTP_USE_STANDARD_CACHE_SCHEME => 1,
+		HTML_USE_INCLUDES => 1,
 
 		# HTTP_MINIFIED_JS	=> 1,
 		# HTTP_MINIFIED_CSS	=> 1,

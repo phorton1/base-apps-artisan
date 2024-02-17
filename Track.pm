@@ -53,7 +53,7 @@ sub mimeType
 }
 
 
-sub getPublicArtUri
+sub unused_getPublicArtUri
 {
 	my ($this) = @_;
 	my $rslt;
