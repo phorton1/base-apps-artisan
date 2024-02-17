@@ -237,13 +237,13 @@ sub handle_request
 	{
 		LOG(0,"Artisan rebooting the rPi");
 		system("sudo reboot") if !is_win();
-		$response = http_ok($request,"Rebooting Server");
+		$response = html_ok($request,"Rebooting Server");
 	}
 	elsif ($uri eq '/restart_service')
 	{
 		LOG(0,"Artisan restarting service in 5 seconds");
 		$restart_service = time();	# if !is_win();
-		$response = http_ok($request,"Restarting Service.\nWill reload WebUI in 30 seconds..");
+		$response = html_ok($request,"Restarting Service.<br>Will reload WebUI in 30 seconds..");
 	}
 	elsif ($uri eq '/update_system')
 	{
@@ -258,8 +258,9 @@ sub handle_request
 		else
 		{
 			LOG(0,"restarting service in 5 seconds");
+			$text =~ s/\n/<br>/g;
 			$restart_service = time();	# if !is_win();
-			$response = http_ok($request,"Restarting Service after System Update.\n$text\nWill reload WebUI in 30 seconds..");
+			$response = html_ok($request,"Restarting Service after System Update<br>$text<br>Will reload WebUI in 30 seconds..");
 		}
 	}
 

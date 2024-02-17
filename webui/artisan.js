@@ -591,7 +591,7 @@ function system_command(command)
 
 		setTimeout(function() {
 			$.get(command,function(result) {
-				if (result.includes('error'))
+				if (false && result.includes('error'))
 				{
 					alert(result);
 					restarting = 0;
@@ -600,9 +600,8 @@ function system_command(command)
 				}
 				else
 				{
-					// add the resullt to the dialog
-
-					my_alert(command,command + "\n" + result);
+					// show html resullt in a dialog
+					my_alert(command,result);
 					var delay = command == 'reboot' || command == 'update_system' ?
 						30000 :
 						8000;
