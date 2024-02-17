@@ -18,6 +18,7 @@ use IO::Socket::Multicast qw(:all);
 	# or receives, but for M-SEARCH you need both!  Then
 	# additionally because IO::SocketMulticast::mcast_send()
 	# did not work on the rPi.
+use Pub::Prefs;
 use artisanUtils;
 use DeviceManager;
 
@@ -112,11 +113,16 @@ sub doSearch	{ $send_search = 1; }
 
 sub new
 {
-	my ($class) = @_;
+	my ($class,$params) = @_;
 
-    display($dbg_ssdp,0,"SSDP starting ...");
+	$params ||= {};
+	getObjectPref($params,'SSDP_FIND_ARTISAN_LIBRARIES',1);
+	getObjectPref($params,'SSDP_FIND_OTHER_LIBRARIES',1);
+	getObjectPref($params,'SSDP_FIND_RENDERERS',0);
 
-	my $this = ();
+    display_hash($dbg_ssdp,0,"SSDP starting ...",$params);
+
+	my $this = $params;
 	$this->{NTS} = [
 		"uuid:$this_uuid",
 		'upnp:rootdevice',
@@ -276,7 +282,7 @@ sub run
 				my $message = parse_ssdp_message($data,$peer_ip,$peer_port);
 				if ($message->{TYPE} eq 'REPLY' || $message->{TYPE} eq 'NOTIFY')
 				{
-					processExternalMessage($message->{TYPE},$message,$peer_ip,$peer_port);
+					$this->processExternalMessage($message->{TYPE},$message,$peer_ip,$peer_port);
 				}
 				elsif ($message->{TYPE} eq 'M-SEARCH')
 				{
@@ -773,7 +779,7 @@ sub processExternalMessage
 	# or SEARCH if from SSDPSearch. $message is a parsed
 	# ssdp_message
 {
-	my ($caller,$message,$ip,$port) = @_;
+	my ($this,$caller,$message,$ip,$port) = @_;
 	$ip ||= '';
 	$port ||= '';
 	my $from_addr = $ip ? "$ip:$port" : '';
@@ -795,11 +801,15 @@ sub processExternalMessage
 	$usn =~ s/^urn://;
 	$usn =~ s/^schemas-upnp-org://;
 
-	# Currently only 'sees' MediaServers
+	# Find devices based on params
 
-    my $type = '';
-		# $utype eq 'MediaServer:1' ? $DEVICE_TYPE_LIBRARY : '';
-		# $utype eq 'MediaRenderer:1' ? $DEVICE_TYPE_RENDERER : '';
+    my $type =	$utype eq 'MediaServer:1' ?
+		$this->{SSDP_FIND_ARTISAN_LIBRARIES} &&  $uuid =~ /Artisan/ ?
+			$DEVICE_TYPE_LIBRARY :
+		$this->{SSDP_FIND_LIBRARIES}  ?
+			$DEVICE_TYPE_LIBRARY :
+		$this->{SSDP_FIND_RENDERERS} && $utype eq 'MediaRenderer:1' ?
+			$DEVICE_TYPE_RENDERER : '' : '';
 
 	my $mask = 1;
 	$mask |= $type ? 0x10 : 0;
