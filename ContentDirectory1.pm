@@ -79,7 +79,7 @@ sub handle_request
 
 	display($dbg_input,0,"ContentDirectory1.handle_request($action) from $request->{peer_ip}:$request->{peer_port}");
 
-	my $post_data = $request->{content} || '';
+	my $post_data = $request->get_decoded_content() || '';
 	my $xml = parseXML($post_data,{
 		dbg => $dbg_input,
 		dbg_name => "$action.request",
@@ -710,7 +710,7 @@ sub handleSubscribe
 	else	# method eq UNUSUBSCRIBE
 	{
 		display($dbg_sub,1,"UNSUBSCRIBE sid($sid) from $peer_ip:$peer_port");
-		return error("could not find sid($sid) in UNSUBSCRIBE")
+		return http_error($request,"could not find sid($sid) in UNSUBSCRIBE")
 			if !$exists;
 		delete $subscribers->{$sid};
 		return http_ok($request,"");
