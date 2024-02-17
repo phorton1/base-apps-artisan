@@ -58,17 +58,18 @@ sub updateOne
 sub doSystemUpdate
 	# returns blank or an error message
 {
+	my ($ptext) = @_;
 	LOG(-1,"UPDATING SYSTEM");
-	my $text = '';
-	my $pub = updateOne('/base/Pub',\$text);
-	my $artisan = $pub >= 0 ?  updateOne('/base/apps/artisan',\$text) : 0;
+	$$ptext = '';
+	my $pub = updateOne('/base/Pub',$ptext);
+	my $artisan = $pub >= 0 ?  updateOne('/base/apps/artisan',$ptext) : 0;
 	if (!$pub && !$artisan)
 	{
-		$text = 'Nothing to do!';
-		error($text);
+		$$ptext = 'Nothing to do!';
+		error($ptext);
 		$pub = -1;
 	}
-	return $text if $pub<0 || $artisan<0;
+	return $$ptext if $pub<0 || $artisan<0;
 	return '';
 }
 

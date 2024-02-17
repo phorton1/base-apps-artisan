@@ -243,12 +243,13 @@ sub handle_request
 	{
 		LOG(0,"Artisan restarting service in 5 seconds");
 		$restart_service = time();	# if !is_win();
-		$uri = http_ok($request,"Restarting Service.\nWill reload WebUI in 30 seconds..");
+		$response = http_ok($request,"Restarting Service.\nWill reload WebUI in 30 seconds..");
 	}
 	elsif ($uri eq '/update_system')
 	{
 		LOG(0,"Artisan updating system");
-		my $error = Update::doSystemUpdate();
+		my $text = '';
+		my $error = Update::doSystemUpdate(\$text);
 		if ($error)
 		{
 			$error =~ s/\r/ /g;
@@ -258,7 +259,7 @@ sub handle_request
 		{
 			LOG(0,"restarting service in 5 seconds");
 			$restart_service = time();	# if !is_win();
-			$response = http_ok($request,"Restarting Service after System Update.\nWill reload WebUI in 30 seconds..");
+			$response = http_ok($request,"Restarting Service after System Update.\n$text\nWill reload WebUI in 30 seconds..");
 		}
 	}
 
