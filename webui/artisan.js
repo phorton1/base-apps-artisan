@@ -600,7 +600,7 @@ function system_command(command)
 				}
 				else
 				{
-					my_alert(command,command);
+					my_alert(command,command + "\n" + result);
 					var delay = command == 'reboot' || command == 'update_system' ?
 						30000 :
 						8000;
