@@ -36,7 +36,6 @@
 # 	Can be stopped and run with 'perl artisan.pm NO_SERVICE' from dos box
 # 	Can be removed with 'nssm remove _artisan'
 
-
 package artisan;
 use strict;
 use warnings;
