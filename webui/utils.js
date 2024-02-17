@@ -538,4 +538,17 @@ function buildPlaylistMenu(array)
 }
 
 
+//------------------------------
+// recent additions
+//------------------------------
+
+function setImgIfChanged(selector,url)
+	// chrome regets images on any assignment to src attribute
+	// this only sets them if they have changed
+{
+	var attr = $(selector).attr('src');
+	if (attr != url)
+		$(selector).attr('src',url);
+}
+
 // end of utils.js
