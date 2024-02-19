@@ -573,8 +573,9 @@ function onswipe(event, direction, distance, duration, fingerCount, fingerData)
 
 
 //---------------------------------------
-// linux only system_command
+// system_command (reboot is linux only)
 //---------------------------------------
+
 
 var needs_stash = false;
 
