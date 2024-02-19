@@ -264,7 +264,7 @@ sub handle_request
 			LOG(0,"restarting service in 5 seconds");
 			$restart_service = time();	# if !is_win();
 		}
-		$response = html_ok($request.$line1.$sep.$text);
+		$response = html_ok($request,$line1.$sep.$text);
 	}
 
 	# call base class
