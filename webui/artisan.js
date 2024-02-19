@@ -617,6 +617,7 @@ function system_command(command)
 						$('.update_allowed').html('update');
 					}
 				}
+
 				else
 				{
 					if (needs_stash)
