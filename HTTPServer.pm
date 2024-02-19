@@ -255,13 +255,16 @@ sub handle_request
 			$do_stash,
 			['/base/Pub','/base/apps/artisan']);
 		my $line1 = git_result_to_text($rslt);
+		my $sep = "\n";
 		if ($rslt == $GIT_UPDATE_DONE)
 		{
 			$line1 .= "- restarting service in 5 seconds";
+			$sep = "<br>";
+			$text =~ s/\n/<br>/g;
 			LOG(0,"restarting service in 5 seconds");
 			$restart_service = time();	# if !is_win();
 		}
-		$response = html_ok($request,$line1."\n".$text);
+		$response = html_ok($request.$line1.$sep.$text);
 	}
 
 	# call base class
