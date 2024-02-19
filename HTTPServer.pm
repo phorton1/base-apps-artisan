@@ -245,7 +245,7 @@ sub handle_request
 		$restart_service = time();	# if !is_win();
 		$response = html_ok($request,"Restarting Service.<br>Will reload WebUI in 30 seconds..");
 	}
-	elsif ($uri eq '/update_system(_stash)*')
+	elsif ($uri =~ /update_system(_stash)*/)
 	{
 		my $do_stash = $1 ? 1 : 0;
 		LOG(0,"Artisan updating system stash($do_stash)");
