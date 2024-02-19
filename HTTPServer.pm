@@ -11,9 +11,9 @@ use warnings;
 use threads;
 use threads::shared;
 use Pub::HTTP::Response;
+use Pub::ServiceUpdate;
 use artisanUtils;
 use WebUI;
-use Update;
 use HTTPStream;
 use DeviceManager;
 use ContentDirectory1;
@@ -245,23 +245,23 @@ sub handle_request
 		$restart_service = time();	# if !is_win();
 		$response = html_ok($request,"Restarting Service.<br>Will reload WebUI in 30 seconds..");
 	}
-	elsif ($uri eq '/update_system')
+	elsif ($uri eq '/update_system(_stash)*')
 	{
-		LOG(0,"Artisan updating system");
+		my $do_stash = $1 ? 1 : 0;
+		LOG(0,"Artisan updating system stash($do_stash)");
 		my $text = '';
-		my $error = Update::doSystemUpdate(\$text);
-		if ($error)
+		my $rslt = Pub::ServiceUpdate::doSystemUpdate(
+			\$text,
+			$do_stash,
+			['/base/Pub','/base/apps/artisan']);
+		my $line1 = git_result_to_text($rslt);
+		if ($rslt == $GIT_UPDATE_DONE)
 		{
-			$error =~ s/\r/ /g;
-			$response = http_ok($request,"There was an error doing a system_update:\n$error");
-		}
-		else
-		{
+			$line1 .= "- restarting service in 5 seconds";
 			LOG(0,"restarting service in 5 seconds");
-			$text =~ s/\n/<br>/g;
 			$restart_service = time();	# if !is_win();
-			$response = html_ok($request,"Restarting Service after System Update<br>$text<br>Will reload WebUI in 30 seconds..");
 		}
+		$response = html_ok($request,$line1."\n".$text);
 	}
 
 	# call base class

@@ -576,11 +576,17 @@ function onswipe(event, direction, distance, duration, fingerCount, fingerData)
 // linux only system_command
 //---------------------------------------
 
+var needs_stash = false;
 
 function system_command(command)
 	// restarting != 0 stops any subsequent gets to the server
 	// which is, as far as I know, only the on_idle() update loop
 {
+	if (command == 'update_system' && needs_stash)
+	{
+		command = 'update_system_stash';
+	}
+
 	if (confirm(command + '?'))
 	{
 		$('.cover_screen').show();
@@ -591,15 +597,34 @@ function system_command(command)
 
 		setTimeout(function() {
 			$.get(command,function(result) {
-				if (false && result.includes('error'))
+
+				if (result.startsWith("GIT_") &&
+					!result.startsWith("GIT_UPDATE_DONE"))
 				{
 					alert(result);
 					restarting = 0;
 					$('.artisan_menu_library_name').html(current_library.name);
 					$('.cover_screen').hide();
+
+					if (result.startsWith('GIT_NEEDS_STASH'))
+					{
+						needs_stash = true;
+						$('.update_allowed').html('stash_update');
+					}
+					else
+					{
+						needs_stash = false;
+						$('.update_allowed').html('update');
+					}
 				}
 				else
 				{
+					if (needs_stash)
+					{
+						needs_stash = false;
+						$('.update_allowed').html('update');
+					}
+
 					// show html resullt in a dialog
 					my_alert(command,result);
 					var delay = command == 'reboot' || command == 'update_system' ?
