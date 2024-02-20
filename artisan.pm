@@ -62,7 +62,10 @@ use remoteRenderer;
 use remoteArtisanLibrary;
 
 $SIG{CHLD} = 'DEFAULT' if !is_win();
-# $SIG{PIPE} = 'IGNORE' if !is_win();
+	# needed to run git in ServiceUpdate.pm from backticks
+	# must be called after initServerUtils(), which is called
+	# inline in artisanUtils.pm, sets it to IGNORE when spawning 
+	# the initial unix service
 
 my $dbg_main = 0;
 my $last_update_check = 0;
