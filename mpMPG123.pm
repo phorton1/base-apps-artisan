@@ -90,6 +90,7 @@ use myMPG123;
 use Time::HiRes qw(sleep);
 use artisanUtils;
 use Renderer;
+use MP3Normalize;
 
 
 my $dbg_mp = 0;
@@ -281,6 +282,8 @@ sub mapLocalUrl
 		{
 			 $url = dbToFilePath("$mp3_dir/$track->{path}");
 			 display($dbg_mp,0,"mapped to $url");
+			 my $normalized = getNormalizedFilename($url);
+			 $url = $normalized if $normalized;
 		}
 	}
 	return $url;
