@@ -62,7 +62,7 @@ use remoteRenderer;
 use remoteArtisanLibrary;
 
 $SIG{CHLD} = 'DEFAULT' if !is_win();
-$SIG{PIPE} = 'IGNORE' if !is_win();
+# $SIG{PIPE} = 'IGNORE' if !is_win();
 
 my $dbg_main = 0;
 my $last_update_check = 0;
