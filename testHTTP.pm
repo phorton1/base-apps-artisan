@@ -26,7 +26,7 @@ display(0,0,"getting url=$url");
 for (my $i=0; $i<100; $i++)
 {
 	display(0,1,"get url=$url");
-	my $response = $ua->get($url,{TIMEOUT=>3});
+	my $response = $ua->get($url);
     if (!$response->is_success())
     {
         error("Could not get url: $url");
