@@ -131,7 +131,7 @@ sub stream_media
 		$http_headers .= "contentFeatures.dlna.org: ".$track->dlna_content_features()."\r\n";
 		$http_headers .= "transferMode.dlna.org: Streaming\r\n";
 		$http_headers .= "Accept-Ranges: bytes\r\n";
-		$http_headers .= "Content-Range: bytes $from_byte-$to_byte/$track_size"
+		$http_headers .= "Content-Range: bytes $from_byte-$to_byte/$track_size\r\n"
 			if $is_ranged;
 		$http_headers .= "Cache-Control: no-cache\r\n";
 		$http_headers .= "Connection: close\r\n";
