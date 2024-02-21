@@ -15,7 +15,7 @@ var WITH_SWIPE = false;
 	// If it is true, then a swipe event handler will be added to
 	// the element specified in the layout_def that will close or
 	// open the relevant pane(s).
-var REFRESH_TIME = 600;
+var REFRESH_TIME = 1000;
 
 var default_page = 'home';
 var current_page = ''
@@ -175,55 +175,57 @@ $( window ).resize(function()
 
 function idle_loop()
 {
-	if (restarting >= 0)
+	if (restarting >= 0 &&
+		!in_slider && !in_volume_slider)
 	{
 		display(dbg_loop,0,"idle_loop(" + current_page + ")");
 		idle_count++;
 
-		if (!in_slider && !in_volume_slider)
+		var data = { update_id: update_id };
+		if (current_renderer.uuid == html_renderer.uuid)
 		{
-			var data = { update_id: update_id };
-			if (current_renderer.uuid == html_renderer.uuid)
-			{
-				audio_command('update');
-				update_renderer_ui();
-			}
-			else
-			{
-				data.renderer_uuid = current_renderer.uuid;
-			}
-
-			$.ajax({
-				async: true,
-				url: '/webui/update',
-				data: data,
-
-				success: function (result)
-				{
-					if (restarting)
-						clearRestart();
-
-					if (result.update_id)
-						update_id = result.update_id;
-					if (result.libraries)
-						updateLibraries(result.libraries);
-					if (result.renderer)
-					{
-						current_renderer = result.renderer;
-						update_renderer_ui();
-					}
-				},
-
-				error: function() {
-					error("UPDATE ERROR: There was an error calling /webui/update");
-				},
-
-				timeout: 3000,
-			});
+			audio_command('update');
+			update_renderer_ui();
 		}
-	}
+		else
+		{
+			data.renderer_uuid = current_renderer.uuid;
+		}
 
-	setTimeout("idle_loop();", REFRESH_TIME);
+		$.ajax({
+			async: true,
+			url: '/webui/update',
+			data: data,
+
+			success: function (result)
+			{
+				if (restarting)
+					clearRestart();
+
+				if (result.update_id)
+					update_id = result.update_id;
+				if (result.libraries)
+					updateLibraries(result.libraries);
+				if (result.renderer)
+				{
+					current_renderer = result.renderer;
+					update_renderer_ui();
+				}
+				setTimeout("idle_loop();", REFRESH_TIME);
+			},
+
+			error: function() {
+				error("UPDATE ERROR: There was an error calling /webui/update");
+				setTimeout("idle_loop();", REFRESH_TIME);
+			},
+
+			timeout: 3000,
+		});
+	}
+	else
+	{
+		setTimeout("idle_loop();", REFRESH_TIME);
+	}
 }
 
 
