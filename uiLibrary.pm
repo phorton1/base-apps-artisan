@@ -325,7 +325,7 @@ sub library_dir
 
 	display($use_dbg+1,0,"dir response=$content");
 	my $response = json_response($request,$content);
-	# $response->cache();
+	# $response->setAsCached();
 	return $response;
 }
 
@@ -426,7 +426,7 @@ sub library_tracklist
 	}
 	$content .= ']';
 	my $response = json_response($request,$content);
-	# $response->cache();
+	# $response->setAsCached();
 	return $response;
 }
 
