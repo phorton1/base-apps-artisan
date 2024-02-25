@@ -604,7 +604,7 @@ function system_command(command)
 				if (result.startsWith("GIT_") &&
 					!result.startsWith("GIT_UPDATE_DONE"))
 				{
-					alert(result);
+					my_alert(command,result);
 					restarting = 0;
 					$('.artisan_menu_library_name').html(current_library.name);
 					$('.cover_screen').hide();

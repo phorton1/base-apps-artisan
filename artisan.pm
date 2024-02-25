@@ -64,7 +64,7 @@ use remoteArtisanLibrary;
 $SIG{CHLD} = 'DEFAULT' if !is_win();
 	# needed to run git in ServiceUpdate.pm from backticks
 	# must be called after initServerUtils(), which is called
-	# inline in artisanUtils.pm, sets it to IGNORE when spawning 
+	# inline in artisanUtils.pm, sets it to IGNORE when spawning
 	# the initial unix service
 
 my $dbg_main = 0;
@@ -136,18 +136,6 @@ display($dbg_main,0,"SSDP Server Started");
 # main_loop
 #-----------------------------------------------
 
-sub restart
-{
-	LOG(0,"RESTARTING SERVICE");
-	if (!$AS_SERVICE || is_win())
-	{
-		kill 9, $$;		# 9 == SIGKILL
-	}
-	else
-	{
-		system("sudo systemctl restart artisan");
-	}
-}
 
 
 sub on_terminate
@@ -199,11 +187,6 @@ sub on_console_key
 
 sub on_loop
 {
-	if ($restart_service && time() > $restart_service + 5)
-	{
-		$restart_service = 0;
-		restart();
-	}
 }
 
 

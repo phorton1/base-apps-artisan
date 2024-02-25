@@ -12,6 +12,7 @@ use threads;
 use threads::shared;
 use Pub::HTTP::Response;
 use Pub::ServiceUpdate;
+use Pub::ServiceMain;
 use artisanUtils;
 use WebUI;
 use HTTPStream;
@@ -38,6 +39,8 @@ sub new()
 
 	my $params = {
 
+		HTTP_SERVER_NAME => 'Artisan Perl('.getMachineId().')',
+			# the server name for default http 'Server' header
 		HTTP_DEBUG_SERVER => 0,
 			# 0 is nominal debug level showing one line per request and response
 		HTTP_DEBUG_REQUEST => 0,
@@ -92,10 +95,10 @@ sub new()
 		# HTTP_MINIFIED_JS	=> 1,
 		# HTTP_MINIFIED_CSS	=> 1,
 
-		# example of setting default headers for GET_EXT_RE extensions
+		HTTP_ALLOW_REBOOT   	=> 1,			# linux only
+		HTTP_RESTART_SERVICE  	=> 'artisan',
+		HTTP_GIT_UPDATE       	=> '/base/Pub,/base/apps/artisan',
 
-		# HTTP_DEFAULT_HEADERS_JPG => $no_cache,
-		# HTTP_DEFAULT_HEADERS_PNG => $no_cache,
 	};
 
 	my $this = $class->SUPER::new($params);
@@ -228,46 +231,8 @@ sub handle_request
 		}
 	}
 
-
-	#------------------------------------------------------------
-	# system requests
-	#------------------------------------------------------------
-
-	elsif ($uri eq "/reboot")
-	{
-		LOG(0,"Artisan rebooting the rPi");
-		system("sudo reboot") if !is_win();
-		$response = html_ok($request,"Rebooting Server");
-	}
-	elsif ($uri eq '/restart_service')
-	{
-		LOG(0,"Artisan restarting service in 5 seconds");
-		$restart_service = time();	# if !is_win();
-		$response = html_ok($request,"Restarting Service.<br>Will reload WebUI in 30 seconds..");
-	}
-	elsif ($uri =~ /update_system(_stash)*/)
-	{
-		my $do_stash = $1 ? 1 : 0;
-		LOG(0,"Artisan updating system stash($do_stash)");
-		my $text = '';
-		my $rslt = Pub::ServiceUpdate::doSystemUpdate(
-			\$text,
-			$do_stash,
-			['/base/Pub','/base/apps/artisan']);
-		my $line1 = git_result_to_text($rslt);
-		my $sep = "\n";
-		if ($rslt == $GIT_UPDATE_DONE)
-		{
-			$line1 .= "- restarting service in 5 seconds";
-			$sep = "<br>";
-			$text =~ s/\n/<br>/g;
-			LOG(0,"restarting service in 5 seconds");
-			$restart_service = time();	# if !is_win();
-		}
-		$response = html_ok($request,$line1.$sep.$text);
-	}
-
-	# call base class
+	# base class handles /reboot, /restart_service, /update_system(_stash)
+	# and static files
 
 	else
 	{

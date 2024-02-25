@@ -105,7 +105,6 @@ BEGIN
 
 		%stats
 		$quitting
-		$restart_service
 
 		$program_name
         $this_uuid
@@ -185,8 +184,7 @@ sub albumId
 
 our %stats;
 our $quitting:shared = 0;
-our $restart_service:shared = 0;
-	# linux only restart service
+
 
 our $artisan_perl_dir = $0;
 $artisan_perl_dir =~ s/^.*://;
