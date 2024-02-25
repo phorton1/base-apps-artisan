@@ -157,8 +157,8 @@ $(function()
     init_standard_system_commands({
         show_command : '.artisan_menu_library_name',
         countdown_timer : '.artisan_menu_library_name',
-        restart_time : 15,
-        reboot_time : 45 });
+        restart_time : 30,
+        reboot_time : 60 });
 
 	setTimeout(idle_loop, REFRESH_TIME);
 	set_page(default_page);
