@@ -256,7 +256,7 @@ function update_renderer_ui()
 
 	// BASED ON RENDERER
 
-	if (restarting ||
+	if (// restarting ||
 	    !current_renderer ||
 	    !current_renderer.queue)
 	{
@@ -329,7 +329,8 @@ function update_renderer_ui()
 
 	// BASED ON QUEUE
 
-	if (restarting || !queue)
+	if (// restarting ||
+		!queue)
 	{
 		$('#transport_play').html('>');
 
@@ -370,7 +371,8 @@ function update_renderer_ui()
 	// BASED ON METADATA
 	// which is the current song playing
 
-	if (restarting || !metadata)
+	if (// restarting ||
+		!metadata)
 	{
 		$('#renderer_song_title')	.html('');
 		$('#renderer_album_artist')	.html('');

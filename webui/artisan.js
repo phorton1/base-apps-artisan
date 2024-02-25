@@ -6,7 +6,7 @@ var dbg_popup 	 = 1;
 var dbg_loop     = 1;
 var dbg_swipe    = 1;
 
-var restarting = 0;
+// var restarting = 0;
 	// -1 = transient restarting
 	//  0 = running normally
 	//  1 = check for restart
@@ -154,6 +154,12 @@ $(function()
 
 	// Startup
 
+    init_standard_system_commands({
+        show_command : '.artisan_menu_library_name',
+        countdown_timer : '.artisan_menu_library_name',
+        restart_time : 15,
+        reboot_time : 45 });
+
 	setTimeout(idle_loop, REFRESH_TIME);
 	set_page(default_page);
 
@@ -175,7 +181,7 @@ $( window ).resize(function()
 
 function idle_loop()
 {
-	if (restarting >= 0 &&
+	if (!reload_seconds &&
 		!in_slider && !in_volume_slider)
 	{
 		display(dbg_loop,0,"idle_loop(" + current_page + ")");
@@ -199,8 +205,8 @@ function idle_loop()
 
 			success: function (result)
 			{
-				if (restarting)
-					clearRestart();
+				// if (restarting)
+				// 	clearRestart();
 
 				if (result.update_id)
 					update_id = result.update_id;
@@ -577,77 +583,77 @@ function onswipe(event, direction, distance, duration, fingerCount, fingerData)
 //---------------------------------------
 // system_command (reboot is linux only)
 //---------------------------------------
-
-
-var needs_stash = false;
-
-function system_command(command)
-	// restarting != 0 stops any subsequent gets to the server
-	// which is, as far as I know, only the on_idle() update loop
-{
-	if (command == 'update_system' && needs_stash)
-	{
-		command = 'update_system_stash';
-	}
-
-	if (confirm(command + '?'))
-	{
-		$('.cover_screen').show();
-		restarting = -1;
-		audio_command('stop');
-		update_renderer_ui();
-		$('.artisan_menu_library_name').html(command);
-
-		setTimeout(function() {
-			$.get(command,function(result) {
-
-				if (result.startsWith("GIT_") &&
-					!result.startsWith("GIT_UPDATE_DONE"))
-				{
-					my_alert(command,result);
-					restarting = 0;
-					$('.artisan_menu_library_name').html(current_library.name);
-					$('.cover_screen').hide();
-
-					if (result.startsWith('GIT_NEEDS_STASH'))
-					{
-						needs_stash = true;
-						$('.update_allowed').html('stash_update');
-					}
-					else
-					{
-						needs_stash = false;
-						$('.update_allowed').html('update');
-					}
-				}
-				else
-				{
-					if (needs_stash)
-					{
-						needs_stash = false;
-						$('.update_allowed').html('update');
-					}
-
-					// show html resullt in a dialog
-					my_alert(command,result);
-					var delay = command == 'reboot' || command == 'update_system' ?
-						30000 :
-						8000;
-					setTimeout(function() { restarting = 1; }, delay);
-				}
-			});
-		},10);
-	}
-}
-
-
-
-function clearRestart()
-{
-	$('.artisan_menu_library_name').html(current_library.name);
-	restarting = 0;
-	location.reload();
-}
+// THIS CODE IS IDENTICAL in all standard services
+//
+//	var needs_stash = false;
+//
+//	function system_command(command)
+//		// restarting != 0 stops any subsequent gets to the server
+//		// which is, as far as I know, only the on_idle() update loop
+//	{
+//		if (command == 'update_system' && needs_stash)
+//		{
+//			command = 'update_system_stash';
+//		}
+//
+//		if (confirm(command + '?'))
+//		{
+//			$('.cover_screen').show();
+//			restarting = -1;
+//			audio_command('stop');
+//			update_renderer_ui();
+//			$('.artisan_menu_library_name').html(command);
+//
+//			setTimeout(function() {
+//				$.get(command,function(result) {
+//
+//					if (result.startsWith("GIT_") &&
+//						!result.startsWith("GIT_UPDATE_DONE"))
+//					{
+//						myAlert(command,result);
+//						restarting = 0;
+//						$('.artisan_menu_library_name').html(current_library.name);
+//						$('.cover_screen').hide();
+//
+//						if (result.startsWith('GIT_NEEDS_STASH'))
+//						{
+//							needs_stash = true;
+//							$('.update_allowed').html('stash_update');
+//						}
+//						else
+//						{
+//							needs_stash = false;
+//							$('.update_allowed').html('update');
+//						}
+//					}
+//					else
+//					{
+//						if (needs_stash)
+//						{
+//							needs_stash = false;
+//							$('.update_allowed').html('update');
+//						}
+//
+//						// show html resullt in a dialog
+//						myAlert(command,result);
+//						var delay = command == 'reboot' || command == 'update_system' ?
+//							30000 :
+//							8000;
+//						setTimeout(function() { restarting = 1; }, delay);
+//					}
+//				});
+//			},10);
+//		}
+//	}
+//
+//
+//
+//	function clearRestart()
+//	{
+//		$('.artisan_menu_library_name').html(current_library.name);
+//		restarting = 0;
+//		location.reload();
+//	}
 
 
 

@@ -201,7 +201,7 @@ window.onerror = function(message, source, lineNumber, colno, err)
 };
 
 
-function my_alert(title,msg)
+function myAlert(title,msg)
 {
 	var d = new dialog(title, msg);
 	d.show();
@@ -222,7 +222,7 @@ function rerror(msg,call_level)
 	if (call_level == undefined)
 		call_level = 1;
 	error(msg,call_level + 1);
-	my_alert("Error at " + caller(call_level),msg);
+	myAlert("Error at " + caller(call_level),msg);
 }
 
 
