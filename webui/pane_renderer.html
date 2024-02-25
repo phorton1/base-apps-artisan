@@ -13,22 +13,22 @@
 			<span id="renderer_state"></span>
 			<span id="renderer_queue_state"
 				  class="header_text header_filler header_button"
-				  onclick="javascript:renderer_command('set_playing',{playing:RENDERER_PLAY_QUEUE})"></span>
+				  onclick="renderer_command('set_playing',{playing:RENDERER_PLAY_QUEUE})"></span>
 			<span id="renderer_playlist_state"
 				  class="header_text header_filler header_button"
-				  onclick="javascript:renderer_command('set_playing',{playing:RENDERER_PLAY_PLAYLIST})"></span>
+				  onclick="renderer_command('set_playing',{playing:RENDERER_PLAY_PLAYLIST})"></span>
 		</div>
 		<div id="renderer_volume_button" class="header_text header_right">
 			<span id="renderer_status"
 				class="header_text header_button vc_dont_close"
-				onclick="javascript:toggle_volume_control()">
+				onclick="toggle_volume_control()">
 			</span>
 
 			<img
 				id="mute_button"
 				class="speaker_icon header_text header_button"
 				src="/images/speaker.png"
-				onclick="javascript:renderer_command('toggle_mute')">
+				onclick="renderer_command('toggle_mute')">
 		</div>
 	</div>
 
@@ -45,7 +45,7 @@
                         id="renderer_album_image"
                         align="left"
                         src="/images/artisan.png"
-                        onclick='javascript:show_in_explorer(event)'>
+                        onclick='show_in_explorer(event)'>
                 </td>
 
                 <td id="renderer_album_info_td">
@@ -83,29 +83,29 @@
 			<button
 				id="transport_prev_album"
 				class="transport_button"
-				onclick = "javascript:renderer_command('prev_album')">|&lt;</button>
+				onclick = "renderer_command('prev_album')">|&lt;</button>
 			<button
 				id="transport_prev"
 				class="transport_button"
-				onclick = "javascript:renderer_command('prev')">&lt;&lt;</button>
+				onclick = "renderer_command('prev')">&lt;&lt;</button>
 			<button
 				id="transport_play"
 				class="transport_button"
 				disabled
-				onclick = "javascript:renderer_command('play_pause')">&lt</button>
+				onclick = "renderer_command('play_pause')">&lt</button>
 			<button
 				id="transport_stop"
 				class="transport_button"
 				disabled
-				onclick = "javascript:renderer_command('stop')">X</button>
+				onclick = "renderer_command('stop')">X</button>
 			<button
 				id="transport_next"
 				class="transport_button"
-				onclick = "javascript:renderer_command('next')">&gt;&gt;</button>
+				onclick = "renderer_command('next')">&gt;&gt;</button>
 			<button
 				id="transport_next_album"
 				class="transport_button"
-				onclick = "javascript:renderer_command('next_album')">&gt;|</button>
+				onclick = "renderer_command('next_album')">&gt;|</button>
 
 			<select id="transport_shuffle" class="transport_shuffle">
 				<option value="0">Off</option>
