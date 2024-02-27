@@ -55,21 +55,8 @@ sub webui_request
 	display_hash($use_dbg,0,"webui_request($path)",$params);
 
 	my $response;
-	if ($path =~ s/^debug_output\///)
-	{
-		my $color = $path =~ /^ERROR/ ?
-			$DISPLAY_COLOR_ERROR :
-			$UTILS_COLOR_LIGHT_GREEN;
 
-		Pub::Utils::_setColor($color);
-		print "REMOTE: ".url_decode($path)."\n";
-		Pub::Utils::_setColor($DISPLAY_COLOR_NONE);
-		$response = html_ok($request,"OK");
-	}
-
-	# device requests
-
-	elsif ($path =~ /^getDevices\/(renderer|library)$/)
+	if ($path =~ /^getDevices\/(renderer|library)$/)
 	{
 		my $what = $1;
 		$response = getDevicesJson($request,$what);

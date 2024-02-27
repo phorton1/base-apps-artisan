@@ -250,7 +250,7 @@ function output_remote(msg)
 	// blank page, I added this routine which will make a
 	// call back to the server to display output.
 {
-	$.get('/webui/debug_output/' + msg);
+	$.get('/debug_output/' + msg);
 }
 
 
