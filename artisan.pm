@@ -89,7 +89,13 @@ artisanPrefs::static_init_prefs();
 		if (time() - $now > 10)
 		{
 			error("Timeout waiting for MP3 directory");
-			restart();
+			restartService('artisan');
+				# normally called by the HTTP
+				# this sets the serviceName, but delays
+			Pub::ServiceMain::doRestartService();
+				# assumes $serviceName has already been set
+				# and really restarts the service, since
+				# we are not at the serviceMain loop ...
 		}
 		display(0,0,"waiting for $mp3_dir");
 		sleep(1);
