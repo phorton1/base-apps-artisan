@@ -25,8 +25,8 @@ BEGIN
 
 		getDefaultMute
 		getDefaultVolume
-		setDefaultVoume
 		setDefaultMute
+		setDefaultVolume
 
 		setUserPref
     );
