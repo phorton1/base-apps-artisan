@@ -13,6 +13,8 @@ use threads::shared;
 use Pub::Prefs;
 use artisanUtils;
 
+my $dbg_defaults = 0;
+
 
 BEGIN
 {
@@ -34,7 +36,7 @@ BEGIN
 
 my $default_mute:shared = 0;
 my $default_volume:shared = 80;
-my $renderer_defaults_file = "$data_dir/renderer_defaults.txt";
+my $renderer_defaults_file = "$temp_dir/renderer_defaults.txt";
 
 
 
@@ -50,6 +52,7 @@ sub static_init_prefs
 		($default_volume,$default_mute) = split(/,/,$line);
 		$default_volume ||= 0;
 		$default_mute ||= 0;
+		display($dbg_defaults,0,"read renderer_defaults($default_volume,$default_mute)");
 	}
 }
 
@@ -58,6 +61,7 @@ sub static_init_prefs
 sub write_renderer_defults
 {
 	my $text = "$default_volume,$default_mute\n";
+	display($dbg_defaults+1,0,"write renderer_defaults($default_volume,$default_mute)");
 	printVarToFile(1,$renderer_defaults_file,$text);
 }
 
