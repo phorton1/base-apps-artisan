@@ -2,12 +2,8 @@
 #---------------------------------------
 # artisanPrefs.pm
 #
-# Thin pass thru to Pub::Prefs.
-# artisan.prefs are readonly program preferences
-#	that use getPref & getPrefEncrypted
-# artisan_user_prefs are temp global volume preferences
-#	for the localRenderer that use getUserPref
-#   and setUserPref
+# Adds support for separate renderer_defaults.txt
+# to standard Pubs::Prefs API.
 
 package artisanPrefs;
 use strict;
@@ -24,32 +20,52 @@ BEGIN
 	our @EXPORT = qw (
 		$PREF_RENDERER_MUTE
 		$PREF_RENDERER_VOLUME
+
+		getDefaultMute
+		getDefaultVolume
+		setDefaultVoume
+		setDefaultMute
+
+		setUserPref
     );
 	push @EXPORT,@Pub::Prefs::EXPORT;
 }
 
 
+my $default_mute:shared = 0;
+my $default_volume:shared = 80;
+my $renderer_defaults_file = "$data_dir/renderer_defaults.txt";
 
-our	$PREF_RENDERER_MUTE = "RENDERER_MUTE";
-our $PREF_RENDERER_VOLUME = "RENDERER_VOLUME";
-
-# default user preferences
-
-my $default_user_prefs =  {
-	$PREF_RENDERER_MUTE => 0,
-	$PREF_RENDERER_VOLUME => 80,
-};
 
 
 
 sub static_init_prefs
 {
 	Pub::Prefs::initPrefs("$data_dir/artisan.prefs");
-	Pub::Prefs::initUserPrefs("$temp_dir/artisan_user.prefs",$default_user_prefs);
 
+	my @lines = getTextLines($renderer_defaults_file);
+	my $line = shift @lines;
+	if ($line)
+	{
+		($default_volume,$default_mute) = split(/,/,$line);
+		$default_volume ||= 0;
+		$default_mute ||= 0;
+	}
 }
 
 
+
+sub write_renderer_defults
+{
+	my $text = "$default_volume,$default_mute\n";
+	printVarToFile(1,$renderer_defaults_file,$text);
+}
+
+
+sub getDefaultMute { return $default_mute; }
+sub getDefaultVolume { return $default_volume; }
+sub setDefaultMute { $default_mute = shift; write_renderer_defults(); }
+sub setDefaultVolume { $default_volume = shift; write_renderer_defults(); }
 
 
 
