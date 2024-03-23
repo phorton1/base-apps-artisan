@@ -91,7 +91,7 @@ function do_system_command()
                 result.startsWith('GIT_UPDATE_DONE')))
             {
                 startReloadTimer();
-                result += "<br>Restarting service in " + reload_seconds;
+                result += "<br>Reloading page in " + reload_seconds;
                 myAlert(system_command,result);
             }
             else
