@@ -31,9 +31,9 @@ ul.fancytree-container
 	This section is intended to make things that one needs to
 	click on BIGGER on the phone and iPad, both of which have
 	pixel ratios > 2  AND on the 7" rpi HDMI screen which has
-	(been picked to have 832x624 or 1024x768 resolution
+	been chosen to have 1024x768 resolution
 
-	Comma is a synonym for or
+	Comma is a synonym for 'or'
 */
 
 @media
@@ -84,7 +84,7 @@ ul.fancytree-container
 */
 
 
-@media (not (device-width: 1920px)) and (not (device-width: 1024))
+@media not ((device-width: 1920px) or (device-width: 1024px))
 {
 	#renderer_album_image_td
 	{
