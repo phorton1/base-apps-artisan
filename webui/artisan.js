@@ -106,13 +106,14 @@ $(function()
 		explorer_east['limit'] = 2000;
 	}
 
-	// When we use the small renderer, we also shrink
+	// When we use the small renderer, or on the 7" rpi,
+	// we also shrink
 	// the home menu and explorer tree size too. This
 	// code can generally be changed independently of
 	// fancy.css, so I *may* want slightly bigger settings
 	// on the iPad at some point.
 
-	if (use_small_renderer)
+	if (use_small_renderer || screen.width == 1024)
 	{
 		var home_west = layout_defs['home']['west'];
 		home_west['size'] = 140;
