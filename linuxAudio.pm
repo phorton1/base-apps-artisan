@@ -41,15 +41,16 @@ sub getDevices
 			# 	and map some known values to things we want to show
 			# otherwise we use the description, whatever that happens to be
 
-			my $use_name = $part =~ /alsa\.name = "(.*)"$/m ? $1 : '';
+			my $use_name = $part =~ /alsa\.card_name = "(.*)"$/m ? $1 : '';
 			$use_name = $1 if !$use_name && $part =~ /Description: (.*)$/m;
+			display($dbg_la,1,"device($use_name) = $name");
 
 			$use_name = "AVJack" if $use_name =~ /bcm2835 Headphones/;
-			$use_name = "HDMI".$1 if $use_name =~ /vc4-hdmi-(\d+)/;
+			$use_name = "HDMI-".$1 if $use_name =~ /vc4-hdmi-(\d+)/;
 			$use_name = "PiFi".$1 if $use_name =~ /snd_rpi_hifiberry_dacplus/;
 
 			my $active = $name eq $current ? 1 : 0;
-			display($dbg_la,1,"device($active,$use_name) = $name");
+			display($dbg_la,2,"final device($active,$use_name) = $name");
 			$laudio_devices->{$use_name} = shared_clone({
 				name => $name,
 				active => $active, });
