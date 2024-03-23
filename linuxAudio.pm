@@ -47,7 +47,7 @@ sub getDevices
 
 			$use_name = "AVJack" if $use_name =~ /bcm2835 Headphones/;
 			$use_name = "HDMI-".$1 if $use_name =~ /vc4-hdmi-(\d+)/;
-			$use_name = "PiFi".$1 if $use_name =~ /snd_rpi_hifiberry_dacplus/;
+			$use_name = "PiFi" if $use_name =~ /snd_rpi_hifiberry_dacplus/;
 
 			my $active = $name eq $current ? 1 : 0;
 			display($dbg_la,2,"final device($active,$use_name) = $name");
