@@ -1,7 +1,7 @@
 // utils.js
 
 
-var DEBUG_REMOTE = false;
+var DEBUG_REMOTE = true;
 	// This variable turns on certain output from mobile devices
 	// as I am trying to figure out scaling, rotation, etc.
 
