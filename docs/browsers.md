@@ -56,6 +56,7 @@ can be derived from these.
 
 
 
+
 ## Device Scaling / Orientation Issues
 
 I notice that the screen width and height swap per orientation on android,
@@ -105,6 +106,12 @@ Chromium on rPi with 12V HDMI monitor
 - ratio(1)
 - orientation(landscape-primary)	screen(800,600) iwindow(735,456) owindow(735,533) body(735,456)
 
+
+Chromium on rPi with 7" HDMI touchscreen, set to 832x624 resolution
+
+- ratio(1)
+- orientation(landscape-primary)	screen(832,624) iwindow(832,xxx=433) owindow(832,xxx=535) body(832,0)
+- IS_TOUCH(FALSE) !!
 
 
 

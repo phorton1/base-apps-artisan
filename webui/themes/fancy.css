@@ -30,10 +30,15 @@ ul.fancytree-container
 /*
 	This section is intended to make things that one needs to
 	click on BIGGER on the phone and iPad, both of which have
-	pixel ratios > 2
+	pixel ratios > 2  AND on the 7" rpi HDMI screen which has
+	(been picked to have an exact screen width of 832 x height 624(
+
+	Comma delimited list is OR
 */
 
-@media (-Webkit-min-device-pixel-ratio: 1.5)
+@media
+	(-Webkit-min-device-pixel-ratio: 1.5),
+	(device-width: 832px)
 {
 	#search_tracklist span.fancytree-title,
 	#queue_tracklist span.fancytree-title,
