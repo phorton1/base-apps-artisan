@@ -31,14 +31,14 @@ ul.fancytree-container
 	This section is intended to make things that one needs to
 	click on BIGGER on the phone and iPad, both of which have
 	pixel ratios > 2  AND on the 7" rpi HDMI screen which has
-	(been picked to have an exact screen width of 832 x height 624(
+	(been picked to have 832x624 or 1024x768 resolution
 
 	Comma is a synonym for or
 */
 
 @media
 	(-Webkit-min-device-pixel-ratio: 1.5) or
-	(device-width: 832px)
+	(device-width: 1024px)
 {
 	#search_tracklist span.fancytree-title,
 	#queue_tracklist span.fancytree-title,
@@ -72,7 +72,7 @@ ul.fancytree-container
 	This section is intended to make the renderer SMALLER
 	on everything except the laptop, which has a fixed width
 	of 1920 and the 7" hdmi screen, with it's chosen 832x624
-	resolution.
+	or 1024x7768 resolution.
 
 	The devices currently include the iPad, the phone,
 	and chromium running on the rPi 12V monitor.
@@ -84,7 +84,7 @@ ul.fancytree-container
 */
 
 
-@media not (device-width: 1920px) and not (device-width: 832px)
+@media not (device-width: 1920px) and not (device-width: 1024)
 {
 	#renderer_album_image_td
 	{

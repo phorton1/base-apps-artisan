@@ -113,6 +113,11 @@ Chromium on rPi with 7" HDMI touchscreen, set to 832x624 resolution
 - orientation(landscape-primary)	screen(832,624) iwindow(832,xxx=433) owindow(832,xxx=535) body(832,0)
 - IS_TOUCH(FALSE) !!
 
+Chromium on rPi with 7" HDMI touchscreen, set to 1024x624 resolution
+
+- ratio(1)
+- orientation(landscape-primary)	screen(832,624) iwindow(832,xxx=433) owindow(832,xxx=535) body(832,0)
+- IS_TOUCH(FALSE) !!
 
 
 ### Summary of Device Scaling / Orientation
