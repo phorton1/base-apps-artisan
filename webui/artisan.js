@@ -89,7 +89,7 @@ $(function()
 	// Set use_small_renderer for everything except
 	// the laptop.
 
-	var use_small_renderer = screen.width <= 1900;
+	var use_small_renderer = screen.width != 832 && screen.width <= 1900;
 		// this must match the @media (max-device-width: 1900px) in fancy.css
 
 	if (IS_TOUCH)
