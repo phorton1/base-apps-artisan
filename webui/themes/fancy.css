@@ -71,8 +71,8 @@ ul.fancytree-container
 /*
 	This section is intended to make the renderer SMALLER
 	on everything except the laptop, which has a fixed width
-	of 1920 and the 7" hdmi screen, with it's chosen 832x624
-	or 1024x7768 resolution.
+	of 1920 and the 7" hdmi screen, with it's chosen 1024x7768
+	resolution.
 
 	The devices currently include the iPad, the phone,
 	and chromium running on the rPi 12V monitor.
@@ -84,7 +84,7 @@ ul.fancytree-container
 */
 
 
-@media not (device-width: 1920px) and not (device-width: 1024)
+@media (not (device-width: 1920px)) and (not (device-width: 1024))
 {
 	#renderer_album_image_td
 	{

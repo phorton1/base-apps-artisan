@@ -101,23 +101,25 @@ Safari on iPad:
 -orientation(landscape-primary)		screen(834,1112) iwindow(1112,753) owindow(1112,834) body(1112,753)
 -orientation(portrait-primary)		screen(834,1112) iwindow(834,1031) owindow(834,1112) body(834,1031)
 
-Chromium on rPi with 12V HDMI monitor
+
+
+rPi HDMI
+
+I set various resolutions in Preferences-Screen Configuration-Layout
+
+All have
 
 - ratio(1)
-- orientation(landscape-primary)	screen(800,600) iwindow(735,456) owindow(735,533) body(735,456)
-
-
-Chromium on rPi with 7" HDMI touchscreen, set to 832x624 resolution
-
-- ratio(1)
-- orientation(landscape-primary)	screen(832,624) iwindow(832,xxx=433) owindow(832,xxx=535) body(832,0)
+- orientation(landscape-primary)
 - IS_TOUCH(FALSE) !!
 
-Chromium on rPi with 7" HDMI touchscreen, set to 1024x624 resolution
+I use 1152x864 on the 12" HDMI monitor (with mouse and keyboard
+	and I set Preferences-Appearence Settings-Defaults (the third tab) to
+	'For small screens' (the bottom button) for rpi font/icon sizes
+I use 1024x768 on the 7" HDMI touch screen
+	and I set Preferences-Appearence Settings-Defaults (the third tab) to
+	'For large screens' (the bottom button) for rpi font/icon sizes
 
-- ratio(1)
-- orientation(landscape-primary)	screen(832,624) iwindow(832,xxx=433) owindow(832,xxx=535) body(832,0)
-- IS_TOUCH(FALSE) !!
 
 
 ### Summary of Device Scaling / Orientation
