@@ -28,17 +28,22 @@ ul.fancytree-container
 
 /*--------- DEVICE SPECIFIC CSS ----------*/
 /*
+	I HATE THIS STUFF
+
 	This section is intended to make things that one needs to
 	click on BIGGER on the phone and iPad, both of which have
-	pixel ratios > 2  AND on the 7" rpi HDMI screen which has
-	been chosen to have 1024x768 resolution
+	pixel ratios > 2
 
-	Comma is a synonym for 'or'
+	USED TO BE: AND on the 7" rpi HDMI screen which has
+	been chosen to have 1024x768 resolution, but now
+	I have a separate section for the 7" rpi screen
+
+	Comma is a synonym for 'or', as in
+		@media (-Webkit-min-device-pixel-ratio: 1.5) or
+		(device-width: 1024px)
 */
 
-@media
-	(-Webkit-min-device-pixel-ratio: 1.5) or
-	(device-width: 1024px)
+@media (-Webkit-min-device-pixel-ratio: 1.5)
 {
 	#search_tracklist span.fancytree-title,
 	#queue_tracklist span.fancytree-title,
@@ -67,11 +72,43 @@ ul.fancytree-container
 	}
 }
 
+/* even bigger on the 7" rpi at 1024x768 */
+
+@media  (device-width: 1024px)
+{
+	#search_tracklist span.fancytree-title,
+	#queue_tracklist span.fancytree-title,
+	#playlist_tracklist span.fancytree-title,
+	#search_tracklist td,
+	#queue_tracklist td,
+	#playlist_tracklist td,
+	#explorer_tree span,
+	#explorer_tracklist td
+	{
+		font-size:24pt;
+	}
+	#explorer_details td
+	{
+		font-size:18pt;
+	}
+
+	img.fancytree-icon
+	{
+		width:30px;
+		height:30px;
+	}
+	.tracklist_icon
+	{
+		width:30px;
+	}
+}
+
+
 
 /*
 	This section is intended to make the renderer SMALLER
 	on everything except the laptop, which has a fixed width
-	of 1920 and the 7" hdmi screen, with it's chosen 1024x7768
+	of 1920 and the 7" hdmi screen, with it's chosen 1024x768
 	resolution.
 
 	The devices currently include the iPad, the phone,
@@ -218,6 +255,8 @@ ul.fancytree-container
 
 /*
 	there are lessons to be learned here.
+	i hate using pixels when the device browser basically knows how big things should be
+
 	i hate the asssumptions that jquery-ui, jquery-layout, and fancytree make
 	the default should be NO padding and NO margins.
 	and if I want things BIGGER I can always ADD that.
