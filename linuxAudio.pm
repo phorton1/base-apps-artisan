@@ -35,12 +35,22 @@ sub getDevices
 		for my $part (@parts)
 		{
 			my $name = $part =~ /Name: (.*)$/m ? $1 : '';
-			my $descrip = $part =~ /Description: (.*)$/m ? $1 : '';
-			$descrip = "AVJack" if $descrip =~ /Built-in Audio Stereo/;
-			$descrip = "HDMI" if $descrip =~ /Built-in Audio Digital Stereo \(HDMI\)/;
+
+			# this is pretty crude to get a nice name for each device that I know ...
+			# if it has an quoted alsa.name, we use that
+			# 	and map some known values to things we want to show
+			# otherwise we use the description, whatever that happens to be
+
+			my $use_name = $part =~ /alsa\.name = "(.*)"$/m ? $1 : '';
+			$use_name = $1 if !$use_name && $part =~ /Description: (.*)$/m;
+
+			$use_name = "AVJack" if $use_name =~ /bcm2835 Headphones/;
+			$use_name = "HDMI".$1 if $use_name =~ /vc4-hdmi-(\d+)/;
+			$use_name = "PiFi".$1 if $use_name =~ /snd_rpi_hifiberry_dacplus/;
+
 			my $active = $name eq $current ? 1 : 0;
-			display($dbg_la,1,"device($active,$descrip) = $name");
-			$laudio_devices->{$descrip} = shared_clone({
+			display($dbg_la,1,"device($active,$use_name) = $name");
+			$laudio_devices->{$use_name} = shared_clone({
 				name => $name,
 				active => $active, });
 		}
