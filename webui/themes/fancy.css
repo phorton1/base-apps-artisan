@@ -33,11 +33,11 @@ ul.fancytree-container
 	pixel ratios > 2  AND on the 7" rpi HDMI screen which has
 	(been picked to have an exact screen width of 832 x height 624(
 
-	Comma delimited list is OR
+	Comma is a synonym for or
 */
 
 @media
-	(-Webkit-min-device-pixel-ratio: 1.5),
+	(-Webkit-min-device-pixel-ratio: 1.5) or
 	(device-width: 832px)
 {
 	#search_tracklist span.fancytree-title,
@@ -71,15 +71,20 @@ ul.fancytree-container
 /*
 	This section is intended to make the renderer SMALLER
 	on everything except the laptop, which has a fixed width
-	of 1920.  The devices currently include the iPad, the phone,
+	of 1920 and the 7" hdmi screen, with it's chosen 832x624
+	resolution.
+
+	The devices currently include the iPad, the phone,
 	and chromium running on the rPi 12V monitor.
 
 	Whatever happens here MUST be mirrored in the artisan.js
 	layout code.
+
+	@media (max-device-width: 1900px) and not (device-width: 832px)
 */
 
 
-@media (max-device-width: 1900px)
+@media not (device-width: 1920px) and not (device-width: 832px)
 {
 	#renderer_album_image_td
 	{
