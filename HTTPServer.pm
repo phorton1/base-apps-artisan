@@ -97,7 +97,7 @@ sub new()
 
 		HTTP_ALLOW_REBOOT   	=> 1,			# linux only
 		HTTP_RESTART_SERVICE  	=> 'artisan',
-		HTTP_GIT_UPDATE       	=> '/base/Pub,/base/apps/artisan',
+		HTTP_GIT_UPDATE       	=> '/base/Pub,/base/apps/artisan,/base/apps/artisan/webUI/standard',
 
 	};
 
