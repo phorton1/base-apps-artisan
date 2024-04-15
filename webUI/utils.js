@@ -7,7 +7,7 @@ var DEBUG_REMOTE = true;
 
 var DISPLAY_REMOTE = false;
 	// if this is set to true, all display() and error() calls
-	// will additionally GET /webui/debug_output/msg to display
+	// will additionally GET /webUI/debug_output/msg to display
 	// on the Perl Console.   It is very slow, and adds a lot
 	// of clutter, so should only be used when trying to find
 	// bugs on mobile devices.
@@ -76,7 +76,7 @@ var current_library = false;
 // {
 // 	var host = current_library.remote_artisan ?
 // 		'http://' + current_library.ip + ':' + current_library.port : '';
-// 	var url =  host + "/webui/library/" + current_library['uuid'];
+// 	var url =  host + "/webUI/library/" + current_library['uuid'];
 // 	// display(0,0,"library url=" + url);
 // 	return url;
 // }
@@ -85,7 +85,7 @@ var current_library = false;
 
 function current_library_url()
 	// called from explorer.js and home.js, by anybody who wants
-	// to do a /webui/library request to the current_library.
+	// to do a /webUI/library request to the current_library.
 	//
 	// Will NEVER return '' because it is only called for the
 	// current_library which is ALWAYS online and in the list
@@ -94,7 +94,7 @@ function current_library_url()
 }
 
 function library_url(library_uuid)
-	// Called for every access to /webui/library/***
+	// Called for every access to /webUI/library/***
 	//
 	// May return '' if library is not online (in the device
 	// list) so every caller MUST check for that and report
@@ -114,7 +114,7 @@ function library_url(library_uuid)
 	if (rec.remote_artisan)
 		host = 'http://' + rec.ip + ":" + rec.port;
 
-	var url =  host + "/webui/library/" + library_uuid;
+	var url =  host + "/webUI/library/" + library_uuid;
 	return url;
 }
 

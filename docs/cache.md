@@ -43,13 +43,13 @@ typically DO use HTTPS, like the myIOTServer.
 - /get_devices - the list of devices is presumed to
   never be cached.
 
-- /webui/update requests - which contains at least the
+- /webUI/update requests - which contains at least the
   system_update_id which drives get_devices calls to
   update the buttons, and which also contains a copy
   of the playlist and/or queue that is dynamically
   changing.
 
-- /webui/queue requests - contains the current queue
+- /webUI/queue requests - contains the current queue
   which may change at any time.
 
 

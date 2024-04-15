@@ -24,7 +24,7 @@ function populate_linux_devices()
 {
 	if (is_win)
 		return;
-	$.get('/webui/get_audio_devices',
+	$.get('/webUI/get_audio_devices',
 		function(result)
 		{
 			if (result.error)
@@ -65,7 +65,7 @@ function on_populate_linux_devices(devices)
 }
 function selectLinuxDevice(name)
 {
-	$.get('/webui/set_audio_device/' + name,
+	$.get('/webUI/set_audio_device/' + name,
 		function(result)
 		{
 			if (result.error)
@@ -184,7 +184,7 @@ function renderer_command(command,args)
 	}
 
 
-	$.get('/webui/renderer/' + current_renderer['uuid'] + '/' + command + cmd_args,
+	$.get('/webUI/renderer/' + current_renderer['uuid'] + '/' + command + cmd_args,
 
 		function(result)
 		{

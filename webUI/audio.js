@@ -94,7 +94,7 @@ function queue_command(command,params)
 	params.renderer_uuid = html_renderer.uuid;
 
 	var data = JSON.stringify(params);
-	var url = '/webui/queue/' + command;
+	var url = '/webUI/queue/' + command;
 
 	if (command != 'get_queue')
 	{

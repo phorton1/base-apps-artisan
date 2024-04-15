@@ -2,7 +2,7 @@
 #---------------------------------------
 # uiLibrary.pm
 #
-# The dispatch handler for /webui/library requests.
+# The dispatch handler for /webUI/library requests.
 
 
 package uiLibrary;

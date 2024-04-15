@@ -60,7 +60,7 @@ function init_page_home()
 
 function load_device_list(type)
 {
-	$.get('/webui/getDevices/' + type,
+	$.get('/webUI/getDevices/' + type,
 		function(result)
 	{
 		// add the local html_renderer
@@ -104,7 +104,7 @@ function selectDevice(type,uuid)
 		onSelectDevice(type,uuid,html_renderer);
 		return;
 	}
-	$.get('/webui/getDevice/' + type + "-" + uuid,
+	$.get('/webUI/getDevice/' + type + "-" + uuid,
 		function(result)
 	{
 		if (result.error)
@@ -234,7 +234,7 @@ function init_home_tracklists()
 				var params = JSON.stringify({
 					pl_idx: rec.pl_idx,
 					renderer_uuid: current_renderer.uuid });
-				$.postJSON('/webui/queue/play_track',params,function(result)
+				$.postJSON('/webUI/queue/play_track',params,function(result)
 				{
 					if (result.error)
 					{
@@ -382,7 +382,7 @@ function update_home_tracklists()
 			var ajax_params = {
 				async: true,
 				method: 'POST',
-				url: "/webui/queue/get_tracks",
+				url: "/webUI/queue/get_tracks",
 				contentType:"application/json",
 				dataType: "json",
 			};

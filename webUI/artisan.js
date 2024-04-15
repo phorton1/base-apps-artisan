@@ -201,7 +201,7 @@ function idle_loop()
 
 		$.ajax({
 			async: true,
-			url: '/webui/update',
+			url: '/webUI/update',
 			data: data,
 
 			success: function (result)
@@ -222,7 +222,7 @@ function idle_loop()
 			},
 
 			error: function() {
-				error("UPDATE ERROR: There was an error calling /webui/update");
+				error("UPDATE ERROR: There was an error calling /webUI/update");
 				setTimeout("idle_loop();", REFRESH_TIME);
 			},
 

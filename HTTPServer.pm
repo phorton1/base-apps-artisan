@@ -47,8 +47,8 @@ sub new()
 		HTTP_DEBUG_RESPONSE => 0,
 
 		HTTP_DEBUG_QUIET_RE => join('|',(
-			'\/webui\/update',
-			'\/webui\/queue\/get_queue',
+			'\/webUI\/update',
+			'\/webUI\/queue\/get_queue',
 			'\/debug_output\/',
 			'\/images\/error_\d\.png',
 		)),
@@ -56,11 +56,11 @@ sub new()
 		# Debugging is better specified in /mp3s/_data/artisan.prefs
 		# HTTP_DEBUG_LOUD_RE => '\/upnp\/event\/ContentDirectory1',
 		# HTTP_DEBUG_LOUD_RE => '\.html$',
-		# HTTP_DEBUG_LOUD_RE => '^\/webui\/queue',
-		# HTTP_DEBUG_LOUD_RE => '^\/webui\/renderer\/.*\/next$',
+		# HTTP_DEBUG_LOUD_RE => '^\/webUI\/queue',
+		# HTTP_DEBUG_LOUD_RE => '^\/webUI\/renderer\/.*\/next$',
 		# HTTP_DEBUG_LOUD_RE => '\/media',
-		# HTTP_DEBUG_LOUD_RE => '\/webui\/getDevice',
-		# HTTP_DEBUG_LOUD_RE => '\/webui\/queue',
+		# HTTP_DEBUG_LOUD_RE => '\/webUI\/getDevice',
+		# HTTP_DEBUG_LOUD_RE => '\/webUI\/queue',
 		# HTTP_DEBUG_LOUD_RE => '^.*\.(?!jpg$|png$)[^.]+$',
 			# An example that shows urls that DO NOT match .jpt and .png,
 			# which shows JS, HTML, etc. And by setting DEBUG_REQUEST and
@@ -86,7 +86,7 @@ sub new()
 		# HTTP_DEFAULT_HEADERS => {},
         # HTTP_ALLOW_SCRIPT_EXTENSIONS_RE => '',
 
-		HTTP_DOCUMENT_ROOT => '/base/apps/artisan/webui',
+		HTTP_DOCUMENT_ROOT => '/base/apps/artisan/webUI',
 		HTTP_DEFAULT_LOCATION => 'artisan.html',
 		HTTP_FAVICON => '/images/artisan.png',
         HTTP_GET_EXT_RE => 'html|js|css|jpg|gif|png|ico|json',
@@ -205,7 +205,7 @@ sub handle_request
 	#------------------------------------------------------------
 	# WEBUI CALLS
 
-	elsif ($uri =~ /^\/webui\/(.*)$/)
+	elsif ($uri =~ /^\/webUI\/(.*)$/)
 	{
 		my $path = $1;
 		$path ||= '';
@@ -346,7 +346,7 @@ EOXML
 
 
 #------------------------------------------------------
-# obsolete old webui getting of DOCUMENT_ROOT_FILES
+# obsolete old webUI getting of DOCUMENT_ROOT_FILES
 #------------------------------------------------------
 
 # # deliver static files
@@ -360,7 +360,7 @@ EOXML
 #
 # 	# scale fancytree CSS file if it has scale param
 #
-# 	if (!(-f "$artisan_perl_dir/webui/$filename"))
+# 	if (!(-f "$artisan_perl_dir/webUI/$filename"))
 # 	{
 # 		$response = http_error("web_ui(): Could not open file: $filename");
 # 	}
@@ -404,14 +404,14 @@ EOXML
 # 			my $filename2 = $filename;
 # 			$filename2 =~ s/$type$/min.$type/;
 # 			display(5,0,"checking MIN: $filename2");
-# 			if (-f "$artisan_perl_dir/webui/$filename2")
+# 			if (-f "$artisan_perl_dir/webUI/$filename2")
 # 			{
 # 				display($dbg_webui,1,"serving MIN: $filename2");
 # 				$filename = $filename2;
 # 			}
 # 		}
 #
-# 		my $text = getTextFile("$artisan_perl_dir/webui/$filename",1);
+# 		my $text = getTextFile("$artisan_perl_dir/webUI/$filename",1);
 # 		$text = process_html($text) if ($type eq 'html');
 # 		$response .= $text."\r\n";
 # 	}
@@ -439,7 +439,7 @@ EOXML
 #			my $spec = $1;
 #			$id = $1 if ($spec =~ s/\s+id=(.*)$//);
 #
-#			my $filename = "$artisan_perl_dir/webui/$spec";
+#			my $filename = "$artisan_perl_dir/webUI/$spec";
 #			display($dbg_webui+1,0,"including $filename  id='$id'");
 #			my $text = getTextFile($filename,1);
 #
@@ -488,7 +488,7 @@ EOXML
 #		my $factor = $pixels/16;
 #		display($dbg_webui+2,0,"scale($pixels = $factor) $filename");
 #
-#		my $text .= getTextFile("$artisan_perl_dir/webui/$filename",1);
+#		my $text .= getTextFile("$artisan_perl_dir/webUI/$filename",1);
 #		$text =~ s/url\("icons\.gif"\);/url("icons$pixels.gif");/sg;
 #		$text =~ s/font-size: 10pt;/'font-size: '.int($factor*10).'pt;'/sge;
 #		$text =~ s/(\s*)((-)*(16|32|48|64|80|96|112|128|144))px/' '.int($factor*$2).'px'/sge;

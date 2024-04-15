@@ -110,7 +110,7 @@ my $app;
 	# fowarded for callt to ExitMainLoop
 
 Wx::InitAllImageHandlers();
-my $icon_name = "$artisan_perl_dir/webui/images/artisan_16.png";
+my $icon_name = "$artisan_perl_dir/webUI/images/artisan_16.png";
 my $icon = Wx::Icon->new($icon_name,wxBITMAP_TYPE_PNG );
 
 
@@ -216,7 +216,7 @@ sub startWebUI
 {
 	display($dbg_icon,0,"startWebUI()");
 	my $start_dir = "c:\\base\\apps\\artisan";
-	my $url = "http://$server_ip:$server_port/webui";
+	my $url = "http://$server_ip:$server_port/webUI";
 	my $ff_args = "-new-window";
 
 	# Trying to get the ui to popup without a Firefox frame (search and tab bars)

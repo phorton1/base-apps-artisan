@@ -81,7 +81,7 @@ sub webui_request
 	# that return errors or hashes to be returned by json.
 
 	# NEW UPDATE SYNTAX
-	# /webui/update?update_id=$update_id&renderer_uuid=$renderer_uuid
+	# /webUI/update?update_id=$update_id&renderer_uuid=$renderer_uuid
 	# includes lists of new devices (libraries) if update_id changes
 
 	elsif ($path eq 'update')

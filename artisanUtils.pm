@@ -192,7 +192,7 @@ $artisan_perl_dir =~ s/\\/\//g;
 $artisan_perl_dir = pathOf($artisan_perl_dir);
 $artisan_perl_dir = "./" if $artisan_perl_dir eq '/';
 
-our $image_dir = "$artisan_perl_dir/webui/images";
+our $image_dir = "$artisan_perl_dir/webUI/images";
 
 # print "0=$0\n";
 # print "perl_dir=$artisan_perl_dir\n";

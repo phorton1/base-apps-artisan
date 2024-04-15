@@ -64,7 +64,7 @@ sub getQueueTracks
 {
 	my ($this,$rslt,$post_params) = @_;
 	display_hash($dbg_alib,0,"getQueueTracks($this->{name}) at $this->{ip}:$this->{port}",$post_params);
-	my $url = "http://$this->{ip}:$this->{port}/webui/library/$this->{uuid}/get_queue_tracks";
+	my $url = "http://$this->{ip}:$this->{port}/webUI/library/$this->{uuid}/get_queue_tracks";
 	display($dbg_alib,1,"url=$url");
 
 	my $request_content = my_encode_json($post_params);
@@ -180,7 +180,7 @@ sub remoteRequest
 {
 	my ($this,$command) = @_;
 	display($dbg_alib,0,"remoteRequest($command)");
-	my $url = "http://$this->{ip}:$this->{port}/webui/library/$this->{uuid}/$command";
+	my $url = "http://$this->{ip}:$this->{port}/webUI/library/$this->{uuid}/$command";
 	display($dbg_alib,1,"url=$url");
 	my $ua = LWP::UserAgent->new();
 	my $response = $ua->get($url);

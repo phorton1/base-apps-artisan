@@ -90,9 +90,9 @@ That leaves me with the following files in /zip/artisan_js/_artisan_js_new/sourc
 - jquery-ui-contextmenu-1.18.1.zip
 
 
-## New artisan/webui/jquery folder
+## New artisan/webUI/jquery folder
 
-I then built a 'new' version of the /webui/jquery folder from that stuff.
+I then built a 'new' version of the /webUI/jquery folder from that stuff.
 
 - jquery-3.7.1.js - copied bare file
 - jquery-3.7.1.min.js - copied bare file
@@ -110,8 +110,8 @@ I then built a 'new' version of the /webui/jquery folder from that stuff.
 
 To get it to work, I did the following steps:
 
-- renamed webui/jquery to webui/jquery_old
-- added the new webui/jquery folder
+- renamed webUI/jquery to webUI/jquery_old
+- added the new webUI/jquery folder
 - modified artisan.html to call the new versions
 
 
@@ -175,7 +175,7 @@ once again, I am hopeless.
 
 Apparently, at some point in the far distant past, I denormalized
 a 'theme' called 'dark hive' and incorporated it directly into
-my /webui/themes directory.
+my /webUI/themes directory.
 
 Not only is there an issue over identifying the 'correct'
 'standard' CSS files to load, but then there are ordering
@@ -185,7 +185,7 @@ All I want to do is get my program to work.
 
 The buttons are grey.  They should be blue.
 
-If I take all my /webui/theme files out of artisan.html,
+If I take all my /webUI/theme files out of artisan.html,
 I get a nothing page ...
 
 Who knows what countless mods I made to various
@@ -197,10 +197,10 @@ denormalized files.  I have to start COMPLETELY OVER.
 It seems that I would want to load the 'standard' jquery-ui stuff
 first.
 
-- /webui/jquery/jquery-ui1.13.2/jquery-ui-structure.css
-- /webui/jquery/jquery-ui1.13.2/jquery-ui-theme.css
-- /webui/jquery/layout-1.4.3/layout-default.css
-- /webui/jquery/fancytree-2.38.3/skin-win8/ui.fancytree.css
+- /webUI/jquery/jquery-ui1.13.2/jquery-ui-structure.css
+- /webUI/jquery/jquery-ui1.13.2/jquery-ui-theme.css
+- /webUI/jquery/layout-1.4.3/layout-default.css
+- /webUI/jquery/fancytree-2.38.3/skin-win8/ui.fancytree.css
 
 
 These webUI's (like jquery-ui ThemeRoller) that 'let you' define your
@@ -210,7 +210,7 @@ CSS that you will NEVER be able to figure out or rebuild again.
 And once you do that, as I did, apparently many years ago,
 and you need to update something, you are totally hosed.
 
-/webui/jquery/fancytree-2.38.3 contains a bunch of 'skins'
+/webUI/jquery/fancytree-2.38.3 contains a bunch of 'skins'
 whatever the heck those are.  There is ostensibly documentation
 on 'theming' fancytree, but like so many bad documentation efforts,
 it starts off by jumping right into details about some particular
