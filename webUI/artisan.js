@@ -84,6 +84,8 @@ $(function()
 
 
 	$('.artisan_menu_item').button();
+	$('.my_menu').menu();
+	$('.my_menu').on('focusout', function() { $('.my_menu').hide(); });
 
 	// LAYOUT TRICKS for IS_TOUCH and more.
 	// Set use_small_renderer for everything except
@@ -177,6 +179,95 @@ $( window ).resize(function()
 		resize_layout(current_page);
 	}
 });
+
+
+
+//========================================================
+// General menu handling
+//========================================================
+// Popup (jquery-ui) menus with class 'my_menu', opened by
+// buttons with class 'my_menu_button'.  Copied from the
+// inventory app; the only such menu here is #system_submenu
+// in artisan_menu.html.
+
+window.onclick = function(event)
+	// Close any open submenus when clicking outside a menu item or button.
+{
+	if (!event.target.matches('.my_menu_item') &&
+		!event.target.matches('.my_menu_button'))
+		$('.my_menu').hide();
+};
+
+
+// hide menus when tab loses visibility
+document.addEventListener('visibilitychange', function()
+{
+	if (document.hidden)
+		$('.my_menu').hide();
+});
+
+
+function showMenu(event, ele, selector, force)
+	// Toggles the menu. Positions at event coords if provided,
+	// otherwise at the bottom of ele. Clamps to screen bounds.
+{
+	var menu = $(selector);
+	if (force || menu.is(':hidden'))
+	{
+		$('.my_menu').hide();
+		menu.show();
+
+		var top, left;
+		if (event)
+		{
+			top  = event.clientY || event.originalTarget.clientY;
+			left = event.clientX || event.originalTarget.clientX;
+		}
+		else
+		{
+			var rect = ele.getBoundingClientRect();
+			left = rect.left;
+			top  = rect.top + ele.offsetHeight;
+		}
+
+		menu.css('top',  top);
+		menu.css('left', left);
+		setMenuSize(selector);
+	}
+	else
+	{
+		menu.hide();
+	}
+}
+
+
+function setMenuSize(selector)
+	// Keep the menu on screen
+{
+	var menu = $(selector);
+	var rect = menu[0].getBoundingClientRect();
+
+	var left        = rect.left;
+	var top         = rect.top;
+	var win_width   = window.innerWidth;
+	var win_height  = window.innerHeight;
+	var menu_width  = menu.width();
+	var menu_height = menu.height();
+
+	if (top + menu_height > win_height)
+	{
+		top = win_height - menu_height;
+		if (top < 0) top = 0;
+	}
+	if (left + menu_width > win_width)
+	{
+		left = win_width - menu_width;
+		if (left < 0) left = 0;
+	}
+
+	menu.css('top',  top);
+	menu.css('left', left);
+}
 
 
 

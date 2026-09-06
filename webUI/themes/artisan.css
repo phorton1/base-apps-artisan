@@ -105,3 +105,21 @@ table
 {
 	display:none;
 }
+
+
+/* popup (jquery-ui) menus, see showMenu() in artisan.js */
+
+.my_menu
+{
+	display:none;
+	position:absolute;
+	z-index: 1000;
+}
+
+.my_menu_item
+{
+	color:#cccccc;
+	font-size:12pt;
+	margin-top:10px;
+	margin-bottom:10px;
+}

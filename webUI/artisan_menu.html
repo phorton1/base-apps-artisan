@@ -24,24 +24,17 @@
 			full_screen
 		</button>
 		<button
-			class='artisan_menu_item as_service'
-			onclick="standard_system_command('restart_service')" >
-			restart
-		</button>
-		<button
-			class='artisan_menu_item linux_only'
-			onclick="standard_system_command('reboot')" >
-			reboot
-		</button>
-		<button
-			class='artisan_menu_item update_allowed'
-			onclick="standard_system_command('update_system')" >
-			update
+			class='artisan_menu_item my_menu_button'
+			onclick="showMenu(false,this,'#system_submenu')" >
+			system
 		</button>
 		<div class='artisan_menu_library_name'>
 			Library Name
 		</div>
 	</div>
 </div>
+
+<!-- the 'system' button opens #system_submenu, which lives once
+     in artisan.html (this file is included by all three pages) -->
 
 <!-- end of artisan_menu.html -->
