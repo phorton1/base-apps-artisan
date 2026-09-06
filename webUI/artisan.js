@@ -17,6 +17,13 @@ var WITH_SWIPE = false;
 	// open the relevant pane(s).
 var REFRESH_TIME = 1000;
 
+var server_was_down = false;
+	// set by idle_loop() when /webUI/update fails after a
+	// standard 'shutdown_system' command; the first successful
+	// update after that (the server came back) reloads the page,
+	// which clears the cover_screen that standard_system.js
+	// deliberately leaves up after a shutdown.
+
 var default_page = 'home';
 var current_page = ''
 var layout_defs = {};
@@ -297,8 +304,12 @@ function idle_loop()
 
 			success: function (result)
 			{
-				// if (restarting)
-				// 	clearRestart();
+				if (system_command == 'shutdown_system' && server_was_down)
+				{
+					display(dbg_loop,0,"server back after shutdown - reloading");
+					location.reload();
+					return;
+				}
 
 				if (result.update_id)
 					update_id = result.update_id;
@@ -313,7 +324,10 @@ function idle_loop()
 			},
 
 			error: function() {
-				error("UPDATE ERROR: There was an error calling /webUI/update");
+				if (system_command == 'shutdown_system')
+					server_was_down = true;
+				else
+					error("UPDATE ERROR: There was an error calling /webUI/update");
 				setTimeout("idle_loop();", REFRESH_TIME);
 			},
 
