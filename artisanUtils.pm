@@ -235,9 +235,11 @@ if ($USE_MINI_LIBRARY)
 
 
 $data_dir = "$mp3_dir/_data";
-$temp_dir = "/base_data/temp/artisan";
+setStandardTempDir('artisan');
+	# On the rPi /base_data/temp is a tmpfs that is empty at boot
+	# and this call importantly creates the /base_data/temp/artisan
+	# folder which is needed for both the pid file and the logfile.
 $logfile = "$temp_dir/artisan.log";
-my_mkdir $temp_dir if !-d $temp_dir;
 
 
 our $server_port = '8091';
