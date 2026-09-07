@@ -10,8 +10,6 @@ use warnings;
 use threads;
 use threads::shared;
 use artisanUtils;
-use Device;
-use base qw(Device);
 
 my $dbg_ren = 1;
 
@@ -44,12 +42,8 @@ sub new
 {
 	my ($class,$params) = @_;
 	$params->{type} ||= $DEVICE_TYPE_RENDERER;
-	display($dbg_ren,0,"Renderer::new()");
-	my $this = $class->SUPER::new($params);
-		# $is_local,
-		# $DEVICE_TYPE_RENDERER,
-		# $uuid,
-		# $friendlyName);
+	display($dbg_ren,0,"Renderer::new($params->{name}=$params->{uuid})");
+	my $this = shared_clone($params);
 	bless $this,$class;
 
 	mergeHash($this, shared_clone({

@@ -28,7 +28,6 @@ use Date::Format;
 use Pub::HTTP::Response;
 use artisanUtils;
 use Queue;
-use Device;
 use uiLibrary;
 use DeviceManager;
 

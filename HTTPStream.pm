@@ -128,8 +128,6 @@ sub stream_media
 			# all my responses are allowed from any referrer
 		$http_headers .= "Content-Length: $content_len\r\n";
 		$http_headers .= "Date: ".gmtime()." GMT\r\n";
-		$http_headers .= "contentFeatures.dlna.org: ".$track->dlna_content_features()."\r\n";
-		$http_headers .= "transferMode.dlna.org: Streaming\r\n";
 		$http_headers .= "Accept-Ranges: bytes\r\n";
 		$http_headers .= "Content-Range: bytes $from_byte-$to_byte/$track_size\r\n"
 			if $is_ranged;

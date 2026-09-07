@@ -10,7 +10,6 @@ use strict;
 use warnings;
 use Pub::HTTP::Response;
 use artisanUtils;
-use Device;
 use Library;
 use Database;
 use MediaFile;
@@ -61,7 +60,7 @@ my $dbg_uipls = 0;
 #	_isLoading: false
 #	checkbox: undefined
 #	children: null
-#	data: {…}									<-- OUR RECORD is in here
+#	data: {ï¿½}									<-- OUR RECORD is in here
 #	expanded: undefined
 #	extraClasses: undefined
 #	folder: undefined
@@ -70,7 +69,7 @@ my $dbg_uipls = 0;
 #	key: "c04b4dc0c522241edfbecf916be2ee03"		<-- WE ADDED THIS
 #	lazy: undefined								<-- WE SET THIS for non-terminal ExplorerTree nodes
 #	li: null
-#	parent: {…}
+#	parent: {ï¿½}
 #	partsel: undefined
 #	radiogroup: undefined
 #	refKey: undefined
@@ -80,7 +79,7 @@ my $dbg_uipls = 0;
 #	title: undefined
 #	tooltip: undefined
 #	tr: tr.fancytree-lastsib.fancytree-exp-nl.fancytree-ico-c??
-#	tree: {…}
+#	tree: {ï¿½}
 #	type: undefined
 #	ul: null
 #	unselectable: undefined

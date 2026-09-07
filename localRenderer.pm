@@ -28,7 +28,6 @@ use if is_win, 'mpWin';
 # use mpMPG123 on Linux
 use if !is_win, 'mpMPG123';
 use Renderer;
-use Device;
 use DeviceManager;
 use artisanPrefs;
 use Queue;

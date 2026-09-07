@@ -7,8 +7,6 @@
 #
 # The ID is generated from a md5 checksum of the path.
 #
-# Can return a didl representation of itself
-#
 # "this" generallly contains the the fields as defined
 # in the database, but can be extened in memory by other
 # clients.
@@ -28,11 +26,9 @@ use threads::shared;
 use Digest::MD5 'md5_hex';
 use Database;
 use artisanUtils;
-use XMLSoap;
 
 
 my $dbg_folder = 0;
-my $dbg_didl = 1;
 
 
 # special accessors
@@ -216,164 +212,7 @@ sub save
 
 
 
-#----------------------------------------
-# Didl
-#----------------------------------------
 
-
-sub getDidl
-{
-	my ($this) = @_;
-    display($dbg_didl,0,"getDidl($this->{id})");
-
-    my $container = $this->{dirtype} eq 'album' ?
-        'object.container.album.musicAlbum' :
-		'object.container';
-
-	my $art_uri = $this->{art_uri};
-	$art_uri = "http://$server_ip:$server_port/get_art/$this->{id}/folder.jpg"
-		if !$art_uri && $this->{has_art};
-
-	my $didl = "<container ";
-    $didl .= "id=\"$this->{id}\" ";
-    $didl .= "restricted=\"1\" ";
-    $didl .= "parentID=\"$this->{parent_id}\" ";
-    $didl .= "childCount=\"$this->{num_elements}\" ";
-    $didl .= "searchable=\"1\" ";
-	$didl .= ">";
-
-
-	# The class is either the root 'container' type, or the
-	# final 'album.musicAlbum' type.
-
-    $didl .= "<dc:title>". encode_content($this->{title}) ."</dc:title>";
-    $didl .= "<upnp:class name=\"$container\">$container</upnp:class>";
-	$didl .= "<upnp:writeStatus>NOT_WRITABLE</upnp:writeStatus>";
-
-	# WMP returns a list of all the possible container types a folder can
-	# be in a sublist of upnp:SearchClass containing the
-	# container type which we can used by the client filter our results
-	# down to folders they are interested in.
-
-	if (1)
-	{
-		my @album_types = qw(
-			item.audioItem:0
-			container:0
-			container.storageFolder:0
-			item.audioItem.musicTrack:0
-			container.album.musicAlbum:0
-			item.audioItem.audioBook:0
-		);
-
-		my @playlist_types = qw(
-			item.audioItem:0
-			container:0
-			container.storageFolder:0
-			item.audioItem.musicTrack:0
-			container.album.musicAlbum:0
-			item.audioItem.audioBook:0
-		);
-
-		my @section_types = qw(
-			container:0
-			container.storageFolder:0
-			container.album.musicAlbum:1
-			item.audioItem:1
-			item.audioItem.audioBook:1
-			item.audioItem.musicTrack:1
-		);
-
-		my @root_types = qw(
-			item.audioItem:1
-			container.playlistContainer:0
-			container:0
-			container:1
-			container.storageFolder:0
-			container.genre.musicGenre:0
-			item.audioItem.musicTrack:0
-			container.album.musicAlbum:0
-			item.audioItem.audioBook:0
-			container.album:1
-			container.person.musicArtist:0 );
-
-		my $use_types =
-			($this->{dirtype} eq 'root')  ? \@root_types :
-			($this->{dirtype} eq 'section') ? \@section_types :
-			($this->{dirtype} eq 'playlist') ? \@playlist_types :
-			\@album_types;
-
-
-		for my $combined_type (@$use_types)
-		{
-			my ($type,$derived) = split(/:/,$combined_type);
-			$didl .= "<upnp:searchClass includeDerived=\"$derived\">";
-			$didl.= "object.$type";
-			$didl .= "</upnp:searchClass>";
-		}
-	}
-
-	# these fields only included for music albums
-
-	if ($this->{dirtype} eq 'album')
-	{
-		$didl .= "<upnp:genre>". encode_content($this->{genre}) ."</upnp:genre> ";
-		$didl .= "<upnp:artist>". encode_content($this->{artist}) ."</upnp:artist> ";
-		$didl .= "<upnp:albumArtist>". encode_content($this->{artist}) ."</upnp:albumArtist> ";
-		$didl .= "<dc:date>$this->{year_str}</dc:date> ";
-		$didl .= "<upnp:albumArtURI>". encode_xml($art_uri) ."</upnp:albumArtURI> ";
-	}
-
-	$didl .= "</container>";
-	display($dbg_didl+1,0,"pre_didl=$didl");
-	$didl = encode_didl($didl);
-	display($dbg_didl+2,0,"didl=$didl");
-	return $didl;
-}
-
-
-
-
-
-#------------------------------------------------
-# Static Public Methods
-#------------------------------------------------
-
-
-sub dlna_content_features
-	# DLNA.ORG_PN - media profile
-{
-	my ($this) = @_;
-	my $type = $this->{type};
-	my $mime_type = artisanMimeType($type);
-	my $contentfeatures = '';
-
-    # $contentfeatures .= 'DLNA.ORG_PN=LPCM;' if $mime_type eq 'audio/L16';
-    $contentfeatures .= 'DLNA.ORG_PN=LPCM;' if $mime_type eq 'audio/x-aiff';
-    $contentfeatures .= 'DLNA.ORG_PN=LPCM;' if $mime_type eq 'audio/x-wav';
-    $contentfeatures .= 'DLNA.ORG_PN=WMABASE;' if $mime_type eq 'audio/x-ms-wma';
-    $contentfeatures .= 'DLNA.ORG_PN=MP3;' if $mime_type eq 'audio/mpeg';
-    # $contentfeatures .= 'DLNA.ORG_PN=JPEG_LRG;' if $mime_type eq 'image/jpeg';
-    # $contentfeatures .= 'DLNA.ORG_PN=JPEG_TN;' if $mime_type eq 'JPEG_TN';
-    # $contentfeatures .= 'DLNA.ORG_PN=JPEG_SM;' if $mime_type eq 'JPEG_SM';
-
-	# DLNA.ORG_OP=ab
-	#   a - server supports TimeSeekRange
-	#   b - server supports RANGE
-    # $contentfeatures .= 'DLNA.ORG_OP=00;' if ($item->{TYPE} eq 'image');
-	$contentfeatures .= 'DLNA.ORG_OP=01;';
-    # $contentfeatures .= 'DLNA.ORG_OP=00;';
-
-	# todo: DLNA.ORG_PS - supported play speeds
-	# DLNA.ORG_CI - for transcoded media items it is set to 1
-	$contentfeatures .= 'DLNA.ORG_CI=0;';
-
-	# DLNA.ORG_FLAGS - binary flags with device parameters
-	$contentfeatures .= 'DLNA.ORG_FLAGS=01500000000000000000000000000000';
-    # $contentfeatures .= 'DLNA.ORG_FLAGS=00D00000000000000000000000000000';
-
-	return $contentfeatures;
-}
 
 
 

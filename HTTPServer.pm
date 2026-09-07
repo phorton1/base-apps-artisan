@@ -3,7 +3,6 @@
 # HTTPServer.pm
 #---------------------------------------
 # inspired by: http://www.adp-gmbh.ch/perl/webserver/
-# modified from pDNLA server
 
 package HTTPServer;
 use strict;
@@ -17,7 +16,6 @@ use artisanUtils;
 use WebUI;
 use HTTPStream;
 use DeviceManager;
-use ContentDirectory1;
 use base qw(Pub::HTTP::ServerBase);
 
 
@@ -54,7 +52,6 @@ sub new()
 		)),
 
 		# Debugging is better specified in /mp3s/_data/artisan.prefs
-		# HTTP_DEBUG_LOUD_RE => '\/upnp\/event\/ContentDirectory1',
 		# HTTP_DEBUG_LOUD_RE => '\.html$',
 		# HTTP_DEBUG_LOUD_RE => '^\/webUI\/queue',
 		# HTTP_DEBUG_LOUD_RE => '^\/webUI\/renderer\/.*\/next$',
@@ -106,7 +103,6 @@ sub new()
 
 	# Add most generous CORS cross-origin headers to all responses
 	# iPad browsers which would not call /get_art/ in Artisan otherwise.
-	# and is needed for remoteArtisanLibrary calls directly from JS.
 	# This is only done via post construction for certain apps only.
 
 	$this->{HTTP_DEFAULT_HEADERS}->{'Access-Control-Allow-Origin'} = '*';
@@ -152,35 +148,19 @@ sub handle_request
 	# }
 
 	#------------------------------------------------------------
-	# Artisan Perl BEING a DLNA Media Server/Renderer
+	# UPnP Device Description
 	#------------------------------------------------------------
-	# These are Post Requests, and are only for us BEING a DLNA Server/Renderer
-	# and, of course, supported only for the localLibrary and localRenderer
+	# The LOCATION that our SSDP advertisements point to.
 
-	if ($uri eq '/upnp/control/ContentDirectory1')
+	if ($uri eq '/ServerDesc.xml')
 	{
-		$response = ContentDirectory1::handle_request($request);
-	}
-	elsif ($uri eq '/upnp/event/ContentDirectory1')
-	{
-		$response = ContentDirectory1::handleSubscribe($request);
-	}
-
-	# DLNA GET REQUESTS
-
-	elsif ($uri =~ /^\/(ServerDesc|ContentDirectory1)\.xml/)
-	{
-		my $desc = $1;
-		my $xml = $1 eq 'ServerDesc' ?
-			ServerDesc() :
-			getTextFile("$artisan_perl_dir/xml/$desc.xml",1);
-		$response = Pub::HTTP::Response->new($request,$xml,200,'text/xml; charset=utf8');
+		$response = Pub::HTTP::Response->new($request,ServerDesc(),200,'text/xml; charset=utf8');
 	}
 
 	#------------------------------------------------------------
 	# Local Library Requests
 	#------------------------------------------------------------
-	# STREAMING MEDIA REQUEST (also used by the webUI)
+	# STREAMING MEDIA REQUEST
 	# duplicates the header debugging, and does not return
 	# a response, so note that $dbg_response doesn't work with it.
 
@@ -191,7 +171,6 @@ sub handle_request
 	}
 
 	# LOCAL LIBRARY GET_ART REQUEST
-	# /get_art/folder_id.jpg is folded into the DLNA api AND called by the webUI
 
 	elsif ($uri =~ /^\/get_art*\/(.*)\/folder.jpg$/)
 	{
@@ -211,24 +190,6 @@ sub handle_request
 		$path ||= '';
 		$path =~ s/^\///;
 		$response = WebUI::webui_request($request,$path);
-	}
-
-
-	# currently unused NOTIFY events from remoteLibraries we are 'subscribed' to.
-
-	elsif ($uri =~/\/remoteLibrary\/event\/(.*)$/)
-	{
-		my $library_uuid = $1;
-		display(0,0,"got /remoteLibrary/event to $library_uuid");
-		my $library = findDevice($DEVICE_TYPE_LIBRARY,$library_uuid);
-		if (!$library)
-		{
-			$response = http_error($request,"Could not find library $library_uuid");
-		}
-		else
-		{
-			$response = $library->event_request($request);
-		}
 	}
 
 	# base class handles /reboot, /restart_service, /update_system(_stash)
@@ -273,11 +234,13 @@ sub get_art
 
 
 
-
 sub ServerDesc
-	# server description for the DLNA Server
+	# UPnP device description.  We are a generic 'Basic' device
+	# with no services.  This is what Windows Explorer's Network
+	# tab (and anything else that listens to SSDP) uses to show
+	# our name, icon, manufacturer and model links, IP address,
+	# and the presentationURL that opens the webUI.
 {
-	# my $use_friendly = $program_name;
 	my $use_friendly = "Artisan(".getMachineId().")";
 
 	my $xml = <<EOXML;
@@ -285,62 +248,44 @@ sub ServerDesc
 <root xmlns="urn:schemas-upnp-org:device-1-0">
     <specVersion>
         <major>1</major>
-        <minor>5</minor>
+        <minor>0</minor>
     </specVersion>
     <device>
-		<UDN>uuid:$this_uuid</UDN>
+        <deviceType>urn:schemas-upnp-org:device:Basic:1</deviceType>
         <friendlyName>$use_friendly</friendlyName>
-        <deviceType>urn:schemas-upnp-org:device:MediaServer:1</deviceType>
         <manufacturer>phorton1</manufacturer>
         <manufacturerURL>https://github.com/phorton1</manufacturerURL>
         <modelName>$program_name</modelName>
-        <modelDescription>a simple media server</modelDescription>
+        <modelDescription>a simple music server</modelDescription>
         <modelNumber>2.0</modelNumber>
         <modelURL>https://github.com/phorton1/base-apps-artisan</modelURL>
-        <presentationURL>http://$server_ip:$server_port</presentationURL>
-        <serialNumber>ap-12345678</serialNumber>
-		<dlna:X_DLNADOC xmlns:dlna="urn:schemas-dlna-org:device-1-0">DMS-1.50</dlna:X_DLNADOC>
+        <serialNumber>$this_uuid</serialNumber>
+        <UDN>uuid:$this_uuid</UDN>
+        <presentationURL>http://$server_ip:$server_port/</presentationURL>
         <iconList>
-			<icon>
-				<mimetype>image/png</mimetype>
-				<width>256</width>
-				<height>256</height>
-				<depth>24</depth>
-				<url>/images/artisan_16_large.png</url>
-			</icon>\n";
-		</iconList>
-        <serviceList>
-            <service>
-                <serviceType>urn:schemas-upnp-org:service:ContentDirectory:1</serviceType>
-                <serviceId>urn:upnp-org:serviceId:ContentDirectory</serviceId>
-                <SCPDURL>/ContentDirectory1.xml</SCPDURL>
-                <controlURL>/upnp/control/ContentDirectory1</controlURL>
-                <eventSubURL>/upnp/event/ContentDirectory1</eventSubURL>
-            </service>
-        </serviceList>
+            <icon>
+                <mimetype>image/png</mimetype>
+                <width>256</width>
+                <height>256</height>
+                <depth>24</depth>
+                <url>/images/artisan.png</url>
+            </icon>
+            <icon>
+                <mimetype>image/png</mimetype>
+                <width>16</width>
+                <height>16</height>
+                <depth>24</depth>
+                <url>/images/artisan_16.png</url>
+            </icon>
+        </iconList>
     </device>
     <URLBase>http://$server_ip:$server_port/</URLBase>
 </root>
 EOXML
 
-
-    # we dont advertise that we're a connection manager,
-    # since we're not ...
-    #
-    # <service>
-    #    <serviceType>urn:schemas-upnp-org:service:ConnectionManager:1</serviceType>
-    #    <serviceId>urn:upnp-org:serviceId:ConnectionManager</serviceId>
-    #    <SCPDURL>ConnectionManager1.xml</SCPDURL>
-    #    <controlURL>/upnp/control/ConnectionManager1</controlURL>
-    #    <eventSubURL>/upnp/event/ConnectionManager1</eventSubURL>
-    # </service>
-
 	display($dbg_server_desc,0,$xml);
 	return $xml;
 }
-
-
-
 
 
 

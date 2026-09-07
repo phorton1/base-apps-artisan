@@ -49,7 +49,7 @@
 
 
 [Unit]
-Description=:Artisan DLNA MP3 Server Service
+Description=:Artisan MP3 Server Service
 # Requires=dbus.service
 
 [Service]

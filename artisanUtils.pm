@@ -200,15 +200,15 @@ our $image_dir = "$artisan_perl_dir/webUI/images";
 
 our $program_name = 'Artisan Perl';
 
-# From SSDP's point of view, there are very few constraints on the
-# the structure of a uuid, although almost everyone uses the standard
+# The uuid identifies this instance's Library and Renderer.
+# It was born in the DLNA/SSDP era, where almost everyone uses the standard
 #
 #	56657273-696f-6e34-4d41-20231112feed
 #
 # dash deliminted hex character format. We use our own format
 # which includes human readable names.
 #
-# However, there is at least one constraints on how WE use the uuid.
+# There is at least one constraints on how WE use the uuid.
 # Because they are sent back to us via HTTP requests, we don't want
 # them to include spaces, or else those will get encoded as %20 by HTTP
 # making our lookups more complicated.
@@ -503,7 +503,7 @@ sub dump_stats
 
 
 sub escape_tag
-    # slighly different than XMLSoap::encode_xml()
+    # slighly different than the old XMLSoap::encode_xml()
 	# does same DECIMAL encoding of non-printable characters
 	# but has special case to replace \'s with \x5c
 	#

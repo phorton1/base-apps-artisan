@@ -57,9 +57,6 @@ use DeviceManager;
 use localRenderer;
 use localLibrary;
 use localPlaylist;
-use remoteLibrary;
-use remoteRenderer;
-use remoteArtisanLibrary;
 
 $SIG{CHLD} = 'DEFAULT' if !is_win();
 	# needed to run git in ServiceUpdate.pm from backticks
@@ -103,23 +100,15 @@ artisanPrefs::static_init_prefs();
 }
 
 # (1) LIBRARY
-# not done if $DEBUG_SSDP_ALONE
 
-if ($DEBUG_SSDP_ALONE)
-{
-	display($dbg_main,0,"DEBUG_SSDP_ALONE - no library or local devices!");
-}
-else
-{
-	db_initialize();
-	display($dbg_main,0,"Scanning Library ...");
-	DatabaseMain::scanTree();
-	display($dbg_main,0,"Finished Scanning Library");
-	localPlaylist::initPlaylists();
-}
+db_initialize();
+display($dbg_main,0,"Scanning Library ...");
+DatabaseMain::scanTree();
+display($dbg_main,0,"Finished Scanning Library");
+localPlaylist::initPlaylists();
 
 
-# (2) Create Local Devices, early so that local devices come first
+# (2) Create Local Devices
 
 addDevice(new localLibrary());
 addDevice(new localRenderer());
@@ -131,11 +120,11 @@ my $http_server = HTTPServer->new();
 $http_server->start();
 display($dbg_main,0,"HTTP Server Started");
 
-# (4) SSDP SERVER
+# (4) SSDP advertising, so that we show up on the LAN
 
-display($dbg_main,0,"Starting SSDP Server");
+display($dbg_main,0,"Starting SSDP");
 my $ssdp = SSDP->new();
-display($dbg_main,0,"SSDP Server Started");
+display($dbg_main,0,"SSDP Started");
 
 
 #-----------------------------------------------
@@ -153,13 +142,11 @@ sub on_terminate
 		$http_server->stop() if $http_server;
 
 		$quitting = 1;
-		my $ssdp_running = $ssdp ? $ssdp->running() : 0;
 		my $lr_running = $local_renderer ? $local_renderer->running() : 0;
 		my $start = time();
-		while (time()<$start+3 && $http_server->{running} || $ssdp_running || $lr_running )
+		while (time()<$start+3 && $http_server->{running} || $lr_running )
 		{
-			display($dbg_main,1,"stopping http($http_server->{running}) ssdp($ssdp_running) lr($lr_running)");
-			$ssdp_running = $ssdp ? $ssdp->running() : 0;
+			display($dbg_main,1,"stopping http($http_server->{running}) lr($lr_running)");
 			$lr_running = $local_renderer ? $local_renderer->running() : 0;
 			sleep(0.2);
 		}
@@ -172,17 +159,7 @@ sub on_terminate
 sub on_console_key
 {
 	my ($key) = @_;
-	if (chr($key) eq 'a')
-	{
-		display($dbg_main,0,"artisan.pm calling SSDP doAlive()");
-		SSDP::doAlive();
-	}
-	elsif (chr($key) eq 's')
-	{
-		display($dbg_main,0,"artisan.pm calling SSDP doSearch()");
-		SSDP::doSearch();
-	}
-	elsif (chr($key) eq 'u')
+	if (chr($key) eq 'u')
 	{
 		display($dbg_main,0,"artisan.pm calling doUpdates()");
 		doUpdates();
