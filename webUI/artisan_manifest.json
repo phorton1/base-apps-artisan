@@ -1,14 +1,11 @@
 {
   "name":"Artisan App",
-  "display":"standalone",
+  "display":"fullscreen",
   "orientation":"landscape",
   "start_url":"/",
   "icons":[{
     "src":"/images/artisan.png",
     "type":"image/png",
-    "sizes":"36x36"
-  }],
-  "permissions": [
-    "fullscreen"
-  ]
+    "sizes":"256x256"
+  }]
 }
