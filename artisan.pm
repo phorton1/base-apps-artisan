@@ -56,7 +56,7 @@ use DatabaseMain;
 use DeviceManager;
 use localRenderer;
 use localLibrary;
-use localPlaylist;
+use Playlist;
 
 $SIG{CHLD} = 'DEFAULT' if !is_win();
 	# needed to run git in ServiceUpdate.pm from backticks
@@ -105,7 +105,7 @@ db_initialize();
 display($dbg_main,0,"Scanning Library ...");
 DatabaseMain::scanTree();
 display($dbg_main,0,"Finished Scanning Library");
-localPlaylist::initPlaylists();
+Playlist::initPlaylists();
 
 
 # (2) Create Local Devices

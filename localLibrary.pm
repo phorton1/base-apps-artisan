@@ -24,6 +24,7 @@ use Track;
 use Folder;
 use Library;
 use Database;
+use Playlist;
 use base qw(Library);
 
 
@@ -92,7 +93,7 @@ sub getFolder
 	# if 0, return a fake record
 
 	my $folder;
-	my $def = localPlaylist::getPlaylistDefById($id);
+	my $playlist = Playlist::getPlaylist($id,1);
 
 	if ($id eq '0')
 	{
@@ -102,9 +103,9 @@ sub getFolder
 	{
 		$folder = $this->virtualPlaylistsFolder();
 	}
-	elsif ($def)
+	elsif ($playlist)
 	{
-		$folder = $this->virtualPlaylistFolder($def);
+		$folder = $this->virtualPlaylistFolder($playlist);
 	}
 	else
 	{
@@ -144,29 +145,25 @@ sub getSubitems
 	my @retval;
 
 
-	my $def = localPlaylist::getPlaylistDefById($id);
+	my $playlist = Playlist::getPlaylist($id,1);
 
 	# return virtual folders for playlists
 	# table must be 'folders'
 
 	if ($table eq 'folders' && $id eq $ID_PLAYLISTS)
 	{
-		my $defs = localPlaylist::getPlaylistDefs();
-		if ($defs && @$defs)
+		my $playlists = Playlist::getPlaylists();
+		my $num_playlists = @$playlists;
+		display($dbg_subitems,1,"found $num_playlists playlists");
+		my $max = $start+$count-1;
+		$max = $num_playlists-1 if $max > $num_playlists-1;
+		for my $i ($start .. $max)
 		{
-			my $num_defs = @$defs;
-			display($dbg_subitems,1,"found $num_defs defaultPlaylists");
-			my $max = $start+$count-1;
-			$max = $num_defs-1 if $max > $num_defs-1;
-			for my $i ($start .. $max)
+			my $folder = $this->virtualPlaylistFolder($playlists->[$i]);
+			if ($folder)
 			{
-				my $def = $defs->[$i];
-				my $folder = $this->virtualPlaylistFolder($def);
-				if ($folder)
-				{
-					push @retval,$folder;
-					$num++;
-				}
+				push @retval,$folder;
+				$num++;
 			}
 		}
 	}
@@ -174,9 +171,9 @@ sub getSubitems
 	# get tracks from playlist
 	# table  must be tracks
 
-	elsif ($table eq 'tracks' && $def)
+	elsif ($table eq 'tracks' && $playlist)
 	{
-		my $recs = localPlaylist::getTracks($def,$start,$count);
+		my $recs = $playlist->getTracks($start,$count);
 		if ($recs)
 		{
 			display($dbg_subitems,1,"found ".scalar(@$recs)." playlist tracks");
@@ -382,17 +379,16 @@ sub virtualPlaylistsFolder
 {
 	my ($this) = @_;
 	display($dbg_virt,0,"virtualPlaylistsFolder()");
-	my $defs = localPlaylist::getPlaylistDefs();
-	return if !$defs;
-	my $num_defs = @$defs;
-	return if !$num_defs;
+	my $playlists = Playlist::getPlaylists();
+	my $num_playlists = @$playlists;
+	return if !$num_playlists;
 
 	return Folder->newFromHash({
 		id => $ID_PLAYLISTS,
 		parent_id => 0,
 		title => 'playlists',
 		dirtype => 'section',
-		num_elements => $num_defs,
+		num_elements => $num_playlists,
 		artist => '',
 		genre => '',
 		path => '\playlists',
@@ -402,16 +398,16 @@ sub virtualPlaylistsFolder
 
 sub virtualPlaylistFolder
 {
-	my ($this,$def) = @_;
-	my $name = $def->{name};
+	my ($this,$playlist) = @_;
+	my $name = $playlist->{name};
 	display($dbg_virt,0,"virtualPlaylistFolder($name)");
 
 	return Folder->newFromHash({
-		id => $def->{id},
+		id => $name,
 		parent_id => $ID_PLAYLISTS,
 		title => $name,
 		dirtype => 'playlist',
-		num_elements => $def->{count},
+		num_elements => $playlist->{num_tracks},
 		artist => '',
 		genre => '',
 		path => "/playlists/$name",
@@ -429,7 +425,7 @@ sub getPlaylists
 {
 	my ($this) = @_;
 	display($dbg_llib,0,"getPlaylists()");
-	return Playlist::getPlaylists($this);
+	return Playlist::getPlaylists();
 }
 
 
@@ -439,7 +435,7 @@ sub getPlaylist
 {
 	my ($this,$id) = @_;
 	display($dbg_llib,0,"getPlaylist($id)");
-	return Playlist::getPlaylist($this,$id);
+	return Playlist::getPlaylist($id);
 }
 
 
@@ -447,7 +443,7 @@ sub getPlaylistTrack
 {
     my ($this,$id,$version,$mode,$index) = @_;
 	display($dbg_llib,0,"getPlaylist($id,$version,$mode,$index)");
-	my $playlist = Playlist::getPlaylist($this,$id);
+	my $playlist = Playlist::getPlaylist($id);
 	return if !$playlist;
 	return $playlist->getPlaylistTrack($version,$mode,$index);
 }
@@ -457,7 +453,7 @@ sub sortPlaylist
 {
     my ($this,$id,$shuffle) = @_;
 	display($dbg_llib,0,"sortPlaylist($id,$shuffle)");
-	my $playlist = Playlist::getPlaylist($this,$id);
+	my $playlist = Playlist::getPlaylist($id);
 	return if !$playlist;
 	return $playlist->sortPlaylist($shuffle);
 }

@@ -32,6 +32,45 @@ var idle_timer = null;
 var idle_count = 0;
 var update_id = 1;
 
+// THE STATE SET (docs/playlists.md).  Plain javascript, no jquery:
+// this code outlives the rest of this file.  The server sends its
+// state_id and state_empty on every /webUI/update, and the set itself
+// when our state_id is behind.  We keep a copy in localStorage, which
+// is per origin (server ip:port).  A server that boots with no state
+// says state_empty; the first page that has a copy hands it over,
+// once, and the server accepts only while it still has none.
+
+var STATE_KEY = 'artisan_state';
+var state_id = 0;
+var state_offered = false;
+
+function mirror_state(result)
+{
+	if (result.state_empty)
+	{
+		if (!state_offered)
+		{
+			state_offered = true;
+			var saved = getStorage(STATE_KEY);
+			if (saved)
+			{
+				display(dbg_loop,0,"handing over saved state");
+				var xhr = new XMLHttpRequest();
+				xhr.open('POST','/webUI/state',true);
+				xhr.setRequestHeader('Content-Type','application/json');
+				xhr.send(saved);
+			}
+		}
+		return;		// never store an empty set over a saved one
+	}
+	if (result.state_id != state_id)
+	{
+		state_id = result.state_id;
+		if (result.state)
+			putStorage(STATE_KEY,JSON.stringify(result.state));
+	}
+}
+
 
 display(dbg_load,0,"artisan.js loaded");
 
@@ -286,7 +325,7 @@ function idle_loop()
 		display(dbg_loop,0,"idle_loop(" + current_page + ")");
 		idle_count++;
 
-		var data = { update_id: update_id };
+		var data = { update_id: update_id, state_id: state_id };
 		if (current_renderer.uuid == html_renderer.uuid)
 		{
 			audio_command('update');
@@ -313,6 +352,8 @@ function idle_loop()
 
 				if (result.update_id)
 					update_id = result.update_id;
+				if (result.state_id != undefined)
+					mirror_state(result);
 				if (result.libraries)
 					updateLibraries(result.libraries);
 				if (result.renderer)

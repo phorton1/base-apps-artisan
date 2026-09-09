@@ -215,6 +215,8 @@ sub library_request
 			push @$result,{
 				id => $playlist->{id},
 				name => $playlist->{name},
+				order => $playlist->{order},
+				num_tracks => $playlist->{num_tracks},
 				uuid => $playlist->{uuid}, };
 		}
 		return json_response($request,$result);

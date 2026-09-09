@@ -29,7 +29,7 @@ use if is_win, 'mpWin';
 use if !is_win, 'mpMPG123';
 use Renderer;
 use DeviceManager;
-use artisanPrefs;
+use Playlist;
 use Queue;
 use base qw(Renderer);
 
@@ -142,13 +142,28 @@ sub new
 	my $thread = threads->create(\&mpThread,$this);
 	$thread->detach();
 
-	$this->{volume} = getDefaultVolume();
-	$this->{muted} = getDefaultMute();
+	# volume and mute start at the Renderer defaults (80, not muted)
+	# and are restored by setVolumeMute() when a browser hands over
+	# the state set; see Playlist.pm
 
 	doMPCommand($this,$this->{muted} ? 'mute' : 'unmute');
 	doMPCommand($this,"volume,$this->{volume}");
 
 	return $this;
+}
+
+
+sub setVolumeMute
+	# apply a volume and mute from a handed-over state set
+{
+	my ($this,$volume,$muted) = @_;
+	$volume = 80 if !defined($volume) || $volume !~ /^\d+$/ || $volume > 100;
+	$muted = $muted ? 1 : 0;
+	display($dbg_lren,0,"setVolumeMute($volume,$muted)");
+	$this->{volume} = $volume;
+	$this->{muted} = $muted;
+	doMPCommand($this,"volume,$volume");
+	doMPCommand($this,$muted ? 'mute' : 'unmute');
 }
 
 
@@ -342,7 +357,7 @@ sub doCommand
 	{
 		$this->{muted} = $this->{muted} ? 0 : 1;
 		doMPCommand($this,$this->{muted} ? 'mute' : 'unmute');
-		setDefaultMute($this->{muted});
+		Playlist::bumpState();
 	}
 	elsif ($command eq 'set_volume')
 	{
@@ -351,7 +366,7 @@ sub doCommand
 		$this->{muted} = 0;
 		$this->{volume} = $volume;
 		doMPCommand($this,"volume,$volume");
-		setDefaultVolume($this->{volume});
+		Playlist::bumpState();
 	}
 
 	#-------------------------------------

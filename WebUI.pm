@@ -28,6 +28,7 @@ use Date::Format;
 use Pub::HTTP::Response;
 use artisanUtils;
 use Queue;
+use Playlist;
 use uiLibrary;
 use DeviceManager;
 
@@ -101,6 +102,16 @@ sub webui_request
 		$data->{libraries} = getDevicesData($DEVICE_TYPE_LIBRARY)
 			if $update_id != $system_update_id;
 
+		# THE STATE SET (see Playlist.pm and docs/playlists.md)
+		# state_id and state_empty always; the set itself only
+		# when the browser's state_id is behind.
+
+		my $state_id = $params->{state_id} || 0;
+		$data->{state_id} = Playlist::stateId();
+		$data->{state_empty} = Playlist::stateEmpty();
+		$data->{state} = getStateSet()
+			if $state_id != Playlist::stateId();
+
 		if ($renderer_uuid)
 		{
 			my $renderer = findDevice($DEVICE_TYPE_RENDERER,$renderer_uuid);
@@ -115,6 +126,34 @@ sub webui_request
 		}
 
 		$response = json_response($request,$data);
+	}
+
+	# /webUI/state - a browser hands over its stored state set
+	# to a server that has none.  POST with the set as JSON.
+	# Accepted only while the server's set is still empty;
+	# returns the resulting state_id either way.
+
+	elsif ($path eq 'state')
+	{
+		my $set = $request->getPostJSON() || {};
+		if (Playlist::stateEmpty())
+		{
+			display($use_dbg,0,"accepting state handover");
+			Playlist::setState($set->{playlists});
+			my $renderer = findDevice($DEVICE_TYPE_RENDERER,$this_uuid);
+			$renderer->setVolumeMute($set->{volume},$set->{mute})
+				if $renderer;
+			$response = json_response($request,{
+				accepted => 1,
+				state_id => Playlist::stateId() });
+		}
+		else
+		{
+			display($use_dbg,0,"ignoring state handover; server has state");
+			$response = json_response($request,{
+				accepted => 0,
+				state_id => Playlist::stateId() });
+		}
 	}
 
 	# RENDERER requests do things and return a renderer
@@ -177,6 +216,21 @@ sub webui_request
 	return $response;
 }
 
+
+
+sub getStateSet
+	# the whole state set: the playlists' positions from
+	# Playlist.pm plus the device renderer's volume and mute
+{
+	my $set = { playlists => Playlist::getState() };
+	my $renderer = findDevice($DEVICE_TYPE_RENDERER,$this_uuid);
+	if ($renderer)
+	{
+		$set->{volume} = $renderer->{volume};
+		$set->{mute} = $renderer->{muted};
+	}
+	return $set;
+}
 
 
 sub getDeviceJson

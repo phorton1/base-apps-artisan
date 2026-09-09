@@ -25,12 +25,10 @@ library changes, or when I feel like it, and they travel with the library
 when it is synchronized.  Every server reads the file when it starts.
 
 The file is line oriented.  Blank lines and lines starting with # are
-ignored.  The first line gives the file's version.  A playlist starts
-with a header line and is followed by one or more indented query lines:
+ignored.  A playlist starts with a header line and is followed by one or
+more indented query lines:
 
-    version 1
-
-    # id  name       default shuffle
+    # order  name       default shuffle
     playlist 014 rock track
         albums/Rock
         albums/SanDiegoLocals
@@ -40,16 +38,11 @@ with a header line and is followed by one or more indented query lines:
         albums/Classical minus /Baroque
         singles/Classical minus /Baroque
 
-- The VERSION is an integer I bump whenever the ids change meaning.  A
-  saved state set (below) records the version it was saved under, and a
-  server discards any set whose version is not the file's.  Forgetting
-  to bump it is harmless: a stale position is a track id checked against
-  the derived list, so it either restarts the playlist or lands a few
-  tracks off.
-- The ID is three digits.  Ids ORDER THE PLAYLISTS in the user interface,
-  and saved positions are keyed by them.  To reorder the menu, renumber
-  and bump the version.
-- The NAME is what the user interface shows, one word, unique.
+- The ORDER is a number that sorts the playlists in the user interface
+  and does nothing else.  To reorder the menu, renumber.
+- The NAME is the playlist's identity: what the user interface shows,
+  one word, unique, and the key that saved positions are kept under.
+  Renaming a playlist forgets its position, and only its position.
 - The DEFAULT SHUFFLE is none, track or album, and is the order a
   playlist starts in the first time a server ever plays it.  Album for
   the long listening lists, track for "just random music", none for a
@@ -63,8 +56,8 @@ with a header line and is followed by one or more indented query lines:
 - The track list is the union of the query lines.  A track matched by
   more than one line appears once.
 
-The order of playlists in the file means nothing; ids order them.  The
-file is edited by hand in a text editor.  A server that finds
+The order of playlists in the file means nothing; the order numbers do.
+The file is edited by hand in a text editor.  A server that finds
 the file missing has no playlists, which is an error worth noticing, not
 a condition to paper over.
 
@@ -142,11 +135,11 @@ saw; a request with a stale version is ignored.  This is what keeps two
 renderers, or two browsers, from fighting over one playlist.
 
 The server holds one state set, shared by every renderer that plays on
-it: the version of playlists.txt it belongs to, the three values for
-each playlist that has ever been played, plus the device renderer's
-volume and mute.  This is the whole of what a server remembers across a
-restart, and it is a few hundred bytes.  A set whose version is not the
-file's is discarded, positions and all; volume and mute are kept.
+it: the three values for each playlist, by name, that has ever been
+played, plus the device renderer's volume and mute.  This is the whole
+of what a server remembers across a restart, and it is a few hundred
+bytes.  A saved position whose name is no longer in playlists.txt is
+simply dropped.
 
 
 ## Persistence
@@ -159,9 +152,8 @@ A Pi never writes its state.  Instead:
 - A server boots with an EMPTY state set and reports so.
 - The first browser to poll a server that reports an empty set, and that
   has a stored copy for that origin, hands its copy over.  The server
-  accepts a handover only while its set is still empty, and keeps only
-  the volume and mute from a copy saved under another file version.
-  Every later browser takes the server's set.
+  accepts a handover only while its set is still empty.  Every later
+  browser takes the server's set.
 - The device renderer's volume and mute are applied when the set arrives.
 
 This is FIRST BROWSER WINS.  Two browsers can hold copies that differ by
