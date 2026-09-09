@@ -115,18 +115,6 @@ $(function()
 	// clearStorage();
 	// explorer_mode = getCookie('explorer_mode') || 0;
 
-	// Register the (empty) service worker so that Chrome on Android
-	// treats the webUI as an installable app; see sw.js.  Plain
-	// javascript; harmless where service workers are unavailable.
-
-	if ('serviceWorker' in navigator)
-	{
-		navigator.serviceWorker.register('/sw.js').catch(function(e)
-		{
-			display(dbg_load,0,"service worker not registered: " + e);
-		});
-	}
-
 	init_utils();
 	init_device_id()
 	init_audio();

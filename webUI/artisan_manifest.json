@@ -4,7 +4,7 @@
   "orientation":"landscape",
   "start_url":"/",
   "icons":[{
-    "src":"/images/artisan.png",
+    "src":"https://raw.githubusercontent.com/phorton1/base-apps-artisan/master/webUI/images/artisan.png",
     "type":"image/png",
     "sizes":"256x256"
   }]
