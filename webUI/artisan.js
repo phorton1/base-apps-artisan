@@ -63,6 +63,8 @@ function mirror_state(result)
 		}
 		return;		// never store an empty set over a saved one
 	}
+	state_offered = false;
+		// the server has state again; the next boot gets a new offer
 	if (result.state_id != state_id)
 	{
 		state_id = result.state_id;
