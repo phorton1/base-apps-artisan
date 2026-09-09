@@ -240,11 +240,22 @@ $( window ).resize(function()
 
 window.onclick = function(event)
 	// Close any open submenus when clicking outside a menu item or button.
+	// Menu items are excluded so that a parent item can open a nested
+	// submenu; leaf items close the menu themselves via onSubMenuItem().
 {
 	if (!event.target.matches('.my_menu_item') &&
 		!event.target.matches('.my_menu_button'))
 		$('.my_menu').hide();
 };
+
+
+function onSubMenuItem(command)
+	// A leaf item of the System submenu: close the menu, then run
+	// the standard system command (standard/standard_system.js).
+{
+	$('.my_menu').hide();
+	standard_system_command(command);
+}
 
 
 // hide menus when tab loses visibility

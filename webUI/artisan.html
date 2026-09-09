@@ -66,44 +66,45 @@
 
 	<!-- 'system' submenu - a jquery-ui menu opened by the 'system'
 	     button in artisan_menu.html via showMenu() in artisan.js.
-	     Items call standard_system_command() in standard/standard_system.js.
+	     Items call onSubMenuItem() in artisan.js, which closes the menu
+	     and runs standard_system_command() in standard/standard_system.js.
 	     as_service and linux_only items are hidden by artisan.css and
 	     shown at startup in artisan.js -->
 
 	<ul id="system_submenu" class='my_menu'>
 		<li>
 			<div class='my_menu_item'
-				onclick="standard_system_command('logfile')">
+				onclick="onSubMenuItem('logfile')">
 				logfile
 			</div>
 		</li>
 		<li>
 			<div class='my_menu_item'
-				onclick="standard_system_command('clear_log')">
+				onclick="onSubMenuItem('clear_log')">
 				clear_log
 			</div>
 		</li>
 		<li class='as_service'>
 			<div class='my_menu_item'
-				onclick="standard_system_command('restart_service')">
+				onclick="onSubMenuItem('restart_service')">
 				restart
 			</div>
 		</li>
 		<li>
 			<div class='my_menu_item update_allowed'
-				onclick="standard_system_command('update_system')">
+				onclick="onSubMenuItem('update_system')">
 				update
 			</div>
 		</li>
 		<li class='linux_only'>
 			<div class='my_menu_item'
-				onclick="standard_system_command('reboot')">
+				onclick="onSubMenuItem('reboot')">
 				reboot
 			</div>
 		</li>
 		<li class='linux_only'>
 			<div class='my_menu_item'
-				onclick="standard_system_command('shutdown_system')">
+				onclick="onSubMenuItem('shutdown_system')">
 				shutdown
 			</div>
 		</li>
