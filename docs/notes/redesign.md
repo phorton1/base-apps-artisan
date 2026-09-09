@@ -1,115 +1,117 @@
 # Re-design - September 2026
 
-This redsign effort comes as I am putting a Raspberry PI running Artisan,
-and the Essgoo 7" Android car stereo on the boat.
+This redesign effort comes as I am putting a Raspberry Pi running Artisan,
+and the Essgoo 7" Android car stereo, on the boat.
 
-There are a few highest level directions behind this effort, all intended
-to make Artisan, and its javascript web UX more robust, simpler, and flexible,
-while at the same time retaining its general usefulness, ability to run
-on Windows as well as Linux (rpi) machines, and continuing to support the
-various UX surfaces: the laptop firefox browser, car stereo android chrome
-browser, iPad IOS chrome browser, and phone android chrome browser.
+This document states the highest level goals of the effort.  It is not a
+plan.  The plan, the ordered list of specific changes, what is done and
+what is open, lives in plan.md next to this file and is expected to change
+every session.  This document should change rarely.  Both are interim,
+unofficial notes; the official documentation is what gets written in docs/.
 
-Although the implementation of this redesign may be incremental, in essence
-it is a sweeping refactoring - nearly a rewrite - of much of the code in the
-system.
-
-
-## Highest Level Objectives
-
-This section presents the highest level design concepts to be achieved.
-It is not an ordered list - an implementation plan - it is a summary of
-what is hoped to be acheived.  It is presented in two subsections -
-Perl and Javascript - even though there are heavy interdependencies
-between the two.
+Although the implementation may be incremental, in essence this is a
+sweeping refactoring - nearly a rewrite - of much of the code in the
+system, and a ground-up rewrite of the javascript UX.
 
 
-### Highest Level Perl Objectives
+## The Shape of the System
 
-Perhaps the highest level objective of the whole re-design is to make
-the Perl code running on the rPi essentially read-only with regards
-to the operating system SDCard and the USB data stick, in the normal
-day to day operation. The general requirement is perhaps best stated
-as a requirement that, in normal day to day operations, that the rPI
-shall allow for abprupt shutdown by removal of its power supply without
-any damage occuring to the OS sdcard and the USB data stick.
+Two distinctions, which I had not made clearly before, frame everything
+below.
 
-In addition to this robustness against sudden power losses, another
-major requirement - at this time completely unaddressed in the current
-code - has to do with guided automatic synchronization of the data
-(library) on the sticks versus the master data (library) stored and
-maintained on the laptop.  This is in addition to the similar concept,
-already moderately implemented, of updating the source code for Artisan itself
-on the rPI via a similar guided process that largely currently already
-works.
+The first is the UX SURFACE.  Artisan is used from four kinds of devices:
+the laptop, the Essgoo head unit on the boat, an iPad, and a phone.  Each
+is a resolution, an orientation policy, and an input precision.  The laptop
+and the head unit are fixed landscape; the iPad and the phone have to work
+in either orientation.  The laptop is the only pointer surface - a mouse
+that clicks within a few pixels, hover, right-click, and a real keyboard
+that makes typing cheap.  The other three are touch surfaces, with
+fingertip targets and typing that is onerous.  The touch surfaces are the
+compatibility floor for anything the javascript does: the iPad for its
+non-standard html5 support, and the head unit for its slowness.  The head
+unit runs Chrome 138, the newest its Android 9 allows, so its browser is
+current enough; its 2 GB and two cores are not.
 
-This effort will be facilitated by removing large swaths of vestigial
-Perl code and corresponding UX functionality having to do with the
-long implemented, but never really used, support for the DNLA protocol,
-as well as Artisan's ability to poll SSDP for DNLA libraries and renderers.
-It may remain a "nicety" for Artisan to be able to advertise itself via
-SSDP.  DLNA and SSDP polling are two things that currently make extensive
-use of caching information to the SDCard - writing to it - that will thus
-be eliminated helping with the read-only objective.
-
-Presented as bullet items, the above are:
-
-- remove DNLA code, caching, and complexity
-- remove SSDP searching and device caching
-- make Artisan Read-Only with regards to SD and USB storage devices
-- design and implement the master library synchronization scheme
-
-There are many details of how these goals will be reached,
-particularly with regards to making Artisan read-only, that
-will be defined in more detail in subsequent sections of this
-document, but some other desirable goals for the Perl code
-include:
-
-- bringing Artisan up to using Pub::Database rather than direct SQLite access
-- improving, correcting, and re-organizing the existing documentation
-- segregating library and playlist database construction on the master
-  from the day-to-day operations of an instance of the service/server.
+The second is the SERVER ROLE.  Every Artisan server is a PLAYER.  Exactly
+one of them, the one on the laptop, is also the LIBRARIAN: it ingests
+music, builds the library and its database, and synchronizes the result
+onto the sticks that the Pis play from.  The two axes are independent.
+A laptop browser pointed at the boat Pi is a large pointer surface talking
+to a player; a phone pointed at the laptop is a small touch surface talking
+to the librarian.  The UX is built for the surface and asks the server what
+its role is.
 
 
+## Highest Level Perl Objectives
 
-### Javascript UX
+The single most important objective is that the Perl code running on a Pi
+be essentially READ-ONLY with regards to the SD card and the USB data
+stick in normal day to day operation.  Stated as a requirement: a Pi shall
+tolerate abrupt shutdown by removal of its power supply, at any time,
+without damage to the OS card or the data stick.  Power drops several times
+a month in Bocas and I have lost days to corrupted cards.
 
-The most general objective for the Javascript UX application is to
-make it more responsive and less memory intensive for use in the
-various browsers, but particularly the very limited Essgoo chrome
-browser.
+Read-only is the STEADY STATE.  The exceptions are a few well known
+maintenance and configuration processes in which a Pi does write: updating
+the source from the repo, synchronizing the library onto the stick, writing
+its preferences.  They are few enough to be menu items.  A Pi that writes
+outside of them has a bug.
 
-It will likely continue to use jquery and jquery layout, but a
-felt goal will be to remove the fancyTree js component in favor
-of roll-your-own javascript libraries, although, at this point
-there is a chance that the entire UX will be replaced with more
-modern native javascript functionality.
+The second major objective is guided, automatic SYNCHRONIZATION of the
+library on the sticks against the master library maintained on the laptop.
+This is in addition to the already moderately working guided update of the
+Artisan source code itself onto a Pi.  Synchronization is, at this time,
+completely unaddressed in the code.
 
-The interaction between the javascript and the perl server will
-be analyzed for correctness and re-designed and optimized as
-extensively as needed to arrive at a more consistent and responsive
-UX experience across the board.
+The third is the LIBRARIAN WALL: the code that builds the library is
+structurally separated from the code that plays it, so that a Pi never
+loads, and never can run, any of it.  The library database ships with the
+library, and a Pi opens it read-only.
 
-There is much unstated as of yet in this section, particularly
-the fact that the current JS and CSS incorporate many hard learned
-lessons about browser interopability, device scaling and usability
-on the variious browser platforms and surfaces the app encouters.
-
-There is also likely an important role for browser persistent
-storage vis-a-vis the Perl Read-Only requirement.
-
-
-
-
-
-
+Behind these three is a general objective of leanness.  It is easier to
+add a capability to a lean system than to maintain futures that never get
+used.  A thing stays only if a Pi or the laptop uses it today.  Things are
+named for what they ARE, not for what they used to be.
 
 
+## Highest Level Javascript Objectives
+
+The most general objective for the javascript UX is that it be responsive
+and light enough for the very limited Essgoo browser.  Today's UX carries
+some 131K lines of vendored jquery, jquery-ui, jquery-layout and fancytree,
+and the head unit's slowness is largely that.  The UX will be rewritten
+from the ground up in plain html5 javascript, with no vendored frameworks.
+
+The current javascript and CSS incorporate many hard learned lessons about
+browser interoperability, device scaling, and touch usability on the
+surfaces described above.  Those lessons must survive the rewrite.  The
+existing UX, running as-is from a frozen copy of the repo, is the reference
+against which the new one is checked on each device.
+
+The interaction between the javascript and the Perl server - the HTTP
+protocol - will be defined as a document before either side is rebuilt to
+it, so that the Perl is collapsed to serve exactly that and the new
+javascript consumes exactly that.
+
+Browser persistent storage has an important role vis-a-vis the read-only
+Pi.  What a Pi cannot write, the browsers that use it remember for it.
 
 
+## Documentation
+
+The old documentation, half stale and describing things that no longer
+exist, has been moved aside whole.  New documentation describes WHAT IS,
+never the path taken to get there, and is organized by subject, with the
+same shape at every level: a readme for workflow and usage, a design page
+for architecture, and further pages for implementation.  Pages are written
+when their subject exists, not before.
 
 
+## Goals Not Yet Reached or Scheduled
 
-
-
----- end of redesign.md ----
+- Library synchronization, master to stick to Pi.  Stated above; no design
+  yet.
+- Moving Artisan from direct SQLite access to Pub::Database.  Still a goal;
+  not yet decided when, or whether, it happens within this redesign.
+- The desktop surface.  artisanWin is an abandoned stub; whether the laptop
+  wants anything beyond a browser is undecided.
