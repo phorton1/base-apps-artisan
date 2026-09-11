@@ -102,9 +102,14 @@ artisanPrefs::static_init_prefs();
 # (1) LIBRARY
 
 db_initialize();
-display($dbg_main,0,"Scanning Library ...");
-DatabaseMain::scanTree();
-display($dbg_main,0,"Finished Scanning Library");
+if ($librarian_dir)
+{
+	# Only the librarian scans. A player's artisan.db is an artifact
+	# of a scan on the librarian, delivered whole, and trusted as is.
+	display($dbg_main,0,"Scanning Library ...");
+	DatabaseMain::scanTree();
+	display($dbg_main,0,"Finished Scanning Library");
+}
 Playlist::initPlaylists();
 
 

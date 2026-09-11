@@ -633,7 +633,7 @@ sub get_fpcalc_info
 
     bump_stat("get_fpinfo called");
 
-    my $dir = "$data_dir/fpcalc_info";
+    my $dir = "$librarian_dir/fpcalc_info";
     mkdir $dir if (!(-d $dir));
     my $cache_file = "$dir/$file_md5.txt";
 

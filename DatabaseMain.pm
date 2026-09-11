@@ -283,7 +283,7 @@ sub checkDuplicateFingerprints
 
 	my $md5s = {};
 	my $fps  = {};
-	my $info_dir = "$data_dir/fpcalc_info";
+	my $info_dir = "$librarian_dir/fpcalc_info";
 
 	my $tracks = get_records_db($dbh,"SELECT * FROM tracks ORDER BY path");
 	for my $track (@$tracks)
@@ -481,7 +481,7 @@ sub del_unused_text_files
     my %id_used;
 
     display($dbg_cleanup,0,($deleting?"DELETE":"SHOW")." UNUSED $subdir FILES");
-    if (!opendir(DIR,"$data_dir/$subdir"))
+    if (!opendir(DIR,"$librarian_dir/$subdir"))
     {
         error("Could not open $subdir dir");
         exit 1;
@@ -738,7 +738,7 @@ sub validate_folder
 			}
 			elsif ($check_artist !~ /^various$/i &&
 				   $check_artist !~ /^original soundtrack$/i &&
-				   !(-f "$data_dir/artists/$check_artist.txt"))
+				   !(-f "$librarian_dir/artists/$check_artist.txt"))
 			{
 				set_folder_error($params,$folder,$ERROR_HIGH,"Unknown artist '$folder->{artist}'");
 			}

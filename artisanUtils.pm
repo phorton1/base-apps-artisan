@@ -21,7 +21,6 @@ use Pub::ServerUtils;
 use Encode;
 
 my $FORKING_UNIX_SERVICE = 1;
-my $USE_MINI_LIBRARY = 0;
 
 
 our $system_update_id:shared = 1;
@@ -111,6 +110,7 @@ BEGIN
         $artisan_perl_dir
 		$mp3_dir
 		$mp3_dir_RE
+		$librarian_dir
 		$image_dir
 
 		$wifi_connected
@@ -227,12 +227,13 @@ if (!is_win())
 }
 
 
-if ($USE_MINI_LIBRARY)
-{
-	$mp3_dir = "/mp3s_mini";
-	$mp3_dir_RE = '\/mp3s_mini';
-}
-
+our $librarian_dir = is_win() ? "/dat/artisan" : '';
+	# The LIBRARIAN is the machine that builds the library (the laptop).
+	# $librarian_dir holds the librarian's own data (fpcalc_info, artists,
+	# the master playlists.txt) and is empty on the players (the rPis),
+	# which never scan and open artisan.db read-only.  The players get
+	# $data_dir (artisan.db, playlists.txt) as an artifact of a build on
+	# the librarian, delivered whole, and never modify it.
 
 $data_dir = "$mp3_dir/_data";
 setStandardTempDir('artisan');

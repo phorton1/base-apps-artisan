@@ -7,6 +7,9 @@ package SQLite;
 use strict;
 use warnings;
 use DBI;
+use DBD::SQLite;
+	# loaded explicitly (DBI would load it lazily at connect)
+	# so that DBD::SQLite::OPEN_READONLY is defined below
 use artisanUtils;
 
 
@@ -46,8 +49,15 @@ sub sqlite_connect
 	$password ||= '';
     display($dbg_sqlite,0,"db_connect SQL_UNICODE=$SQLITE_UNICODE");
 
+	# A player (no $librarian_dir) opens the database READ ONLY.
+	# Only the librarian ever writes artisan.db; on a player any
+	# attempted write fails at the statement instead of touching
+	# the SD card or the stick.
+
 	my $dsn = "dbi:SQLite:dbname=$db_name";
-	my $dbh = DBI->connect($dsn,$user,$password,{sqlite_unicode => $SQLITE_UNICODE });
+	my $attrs = { sqlite_unicode => $SQLITE_UNICODE };
+	$attrs->{sqlite_open_flags} = DBD::SQLite::OPEN_READONLY() if !$librarian_dir;
+	my $dbh = DBI->connect($dsn,$user,$password,$attrs);
     if (!$dbh)
     {
         error("Unable to connect to Database: ".$DBI::errstr);
