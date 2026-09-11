@@ -48,6 +48,7 @@
     <&$this->includeJS('explorer.js')>
 	<&$this->includeJS('search.js')>
 	<&$this->includeJS('audio.js')>
+	<&$this->includeJS('sync.js')>
 
 
 	<script>
@@ -63,6 +64,24 @@
 	<include page_explorer.html>
 	<include page_search.html>
 	<div class = "cover_screen"></div>
+
+	<!-- the server-owned mode and the Sync command (sync.js,
+	     docs/notes/sync.md).  busy_message is shown in every browser
+	     while the server reports busy; sync_page in the browser that
+	     runs a sync -->
+
+	<div id="busy_message"></div>
+
+	<div id="sync_page">
+		<div class="sync_title">Sync</div>
+		<div id="sync_body"></div>
+		<div class="sync_buttons">
+			<button id="sync_start" onclick="sync_start()">start</button>
+			<button id="sync_cancel" onclick="sync_cancel()">cancel</button>
+			<button id="sync_restart" onclick="sync_restart()">restart</button>
+			<button id="sync_close" onclick="sync_close_page()">close</button>
+		</div>
+	</div>
 
 	<!-- 'system' submenu - a jquery-ui menu opened by the 'system'
 	     button in artisan_menu.html via showMenu() in artisan.js.
@@ -94,6 +113,12 @@
 			<div class='my_menu_item update_allowed'
 				onclick="onSubMenuItem('update_system')">
 				update
+			</div>
+		</li>
+		<li class='linux_only'>
+			<div class='my_menu_item'
+				onclick="onSubMenuItem('sync')">
+				sync
 			</div>
 		</li>
 		<li class='linux_only'>

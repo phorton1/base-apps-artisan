@@ -27,6 +27,7 @@ use threads::shared;
 use Date::Format;
 use Pub::HTTP::Response;
 use artisanUtils;
+use Sync;
 use Queue;
 use Playlist;
 use uiLibrary;
@@ -102,6 +103,14 @@ sub webui_request
 		$data->{libraries} = getDevicesData($DEVICE_TYPE_LIBRARY)
 			if $update_id != $system_update_id;
 
+		# THE MODE (docs/notes/sync.md): server_start so a page can
+		# see that the server restarted; busy = the System command
+		# in progress ('', 'sync', 'update'); the sync block.
+
+		$data->{server_start} = $server_start;
+		$data->{busy} = $busy;
+		$data->{sync} = syncStatus();
+
 		# THE STATE SET (see Playlist.pm and docs/playlists.md)
 		# state_id and state_empty always; the set itself only
 		# when the browser's state_id is behind.
@@ -165,6 +174,11 @@ sub webui_request
 		return json_error($request,"could not find renderer uuid in '$path'")
 			if $path !~ s/^(.*?)\///;
 		my $uuid = $1;
+
+		# no playback commands while a System command is in progress
+
+		return json_error($request,"$busy in progress")
+			if $busy && $path ne 'update';
 
 		# Get the renderer, do the command, return error if it fails,
 		# or return the render as json if it succeeds.

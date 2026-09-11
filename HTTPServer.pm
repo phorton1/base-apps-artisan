@@ -16,6 +16,7 @@ use artisanUtils;
 use WebUI;
 use HTTPStream;
 use DeviceManager;
+use Sync;
 use base qw(Pub::HTTP::ServerBase);
 
 
@@ -167,7 +168,38 @@ sub handle_request
 	elsif ($uri =~ /^\/media\/(.*)$/)
 	{
 		my $id = $1;
+		return http_error($request,"$busy in progress") if $busy;
 		$response = HTTPStream::stream_media($client,$request,$id);
+	}
+
+	#------------------------------------------------------------
+	# Sync (docs/notes/sync.md)
+	#------------------------------------------------------------
+	# /sync/info, db, playlists, art/<path> are served by the source
+	# (the librarian).  /sync/plan, start, cancel run on a player.
+
+	elsif ($uri =~ /^\/sync\/(plan|start|cancel|restart)$/)
+	{
+		$response = syncRequest($request,$1);
+	}
+	elsif ($uri =~ /^\/sync\/(.*)$/)
+	{
+		$response = sourceRequest($request,$1);
+	}
+
+	# The base class handles /update_system and /restart_service.
+	# While one runs, the player is busy (every browser overlays
+	# and stops its own renderer via the poll).  If an update
+	# returns without restarting, busy is cleared again.
+
+	elsif ($uri =~ /^\/(update_system|restart_service)/)
+	{
+		return http_error($request,"$busy in progress") if $busy;
+		setBusy('update');
+		$response = $this->SUPER::handle_request($client,$request);
+		clearBusy() if !$response ||
+			!$response->{content} ||
+			$response->{content} !~ /Restarting/i;
 	}
 
 	# LOCAL LIBRARY GET_ART REQUEST

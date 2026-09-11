@@ -251,9 +251,15 @@ window.onclick = function(event)
 
 function onSubMenuItem(command)
 	// A leaf item of the System submenu: close the menu, then run
-	// the standard system command (standard/standard_system.js).
+	// the standard system command (standard/standard_system.js),
+	// or Artisan's own sync command (sync.js).
 {
 	$('.my_menu').hide();
+	if (command == 'sync')
+	{
+		sync_command();
+		return;
+	}
 	standard_system_command(command);
 }
 
@@ -362,6 +368,12 @@ function idle_loop()
 					location.reload();
 					return;
 				}
+
+				// the server-owned mode (sync.js): reloads on a
+				// server restart, overlays while the server is busy
+
+				if (sync_poll(result))
+					return;
 
 				if (result.update_id)
 					update_id = result.update_id;

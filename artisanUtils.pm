@@ -116,6 +116,7 @@ BEGIN
 		$wifi_connected
         $server_ip
         $server_port
+		$server_start
 
 		artisanMimeType
 
@@ -245,6 +246,11 @@ $logfile = "$temp_dir/artisan.log";
 
 our $server_port = '8091';
 #	our $server_ip = '';
+
+our $server_start = time();
+	# reported on every /webUI/update; a page that sees it change
+	# knows the server restarted (update, restart, reboot, sync)
+	# and reloads itself
 
 our $LINUX_PID_FILE = $FORKING_UNIX_SERVICE ? "$temp_dir/artisan.pid" : '';
 

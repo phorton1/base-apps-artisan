@@ -96,8 +96,11 @@ my $CHECK_DUPLICATE_FINGERPRINTS = 0;
 	# C:\mp3s\albums\Rock\Main\Bob Dylan - Greatest Hits\02 - Blowin' In The Wind.mp3
 	# much less when one is a wma and the other is an mp3!
 
-my $CLEANUP_DATABASE = 0;
-	# remove unused database records at end of scan
+my $CLEANUP_DATABASE = 1;
+	# remove unused database records at end of scan.
+	# 2026-09-11: on.  The librarian's scan is the only place a
+	# record ever dies; the players never scan and get the
+	# database whole by sync (docs/notes/sync.md).
 my $CLEANUP_FPCALC_FILES = 0;
 	# remove unused fpcalc_info files at end of scan
 
