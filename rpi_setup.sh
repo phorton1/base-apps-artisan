@@ -14,9 +14,21 @@
 # depends on that: it can equally be scp'd to a fresh Lite machine
 # and run by hand.
 #
-#   sudo ./rpi_setup.sh [--with-myiot] [--reboot]
+#   sudo ./rpi_setup.sh [--files DIR] [--with-myiot] [--reboot]
 #
-#   --with-myiot   also clone and enable myIOTServer (unproven)
+#   --files DIR    private files to place, never kept in a repo:
+#                    DIR/_ssl/*         -> /base_data/_ssl        (certs, keys, PubCryptKey.txt;
+#                                                                  replaced when they differ)
+#                    DIR/data/<svc>/*   -> /base_data/data/<svc>  (prefs, users.txt; seeded
+#                                                                  only when absent, since the
+#                                                                  services rewrite them)
+#                  The SSL fileServer needs data/fileServer/fileServer.prefs and
+#                  fileServer.crt/key + phortonCA.crt in _ssl.  Without --files
+#                  the fileServer runs plain (no SSL, not forwardable).
+#   --with-myiot   also clone, configure, enable and start myIOTServer.  Needs
+#                  --files with data/myIOTServer/{myIOTServer.prefs,users.txt}
+#                  and myIOTServer.crt/key + PubCryptKey.txt in _ssl; refuses
+#                  to enable the service if any of those is missing.
 #   --reboot       reboot at the end if any step needed it
 #
 # Contains no credentials.  Repos are public; the pi user already
@@ -35,13 +47,19 @@ GITHUB=https://github.com/phorton1
 
 WITH_MYIOT=0
 DO_REBOOT=0
-for arg in "$@"; do
-    case "$arg" in
+FILES_DIR=
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --files)      FILES_DIR="$2"; shift ;;
         --with-myiot) WITH_MYIOT=1 ;;
         --reboot)     DO_REBOOT=1 ;;
-        *) echo "unknown argument: $arg"; exit 1 ;;
+        *) echo "unknown argument: $1"; exit 1 ;;
     esac
+    shift
 done
+if [ -n "$FILES_DIR" ] && [ ! -d "$FILES_DIR" ]; then
+    echo "ERROR: --files $FILES_DIR is not a directory"; exit 1
+fi
 
 if [ "$(id -u)" != 0 ]; then
     exec sudo "$0" "$@"
@@ -162,6 +180,57 @@ install_unit()
     fi
 }
 
+# place_file SRC DST MODE - copy SRC to DST if missing or different; owned by pi
+place_file()
+{
+    local src="$1" dst="$2" mode="$3"
+    if cmp -s "$src" "$dst"; then
+        ok "file $dst"
+    else
+        cp "$src" "$dst" || return 1
+        changed "file $dst from $src"
+        PLACED_FILES=1
+    fi
+    chown $PI_USER:$PI_USER "$dst"
+    chmod "$mode" "$dst"
+}
+
+# seed_file SRC DST MODE - copy SRC to DST only if DST does not exist; owned by pi.
+# For files a running service rewrites (prefs, users.txt): the copy is a seed,
+# never a template, so a rerun must not clobber runtime changes such as a
+# forward switched on from the admin page.
+seed_file()
+{
+    local src="$1" dst="$2" mode="$3"
+    if [ -f "$dst" ]; then
+        ok "seeded $dst"
+    else
+        cp "$src" "$dst" || return 1
+        changed "seeded $dst from $src"
+        PLACED_FILES=1
+    fi
+    chown $PI_USER:$PI_USER "$dst"
+    chmod "$mode" "$dst"
+}
+
+# place_tree SRCDIR DSTDIR MODE [seed] - place_file (or seed_file) every regular
+# file in SRCDIR (one level)
+place_tree()
+{
+    local srcdir="$1" dstdir="$2" mode="$3" how="${4:-place}" f
+    [ -d "$srcdir" ] || return 0
+    ensure_dir "$dstdir" 0755
+    for f in "$srcdir"/*; do
+        [ -f "$f" ] || continue
+        if [ "$how" = seed ]; then
+            seed_file "$f" "$dstdir/$(basename "$f")" "$mode" || return 1
+        else
+            place_file "$f" "$dstdir/$(basename "$f")" "$mode" || return 1
+        fi
+    done
+    return 0
+}
+
 
 echo "===== rpi_setup.sh on $(hostname) $(date '+%Y-%m-%d %H:%M:%S')"
 
@@ -173,6 +242,7 @@ ensure_dir $BASE          0777
 ensure_dir $BASE/apps     0777
 ensure_dir $DATA          0777
 ensure_dir $DATA/temp     0755
+ensure_dir $DATA/data     0755
 ensure_dir $STICK_MOUNT   0755
 
 #-------------------------------------------------------------------
@@ -282,6 +352,14 @@ clone_repo $GITHUB/base-apps-artisan                  $BASE/apps/artisan        
 clone_repo $GITHUB/base-apps-artisan-webUI-standard   $BASE/apps/artisan/webUI/standard || exit 1
 if [ $WITH_MYIOT = 1 ]; then
     clone_repo $GITHUB/base-apps-myIOTServer          $BASE/apps/myIOTServer           || exit 1
+    # its two submodules: site/myIOT (the myIOT UI) and site/standard (standard_system.js)
+    if [ -f $BASE/apps/myIOTServer/site/myIOT/index.html ] && [ -f $BASE/apps/myIOTServer/site/standard/standard_system.js ]; then
+        ok "myIOTServer submodules"
+    else
+        wait_network || exit 1
+        sudo -u $PI_USER git -C $BASE/apps/myIOTServer submodule update --init -q || exit 1
+        changed "myIOTServer submodules initialized"
+    fi
 fi
 
 # The Perl module list lives in Pub; install it non-interactively.
@@ -293,7 +371,95 @@ for f in $BASE/apps/artisan/artisan.pm $BASE/Pub/FS/fileServer.pm $BASE/apps/myI
 done
 
 #-------------------------------------------------------------------
-# 7. services
+# 7. private files: certs/keys into /base_data/_ssl (replaced when they
+#    differ), prefs and users files into /base_data/data/<svc> (SEEDED:
+#    copied only when absent, because the services rewrite them at
+#    runtime).  Only with --files.  A fileServer.prefs with FS_SSL on
+#    moves the fileServer to port 5873; a newly seeded fileServer.prefs
+#    restarts the running fileServer (Artisan is not involved).
+#-------------------------------------------------------------------
+
+PLACED_FILES=0
+if [ -n "$FILES_DIR" ]; then
+    ensure_dir $DATA/_ssl 0700
+    place_tree "$FILES_DIR/_ssl" $DATA/_ssl 0600 || exit 1
+    for d in "$FILES_DIR"/data/*/; do
+        [ -d "$d" ] || continue
+        svc=$(basename "$d")
+        PLACED_FILES=0
+        place_tree "$d" $DATA/data/$svc 0644 seed || exit 1
+        if [ $PLACED_FILES = 1 ] && [ "$svc" = fileServer ] && systemctl is-active -q fileServer 2>/dev/null; then
+            systemctl restart fileServer && changed "restarted fileServer for its new prefs"
+        fi
+    done
+else
+    echo "note:    no --files given; /base_data/_ssl and prefs left as they are"
+fi
+
+if [ $WITH_MYIOT = 1 ]; then
+    MISSING=
+    for f in $DATA/_ssl/myIOTServer.crt $DATA/_ssl/myIOTServer.key $DATA/_ssl/PubCryptKey.txt \
+             $DATA/data/myIOTServer/myIOTServer.prefs $DATA/data/myIOTServer/users.txt; do
+        [ -f "$f" ] || MISSING="$MISSING $f"
+    done
+    if [ -n "$MISSING" ]; then
+        echo "ERROR: --with-myiot but missing:$MISSING (pass --files DIR)"
+        exit 1
+    fi
+fi
+
+#-------------------------------------------------------------------
+# 7b. ssh client setup for the reverse tunnels (Pub::PortForwarder).
+#     myIOTServer runs as pi, the fileServer as root, so both homes get
+#     it.  For every forward host named in any placed prefs
+#     (HTTP_FWD_SERVER / FS_FWD_SERVER + the matching SSH_PORT):
+#     - seed known_hosts, since ssh would hang forever on an unknown
+#       host key with nobody to type "yes";
+#     - allow SHA-1 (ssh-rsa) signatures for that host only.  Miami
+#       (phorton.net) runs OpenSSH 6.9 (2015), which can verify an RSA
+#       key only with SHA-1; OpenSSH clients >= 8.8 refuse SHA-1 by
+#       default, so without this the key is never even offered
+#       ("no mutual signature algorithm").  REMOVE this block when
+#       Miami is upgraded or the tunnel key becomes ed25519.
+#-------------------------------------------------------------------
+
+for prefs in $DATA/data/*/*.prefs; do
+    [ -f "$prefs" ] || continue
+    FWD_HOST=$(sed -n 's/^[A-Z]*_FWD_SERVER *= *\([^ #]*\).*/\1/p' "$prefs" | tr -d '\r' | head -1)
+    FWD_SSH_PORT=$(sed -n 's/^[A-Z]*_FWD_SSH_PORT *= *\([^ #]*\).*/\1/p' "$prefs" | tr -d '\r' | head -1)
+    [ -n "$FWD_HOST" ] && [ -n "$FWD_SSH_PORT" ] || continue
+    for owner in $PI_USER root; do
+        home=$(getent passwd $owner | cut -d: -f6)
+        if [ -d "$home/.ssh" ]; then
+            ok "dir $home/.ssh"
+        else
+            mkdir -p "$home/.ssh" && changed "mkdir $home/.ssh"
+        fi
+        chown $owner:$owner "$home/.ssh"
+        chmod 0700 "$home/.ssh"
+        KH=$home/.ssh/known_hosts
+        if grep -q "^\[$FWD_HOST\]:$FWD_SSH_PORT " $KH 2>/dev/null; then
+            ok "$KH has $FWD_HOST:$FWD_SSH_PORT"
+        else
+            wait_network || exit 1
+            ssh-keyscan -p $FWD_SSH_PORT $FWD_HOST >> $KH 2>/dev/null && changed "$KH += $FWD_HOST:$FWD_SSH_PORT"
+            chown $owner:$owner $KH
+            chmod 0600 $KH
+        fi
+        SSH_CONFIG=$home/.ssh/config
+        if grep -qx "Host $FWD_HOST" $SSH_CONFIG 2>/dev/null; then
+            ok "$SSH_CONFIG has Host $FWD_HOST"
+        else
+            printf '# rpi_setup.sh: %s runs OpenSSH 6.9, which needs SHA-1 RSA signatures\nHost %s\n    PubkeyAcceptedAlgorithms +ssh-rsa\n' "$FWD_HOST" "$FWD_HOST" >> $SSH_CONFIG
+            chown $owner:$owner $SSH_CONFIG
+            chmod 0600 $SSH_CONFIG
+            changed "$SSH_CONFIG += Host $FWD_HOST (PubkeyAcceptedAlgorithms +ssh-rsa)"
+        fi
+    done
+done
+
+#-------------------------------------------------------------------
+# 8. services
 #-------------------------------------------------------------------
 
 FIRST_INSTALL=0
@@ -303,10 +469,15 @@ install_unit $BASE/apps/artisan/artisan.service   artisan.service      || exit 1
 install_unit $BASE/Pub/FS/fileServer.service      fileServer.service   || exit 1
 if [ $WITH_MYIOT = 1 ]; then
     install_unit $BASE/apps/myIOTServer/myIOTServer.service myIOTServer.service || exit 1
+    if systemctl is-active -q myIOTServer; then
+        ok "myIOTServer running"
+    else
+        systemctl start myIOTServer && changed "started myIOTServer"
+    fi
 fi
 
 #-------------------------------------------------------------------
-# 8. a stick that came from another Pi carries that Pi's uuid.
+# 9. a stick that came from another Pi carries that Pi's uuid.
 #    Only on the first install: after that the file is this Pi's own,
 #    and Artisan may be running on it.
 #-------------------------------------------------------------------

@@ -6,7 +6,8 @@ that set it.  This is the reference for building a fresh card, and the
 source for a future setup script in this repo.
 
 Machines are referred to by hostname.  Everything here applies to
-rpi4B4A, the current master image.
+rpi4B4A, the current reference machine.  There are no master images; the
+scripts rebuild a card on demand.
 
 rpi_setup.sh in the repo root applies all of this to a fresh Raspberry
 Pi OS Lite machine, and rpi_build.md describes how a card is made.
@@ -105,9 +106,53 @@ but does not recopy it; after changing artisan.service, recopy it and
 run "sudo systemctl daemon-reload".
 
 fileServer: unit name "fileServer", runs as root, per the comments in
-/base/Pub/FS/fileserver.service.
+/base/Pub/FS/fileserver.service.  With the /base_data/_ssl certs and a
+fileServer.prefs that sets FS_SSL, it listens with SSL on port 5873 and
+verifies client certificates against the phorton CA; without them it is
+plain on 5872.
 
-myIOTServer: installed but not enabled on this image.
+myIOTServer: not part of a plain Artisan Pi.  It is installed and enabled
+only by rpi_setup.sh --with-myiot, which clones /base/apps/myIOTServer
+and its submodules, requires the private files below, and enables the
+unit.  It serves HTTPS and secure websockets on port 6902, discovers the
+ESP32 devices by SSDP, and proxies them.  See rpi_build.md for the
+--with-myiot workflow.
+
+
+## /base_data/_ssl and /base_data/data (private files)
+
+Not in any repo.  Copied from the laptop's /base_data, never generated on
+the Pi:
+
+    /base_data/_ssl            certs, keys, PubCryptKey.txt and the
+                               myiot_user tunnel ssh key.  The same on
+                               every machine.
+    /base_data/data/<svc>      per-service prefs, and users.txt for
+                               myIOTServer.  The prefs are the laptop's
+                               copies with this machine's forward ports
+                               set (the port map is in PORTS_IN_USE.xlsx).
+
+A plain Artisan Pi needs none of this.  The fileServer uses _ssl and
+fileServer.prefs only when SSL is turned on; myIOTServer requires _ssl
+(myIOTServer.crt/key, PubCryptKey.txt) and data/myIOTServer
+(myIOTServer.prefs, users.txt).
+
+
+## Reverse-tunnel ssh client config
+
+When a service forwards its port to the Miami server (Pub::PortForwarder,
+driven by the *_FWD_* prefs), the tunnel is an ssh login from the Pi.
+That server runs an old sshd that verifies RSA keys only with SHA-1
+signatures, which current ssh clients refuse by default, so for the
+forwarding host named in the prefs the setup places, in both ~pi/.ssh and
+~root/.ssh (myIOTServer forwards as pi, the fileServer as root):
+
+    known_hosts   the host key (seeded with ssh-keyscan)
+    config        Host <fwd>
+                      PubkeyAcceptedAlgorithms +ssh-rsa
+
+Remove these when that server is upgraded or the tunnel key becomes
+ed25519.
 
 
 ## Hostname and IP
